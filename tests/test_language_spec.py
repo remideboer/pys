@@ -36,6 +36,15 @@ def test_translate_visible_function() -> None:
     assert LANGUAGE.translate_line("module function secret()") == "def secret():"
 
 
+def test_translate_const_decl() -> None:
+    assert (
+        LANGUAGE.translate_line("global const float PI = 3.14159265358979323846")
+        == "PI = 3.14159265358979323846"
+    )
+    assert LANGUAGE.translate_line("const int MAX = 100") == "MAX = 100"
+    assert transpile("const int MAX = 10 + 5\nprint(MAX)\n") == "MAX = 10 + 5\nprint(MAX)\n"
+
+
 def test_translate_loop_with_trailing_spaces() -> None:
     line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"

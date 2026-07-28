@@ -2,7 +2,7 @@ import funcs
 # same as: import all from funcs.pys
 
 hello()
-doei()
+print(PI)
 
 int x = 10
 int y = 20

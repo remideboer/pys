@@ -20,6 +20,8 @@ class ModuleInfo:
     path: Path
     python: str
     exports: dict[str, str]
+    constants: set[str]
+    types: dict[str, str]
 
 
 class TranspileError(ValueError):
@@ -62,6 +64,8 @@ class Parser:
         self.module_cache = module_cache if module_cache is not None else {}
         self.transpiling = transpiling if transpiling is not None else set()
         self.exports: dict[str, str] = {}
+        # Names declared with const (immutable after declaration).
+        self.constants: set[str] = set()
         # Names brought into scope by import.
         self.imported_names: set[str] = set()
         # Names seen via imported modules but not in scope here:
@@ -474,7 +478,7 @@ class Parser:
 
     def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
         match = re.match(
-            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|class\b|interface\b)",
+            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|class\b|interface\b|const\b)",
             line,
         )
         if not match:
@@ -494,6 +498,11 @@ class Parser:
         )
         if not match:
             match = re.match(r"(?:class|interface)\s+(?P<name>[A-Za-z_]\w*)\b", rest)
+        if not match:
+            match = re.match(
+                r"const\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=",
+                rest,
+            )
         if match:
             self.exports[match.group("name")] = visibility
 
@@ -538,7 +547,17 @@ class Parser:
                 transpiling=self.transpiling,
             )
             python = child.parse()
-            info = ModuleInfo(path=path, python=python, exports=dict(child.exports))
+            info = ModuleInfo(
+                path=path,
+                python=python,
+                exports=dict(child.exports),
+                constants=set(child.constants),
+                types={
+                    name: child.variable_types[name]
+                    for name in child.exports
+                    if name in child.variable_types
+                },
+            )
             self.module_cache[path] = info
             return info
         finally:
@@ -562,11 +581,17 @@ class Parser:
     ) -> None:
         visible = set(self._visible_exports_for_import(info))
         imported_set = set(imported)
+        for name in imported_set:
+            self.imported_names.add(name)
+            self.declared_variables.add(name)
+            if name in info.types:
+                self.variable_types[name] = info.types[name]
+            if name in info.constants:
+                self.constants.add(name)
+            self.seen_module_names.pop(name, None)
         for name, visibility in info.exports.items():
             accessible = name in visible
             if name in imported_set:
-                self.imported_names.add(name)
-                self.seen_module_names.pop(name, None)
                 continue
             # Prefer keeping an existing "more useful" record (already inaccessible from another module).
             if name in self.imported_names or name in self.exports:
@@ -1045,8 +1070,106 @@ class Parser:
                 raw_line.rstrip(),
             )
 
+    def _is_compile_time_const_expr(self, expr: str) -> bool:
+        expr = expr.strip()
+        if not expr:
+            return False
+        if (expr.startswith('"') and expr.endswith('"')) or (
+            expr.startswith("'") and expr.endswith("'") and len(expr) >= 2
+        ):
+            return True
+        if re.fullmatch(r"\d+(?:\.\d+)?", expr):
+            return True
+        if expr in {"true", "false", "True", "False", "null", "None"}:
+            return True
+        if re.fullmatch(r"[A-Za-z_]\w*", expr):
+            return expr in self.constants
+        if expr.startswith("(") and expr.endswith(")"):
+            return self._is_compile_time_const_expr(expr[1:-1])
+        cast = re.fullmatch(r"\(\s*(?:int|float|char|string|bool)\s*\)\s*(?P<inner>.+)", expr)
+        if cast:
+            return self._is_compile_time_const_expr(cast.group("inner"))
+        if expr.startswith(("+", "-")):
+            return self._is_compile_time_const_expr(expr[1:])
+        binop = re.fullmatch(r"(?P<left>.+?)\s*(?:\+|\-|\*|/|%)\s*(?P<right>.+)", expr)
+        if binop:
+            return self._is_compile_time_const_expr(binop.group("left")) and self._is_compile_time_const_expr(
+                binop.group("right")
+            )
+        return False
+
+    def _match_const_decl(self, line: str) -> re.Match[str] | None:
+        return re.fullmatch(
+            r"(?:(?P<vis>global|package|module)\s+)?const\s+(?P<type>int|float|char|string|bool)\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+
+    def _enforce_const_declaration(self, line: str, line_number: int, raw_line: str) -> None:
+        const_match = self._match_const_decl(line)
+        if not const_match:
+            if re.match(r"^(?:(?:global|package|module)\s+)?const\b", line):
+                self._error(
+                    "Invalid const declaration; expected `const <type> name = compile-time value` "
+                    "(optional visibility: global/package/module).",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            return
+
+        name = const_match.group("name")
+        type_name = const_match.group("type")
+        expr = const_match.group("expr").strip()
+        if not self._is_compile_time_const_expr(expr):
+            column = raw_line.find(expr) + 1 if raw_line and expr in raw_line else 1
+            self._error(
+                f"Const '{name}' must be initialized with a compile-time constant expression.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+
+        inferred = self._infer_expr_type(expr)
+        if inferred is not None and not self._is_assignable_to(inferred, type_name):
+            column = raw_line.find(name) + 1 if raw_line else 1
+            self._error(
+                f"Type mismatch: cannot assign {inferred} to const '{name}' of type {type_name}.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+
+        self.declared_variables.add(name)
+        self.variable_types[name] = type_name
+        self.constants.add(name)
+
+    def _enforce_const_assignment(self, line: str, line_number: int, raw_line: str) -> None:
+        if self._match_const_decl(line):
+            return
+        assign = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
+        if not assign:
+            return
+        name = assign.group("name")
+        if name not in self.constants:
+            return
+        column = raw_line.find(name) + 1 if raw_line else 1
+        self._error(
+            f"Cannot assign to const '{name}'. Constants are fixed at compile time.",
+            line_number,
+            raw_line.rstrip(),
+            column,
+        )
+
     def _record_declared_variables(self, line: str) -> None:
         primitives = {"int", "float", "char", "string", "bool"}
+
+        const_match = self._match_const_decl(line)
+        if const_match:
+            name = const_match.group("name")
+            self.declared_variables.add(name)
+            self.variable_types[name] = const_match.group("type")
+            self.constants.add(name)
+            return
 
         var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
         if var_match:
@@ -1068,6 +1191,8 @@ class Parser:
             if match:
                 name = match.group("name")
                 type_name = match.group("type")
+                if type_name in {"const", "global", "package", "module", "var", "function", "func", "class", "interface"}:
+                    return
                 self.declared_variables.add(name)
                 self.variable_types[name] = type_name
                 break
@@ -1127,7 +1252,10 @@ class Parser:
 
     def _enforce_assignment_type(self, line: str, line_number: int, raw_line: str) -> None:
         # Declarations establish type elsewhere; only check plain reassignments here.
-        if re.match(r"^(?:var|public|private|protected|module|int|float|char|string|bool)\b", line):
+        if re.match(
+            r"^(?:var|const|global|package|module|public|private|protected|int|float|char|string|bool)\b",
+            line,
+        ):
             return
         if re.match(r"^[A-Za-z_]\w*\s+[A-Za-z_]\w*\s*=", line):
             return
@@ -1196,6 +1324,7 @@ class Parser:
             "private",
             "protected",
             "module",
+            "const",
             "global",
             "package",
         }
@@ -1249,6 +1378,8 @@ class Parser:
         self._record_class_declaration(line)
         self._record_class_member(line)
         self._record_declared_variables(line)
+        self._enforce_const_declaration(line, line_number, raw_line)
+        self._enforce_const_assignment(line, line_number, raw_line)
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
         self._enforce_seen_name_access(line, line_number, raw_line)

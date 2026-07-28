@@ -291,6 +291,35 @@ def test_call_to_visible_but_not_imported_name(tmp_path: Path) -> None:
         transpile(main.read_text(encoding="utf-8"), source_path=main)
 
 
+def test_const_rejects_reassignment() -> None:
+    source = """const int MAX = 10
+MAX = 20
+"""
+    with pytest.raises(TranspileError, match="Cannot assign to const 'MAX'"):
+        transpile(source)
+
+
+def test_const_requires_compile_time_initializer() -> None:
+    source = """int x = 10
+const int Y = x
+"""
+    with pytest.raises(TranspileError, match="compile-time constant"):
+        transpile(source)
+
+
+def test_global_const_is_importable(tmp_path: Path) -> None:
+    (tmp_path / "mathy.pys").write_text(
+        "global const float PI = 3.14159265358979323846\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import mathy\nprint(PI)\n", encoding="utf-8")
+    py = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "from mathy import PI" in py
+    with pytest.raises(TranspileError, match="Cannot assign to const 'PI'"):
+        transpile("import mathy\nPI = 1\n", source_path=main)
+
+
 def test_transpile_class_method() -> None:
     source = """class Car {
     public drive() {

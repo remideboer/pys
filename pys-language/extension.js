@@ -5,7 +5,7 @@ const path = require('path');
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
-  'pass', 'public', 'private', 'protected', 'module', 'global', 'package',
+  'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const',
   'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all',
 ];
 
@@ -232,7 +232,8 @@ except Exception as exc:
         private: 'Visible only inside the defining class. Required on fields and methods.',
         protected: 'Visible in the class and subclasses. Required on fields and methods.',
         module: 'Module-only. On class members: same `.pys` file (required). On top-level functions/classes: default if omitted.',
-        global: 'Top-level export with global access across the whole project. Use: `global function name(...)`.',
+        const: 'Compile-time constant: `const float PI = 3.14` or `global const float PI = 3.14`.\nCannot be reassigned; initializer must be a constant expression.',
+        global: 'Top-level export with global access across the whole project. Use: `global function name(...)` or `global const float PI = ...`.',
         package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',

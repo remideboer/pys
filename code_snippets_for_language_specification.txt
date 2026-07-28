@@ -69,6 +69,10 @@ import
 # package  - same folder only
 # module   - this file only (default; keyword not required)
 
+# compile-time constants (optional visibility)
+# global const float PI = 3.14159265358979323846
+# const int MAX = 100
+
 # function definition with no return type 
 function my_function():
   print("Hello from a function");

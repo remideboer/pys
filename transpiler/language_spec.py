@@ -362,14 +362,30 @@ def _translate_print(match: Match[str]) -> str:
     return f"print({_rewrite_plus_expr(expr)})"
 
 
+def _translate_const_decl(match: Match[str]) -> str:
+    name = match.group("name")
+    expr = match.group("expr").strip()
+    return f"{name} = {_rewrite_plus_expr(expr)}"
+
+
 def _translate_assignment(match: Match[str]) -> str:
-    name = match.group('name')
-    expr = match.group('expr').strip()
+    name = match.group("name")
+    expr = match.group("expr").strip()
     return f"{name} = {_rewrite_plus_expr(expr)}"
 
 
 LANGUAGE = LanguageSpec()
 
+LANGUAGE.add_regex(
+    "visible_const_decl",
+    r"(?:global|package|module)\s+const\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    _translate_const_decl,
+)
+LANGUAGE.add_regex(
+    "const_decl",
+    r"const\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    _translate_const_decl,
+)
 LANGUAGE.add_regex(
     "var_decl",
     r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",

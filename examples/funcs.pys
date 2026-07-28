@@ -1,4 +1,4 @@
-global const float pi = 3.14
+global const float PI = 3.14159265358979323846
 
 package function greet(name){
     print ("Hello, {name} ")
