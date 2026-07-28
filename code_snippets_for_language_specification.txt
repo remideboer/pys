@@ -1,0 +1,132 @@
+# statically type language leaning toward the C-family syntax, toggle to dynamic
+# explicit end statement operator
+;
+
+
+# the hash # is used for single line comments
+## dubble hash for multiline comments end with /#
+
+# compound statement delimiters
+{}
+
+# no significant white space!!!! Code blocks are marked with the compound statement delimiters, which are mandatory to explicitly show the boundaries of the of if, while, switch, for, etc blocks
+
+# this is a single line comment
+## this is a
+multi
+line comment
+/#
+
+# define variable, statically typed: float, int, char, string
+int x = 15;
+float y = 1.23;
+char ch = 'a';
+string str = "Hello, World!";
+
+# array definition, no type mixing in arrays
+# the array should be the memory efficient version, so not a object 
+# https://realpython.com/ref/stdlib/array/
+# array that can hold 4 integers
+int[4] = [2,3,5,8];
+int[4] = [2,3,5,8,9]; # gives an error 'array index out of bounds, trying to place a value outside the array'  
+
+# CONTROL FLOW
+# iteration, with general for loop, explicit language rule; loop counter is an invariable, so it may NOT be altered during iteration by code in de loop itself. Keyword loop
+# for loop, keyword loop
+loop(int i=0;i<10;i++){ print(i); print(i)} ## the compound stamenent operators are mandatory! to delinieate what is part of the loop. 
+# while loop, keyword also loop
+loop(x<10){ print(i); i++} # automatically recogignize a while loop
+
+
+# if block
+if(x<=10){ print(x); }
+else if (x > 10 && x < 20) { print("somewhere in between 10 and 20"); }
+else {print("something else");}
+
+# not and unless the human legible if(!x<=10)
+if(not x<=10)
+unless(x>10){ print("something smaller than 10")} 
+
+# string interpolation
+string str2 = "{str} is een string, {y} is een float";
+
+# typed string interpolation
+string str_typed = "#s{} is een string, #f{y} is een float, #i{x} is een integer, #c{ch} is een character";
+
+escape character \ standard escaped, but \# should be added as escape for the typed # interpolation operator
+
+# explicit casting
+int z = (int) y;
+
+# top level import statements
+import 
+
+# function definition with no return type 
+function my_function():
+  print("Hello from a function");
+
+# function definition with return type
+function int my_returning_function():
+  return 1;
+
+# class definitions
+# a Cclass inherites from Object implictly
+# method overloading based on signature
+# real private class members, no name mangling
+# access modifiers private, protected (so acces to own class and subclass only), module (acces only in the file, like pyhton does) public
+# file example.pys
+class Car{
+	# attribute declaration
+	private string brand;
+	# constructor, same name as class, not return type, no self is used
+	public Car(string brand){
+		# self reference own instance
+		this.brand = brand;
+	}
+	
+	public drive(){
+		print("Moving!");
+	}
+	
+	module string brand(){
+		return this.brand;
+	}
+}
+
+# inheritance
+class Truck super Car{
+	# attribute declaration
+	# constructor, same name as class, not return type, no self is used
+	public Truck(string brand){
+		super(brand);
+	}
+	
+	public drive(){
+		super.drive()
+		print("\n With 18 wheels!");
+	}
+
+}
+
+# use
+Car c1 = Car("Toyota");
+Truck t1 = Truck("DAF");
+
+c1.drive();
+t1.drive(); 
+print("brand of the truck is {t1.brand()");
+
+----- file other.pys
+import Car from example.pys
+
+Car c1 = Car("Toyota");
+c1.drive();
+
+print("brand of the car is {c1.brand()"); # error, access to c1.brand() is restricted to it's module
+
+
+
+
+
+
+ 

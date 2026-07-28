@@ -1,0 +1,79 @@
+{
+  "name": "pys-language",
+  "displayName": "PYS Language Support",
+  "description": "Syntax highlighting and language support for the PYS teaching language.",
+  "version": "0.0.2",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "pys",
+        "aliases": ["PYS", "pys"],
+        "extensions": [".pys"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pys",
+        "scopeName": "source.pys",
+        "path": "./syntaxes/pys.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "pys.runFile",
+        "title": "Run PYS File"
+      },
+      {
+        "command": "pys.debugFile",
+        "title": "Debug PYS File"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "pys.runFile",
+          "when": "resourceLangId == pys",
+          "group": "navigation"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceLangId == pys",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "pys.runFile",
+          "when": "resourceLangId == pys",
+          "group": "navigation"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceLangId == pys",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "pys.runFile",
+          "when": "resourceLangId == pys",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:pys",
+    "onCommand:pys.runFile",
+    "onCommand:pys.debugFile"
+  ]
+}
