@@ -50,8 +50,13 @@ class Parser:
         self.variable_types: dict[str, str] = {}
         self.class_members: dict[str, dict[str, str]] = {}
         self.class_parents: dict[str, str | None] = {}
+        self.class_methods: dict[str, dict[str, int]] = {}
+        self.interface_methods: dict[str, dict[str, int]] = {}
+        self.class_implements: dict[str, list[str]] = {}
+        self.interfaces: set[str] = set()
+        self.needs_abc_import = False
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
-        # block_context holds tuples like ("class", "ClassName") or ("function", "name")
+        # block_context holds tuples like ("class", "ClassName"), ("interface", "Name"), or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
         self.pending_block_context: tuple[str, str] | None = None
         # Enforce formatting rules early: tabs, trailing whitespace, and indentation multiples.
@@ -221,10 +226,14 @@ class Parser:
         if self.brace_mode and len(self.indent_stack) != 1:
             raise TranspileError("Unclosed block at end of file.")
 
+        self._enforce_interface_implementations()
+
         python_text = "\n".join(self.output_lines) + "\n"
         # Normalize common object references from source language to Python.
         python_text = python_text.replace("this.", "self.")
         python_text = self._rewrite_overloaded_methods(python_text)
+        if self.needs_abc_import:
+            python_text = "from abc import ABC, abstractmethod\n" + python_text
         try:
             ast.parse(python_text)
         except SyntaxError as exc:
@@ -245,7 +254,7 @@ class Parser:
         index = 0
         while index < len(lines):
             line = lines[index]
-            if re.match(r"^class\s+([A-Za-z_]\w*)\s*:", line):
+            if re.match(r"^class\s+([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s*:", line):
                 rewritten.append(line)
                 index += 1
                 class_lines: List[str] = []
@@ -336,6 +345,12 @@ class Parser:
     def _open_block(self, line_number: int) -> None:
         if not self.brace_mode:
             self._error("Unexpected opening brace.", line_number, "{")
+        if self._directly_inside_interface():
+            self._error(
+                "Interface methods are abstract and cannot have a body.",
+                line_number,
+                "{",
+            )
         self.indent_stack.append(self.indent_stack[-1] + INDENT_SIZE)
         self.block_context.append(self.pending_block_context)
         self.pending_block_context = None
@@ -431,7 +446,13 @@ class Parser:
 
     def _set_pending_block_context(self, line: str) -> None:
         # Record the incoming block type and name so the open block can store it.
-        if line.startswith("class "):
+        if line.startswith("interface "):
+            m = re.match(r"interface\s+([A-Za-z_]\w*)", line)
+            if m:
+                self.pending_block_context = ("interface", m.group(1))
+            else:
+                self.pending_block_context = ("interface", "")
+        elif line.startswith("class "):
             m = re.match(r"class\s+([A-Za-z_]\w*)", line)
             if m:
                 self.pending_block_context = ("class", m.group(1))
@@ -447,11 +468,15 @@ class Parser:
             r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?[A-Za-z_]\w*\s*\(",
             line,
         ):
-            m = re.match(
-                r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)\s*\(",
-                line,
-            )
-            self.pending_block_context = ("function", m.group(1) if m else "")
+            # Abstract interface methods have no body block.
+            if self._directly_inside_interface():
+                self.pending_block_context = None
+            else:
+                m = re.match(
+                    r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)\s*\(",
+                    line,
+                )
+                self.pending_block_context = ("function", m.group(1) if m else "")
         else:
             self.pending_block_context = None
 
@@ -464,11 +489,57 @@ class Parser:
         top = self.block_context[-1]
         return top is not None and top[0] == "class"
 
+    def _directly_inside_interface(self) -> bool:
+        if not self.block_context:
+            return False
+        top = self.block_context[-1]
+        return top is not None and top[0] == "interface"
+
     def _current_class_name(self) -> str | None:
         for ctx in reversed(self.block_context):
-            if ctx is not None and ctx[0] == "class":
+            if ctx is not None and ctx[0] in {"class", "interface"}:
                 return ctx[1]
         return None
+
+    @staticmethod
+    def _param_arity(args_raw: str) -> int:
+        parts = [part.strip() for part in args_raw.split(",") if part.strip()]
+        return len(parts)
+
+    def _all_class_methods(self, class_name: str) -> dict[str, int]:
+        methods: dict[str, int] = {}
+        current: str | None = class_name
+        seen: set[str] = set()
+        chain: list[str] = []
+        while current and current not in seen:
+            chain.append(current)
+            seen.add(current)
+            current = self.class_parents.get(current)
+        for name in reversed(chain):
+            methods.update(self.class_methods.get(name, {}))
+        return methods
+
+    def _enforce_interface_implementations(self) -> None:
+        for class_name, interfaces in self.class_implements.items():
+            available = self._all_class_methods(class_name)
+            for interface_name in interfaces:
+                if interface_name not in self.interfaces:
+                    raise TranspileError(
+                        f"Unknown interface '{interface_name}' implemented by class {class_name}."
+                    )
+                required = self.interface_methods.get(interface_name, {})
+                for method_name, arity in required.items():
+                    if method_name not in available:
+                        raise TranspileError(
+                            f"Class {class_name} must implement abstract method "
+                            f"'{method_name}' from interface {interface_name}."
+                        )
+                    if available[method_name] != arity:
+                        raise TranspileError(
+                            f"Class {class_name} method '{method_name}' does not match "
+                            f"interface {interface_name} (expected {arity} parameter(s), "
+                            f"found {available[method_name]})."
+                        )
 
     def _is_subtype(self, child: str, parent: str) -> bool:
         current: str | None = child
@@ -548,6 +619,45 @@ class Parser:
             self._check_member_access(match.group(1), match.group(2), line_number, raw_line)
 
     def _record_class_declaration(self, line: str) -> None:
+        interface = re.match(r"interface\s+(?P<name>[A-Za-z_]\w*)", line)
+        if interface:
+            name = interface.group("name")
+            self.interfaces.add(name)
+            self.interface_methods.setdefault(name, {})
+            self.class_members.setdefault(name, {})
+            self.needs_abc_import = True
+            return
+
+        inherits_implements = re.match(
+            r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+            line,
+        )
+        if inherits_implements:
+            name = inherits_implements.group("name")
+            self.class_parents[name] = inherits_implements.group("parent")
+            self.class_members.setdefault(name, {})
+            self.class_methods.setdefault(name, {})
+            self.class_implements[name] = [
+                part.strip()
+                for part in inherits_implements.group("interfaces").split(",")
+                if part.strip()
+            ]
+            return
+
+        implements = re.match(
+            r"class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+            line,
+        )
+        if implements:
+            name = implements.group("name")
+            self.class_parents.setdefault(name, None)
+            self.class_members.setdefault(name, {})
+            self.class_methods.setdefault(name, {})
+            self.class_implements[name] = [
+                part.strip() for part in implements.group("interfaces").split(",") if part.strip()
+            ]
+            return
+
         inherits = re.match(
             r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)",
             line,
@@ -556,14 +666,44 @@ class Parser:
             name = inherits.group("name")
             self.class_parents[name] = inherits.group("parent")
             self.class_members.setdefault(name, {})
+            self.class_methods.setdefault(name, {})
             return
         simple = re.match(r"class\s+(?P<name>[A-Za-z_]\w*)", line)
         if simple:
             name = simple.group("name")
             self.class_parents.setdefault(name, None)
             self.class_members.setdefault(name, {})
+            self.class_methods.setdefault(name, {})
 
     def _record_class_member(self, line: str) -> None:
+        if self._directly_inside_interface():
+            iface_name = self._current_class_name()
+            if not iface_name:
+                return
+            field = re.fullmatch(
+                r"(?P<access>public|private|protected|module)\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?",
+                line,
+            )
+            if field:
+                raise TranspileError(
+                    "Interfaces may only declare abstract methods, not fields.",
+                    code_line=line,
+                )
+            method = re.fullmatch(
+                r"(?P<access>public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+                line,
+            )
+            if method:
+                if method.group("access") != "public":
+                    raise TranspileError(
+                        "Interface methods must be public.",
+                        code_line=line,
+                    )
+                arity = self._param_arity(method.group("args"))
+                self.interface_methods.setdefault(iface_name, {})[method.group("name")] = arity
+                self.class_members.setdefault(iface_name, {})[method.group("name")] = "public"
+            return
+
         if not self._directly_inside_class():
             return
         cls_name = self._current_class_name()
@@ -579,14 +719,17 @@ class Parser:
             return
 
         method = re.fullmatch(
-            r"(?P<access>public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(.*\)",
+            r"(?P<access>public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
             line,
         )
         if method and method.group("name") != cls_name:
             self.class_members.setdefault(cls_name, {})[method.group("name")] = method.group("access")
+            self.class_methods.setdefault(cls_name, {})[method.group("name")] = self._param_arity(
+                method.group("args")
+            )
 
     def _enforce_class_member_access(self, line: str, line_number: int, raw_line: str) -> None:
-        if not self._directly_inside_class():
+        if not (self._directly_inside_class() or self._directly_inside_interface()):
             return
         if re.search(r"\bmethod\b", line):
             token_start = line.find("method")
@@ -805,6 +948,28 @@ class Parser:
             )
 
         # Class members with parentheses are constructors/methods (access modifier required).
+        if self._directly_inside_interface():
+            member_fn_match = re.fullmatch(
+                r"(?:public|private|protected|module)\s+(?:(?P<rtype>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+                line,
+            )
+            if member_fn_match:
+                name = member_fn_match.group("name")
+                args_raw = member_fn_match.group("args").strip()
+                args = _strip_type_annotation(args_raw)
+                args = f"self, {args}" if args else "self"
+                self.needs_abc_import = True
+                return (
+                    f"@abstractmethod\n"
+                    f"def {name}({args}):\n"
+                    f"{' ' * INDENT_SIZE}pass"
+                )
+            self._error(
+                "Interfaces may only declare abstract methods.",
+                line_number,
+                raw_line.rstrip(),
+            )
+
         if self._directly_inside_class():
             class_function_match = re.fullmatch(
                 r"(?:public|private|protected|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string|bool)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",

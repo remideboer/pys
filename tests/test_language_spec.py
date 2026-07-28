@@ -58,6 +58,15 @@ def test_translate_class_inherits() -> None:
     assert LANGUAGE.translate_line("class Truck super Car") == "class Truck(Car):"
 
 
+def test_translate_interface_and_implements() -> None:
+    assert LANGUAGE.translate_line("interface Startable") == "class Startable(ABC):"
+    assert LANGUAGE.translate_line("class Car implements Startable") == "class Car(Startable):"
+    assert (
+        LANGUAGE.translate_line("class Truck inherits Car implements Startable")
+        == "class Truck(Car, Startable):"
+    )
+
+
 def test_translate_super_call() -> None:
     assert LANGUAGE.translate_line("super(make, model, year)") == "super().__init__(make, model, year)"
     assert LANGUAGE.translate_line("super.drive()") == "super().drive()"

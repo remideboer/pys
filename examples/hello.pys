@@ -23,7 +23,11 @@ loop (y < 30) {
     y++
 }
 
-class Car {
+interface Startable {
+    public start()
+}
+
+class Car implements Startable {
     protected string make
     protected string model
     protected int year
@@ -44,6 +48,10 @@ class Car {
 
     public drive(string name) {
         print("Car {name} started: {this.make} {this.model} {this.year} driving")
+    }
+
+    public start() {
+        print("Car started: {this.make} {this.model} {this.year} starting")
     }
 }
 

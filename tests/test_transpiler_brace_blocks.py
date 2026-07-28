@@ -24,6 +24,70 @@ while y < 30:
     assert transpile(source) == expected
 
 
+def test_transpile_interface_and_implements() -> None:
+    source = """interface Startable {
+    public start()
+}
+
+class Car implements Startable {
+    public Car() {
+        pass
+    }
+
+    public start() {
+        print("starting")
+    }
+}
+"""
+    transpiled = transpile(source)
+    assert "from abc import ABC, abstractmethod" in transpiled
+    assert "class Startable(ABC):" in transpiled
+    assert "@abstractmethod" in transpiled
+    assert "def start(self):" in transpiled
+    assert "class Car(Startable):" in transpiled
+
+
+def test_missing_interface_method_is_rejected() -> None:
+    source = """interface Startable {
+    public start()
+}
+
+class Car implements Startable {
+    public Car() {
+        pass
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"must implement abstract method 'start'"):
+        transpile(source)
+
+
+def test_interface_method_body_is_rejected() -> None:
+    source = """interface Startable {
+    public start() {
+        print("nope")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"abstract and cannot have a body"):
+        transpile(source)
+
+
+def test_interface_arity_mismatch_is_rejected() -> None:
+    source = """interface Startable {
+    public start(string name)
+}
+
+class Car implements Startable {
+    public start() {
+        print("starting")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"does not match interface"):
+        transpile(source)
+
+
 def test_transpile_nested_brace_blocks() -> None:
     source = """if (x < 0) {\nprint "negative"\n} else {\nprint "non-negative"\n}\n"""
     expected = """if x < 0:\n    print("negative")\nelse:\n    print("non-negative")\n"""

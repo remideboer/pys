@@ -290,6 +290,29 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add("else", "else", "else:")
 LANGUAGE.add_regex(
+    "interface_def",
+    r"interface\s+(?P<name>[A-Za-z_]\w*)",
+    lambda match: f"class {match.group('name')}(ABC):",
+)
+LANGUAGE.add_regex(
+    "class_inherits_implements",
+    r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    lambda match: (
+        f"class {match.group('name')}({match.group('parent')}, "
+        + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
+        + "):"
+    ),
+)
+LANGUAGE.add_regex(
+    "class_implements",
+    r"class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    lambda match: (
+        f"class {match.group('name')}("
+        + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
+        + "):"
+    ),
+)
+LANGUAGE.add_regex(
     "class_inherits",
     r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
     lambda match: f"class {match.group('name')}({match.group('super')}):",

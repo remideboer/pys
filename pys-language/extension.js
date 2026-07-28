@@ -3,8 +3,8 @@ const cp = require('child_process');
 const path = require('path');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class',
-  'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
+  'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'this', 'super',
   'not', 'and', 'or', 'true', 'false', 'null', 'print',
 ];
@@ -221,7 +221,9 @@ except Exception as exc:
         loop: 'C-style: `loop (int i = 0, i < n, i++) { ... }`\nWhile-style: `loop (condition) { ... }`',
         function: 'Top-level function: `function name(args) { ... }`\nTyped: `function int name(args) { return 0 }`',
         var: 'Type-inferred variable: `var name = value`\nThe inferred type is fixed; later assignments must match.',
-        class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`',
+        interface: 'Abstract type: `interface Name { public action() }`\nMethods have no body and must be implemented by classes.',
+        implements: 'Class implements interface(s): `class Car implements Startable { ... }`',
+        class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         this: 'Current instance reference (becomes `self` in Python)',
