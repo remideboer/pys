@@ -303,7 +303,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "method_def",
-    r"(?:public|private|protected|module)\s+method\s+(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
+    r"(?:public|private|protected|module)\s+(?:(?P<rtype>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
     _translate_function,
 )
 LANGUAGE.add_regex(

@@ -47,6 +47,9 @@ class Parser:
         self.output_lines: List[str] = []
         self.indent_stack: List[int] = [0]
         self.declared_variables: set[str] = set()
+        self.variable_types: dict[str, str] = {}
+        self.class_members: dict[str, dict[str, str]] = {}
+        self.class_parents: dict[str, str | None] = {}
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
         # block_context holds tuples like ("class", "ClassName") or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
@@ -434,17 +437,32 @@ class Parser:
                 self.pending_block_context = ("class", m.group(1))
             else:
                 self.pending_block_context = ("class", "")
-        elif line.startswith("function ") or line.startswith("func ") or line.startswith("method "):
-            m = re.match(r"(?:function|func|method)\s+([A-Za-z_]\w*)", line)
+        elif line.startswith("function ") or line.startswith("func "):
+            m = re.match(r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)", line)
             if m:
                 self.pending_block_context = ("function", m.group(1))
             else:
                 self.pending_block_context = ("function", "")
+        elif re.match(
+            r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?[A-Za-z_]\w*\s*\(",
+            line,
+        ):
+            m = re.match(
+                r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)\s*\(",
+                line,
+            )
+            self.pending_block_context = ("function", m.group(1) if m else "")
         else:
             self.pending_block_context = None
 
     def _inside_class(self) -> bool:
         return any(context is not None and context[0] == "class" for context in self.block_context)
+
+    def _directly_inside_class(self) -> bool:
+        if not self.block_context:
+            return False
+        top = self.block_context[-1]
+        return top is not None and top[0] == "class"
 
     def _current_class_name(self) -> str | None:
         for ctx in reversed(self.block_context):
@@ -452,10 +470,146 @@ class Parser:
                 return ctx[1]
         return None
 
-    def _enforce_class_member_access(self, line: str, line_number: int, raw_line: str) -> None:
-        if not self._inside_class():
+    def _is_subtype(self, child: str, parent: str) -> bool:
+        current: str | None = child
+        seen: set[str] = set()
+        while current:
+            if current == parent:
+                return True
+            if current in seen:
+                break
+            seen.add(current)
+            current = self.class_parents.get(current)
+        return False
+
+    def _lookup_member(self, type_name: str, member: str) -> tuple[str | None, str | None]:
+        current: str | None = type_name
+        seen: set[str] = set()
+        while current:
+            members = self.class_members.get(current, {})
+            if member in members:
+                return current, members[member]
+            if current in seen:
+                break
+            seen.add(current)
+            current = self.class_parents.get(current)
+        return None, None
+
+    def _receiver_type(self, receiver: str) -> str | None:
+        if receiver == "this":
+            return self._current_class_name()
+        if receiver == "super":
+            current = self._current_class_name()
+            if current is None:
+                return None
+            return self.class_parents.get(current)
+        return self.variable_types.get(receiver)
+
+    def _check_member_access(
+        self,
+        receiver: str,
+        member: str,
+        line_number: int,
+        raw_line: str,
+    ) -> None:
+        recv_type = self._receiver_type(receiver)
+        if not recv_type:
             return
+        defining_cls, access = self._lookup_member(recv_type, member)
+        if defining_cls is None or access is None:
+            return
+
+        current = self._current_class_name()
+        allowed = False
+        if access == "public":
+            allowed = True
+        elif access == "module":
+            # Same-file visibility: this transpiler compiles one file at a time.
+            allowed = True
+        elif access == "private":
+            allowed = current == defining_cls
+        elif access == "protected":
+            allowed = current is not None and self._is_subtype(current, defining_cls)
+
+        if allowed:
+            return
+
+        token = f"{receiver}.{member}"
+        column = raw_line.find(token) + 1 if token in raw_line else (raw_line.find(member) + 1 if raw_line else 1)
+        self._error(
+            f"Access denied: '{member}' is {access} in class {defining_cls}.",
+            line_number,
+            raw_line.rstrip(),
+            column if column > 0 else 1,
+        )
+
+    def _enforce_expression_member_access(self, line: str, line_number: int, raw_line: str) -> None:
+        for match in re.finditer(r"\b(this|super|[A-Za-z_]\w*)\.([A-Za-z_]\w*)\b", line):
+            self._check_member_access(match.group(1), match.group(2), line_number, raw_line)
+
+    def _record_class_declaration(self, line: str) -> None:
+        inherits = re.match(
+            r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)",
+            line,
+        )
+        if inherits:
+            name = inherits.group("name")
+            self.class_parents[name] = inherits.group("parent")
+            self.class_members.setdefault(name, {})
+            return
+        simple = re.match(r"class\s+(?P<name>[A-Za-z_]\w*)", line)
+        if simple:
+            name = simple.group("name")
+            self.class_parents.setdefault(name, None)
+            self.class_members.setdefault(name, {})
+
+    def _record_class_member(self, line: str) -> None:
+        if not self._directly_inside_class():
+            return
+        cls_name = self._current_class_name()
+        if not cls_name:
+            return
+
+        field = re.fullmatch(
+            r"(?P<access>public|private|protected|module)\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?",
+            line,
+        )
+        if field:
+            self.class_members.setdefault(cls_name, {})[field.group("name")] = field.group("access")
+            return
+
+        method = re.fullmatch(
+            r"(?P<access>public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(.*\)",
+            line,
+        )
+        if method and method.group("name") != cls_name:
+            self.class_members.setdefault(cls_name, {})[method.group("name")] = method.group("access")
+
+    def _enforce_class_member_access(self, line: str, line_number: int, raw_line: str) -> None:
+        if not self._directly_inside_class():
+            return
+        if re.search(r"\bmethod\b", line):
+            token_start = line.find("method")
+            column = raw_line.find(line) + token_start + 1 if raw_line else 1
+            raise TranspileError(
+                "Remove `method`; use an access modifier and optional return type: `public name(args)` or `public string name(args)`.",
+                line_number,
+                column,
+                raw_line.rstrip(),
+            )
         if re.fullmatch(r"(?:int|float|char|string|bool)\s+[A-Za-z_]\w*(?:\s*=\s*.+)?", line):
+            column = raw_line.find(line) + 1 if raw_line else 1
+            raise TranspileError(
+                "Class member declarations require an access modifier. Use public/private/protected/module.",
+                line_number,
+                column,
+                raw_line.rstrip(),
+            )
+        # Methods are identified by parentheses; they still require an access modifier.
+        if re.fullmatch(
+            r"(?:(?:int|float|char|string|bool)\s+)?[A-Za-z_]\w*\s*\(.*\)\s*(?::\s*)?",
+            line,
+        ) and not re.match(r"^(?:public|private|protected|module)\b", line):
             column = raw_line.find(line) + 1 if raw_line else 1
             raise TranspileError(
                 "Class member declarations require an access modifier. Use public/private/protected/module.",
@@ -465,6 +619,7 @@ class Parser:
             )
 
     def _record_declared_variables(self, line: str) -> None:
+        primitives = {"int", "float", "char", "string", "bool"}
         for pattern in [
             r"^(?:public|private|protected|module)\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
             r"^(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
@@ -473,7 +628,11 @@ class Parser:
         ]:
             match = re.fullmatch(pattern, line)
             if match:
-                self.declared_variables.add(match.group("name"))
+                name = match.group("name")
+                type_name = match.group("type")
+                self.declared_variables.add(name)
+                if type_name not in primitives:
+                    self.variable_types[name] = type_name
                 break
 
     def _update_indent(self, indent: int, line_number: int) -> None:
@@ -505,57 +664,65 @@ class Parser:
             return line
 
         self._set_pending_block_context(line)
+        self._record_class_declaration(line)
+        self._record_class_member(line)
         self._record_declared_variables(line)
         self._enforce_class_member_access(line, line_number, raw_line)
+        self._enforce_expression_member_access(line, line_number, raw_line)
 
-        # Detect constructor-like method declarations inside a class and translate to __init__
-        if self._inside_class():
+        # Class members with parentheses are constructors/methods (access modifier required).
+        if self._directly_inside_class():
             class_function_match = re.fullmatch(
-                r"(?:public|private|protected|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+                r"(?:public|private|protected|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string|bool)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
                 line,
             )
             if class_function_match:
                 token_start = line.find("function")
                 column = raw_line.find(line) + token_start + 1 if raw_line else 1
                 self._error(
-                    "Class methods must use `method` instead of `function`.",
+                    "Class methods must not use `function`. Use an access modifier: `public name(args)`.",
                     line_number,
                     raw_line.rstrip(),
                     column,
                 )
 
             plain_function_match = re.fullmatch(
-                r"function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+                r"function(?:\s+(?:(?P<rtype>int|float|char|string|bool)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
                 line,
             )
             if plain_function_match:
                 token_start = line.find("function")
                 column = raw_line.find(line) + token_start + 1 if raw_line else 1
                 self._error(
-                    "Class methods must use `method` instead of `function`.",
+                    "Class methods must not use `function`. Use an access modifier: `public name(args)`.",
                     line_number,
                     raw_line.rstrip(),
                     column,
                 )
 
-            ctor_match = re.fullmatch(r"(?:public|private|protected|module)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
-            if ctor_match:
+            member_fn_match = re.fullmatch(
+                r"(?:public|private|protected|module)\s+(?:(?P<rtype>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+                line,
+            )
+            if member_fn_match:
                 cls_name = self._current_class_name()
-                if cls_name and ctor_match.group("name") == cls_name:
-                    args_raw = ctor_match.group("args")
-                    args_raw = args_raw.strip()
+                name = member_fn_match.group("name")
+                args_raw = member_fn_match.group("args").strip()
+                if cls_name and name == cls_name:
                     if not args_raw:
                         return "def __init__(self):"
                     params = []
                     for part in [p.strip() for p in args_raw.split(",") if p.strip()]:
-                        m = re.fullmatch(r"(?:(?P<type>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<default>.+))?", part)
+                        m = re.fullmatch(
+                            r"(?:(?P<type>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<default>.+))?",
+                            part,
+                        )
                         if not m:
-                            # fallback: strip type annotations and use None
-                            name = re.sub(r"^(int|float|char|string|bool)\s+", "", part).strip()
-                            params.append(f"{name}=None")
+                            pname = re.sub(r"^(int|float|char|string|bool)\s+", "", part).strip()
+                            params.append(f"{pname}=None")
                             continue
                         ptype = m.group("type")
-                        name = m.group("name")
+                        pname = m.group("name")
                         default = m.group("default")
                         if default is not None:
                             default_val = default.strip()
@@ -563,47 +730,13 @@ class Parser:
                             default_val = _default_value_for_type(ptype)
                         else:
                             default_val = "None"
-                        params.append(f"{name}={default_val}")
+                        params.append(f"{pname}={default_val}")
                     args = "self, " + ", ".join(params)
                     return f"def __init__({args}):"
-            # Methods with access modifiers that are not constructors should include `self`.
-            method_match = re.fullmatch(r"(?:public|private|protected|module)\s+(?:method|function)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
-            if method_match:
-                name = method_match.group("name")
-                cls_name = self._current_class_name()
-                if not (cls_name and name == cls_name):
-                    args = _strip_type_annotation(method_match.group("args"))
-                    args = f"self, {args}" if args else "self"
-                    return f"def {name}({args}):"
-            # Plain `method` declarations inside a class should also get `self`.
-            func_match = re.fullmatch(r"method(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?", line)
-            if func_match:
-                name = func_match.group("name")
-                args = _strip_type_annotation(func_match.group("args"))
+
+                args = _strip_type_annotation(args_raw)
                 args = f"self, {args}" if args else "self"
                 return f"def {name}({args}):"
-
-            overload_match = re.fullmatch(r"(?:public|private|protected|module)\s+method\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
-            if overload_match:
-                cls_name = self._current_class_name()
-                if cls_name:
-                    method_name = overload_match.group("name")
-                    signature = tuple(
-                        part.strip() for part in _strip_type_annotation(overload_match.group("args")).split(",") if part.strip()
-                    )
-                    self.class_method_overloads.setdefault((cls_name, method_name), []).append((signature, ""))
-                    return ""
-
-            plain_method_match = re.fullmatch(r"method\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
-            if plain_method_match:
-                cls_name = self._current_class_name()
-                if cls_name:
-                    method_name = plain_method_match.group("name")
-                    signature = tuple(
-                        part.strip() for part in _strip_type_annotation(plain_method_match.group("args")).split(",") if part.strip()
-                    )
-                    self.class_method_overloads.setdefault((cls_name, method_name), []).append((signature, ""))
-                    return ""
 
         assignment_match = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*(?<![=!<>])=\s*(?P<expr>.+)", line)
         if assignment_match:

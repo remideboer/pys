@@ -1,6 +1,6 @@
 int x = 10
 int y = 20
-
+let z = 30
 function greet(name){
     print ("Hello, {name} ")
 }
@@ -22,9 +22,9 @@ loop (y < 30) {
 }
 
 class Car {
-    private string make
-    private string model
-    private int year
+    protected string make
+    protected string model
+    protected int year
 
     public Car(string make, string model, int year) {
         this.make = make
@@ -32,15 +32,15 @@ class Car {
         this.year = year
     }
 
-    public method drived() {
+    public drived() {
         print("Car started: {this.make} {this.model} {this.year} driving")
     }
 
-    public method drive() {
+    public drive() {
         print("Car started: {this.make} {this.model} {this.year} driving")
     }
 
-    public method drive(string name) {
+    public drive(string name) {
         print("Car {name} started: {this.make} {this.model} {this.year} driving")
     }
 }
@@ -53,14 +53,12 @@ class Truck inherits Car {
         this.loadCapacity = loadCapacity
     }
 
-    public method drive() {
+    public drive() {
         print("Truck started: {this.make} {this.model} {this.year} with load capacity {this.loadCapacity} driving")
     }
 }
 
-Car car = Car()
-
-car.make = "Toyota"
+Car car = Car("Toyota", "Corolla", 2020)
 car.drive()
 car.drive("DODODODOD")
 

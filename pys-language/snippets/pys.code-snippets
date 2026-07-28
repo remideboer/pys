@@ -82,7 +82,7 @@
       "\t\tthis.${3:field} = ${3:field}",
       "\t}",
       "",
-      "\tpublic method ${4:action}() {",
+      "\tpublic ${4:action}() {",
       "\t\t${0}",
       "\t}",
       "}"
@@ -97,7 +97,7 @@
       "\t\tsuper(${4:args})",
       "\t}",
       "",
-      "\tpublic method ${5:action}() {",
+      "\tpublic ${5:action}() {",
       "\t\t${0}",
       "\t}",
       "}"
@@ -107,11 +107,20 @@
   "Method": {
     "prefix": "method",
     "body": [
-      "public method ${1:name}(${2:args}) {",
+      "public ${1:name}(${2:args}) {",
       "\t${0}",
       "}"
     ],
-    "description": "PYS class method"
+    "description": "PYS class method with access modifier"
+  },
+  "Typed method": {
+    "prefix": "methodret",
+    "body": [
+      "public ${1|int,float,string,char,bool|} ${2:name}(${3:args}) {",
+      "\treturn ${0}",
+      "}"
+    ],
+    "description": "PYS class method with return type"
   },
   "Import from": {
     "prefix": "importfrom",

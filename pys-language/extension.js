@@ -3,7 +3,7 @@ const cp = require('child_process');
 const path = require('path');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'method', 'class',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class',
   'inherits', 'return', 'import', 'from', 'let', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'this', 'super',
   'not', 'and', 'or', 'true', 'false', 'null', 'print',
@@ -43,8 +43,11 @@ function activate(context) {
     const startCol = Math.max(column - 1, 0);
     let endCol = startCol + 1;
     const functionMatch = /\bfunction\b/.exec(lineText);
-    if (String(parsed.message || '').includes('Class methods must use `method` instead of `function`.') && functionMatch) {
+    if (String(parsed.message || '').includes('Class methods must not use `function`') && functionMatch) {
       endCol = functionMatch.index + functionMatch[0].length;
+    } else if (String(parsed.message || '').includes('Remove `method`') && /\bmethod\b/.exec(lineText)) {
+      const methodMatch = /\bmethod\b/.exec(lineText);
+      endCol = methodMatch.index + methodMatch[0].length;
     } else {
       const rest = lineText.slice(startCol);
       const word = rest.match(/^[A-Za-z_]\w*|[^\s]/);
@@ -62,9 +65,12 @@ function activate(context) {
       vscode.DiagnosticSeverity.Error,
     );
     diagnostic.source = 'PYS';
-    if (String(parsed.message || '').includes('Class methods must use `method` instead of `function`.')) {
+    if (String(parsed.message || '').includes('Class methods must not use `function`')) {
       diagnostic.code = 'pys.invalid-class-function';
-      diagnostic.message = 'Use `method` for class methods instead of `function`.';
+      diagnostic.message = 'Remove `function`. Class methods use an access modifier: `public name(args)`.';
+    } else if (String(parsed.message || '').includes('Remove `method`')) {
+      diagnostic.code = 'pys.invalid-class-method-keyword';
+      diagnostic.message = 'Remove `method`. Use `public name(args)` or `public string name(args)`.';
     }
     return diagnostic;
   }
@@ -214,16 +220,15 @@ except Exception as exc:
       const hints = {
         loop: 'C-style: `loop (int i = 0, i < n, i++) { ... }`\nWhile-style: `loop (condition) { ... }`',
         function: 'Top-level function: `function name(args) { ... }`\nTyped: `function int name(args) { return 0 }`',
-        method: 'Class method: `public method name(args) { ... }`',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         this: 'Current instance reference (becomes `self` in Python)',
         super: 'Call parent constructor/method: `super(...)`',
-        private: 'Visible only inside the defining class',
-        protected: 'Visible in the class and subclasses',
-        module: 'Visible only within the same `.pys` file',
-        public: 'Visible everywhere',
+        private: 'Visible only inside the defining class. Required on fields and methods.',
+        protected: 'Visible in the class and subclasses. Required on fields and methods.',
+        module: 'Visible only within the same `.pys` file. Required on fields and methods.',
+        public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type',
         float: 'Floating-point type',
@@ -239,17 +244,41 @@ except Exception as exc:
   context.subscriptions.push(vscode.languages.registerCodeActionsProvider({ language: 'pys' }, {
     provideCodeActions(document, range, context) {
       const diagnostics = context.diagnostics || [];
-      const target = diagnostics.find((diagnostic) => diagnostic.code === 'pys.invalid-class-function');
-      if (!target) {
-        return [];
+      const actions = [];
+
+      const functionDiag = diagnostics.find((diagnostic) => diagnostic.code === 'pys.invalid-class-function');
+      if (functionDiag) {
+        const fix = new vscode.CodeAction('Remove `function`', vscode.CodeActionKind.QuickFix);
+        fix.diagnostics = [functionDiag];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(functionDiag.range.start.line).text;
+        const match = /\bfunction\s+/.exec(line);
+        if (match) {
+          const start = new vscode.Position(functionDiag.range.start.line, match.index);
+          const end = new vscode.Position(functionDiag.range.start.line, match.index + match[0].length);
+          fix.edit.replace(document.uri, new vscode.Range(start, end), '');
+          actions.push(fix);
+        }
       }
 
-      const fix = new vscode.CodeAction('Replace with `method`', vscode.CodeActionKind.QuickFix);
-      fix.diagnostics = [target];
-      fix.isPreferred = true;
-      fix.edit = new vscode.WorkspaceEdit();
-      fix.edit.replace(document.uri, new vscode.Range(target.range.start, target.range.end), 'method');
-      return [fix];
+      const methodDiag = diagnostics.find((diagnostic) => diagnostic.code === 'pys.invalid-class-method-keyword');
+      if (methodDiag) {
+        const fix = new vscode.CodeAction('Remove `method`', vscode.CodeActionKind.QuickFix);
+        fix.diagnostics = [methodDiag];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(methodDiag.range.start.line).text;
+        const match = /\bmethod\s+/.exec(line);
+        if (match) {
+          const start = new vscode.Position(methodDiag.range.start.line, match.index);
+          const end = new vscode.Position(methodDiag.range.start.line, match.index + match[0].length);
+          fix.edit.replace(document.uri, new vscode.Range(start, end), '');
+          actions.push(fix);
+        }
+      }
+
+      return actions;
     }
   }));
   context.subscriptions.push(vscode.workspace.onDidOpenTextDocument((document) => {

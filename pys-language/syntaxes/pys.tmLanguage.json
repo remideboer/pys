@@ -142,10 +142,25 @@
         },
         {
           "name": "meta.function.declaration.pys",
-          "match": "\\b(function|func|method)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "match": "\\b(function|func)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
           "captures": {
             "1": {
               "name": "keyword.control.pys"
+            },
+            "2": {
+              "name": "storage.type.pys"
+            },
+            "3": {
+              "name": "entity.name.function.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.method.declaration.pys",
+          "match": "\\b(public|private|protected|module)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
             },
             "2": {
               "name": "storage.type.pys"
@@ -181,7 +196,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|method|class|inherits|return|repeat|times|import|from|let|break|continue|pass|unless|not|and|or|this|super)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|inherits|return|repeat|times|import|from|let|break|continue|pass|unless|not|and|or|this|super)\\b"
         }
       ]
     },
