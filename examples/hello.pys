@@ -1,6 +1,8 @@
 int x = 10
 int y = 20
-let z = 30
+var z = 30
+float f = 3.14
+
 function greet(name){
     print ("Hello, {name} ")
 }

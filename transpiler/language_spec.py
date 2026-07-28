@@ -233,7 +233,7 @@ def _translate_assignment(match: Match[str]) -> str:
 
 LANGUAGE = LanguageSpec()
 
-LANGUAGE.add("let_decl", "let {name} = {expr}", "{name} = {expr}")
+LANGUAGE.add("var_decl", "var {name} = {expr}", "{name} = {expr}")
 LANGUAGE.add_regex(
     "typed_decl",
     r"(?P<type>int|float|char|string)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
@@ -398,8 +398,8 @@ LANGUAGE.add_regex(
     _translate_function,
 )
 LANGUAGE.add_regex(
-    "let_simple",
-    r"let\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    "var_simple",
+    r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
     _translate_assignment,
 )
 LANGUAGE.add_regex(

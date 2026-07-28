@@ -4,7 +4,7 @@ const path = require('path');
 
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class',
-  'inherits', 'return', 'import', 'from', 'let', 'break', 'continue',
+  'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'this', 'super',
   'not', 'and', 'or', 'true', 'false', 'null', 'print',
 ];
@@ -220,6 +220,7 @@ except Exception as exc:
       const hints = {
         loop: 'C-style: `loop (int i = 0, i < n, i++) { ... }`\nWhile-style: `loop (condition) { ... }`',
         function: 'Top-level function: `function name(args) { ... }`\nTyped: `function int name(args) { return 0 }`',
+        var: 'Type-inferred variable: `var name = value`\nThe inferred type is fixed; later assignments must match.',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',

@@ -1,10 +1,17 @@
 {
-  "Typed variable": {
+  "Inferred variable": {
     "prefix": "var",
+    "body": [
+      "var ${1:name} = ${2:value}"
+    ],
+    "description": "Type-inferred variable (var)"
+  },
+  "Typed variable": {
+    "prefix": "tvar",
     "body": [
       "${1|int,float,string,char,bool|} ${2:name} = ${3:value}"
     ],
-    "description": "Typed variable declaration"
+    "description": "Explicitly typed variable declaration"
   },
   "Function definition": {
     "prefix": "function",

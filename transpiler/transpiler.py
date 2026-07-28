@@ -620,6 +620,17 @@ class Parser:
 
     def _record_declared_variables(self, line: str) -> None:
         primitives = {"int", "float", "char", "string", "bool"}
+
+        var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
+        if var_match:
+            name = var_match.group("name")
+            expr = var_match.group("expr").strip()
+            inferred = self._infer_expr_type(expr)
+            self.declared_variables.add(name)
+            if inferred:
+                self.variable_types[name] = inferred
+            return
+
         for pattern in [
             r"^(?:public|private|protected|module)\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
             r"^(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
@@ -631,9 +642,121 @@ class Parser:
                 name = match.group("name")
                 type_name = match.group("type")
                 self.declared_variables.add(name)
-                if type_name not in primitives:
-                    self.variable_types[name] = type_name
+                self.variable_types[name] = type_name
                 break
+
+    def _infer_expr_type(self, expr: str) -> str | None:
+        expr = expr.strip()
+        if not expr:
+            return None
+
+        if (expr.startswith('"') and expr.endswith('"')) or (
+            expr.startswith("'") and expr.endswith("'") and len(expr) >= 2
+        ):
+            if expr.startswith("'") and len(expr) == 3:
+                return "char"
+            return "string"
+
+        if re.fullmatch(r"\d+", expr):
+            return "int"
+        if re.fullmatch(r"\d+\.\d+", expr):
+            return "float"
+        if expr in {"true", "false", "True", "False"}:
+            return "bool"
+        if expr in {"null", "None"}:
+            return None
+
+        cast = re.fullmatch(r"\(\s*(?P<type>int|float|char|string|bool)\s*\)\s*(?P<inner>.+)", expr)
+        if cast:
+            return cast.group("type")
+
+        ctor = re.fullmatch(r"(?P<type>[A-Za-z_]\w*)\s*\(.*\)", expr)
+        if ctor and ctor.group("type") in self.class_members:
+            return ctor.group("type")
+
+        if re.fullmatch(r"[A-Za-z_]\w*", expr):
+            return self.variable_types.get(expr)
+
+        member = re.fullmatch(r"(?P<recv>this|super|[A-Za-z_]\w*)\.(?P<name>[A-Za-z_]\w*)", expr)
+        if member:
+            # Field value types are not tracked yet; only class identity for receivers.
+            return None
+
+        binop = re.fullmatch(r"(?P<left>.+?)\s*(?P<op>\+|\-|\*|/|%)\s*(?P<right>.+)", expr)
+        if binop:
+            left_t = self._infer_expr_type(binop.group("left"))
+            right_t = self._infer_expr_type(binop.group("right"))
+            if binop.group("op") == "+" and (left_t == "string" or right_t == "string"):
+                return "string"
+            if left_t == "float" or right_t == "float":
+                return "float"
+            if left_t == "int" and right_t == "int":
+                return "int"
+            return None
+
+        return None
+
+    def _enforce_assignment_type(self, line: str, line_number: int, raw_line: str) -> None:
+        # Declarations establish type elsewhere; only check plain reassignments here.
+        if re.match(r"^(?:var|public|private|protected|module|int|float|char|string|bool)\b", line):
+            return
+        if re.match(r"^[A-Za-z_]\w*\s+[A-Za-z_]\w*\s*=", line):
+            return
+
+        assign = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
+        if not assign:
+            return
+
+        name = assign.group("name")
+        declared = self.variable_types.get(name)
+        if not declared:
+            return
+
+        expr = assign.group("expr").strip()
+        inferred = self._infer_expr_type(expr)
+        if inferred is None:
+            return
+        if inferred == declared:
+            return
+
+        column = raw_line.find(name) + 1 if raw_line else 1
+        self._error(
+            f"Type mismatch: '{name}' is {declared} but assigned {inferred}.",
+            line_number,
+            raw_line.rstrip(),
+            column,
+        )
+
+    def _enforce_var_initializer_type(self, line: str, line_number: int, raw_line: str) -> None:
+        var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
+        if var_match:
+            if self._infer_expr_type(var_match.group("expr").strip()) is not None:
+                return
+            column = raw_line.find("var") + 1 if raw_line else 1
+            self._error(
+                f"Cannot infer type for '{var_match.group('name')}'; initialize var with a typed expression.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+            return
+
+        typed = re.fullmatch(
+            r"(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+        if not typed:
+            return
+        inferred = self._infer_expr_type(typed.group("expr").strip())
+        if inferred is None or inferred == typed.group("type"):
+            return
+        column = raw_line.find(typed.group("name")) + 1 if raw_line else 1
+        self._error(
+            f"Type mismatch: '{typed.group('name')}' is {typed.group('type')} but initialized with {inferred}.",
+            line_number,
+            raw_line.rstrip(),
+            column,
+        )
 
     def _update_indent(self, indent: int, line_number: int) -> None:
         current = self.indent_stack[-1]
@@ -669,6 +792,17 @@ class Parser:
         self._record_declared_variables(line)
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
+        self._enforce_var_initializer_type(line, line_number, raw_line)
+        self._enforce_assignment_type(line, line_number, raw_line)
+
+        if re.match(r"^let\b", line):
+            column = raw_line.find("let") + 1 if raw_line else 1
+            self._error(
+                "Use `var` instead of `let` for type-inferred variables.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
 
         # Class members with parentheses are constructors/methods (access modifier required).
         if self._directly_inside_class():
@@ -752,11 +886,11 @@ class Parser:
         if transformed == line and line.strip() == "":
             return ""
 
-        if transformed == line and line.startswith("let "):
+        if transformed == line and line.startswith("var "):
             assignment = line[4:].strip()
             if "=" not in assignment:
                 self._error(
-                    "Invalid let statement; expected `let name = value`.",
+                    "Invalid var statement; expected `var name = value`.",
                     line_number,
                     line,
                 )
