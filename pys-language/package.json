@@ -1,14 +1,15 @@
 {
   "name": "pys-language",
   "displayName": "PYS Language Support",
-  "description": "Syntax highlighting and language support for the PYS teaching language.",
-  "version": "0.0.3",
+  "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
+  "version": "0.0.6",
   "publisher": "local",
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Snippets"
   ],
   "contributes": {
     "languages": [
@@ -26,14 +27,22 @@
         "path": "./syntaxes/pys.tmLanguage.json"
       }
     ],
+    "snippets": [
+      {
+        "language": "pys",
+        "path": "./snippets/pys.code-snippets"
+      }
+    ],
     "commands": [
       {
         "command": "pys.runFile",
-        "title": "Run PYS File"
+        "title": "PYS: Run File",
+        "icon": "$(play)"
       },
       {
         "command": "pys.debugFile",
-        "title": "Debug PYS File"
+        "title": "PYS: Debug File",
+        "icon": "$(debug-alt)"
       }
     ],
     "menus": {
@@ -68,7 +77,19 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "pys.runFile",
+        "key": "ctrl+shift+r",
+        "when": "editorLangId == pys"
+      },
+      {
+        "command": "pys.debugFile",
+        "key": "ctrl+shift+d",
+        "when": "editorLangId == pys"
+      }
+    ]
   },
   "main": "./extension.js",
   "activationEvents": [

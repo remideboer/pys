@@ -1,6 +1,7 @@
 {
   "comments": {
-    "lineComment": "#"
+    "lineComment": "#",
+    "blockComment": ["##", "/#"]
   },
   "brackets": [
     ["{", "}"],
@@ -12,7 +13,8 @@
     { "open": "[", "close": "]" },
     { "open": "(", "close": ")" },
     { "open": "\"", "close": "\"" },
-    { "open": "'", "close": "'" }
+    { "open": "'", "close": "'" },
+    { "open": "##", "close": "/#" }
   ],
   "surroundingPairs": [
     { "open": "{", "close": "}" },
@@ -21,10 +23,20 @@
     { "open": "\"", "close": "\"" },
     { "open": "'", "close": "'" }
   ],
+  "wordPattern": "[A-Za-z_][A-Za-z0-9_]*",
+  "indentationRules": {
+    "increaseIndentPattern": "^\\s*.*\\{\\s*$",
+    "decreaseIndentPattern": "^\\s*\\}"
+  },
   "onEnterRules": [
     {
-      "beforeText": "^\s*(?:if|else if|else|while|for|loop|function|func|class).*\{\s*$",
+      "beforeText": "^\\s*(?:if|else if|else|unless|while|for|loop|function|func|method|class|public|private|protected|module).*\\{\\s*$",
       "action": { "indentAction": "Indent" }
+    },
+    {
+      "beforeText": "^\\s*\\{[^}]*$",
+      "afterText": "^\\s*\\}",
+      "action": { "indentAction": "IndentOutdent" }
     }
   ]
 }

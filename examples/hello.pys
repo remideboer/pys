@@ -2,7 +2,7 @@ int x = 10
 int y = 20
 
 function greet(name){
-    print ("Hello, ")
+    print ("Hello, {name} ")
 }
 
 if (x < y) {
@@ -16,6 +16,11 @@ loop (int i = 0, i < 5, i++) {
     print(i)
 }
 
+loop (y < 30) {
+    print(y)
+    y++
+}
+
 class Car {
     private string make
     private string model
@@ -27,13 +32,39 @@ class Car {
         this.year = year
     }
 
-    function drive() {
+    public method drived() {
         print("Car started: {this.make} {this.model} {this.year} driving")
+    }
+
+    public method drive() {
+        print("Car started: {this.make} {this.model} {this.year} driving")
+    }
+
+    public method drive(string name) {
+        print("Car {name} started: {this.make} {this.model} {this.year} driving")
+    }
+}
+
+class Truck inherits Car {
+    private int loadCapacity
+
+    public Truck(string make, string model, int year, int loadCapacity) {
+        super(make, model, year)
+        this.loadCapacity = loadCapacity
+    }
+
+    public method drive() {
+        print("Truck started: {this.make} {this.model} {this.year} with load capacity {this.loadCapacity} driving")
     }
 }
 
 Car car = Car()
 
 car.make = "Toyota"
-
 car.drive()
+car.drive("DODODODOD")
+
+Truck truck = Truck("Ford", "F-150", 2020, 1000)
+truck.drive()
+
+print(car)

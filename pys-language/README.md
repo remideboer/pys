@@ -1,27 +1,31 @@
 # PYS Language Extension
 
-This folder contains a local VS Code extension for the PYS teaching language.
+Local Cursor / VS Code extension for the PYS teaching language.
 
-## What it provides
+## Features
 
-- `*.pys` file association to the `pys` language
-- a TextMate grammar for syntax highlighting
-- language configuration for bracket matching and indentation
+- `*.pys` language association and TextMate syntax highlighting
+- Brace-based indentation and `##` … `/#` block comments
+- Snippets for functions, classes, loops, `inherits`, and interpolation
+- Live diagnostics via the workspace transpiler
+- Keyword / type completions and hover hints
+- Run / Debug code lenses, editor title buttons, and keybindings
+  - `Ctrl+Shift+R` — run current `.pys` file
+  - `Ctrl+Shift+D` — debug current `.pys` file
 
-## How to use it locally
-
-1. Open this workspace in VS Code.
-2. Open the `pys-language` folder in the Explorer.
-3. Press `F5` to launch an Extension Development Host.
-4. Open a `.pys` file in the Extension Development Host window.
-
-Alternatively, package the extension and install it:
+## Install into Cursor
 
 ```powershell
 cd pys-language
-npm install -g vsce
-vsce package
-code --install-extension pys-language-0.0.1.vsix
+npx --yes @vscode/vsce package --allow-missing-repository
+cursor --install-extension .\pys-language-0.0.6.vsix --force
 ```
 
-If you do not want to install the extension yet, `.pys` files will still highlight using the Python grammar because the workspace associates them with Python in `.vscode/settings.json`.
+Then reload the window (`Developer: Reload Window`).
+
+## Develop
+
+1. Open this workspace in Cursor.
+2. Open the `pys-language` folder.
+3. Press `F5` to launch an Extension Development Host.
+4. Open a `.pys` file in the host window.

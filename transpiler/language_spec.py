@@ -74,8 +74,15 @@ def _strip_type_annotation(text: str) -> str:
     return ", ".join(stripped_parts)
 
 
-def _translate_string_literal(value: str) -> str:
+def _strip_optional_parens(value: str) -> str:
     value = value.strip()
+    if value.startswith("(") and value.endswith(")") and len(value) >= 2:
+        return value[1:-1].strip()
+    return value
+
+
+def _translate_string_literal(value: str) -> str:
+    value = _strip_optional_parens(value.strip())
     if value.startswith(("f'", 'f"', "F'", 'F"')):
         return value
     if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
@@ -214,6 +221,7 @@ def _translate_return(match: Match[str]) -> str:
 
 def _translate_print(match: Match[str]) -> str:
     expr = match.group('expr').strip()
+    expr = _strip_optional_parens(expr)
     return f"print({_translate_string_literal(expr)})"
 
 
@@ -278,8 +286,8 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add("else", "else", "else:")
 LANGUAGE.add_regex(
-    "class_super",
-    r"class\s+(?P<name>[A-Za-z_]\w*)\s+super\s+(?P<super>[A-Za-z_]\w*)",
+    "class_inherits",
+    r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
     lambda match: f"class {match.group('name')}({match.group('super')}):",
 )
 LANGUAGE.add("class", "class {name}", "class {name}:")
@@ -295,7 +303,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "method_def",
-    r"(?:public|private|protected|module)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
+    r"(?:public|private|protected|module)\s+method\s+(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
     _translate_function,
 )
 LANGUAGE.add_regex(
@@ -338,6 +346,16 @@ LANGUAGE.add_regex(
     r"(?P<name>[A-Za-z_]\w*)--",
     lambda match: f"{match.group('name')} -= 1",
 )
+LANGUAGE.add_regex(
+    "super_call",
+    r"super\s*\((?P<args>.*)\)",
+    lambda match: f"super().__init__({match.group('args').strip()})",
+)
+LANGUAGE.add_regex(
+    "super_method",
+    r"super\.(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+    lambda match: f"super().{match.group('name')}({match.group('args').strip()})",
+)
 LANGUAGE.add("pass", "pass", "pass")
 LANGUAGE.add("break", "break", "break")
 LANGUAGE.add("continue", "continue", "continue")
@@ -372,7 +390,7 @@ LANGUAGE.add_regex(
 LANGUAGE.add_regex(
     "print_paren",
     r"print\s*\((?P<expr>.*)\)",
-    lambda match: f"print({match.group('expr')})",
+    lambda match: f"print({_translate_string_literal(match.group('expr'))})",
 )
 LANGUAGE.add_regex(
     "func_def",

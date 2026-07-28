@@ -1,5 +1,5 @@
 {
-  "$schema": "https://raw.githubusercontent.com/microsoft/vscode-textmate/master/grammar.json",
+  "$schema": "https://raw.githubusercontent.com/microsoft/vscode-TextMate/master/grammar.json",
   "name": "PYS",
   "scopeName": "source.pys",
   "patterns": [
@@ -10,7 +10,19 @@
       "include": "#strings"
     },
     {
+      "include": "#declarations"
+    },
+    {
       "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#builtins"
     },
     {
       "include": "#numbers"
@@ -26,8 +38,13 @@
     "comments": {
       "patterns": [
         {
+          "name": "comment.block.pys",
+          "begin": "##",
+          "end": "/#"
+        },
+        {
           "name": "comment.line.number-sign.pys",
-          "match": "#.*$"
+          "match": "#(?![sfic]\\{).*?$"
         }
       ]
     },
@@ -40,7 +57,53 @@
           "patterns": [
             {
               "name": "constant.character.escape.pys",
-              "match": "\\\\."
+              "match": "\\\\.|\\\\#"
+            },
+            {
+              "name": "meta.interpolation.typed.pys",
+              "begin": "#[sfic]\\{",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.interpolation.begin.pys"
+                }
+              },
+              "end": "\\}",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.interpolation.end.pys"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#identifiers"
+                },
+                {
+                  "include": "#numbers"
+                }
+              ]
+            },
+            {
+              "name": "meta.interpolation.pys",
+              "begin": "\\{",
+              "beginCaptures": {
+                "0": {
+                  "name": "punctuation.definition.interpolation.begin.pys"
+                }
+              },
+              "end": "\\}",
+              "endCaptures": {
+                "0": {
+                  "name": "punctuation.definition.interpolation.end.pys"
+                }
+              },
+              "patterns": [
+                {
+                  "include": "#identifiers"
+                },
+                {
+                  "include": "#numbers"
+                }
+              ]
             }
           ]
         },
@@ -57,6 +120,55 @@
         }
       ]
     },
+    "declarations": {
+      "patterns": [
+        {
+          "name": "meta.class.declaration.pys",
+          "match": "\\b(class)\\s+([A-Za-z_]\\w*)(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?",
+          "captures": {
+            "1": {
+              "name": "keyword.control.pys"
+            },
+            "2": {
+              "name": "entity.name.type.class.pys"
+            },
+            "3": {
+              "name": "keyword.control.pys"
+            },
+            "4": {
+              "name": "entity.name.type.class.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.function.declaration.pys",
+          "match": "\\b(function|func|method)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "keyword.control.pys"
+            },
+            "2": {
+              "name": "storage.type.pys"
+            },
+            "3": {
+              "name": "entity.name.function.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.typed.declaration.pys",
+          "match": "\\b(int|float|char|string|bool)\\s+([A-Za-z_]\\w*)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.type.pys"
+            },
+            "2": {
+              "name": "variable.other.pys"
+            }
+          }
+        }
+      ]
+    },
     "keywords": {
       "patterns": [
         {
@@ -64,8 +176,36 @@
           "match": "\\b(?:public|private|protected|module)\\b"
         },
         {
+          "name": "keyword.control.conditional.pys",
+          "match": "\\belse\\s+if\\b"
+        },
+        {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|else\\s+if|while|for|loop|func|function|class|return|repeat|times|import|from|let|break|continue|pass|unless|int|float|bool|str|string|true|false|null|this)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|method|class|inherits|return|repeat|times|import|from|let|break|continue|pass|unless|not|and|or|this|super)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.pys",
+          "match": "\\b(?:int|float|char|bool|str|string)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.pys",
+          "match": "\\b(?:true|false|null)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.pys",
+          "match": "\\b(?:print)\\b"
         }
       ]
     },
@@ -85,7 +225,11 @@
       "patterns": [
         {
           "name": "keyword.operator.pys",
-          "match": "[+\\-*/%!=<>]+"
+          "match": "[+\\-*/%!=<>&|]+|\\+\\+|--"
+        },
+        {
+          "name": "invalid.illegal.pys",
+          "match": ";"
         }
       ]
     },

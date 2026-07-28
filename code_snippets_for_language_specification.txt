@@ -94,7 +94,7 @@ class Car{
 }
 
 # inheritance
-class Truck super Car{
+class Truck inherits Car{
 	# attribute declaration
 	# constructor, same name as class, not return type, no self is used
 	public Truck(string brand){

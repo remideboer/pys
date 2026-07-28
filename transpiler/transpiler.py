@@ -46,6 +46,7 @@ class Parser:
         self.source_lines = self._preprocess_source(source)
         self.output_lines: List[str] = []
         self.indent_stack: List[int] = [0]
+        self.declared_variables: set[str] = set()
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
         # block_context holds tuples like ("class", "ClassName") or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
@@ -201,6 +202,13 @@ class Parser:
 
             try:
                 python_line = self._parse_line(stripped, original_line_number, raw_line=raw_line)
+            except TranspileError as exc:
+                raise TranspileError(
+                    str(exc),
+                    exc.line_number or original_line_number,
+                    exc.column,
+                    exc.code_line or raw_line.rstrip(),
+                ) from exc
             except ValueError as exc:
                 column = raw_line.find(stripped) + 1 if raw_line and stripped else 1
                 raise TranspileError(str(exc), original_line_number, column, raw_line.rstrip()) from exc
@@ -213,6 +221,7 @@ class Parser:
         python_text = "\n".join(self.output_lines) + "\n"
         # Normalize common object references from source language to Python.
         python_text = python_text.replace("this.", "self.")
+        python_text = self._rewrite_overloaded_methods(python_text)
         try:
             ast.parse(python_text)
         except SyntaxError as exc:
@@ -226,6 +235,100 @@ class Parser:
                 code_line=code_line,
             ) from exc
         return python_text
+
+    def _rewrite_overloaded_methods(self, python_text: str) -> str:
+        lines = python_text.splitlines()
+        rewritten: List[str] = []
+        index = 0
+        while index < len(lines):
+            line = lines[index]
+            if re.match(r"^class\s+([A-Za-z_]\w*)\s*:", line):
+                rewritten.append(line)
+                index += 1
+                class_lines: List[str] = []
+                while index < len(lines):
+                    current_line = lines[index]
+                    if current_line.strip() and len(current_line) - len(current_line.lstrip(" ")) == 0:
+                        break
+                    class_lines.append(current_line)
+                    index += 1
+
+                transformed_class_lines = self._transform_class_body(class_lines)
+                rewritten.extend(transformed_class_lines)
+                continue
+
+            rewritten.append(line)
+            index += 1
+        return "\n".join(rewritten) + "\n"
+
+    def _transform_class_body(self, class_lines: List[str]) -> List[str]:
+        segments: List[tuple[str, List[str]]] = []
+        index = 0
+        while index < len(class_lines):
+            line = class_lines[index]
+            if line.strip() and re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", line):
+                method_lines = [line]
+                index += 1
+                while index < len(class_lines):
+                    next_line = class_lines[index]
+                    if next_line.strip() and len(next_line) - len(next_line.lstrip(" ")) <= 4:
+                        break
+                    method_lines.append(next_line)
+                    index += 1
+                segments.append(("method", method_lines))
+                continue
+            segment: List[str] = []
+            while index < len(class_lines):
+                current = class_lines[index]
+                if current.strip() and re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", current):
+                    break
+                segment.append(current)
+                index += 1
+            segments.append(("text", segment))
+
+        method_groups: dict[str, List[List[str]]] = {}
+        transformed: List[str] = []
+        for kind, payload in segments:
+            if kind == "text":
+                transformed.extend(payload)
+                continue
+            method_lines = payload
+            method_name_match = re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", method_lines[0])
+            if not method_name_match:
+                transformed.extend(method_lines)
+                continue
+            method_name = method_name_match.group(1)
+            method_groups.setdefault(method_name, []).append(method_lines)
+
+        for kind, payload in segments:
+            if kind == "text":
+                continue
+            method_lines = payload
+            method_name_match = re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", method_lines[0])
+            if not method_name_match:
+                transformed.extend(method_lines)
+                continue
+            method_name = method_name_match.group(1)
+            overloads = method_groups[method_name]
+            if len(overloads) == 1:
+                transformed.extend(method_lines)
+                continue
+            overload_index = overloads.index(method_lines)
+            if overload_index == 0:
+                dispatcher = f"    def {method_name}(self, *args):\n"
+                for idx, _ in enumerate(overloads):
+                    dispatcher += f"        if len(args) == {idx}:\n"
+                    if idx == 0:
+                        dispatcher += f"            return self._{method_name}_{idx}()\n"
+                    else:
+                        dispatcher += f"            return self._{method_name}_{idx}(args[0])\n"
+                dispatcher += "        raise TypeError(f\"{method_name}() got an unexpected number of arguments\")\n"
+                transformed.append(dispatcher.rstrip("\n"))
+            helper_def = method_lines[0].replace(f"def {method_name}", f"def _{method_name}_{overload_index}", 1)
+            helper_lines = [helper_def] + method_lines[1:]
+            transformed.extend(helper_lines)
+
+        return transformed
 
     def _open_block(self, line_number: int) -> None:
         if not self.brace_mode:
@@ -255,8 +358,9 @@ class Parser:
         expected_indent_by_depth: dict[int, int | None] = {}
         depth = 0
         for idx, line in enumerate(self.raw_lines, start=1):
-            # Skip empty lines
-            if line.strip() == "":
+            # Skip empty lines and comment-only lines
+            stripped = line.strip()
+            if stripped == "" or stripped.startswith("#"):
                 continue
             # Tabs are disallowed
             if "\t" in line:
@@ -279,7 +383,6 @@ class Parser:
                 # Determine the current depth for this line before applying braces on it.
                 # Use a simple brace count (acceptable for teaching language).
                 # Treat lines that are only braces specially.
-                stripped = line.strip()
                 is_open_only = stripped == "{"
                 is_close_only = stripped == "}"
 
@@ -331,8 +434,8 @@ class Parser:
                 self.pending_block_context = ("class", m.group(1))
             else:
                 self.pending_block_context = ("class", "")
-        elif line.startswith("function ") or line.startswith("func "):
-            m = re.match(r"(?:function|func)\s+([A-Za-z_]\w*)", line)
+        elif line.startswith("function ") or line.startswith("func ") or line.startswith("method "):
+            m = re.match(r"(?:function|func|method)\s+([A-Za-z_]\w*)", line)
             if m:
                 self.pending_block_context = ("function", m.group(1))
             else:
@@ -360,6 +463,18 @@ class Parser:
                 column,
                 raw_line.rstrip(),
             )
+
+    def _record_declared_variables(self, line: str) -> None:
+        for pattern in [
+            r"^(?:public|private|protected|module)\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
+            r"^(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
+            r"^(?:public|private|protected|module)\s+(?P<type>[A-Za-z_]\w*)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
+            r"^(?P<type>[A-Za-z_]\w*)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?$",
+        ]:
+            match = re.fullmatch(pattern, line)
+            if match:
+                self.declared_variables.add(match.group("name"))
+                break
 
     def _update_indent(self, indent: int, line_number: int) -> None:
         current = self.indent_stack[-1]
@@ -390,10 +505,39 @@ class Parser:
             return line
 
         self._set_pending_block_context(line)
+        self._record_declared_variables(line)
         self._enforce_class_member_access(line, line_number, raw_line)
 
         # Detect constructor-like method declarations inside a class and translate to __init__
         if self._inside_class():
+            class_function_match = re.fullmatch(
+                r"(?:public|private|protected|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+                line,
+            )
+            if class_function_match:
+                token_start = line.find("function")
+                column = raw_line.find(line) + token_start + 1 if raw_line else 1
+                self._error(
+                    "Class methods must use `method` instead of `function`.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column,
+                )
+
+            plain_function_match = re.fullmatch(
+                r"function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+                line,
+            )
+            if plain_function_match:
+                token_start = line.find("function")
+                column = raw_line.find(line) + token_start + 1 if raw_line else 1
+                self._error(
+                    "Class methods must use `method` instead of `function`.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column,
+                )
+
             ctor_match = re.fullmatch(r"(?:public|private|protected|module)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
             if ctor_match:
                 cls_name = self._current_class_name()
@@ -423,7 +567,7 @@ class Parser:
                     args = "self, " + ", ".join(params)
                     return f"def __init__({args}):"
             # Methods with access modifiers that are not constructors should include `self`.
-            method_match = re.fullmatch(r"(?:public|private|protected|module)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
+            method_match = re.fullmatch(r"(?:public|private|protected|module)\s+(?:method|function)\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
             if method_match:
                 name = method_match.group("name")
                 cls_name = self._current_class_name()
@@ -431,13 +575,45 @@ class Parser:
                     args = _strip_type_annotation(method_match.group("args"))
                     args = f"self, {args}" if args else "self"
                     return f"def {name}({args}):"
-            # Plain `function` declarations inside a class should also get `self`.
-            func_match = re.fullmatch(r"function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?", line)
+            # Plain `method` declarations inside a class should also get `self`.
+            func_match = re.fullmatch(r"method(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?", line)
             if func_match:
                 name = func_match.group("name")
                 args = _strip_type_annotation(func_match.group("args"))
                 args = f"self, {args}" if args else "self"
                 return f"def {name}({args}):"
+
+            overload_match = re.fullmatch(r"(?:public|private|protected|module)\s+method\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
+            if overload_match:
+                cls_name = self._current_class_name()
+                if cls_name:
+                    method_name = overload_match.group("name")
+                    signature = tuple(
+                        part.strip() for part in _strip_type_annotation(overload_match.group("args")).split(",") if part.strip()
+                    )
+                    self.class_method_overloads.setdefault((cls_name, method_name), []).append((signature, ""))
+                    return ""
+
+            plain_method_match = re.fullmatch(r"method\s*(?:(?P<rtype>int|float|char|string)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)", line)
+            if plain_method_match:
+                cls_name = self._current_class_name()
+                if cls_name:
+                    method_name = plain_method_match.group("name")
+                    signature = tuple(
+                        part.strip() for part in _strip_type_annotation(plain_method_match.group("args")).split(",") if part.strip()
+                    )
+                    self.class_method_overloads.setdefault((cls_name, method_name), []).append((signature, ""))
+                    return ""
+
+        assignment_match = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*(?<![=!<>])=\s*(?P<expr>.+)", line)
+        if assignment_match:
+            name = assignment_match.group("name")
+            if name not in self.declared_variables and name not in {"self", "True", "False", "None"}:
+                self._error(
+                    f"Undeclared variable '{name}'. Variables must be declared with a type before assignment.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
 
         transformed = LANGUAGE.translate_line(line)
         if transformed == line and line.strip() == "":
