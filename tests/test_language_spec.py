@@ -9,6 +9,11 @@ def test_translate_loop_general() -> None:
     assert LANGUAGE.translate_line(line) == "for i in range(0, 3):"
 
 
+def test_translate_loop_condition_is_while() -> None:
+    assert LANGUAGE.translate_line("loop(y < 30)") == "while y < 30:"
+    assert LANGUAGE.translate_line("loop (y < 30)") == "while y < 30:"
+
+
 def test_translate_loop_general_with_trailing_space() -> None:
     line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"

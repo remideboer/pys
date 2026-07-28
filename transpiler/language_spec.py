@@ -207,6 +207,10 @@ def _translate_if(match: Match[str]) -> str:
     return f"if {_normalize_bool_expr(match.group('cond').strip())}:"
 
 
+def _translate_while(match: Match[str]) -> str:
+    return f"while {_normalize_bool_expr(match.group('cond').strip())}:"
+
+
 def _translate_elif(match: Match[str]) -> str:
     return f"elif {_normalize_bool_expr(match.group('cond').strip())}:"
 
@@ -267,7 +271,7 @@ LANGUAGE.add_regex(
 LANGUAGE.add_regex(
     "loop_condition",
     r"loop\s*\(\s*(?P<cond>.+?)\s*\)",
-    _translate_if,
+    _translate_while,
 )
 LANGUAGE.add_regex(
     "unless",

@@ -9,6 +9,21 @@ def test_transpile_loop_with_braces() -> None:
     assert transpile(source) == expected
 
 
+def test_transpile_while_style_loop() -> None:
+    source = """int y = 20
+loop (y < 30) {
+    print(y)
+    y++
+}
+"""
+    expected = """y = 20
+while y < 30:
+    print(y)
+    y += 1
+"""
+    assert transpile(source) == expected
+
+
 def test_transpile_nested_brace_blocks() -> None:
     source = """if (x < 0) {\nprint "negative"\n} else {\nprint "non-negative"\n}\n"""
     expected = """if x < 0:\n    print("negative")\nelse:\n    print("non-negative")\n"""
