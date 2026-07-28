@@ -1,0 +1,13 @@
+global const float pi = 3.14
+
+package function greet(name){
+    print ("Hello, {name} ")
+}
+
+global function hello(){
+    print ("Hello, World!")
+}
+
+function doei(){
+    print ("Doei!")
+}

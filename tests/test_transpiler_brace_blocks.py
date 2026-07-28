@@ -1,6 +1,7 @@
 import pytest
+from pathlib import Path
 
-from transpiler.transpiler import TranspileError, transpile
+from transpiler.transpiler import TranspileError, transpile, transpile_with_modules
 
 
 def test_transpile_loop_with_braces() -> None:
@@ -22,6 +23,109 @@ while y < 30:
     y += 1
 """
     assert transpile(source) == expected
+
+
+def test_polymorphic_assignment_and_dispatch() -> None:
+    source = """interface Startable {
+    public start()
+}
+
+class Car implements Startable {
+    public Car() {
+        pass
+    }
+    public start() {
+        print("car-start")
+    }
+    public drive() {
+        print("car-drive")
+    }
+}
+
+class Truck inherits Car {
+    public Truck() {
+        pass
+    }
+    public drive() {
+        print("truck-drive")
+    }
+}
+
+Startable s = Car()
+s.start()
+Car c = Truck()
+c.drive()
+"""
+    transpiled = transpile(source)
+    assert "s = Car()" in transpiled
+    assert "c = Truck()" in transpiled
+    assert "s.start()" in transpiled
+    assert "c.drive()" in transpiled
+
+
+def test_incompatible_object_assignment_rejected() -> None:
+    source = """class Car {
+    public Car() {
+        pass
+    }
+}
+class Other {
+    public Other() {
+        pass
+    }
+}
+Car c = Other()
+"""
+    with pytest.raises(TranspileError, match=r"cannot assign Other to 'c' of type Car"):
+        transpile(source)
+
+
+def test_declared_type_hides_subtype_only_members() -> None:
+    source = """class Car {
+    public Car() {
+        pass
+    }
+    public drive() {
+        print("car")
+    }
+}
+class Truck inherits Car {
+    private int loadCapacity
+    public Truck() {
+        pass
+    }
+    public haul() {
+        print("haul")
+    }
+}
+Car c = Truck()
+c.haul()
+"""
+    with pytest.raises(TranspileError, match=r"'haul' is not a member of declared type Car"):
+        transpile(source)
+
+
+def test_reference_cast_enables_subtype_members() -> None:
+    source = """class Car {
+    public Car() {
+        pass
+    }
+}
+class Truck inherits Car {
+    public Truck() {
+        pass
+    }
+    public haul() {
+        print("haul")
+    }
+}
+Car c = Truck()
+Truck t = (Truck) c
+t.haul()
+"""
+    transpiled = transpile(source)
+    assert "t = c" in transpiled
+    assert "t.haul()" in transpiled
 
 
 def test_transpile_interface_and_implements() -> None:
@@ -98,6 +202,93 @@ def test_transpile_import_from() -> None:
     source = """import Car from example.pys\nprint Car\n"""
     expected = """from example import Car\nprint(Car)\n"""
     assert transpile(source) == expected
+
+
+def test_import_all_resolves_visible_exports(tmp_path: Path) -> None:
+    (tmp_path / "funcs.pys").write_text(
+        "package function greet(name){\n"
+        "    print(name)\n"
+        "}\n"
+        "\n"
+        "global function hello(){\n"
+        "    print(\"hi\")\n"
+        "}\n"
+        "\n"
+        "function secret(){\n"
+        "    print(\"no\")\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import all from funcs.pys\ngreet(\"student\")\nhello()\n", encoding="utf-8")
+    modules = transpile_with_modules(main)
+    assert modules["main"].startswith("from funcs import greet, hello\n")
+    assert "def greet(name):" in modules["funcs"]
+    assert "def secret():" in modules["funcs"]
+    assert "secret" not in modules["main"]
+
+
+def test_import_module_same_as_import_all(tmp_path: Path) -> None:
+    (tmp_path / "funcs.pys").write_text(
+        "package function greet(name){\n    print(name)\n}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import funcs\ngreet(\"x\")\n", encoding="utf-8")
+    assert transpile(main.read_text(encoding="utf-8"), source_path=main) == (
+        "from funcs import greet\ngreet(\"x\")\n"
+    )
+
+
+def test_import_rejects_module_private(tmp_path: Path) -> None:
+    (tmp_path / "funcs.pys").write_text(
+        "function secret(){\n    print(\"no\")\n}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import secret from funcs.pys\n", encoding="utf-8")
+    with pytest.raises(TranspileError, match="module-scoped"):
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
+
+
+def test_package_export_not_visible_from_other_folder(tmp_path: Path) -> None:
+    pkg = tmp_path / "pkg"
+    other = tmp_path / "other"
+    pkg.mkdir()
+    other.mkdir()
+    (pkg / "funcs.pys").write_text(
+        "package function greet(name){\n    print(name)\n}\n"
+        "global function hello(){\n    print(\"hi\")\n}\n",
+        encoding="utf-8",
+    )
+    main = other / "main.pys"
+    main.write_text("import all from ../pkg/funcs.pys\n", encoding="utf-8")
+    py = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert py == "from funcs import hello\n"
+
+
+def test_call_to_module_private_seen_name_is_access_error(tmp_path: Path) -> None:
+    (tmp_path / "funcs.pys").write_text(
+        "global function hello(){\n    print(\"hi\")\n}\n"
+        "function doei(){\n    print(\"bye\")\n}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import funcs\nhello()\ndoei()\n", encoding="utf-8")
+    with pytest.raises(TranspileError, match="Access denied: 'doei'.*not accessible"):
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
+
+
+def test_call_to_visible_but_not_imported_name(tmp_path: Path) -> None:
+    (tmp_path / "funcs.pys").write_text(
+        "global function hello(){\n    print(\"hi\")\n}\n"
+        "package function greet(name){\n    print(name)\n}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import hello from funcs.pys\ngreet(\"x\")\n", encoding="utf-8")
+    with pytest.raises(TranspileError, match="was not imported"):
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
 
 
 def test_transpile_class_method() -> None:

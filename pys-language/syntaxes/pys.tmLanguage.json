@@ -127,53 +127,96 @@
     "declarations": {
       "patterns": [
         {
-          "name": "meta.interface.declaration.pys",
-          "match": "\\b(interface)\\s+([A-Za-z_]\\w*)",
+          "name": "storage.modifier.pys",
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|class|interface)\\b)"
+        },
+        {
+          "name": "meta.function.declaration.pys",
+          "match": "\\b(?:(global|package|module)\\s+)?(function|func)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
           "captures": {
             "1": {
-              "name": "keyword.control.pys"
+              "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "entity.name.type.interface.pys"
+              "name": "keyword.control.pys"
+            },
+            "3": {
+              "name": "storage.type.pys"
+            },
+            "4": {
+              "name": "entity.name.function.pys"
             }
           }
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(class)\\s+([A-Za-z_]\\w*)(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
-              "name": "keyword.control.pys"
+              "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "entity.name.type.class.pys"
+              "name": "keyword.control.pys"
             },
             "3": {
-              "name": "keyword.control.pys"
-            },
-            "4": {
               "name": "entity.name.type.class.pys"
             },
-            "5": {
+            "4": {
               "name": "keyword.control.pys"
             },
+            "5": {
+              "name": "entity.name.type.class.pys"
+            },
             "6": {
+              "name": "keyword.control.pys"
+            },
+            "7": {
               "name": "entity.name.type.interface.pys"
             }
           }
         },
         {
-          "name": "meta.function.declaration.pys",
-          "match": "\\b(function|func)\\s+(?:(int|float|char|string|bool)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "name": "meta.interface.declaration.pys",
+          "match": "\\b(?:(global|package|module)\\s+)?(interface)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "keyword.control.pys"
+            },
+            "3": {
+              "name": "entity.name.type.interface.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.import.pys",
+          "match": "\\b(import)\\s+(?:(all)\\s+(from)\\s+(.+)|([A-Za-z_]\\w*)\\s+(from)\\s+(.+)|(.+))",
           "captures": {
             "1": {
               "name": "keyword.control.pys"
             },
             "2": {
-              "name": "storage.type.pys"
+              "name": "keyword.control.pys"
             },
             "3": {
-              "name": "entity.name.function.pys"
+              "name": "keyword.control.pys"
+            },
+            "4": {
+              "name": "entity.name.namespace.pys"
+            },
+            "5": {
+              "name": "variable.other.pys"
+            },
+            "6": {
+              "name": "keyword.control.pys"
+            },
+            "7": {
+              "name": "entity.name.namespace.pys"
+            },
+            "8": {
+              "name": "entity.name.namespace.pys"
             }
           }
         },
@@ -222,7 +265,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",
@@ -234,7 +277,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|interface|implements|inherits|return|repeat|times|import|from|break|continue|pass|unless|not|and|or|this|super)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|interface|implements|inherits|return|repeat|times|import|from|all|break|continue|pass|unless|not|and|or|this|super)\\b"
         }
       ]
     },

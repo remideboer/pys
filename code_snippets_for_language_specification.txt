@@ -58,8 +58,16 @@ escape character \ standard escaped, but \# should be added as escape for the ty
 # explicit casting
 int z = (int) y;
 
-# top level import statements
-import 
+# top level import statements (file = module)
+# import funcs                 # same as import all from funcs.pys
+# import all from funcs.pys    # bring visible exports into scope
+# import greet from funcs.pys  # single export
+import
+
+# top-level visibility (optional; default is module-private)
+# global   - whole project (global access)
+# package  - same folder only
+# module   - this file only (default; keyword not required)
 
 # function definition with no return type 
 function my_function():

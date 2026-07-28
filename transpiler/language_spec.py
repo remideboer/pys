@@ -92,8 +92,126 @@ def _translate_string_literal(value: str) -> str:
 
 
 def _translate_cast(type_name: str, expr: str) -> str:
-    cast_map = {"int": "int", "float": "float", "char": "str", "string": "str"}
-    return f"{cast_map[type_name]}({_translate_string_literal(expr.strip())})"
+    cast_map = {"int": "int", "float": "float", "char": "str", "string": "str", "bool": "bool"}
+    rewritten = _rewrite_plus_expr(expr.strip())
+    if type_name in cast_map:
+        return f"{cast_map[type_name]}({rewritten})"
+    # Reference cast (class/interface): runtime value unchanged; static type is the cast type.
+    return rewritten
+
+
+def _split_top_level_plus(expr: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    in_string = False
+    quote = ""
+    i = 0
+    while i < len(expr):
+        ch = expr[i]
+        if in_string:
+            current.append(ch)
+            if ch == "\\" and i + 1 < len(expr):
+                current.append(expr[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                in_string = False
+            i += 1
+            continue
+        if ch in {'"', "'"}:
+            in_string = True
+            quote = ch
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            current.append(ch)
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(depth - 1, 0)
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "+" and depth == 0:
+            if i + 1 < len(expr) and expr[i + 1] == "+":
+                current.append("++")
+                i += 2
+                continue
+            parts.append("".join(current).strip())
+            current = []
+            i += 1
+            continue
+        current.append(ch)
+        i += 1
+    tail = "".join(current).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _plus_term_kind(term: str) -> str:
+    term = term.strip()
+    cast = re.match(r"^\(\s*(?P<type>int|float|char|string|bool|[A-Za-z_]\w*)\s*\)", term)
+    if cast:
+        t = cast.group("type")
+        if t in {"string", "char"}:
+            return "string"
+        if t in {"int", "float", "bool"}:
+            return "number"
+        return "unknown"
+    if (term.startswith('"') and term.endswith('"')) or (term.startswith("'") and term.endswith("'")):
+        return "string"
+    if re.fullmatch(r"\d+(?:\.\d+)?", term):
+        return "number"
+    if term in {"true", "false", "True", "False", "null", "None"}:
+        return "number"
+    return "unknown"
+
+
+def _translate_plus_term(term: str) -> str:
+    term = term.strip()
+    cast = re.fullmatch(r"\(\s*(?P<type>[A-Za-z_]\w*)\s*\)\s*(?P<expr>.+)", term)
+    if cast:
+        return _translate_cast(cast.group("type"), cast.group("expr"))
+    if term.startswith("(") and term.endswith(")"):
+        inner = term[1:-1].strip()
+        if _split_top_level_plus(inner) != [inner]:
+            return f"({_rewrite_plus_expr(inner)})"
+    return _translate_string_literal(term)
+
+
+def _rewrite_plus_expr(expr: str) -> str:
+    """Left-associative +: numeric until a string appears, then concatenate with str()."""
+    expr = expr.strip()
+    if not expr:
+        return expr
+
+    parts = _split_top_level_plus(expr)
+    if len(parts) <= 1:
+        return _translate_plus_term(expr)
+
+    result = _translate_plus_term(parts[0])
+    mode = "string" if _plus_term_kind(parts[0]) == "string" else "number"
+
+    for part in parts[1:]:
+        kind = _plus_term_kind(part)
+        translated = _translate_plus_term(part)
+        if mode == "number" and kind != "string":
+            result = f"{result} + {translated}"
+            continue
+        if mode == "number" and kind == "string":
+            result = f"str({result}) + {translated}"
+            mode = "string"
+            continue
+        if kind == "string":
+            result = f"{result} + {translated}"
+        else:
+            result = f"{result} + str({translated})"
+        mode = "string"
+    return result
 
 
 def _parse_loop_init(init: str) -> tuple[str, str]:
@@ -166,10 +284,25 @@ def _translate_step(step: str) -> str:
     return step
 
 
-def _translate_import_from(match: Match[str]) -> str:
-    module = match.group("module").strip()
+def _normalize_module_ref(module: str) -> str:
+    module = module.strip()
     module = re.sub(r"\.pys$", "", module)
-    return f"from {module} import {match.group('name')}"
+    module = module.replace("\\", "/").replace("/", ".")
+    return module
+
+
+def _translate_import_from(match: Match[str]) -> str:
+    return f"from {_normalize_module_ref(match.group('module'))} import {match.group('name')}"
+
+
+def _translate_import_all_from(match: Match[str]) -> str:
+    # Placeholder; Parser rewrites this using real module exports when a source path is known.
+    return f"from {_normalize_module_ref(match.group('module'))} import *"
+
+
+def _translate_import_module(match: Match[str]) -> str:
+    # Placeholder; Parser rewrites this to import visible names when a source path is known.
+    return f"from {_normalize_module_ref(match.group('module'))} import *"
 
 
 def _default_value_for_type(type_name: str) -> str:
@@ -194,7 +327,7 @@ def _translate_member_decl(match: Match[str]) -> str:
     expr = match.group("expr")
     if expr is None:
         return f"{name} = {_default_value_for_type(match.group('type'))}"
-    return f"{name} = {_translate_string_literal(expr.strip())}"
+    return f"{name} = {_rewrite_plus_expr(expr.strip())}"
 
 
 def _translate_function(match: Match[str]) -> str:
@@ -226,32 +359,41 @@ def _translate_return(match: Match[str]) -> str:
 def _translate_print(match: Match[str]) -> str:
     expr = match.group('expr').strip()
     expr = _strip_optional_parens(expr)
-    return f"print({_translate_string_literal(expr)})"
+    return f"print({_rewrite_plus_expr(expr)})"
 
 
 def _translate_assignment(match: Match[str]) -> str:
     name = match.group('name')
     expr = match.group('expr').strip()
-    return f"{name} = {_translate_string_literal(expr)}"
+    return f"{name} = {_rewrite_plus_expr(expr)}"
 
 
 LANGUAGE = LanguageSpec()
 
-LANGUAGE.add("var_decl", "var {name} = {expr}", "{name} = {expr}")
+LANGUAGE.add_regex(
+    "var_decl",
+    r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
+)
 LANGUAGE.add_regex(
     "typed_decl",
-    r"(?P<type>int|float|char|string)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
-    lambda match: f"{match.group('name')} = {match.group('expr').strip()}"
+    r"(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
 )
 LANGUAGE.add_regex(
     "object_typed_decl",
     r"(?P<type>[A-Za-z_]\w*)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
-    lambda match: f"{match.group('name')} = {match.group('expr').strip()}"
+    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
 )
 LANGUAGE.add_regex(
     "typed_array",
     r"(?P<type>int|float|char|string)\[(?P<size>\d+)\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
-    lambda match: f"{match.group('name')} = {match.group('expr').strip()}"
+    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
+)
+LANGUAGE.add_regex(
+    "import_all_from",
+    r"import\s+all\s+from\s+(?P<module>.+)",
+    _translate_import_all_from,
 )
 LANGUAGE.add_regex(
     "import_from",
@@ -259,9 +401,47 @@ LANGUAGE.add_regex(
     _translate_import_from,
 )
 LANGUAGE.add_regex(
-    "import",
+    "import_module",
     r"import\s+(?P<module>.+)",
-    lambda match: f"import {match.group('module').strip()}",
+    _translate_import_module,
+)
+LANGUAGE.add_regex(
+    "visible_function_def",
+    r"(?:global|package|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+    _translate_function,
+)
+LANGUAGE.add_regex(
+    "visible_interface_def",
+    r"(?:global|package|module)\s+interface\s+(?P<name>[A-Za-z_]\w*)",
+    lambda match: f"class {match.group('name')}(ABC):",
+)
+LANGUAGE.add_regex(
+    "visible_class_inherits_implements",
+    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    lambda match: (
+        f"class {match.group('name')}({match.group('parent')}, "
+        + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
+        + "):"
+    ),
+)
+LANGUAGE.add_regex(
+    "visible_class_implements",
+    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    lambda match: (
+        f"class {match.group('name')}("
+        + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
+        + "):"
+    ),
+)
+LANGUAGE.add_regex(
+    "visible_class_inherits",
+    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
+    lambda match: f"class {match.group('name')}({match.group('super')}):",
+)
+LANGUAGE.add_regex(
+    "visible_class",
+    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)",
+    lambda match: f"class {match.group('name')}:",
 )
 LANGUAGE.add_regex(
     "loop_general",
@@ -355,7 +535,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "cast",
-    r"\(\s*(?P<type>int|float|char|string)\s*\)\s*(?P<expr>.+)",
+    r"\(\s*(?P<type>[A-Za-z_]\w*)\s*\)\s*(?P<expr>.+)",
     lambda match: _translate_cast(match.group("type"), match.group("expr")),
 )
 LANGUAGE.add_regex(
@@ -417,7 +597,7 @@ LANGUAGE.add_regex(
 LANGUAGE.add_regex(
     "print_paren",
     r"print\s*\((?P<expr>.*)\)",
-    lambda match: f"print({_translate_string_literal(match.group('expr'))})",
+    lambda match: f"print({_rewrite_plus_expr(match.group('expr'))})",
 )
 LANGUAGE.add_regex(
     "func_def",

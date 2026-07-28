@@ -6,11 +6,20 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from dataclasses import dataclass
 from typing import List, NoReturn
 
 from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_type
 
 INDENT_SIZE = 4
+TOP_LEVEL_VISIBILITY = ("global", "package", "module")
+
+
+@dataclass
+class ModuleInfo:
+    path: Path
+    python: str
+    exports: dict[str, str]
 
 
 class TranspileError(ValueError):
@@ -41,7 +50,23 @@ class TranspileError(ValueError):
 
 
 class Parser:
-    def __init__(self, source: str) -> None:
+    def __init__(
+        self,
+        source: str,
+        *,
+        source_path: Path | None = None,
+        module_cache: dict[Path, "ModuleInfo"] | None = None,
+        transpiling: set[Path] | None = None,
+    ) -> None:
+        self.source_path = source_path.resolve() if source_path is not None else None
+        self.module_cache = module_cache if module_cache is not None else {}
+        self.transpiling = transpiling if transpiling is not None else set()
+        self.exports: dict[str, str] = {}
+        # Names brought into scope by import.
+        self.imported_names: set[str] = set()
+        # Names seen via imported modules but not in scope here:
+        # name -> (module_file, visibility, accessible_if_imported)
+        self.seen_module_names: dict[str, tuple[str, str, bool]] = {}
         self.raw_lines = source.splitlines()
         self.source_lines = self._preprocess_source(source)
         self.output_lines: List[str] = []
@@ -212,7 +237,7 @@ class Parser:
                 python_line = self._parse_line(stripped, original_line_number, raw_line=raw_line)
             except TranspileError as exc:
                 raise TranspileError(
-                    str(exc),
+                    exc.args[0] if exc.args else str(exc),
                     exc.line_number or original_line_number,
                     exc.column,
                     exc.code_line or raw_line.rstrip(),
@@ -444,22 +469,234 @@ class Parser:
                         1,
                     )
 
+    def _at_module_level(self) -> bool:
+        return len(self.block_context) == 1
+
+    def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
+        match = re.match(
+            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|class\b|interface\b)",
+            line,
+        )
+        if not match:
+            return None, line
+        return match.group("vis"), line[match.end() :].lstrip()
+
+    def _record_top_level_export(self, line: str) -> None:
+        if not self._at_module_level():
+            return
+        visibility, rest = self._strip_top_level_visibility(line)
+        if visibility is None:
+            rest = line
+            visibility = "module"
+        match = re.match(
+            r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(",
+            rest,
+        )
+        if not match:
+            match = re.match(r"(?:class|interface)\s+(?P<name>[A-Za-z_]\w*)\b", rest)
+        if match:
+            self.exports[match.group("name")] = visibility
+
+    def _resolve_module_path(self, module_ref: str, line_number: int, raw_line: str) -> Path:
+        ref = module_ref.strip().strip("\"'")
+        if not ref:
+            self._error("Import module path is empty.", line_number, raw_line.rstrip())
+        path = Path(ref)
+        if path.suffix.lower() != ".pys":
+            path = path.with_suffix(".pys")
+        if not path.is_absolute():
+            base = self.source_path.parent if self.source_path is not None else Path.cwd()
+            path = (base / path).resolve()
+        else:
+            path = path.resolve()
+        if not path.exists():
+            self._error(
+                f"Cannot find module '{module_ref}'. Expected file: {path}",
+                line_number,
+                raw_line.rstrip(),
+            )
+        return path
+
+    def _same_package(self, other: Path) -> bool:
+        if self.source_path is None:
+            return False
+        return self.source_path.parent.resolve() == other.parent.resolve()
+
+    def _load_module(self, module_path: Path) -> ModuleInfo:
+        path = module_path.resolve()
+        if path in self.module_cache:
+            return self.module_cache[path]
+        if path in self.transpiling:
+            raise TranspileError(f"Circular import involving '{path.name}'.")
+        self.transpiling.add(path)
+        try:
+            source = path.read_text(encoding="utf-8")
+            child = Parser(
+                source,
+                source_path=path,
+                module_cache=self.module_cache,
+                transpiling=self.transpiling,
+            )
+            python = child.parse()
+            info = ModuleInfo(path=path, python=python, exports=dict(child.exports))
+            self.module_cache[path] = info
+            return info
+        finally:
+            self.transpiling.discard(path)
+
+    def _visible_exports_for_import(self, info: ModuleInfo) -> list[str]:
+        names: list[str] = []
+        for name, visibility in info.exports.items():
+            if visibility == "module":
+                continue
+            if visibility == "package" and not self._same_package(info.path):
+                continue
+            if visibility in {"package", "global"}:
+                names.append(name)
+        return sorted(names)
+
+    def _record_seen_module_exports(
+        self,
+        info: ModuleInfo,
+        imported: list[str],
+    ) -> None:
+        visible = set(self._visible_exports_for_import(info))
+        imported_set = set(imported)
+        for name, visibility in info.exports.items():
+            accessible = name in visible
+            if name in imported_set:
+                self.imported_names.add(name)
+                self.seen_module_names.pop(name, None)
+                continue
+            # Prefer keeping an existing "more useful" record (already inaccessible from another module).
+            if name in self.imported_names or name in self.exports:
+                continue
+            self.seen_module_names[name] = (info.path.name, visibility, accessible)
+
+    def _enforce_seen_name_access(self, line: str, line_number: int, raw_line: str) -> None:
+        builtins = {
+            "print",
+            "str",
+            "int",
+            "float",
+            "bool",
+            "len",
+            "range",
+            "super",
+            "ABC",
+            "abstractmethod",
+        }
+        for match in re.finditer(r"(?<!\.)\b([A-Za-z_]\w*)\s*\(", line):
+            name = match.group(1)
+            if name in builtins:
+                continue
+            if name in self.imported_names or name in self.exports:
+                continue
+            if name in self.declared_variables:
+                continue
+            if name in self.class_parents or name in self.interfaces:
+                continue
+            if name not in self.seen_module_names:
+                continue
+            module_file, visibility, accessible = self.seen_module_names[name]
+            column = raw_line.find(name) + 1 if raw_line else 1
+            if accessible:
+                self._error(
+                    f"'{name}' is defined in {module_file} but was not imported. "
+                    f"Import it with `import {name} from {module_file}` or `import all from {module_file}`.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column,
+                )
+            where = {
+                "module": "only within its own module",
+                "package": "only within its package (same folder)",
+                "global": "across the whole project",
+            }.get(visibility, f"as {visibility}")
+            self._error(
+                f"Access denied: '{name}' is defined in {module_file} but is not accessible here "
+                f"({visibility}-scoped, visible {where}).",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+
+    def _translate_import_statement(self, line: str, line_number: int, raw_line: str) -> str | None:
+        import_all = re.fullmatch(r"import\s+all\s+from\s+(?P<module>.+)", line)
+        import_name = re.fullmatch(r"import\s+(?P<name>[A-Za-z_]\w*)\s+from\s+(?P<module>.+)", line)
+        import_module = re.fullmatch(r"import\s+(?P<module>.+)", line)
+        if not (import_all or import_name or import_module):
+            return None
+
+        if self.source_path is None:
+            # Keep naive translation for string-only transpile calls/tests.
+            return None
+
+        if import_all:
+            module_ref = import_all.group("module")
+            names = None
+        elif import_name and import_name.group("name") != "all":
+            module_ref = import_name.group("module")
+            names = [import_name.group("name")]
+        elif import_module:
+            module_ref = import_module.group("module")
+            names = None
+        else:
+            return None
+
+        module_path = self._resolve_module_path(module_ref, line_number, raw_line)
+        info = self._load_module(module_path)
+        visible = self._visible_exports_for_import(info)
+        module_name = module_path.stem
+
+        if names is None:
+            if not visible:
+                self._error(
+                    f"Module '{module_path.name}' has no global/package exports visible here.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            self._record_seen_module_exports(info, visible)
+            return f"from {module_name} import {', '.join(visible)}"
+
+        selected: list[str] = []
+        for name in names:
+            if name not in info.exports:
+                self._error(
+                    f"'{name}' is not defined in module '{module_path.name}'.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            visibility = info.exports[name]
+            if name not in visible:
+                where = "this package" if visibility == "package" else "this module"
+                self._error(
+                    f"Cannot import '{name}' from '{module_path.name}': it is {visibility}-scoped "
+                    f"(visible only in {where}).",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            selected.append(name)
+        self._record_seen_module_exports(info, selected)
+        return f"from {module_name} import {', '.join(selected)}"
+
     def _set_pending_block_context(self, line: str) -> None:
         # Record the incoming block type and name so the open block can store it.
-        if line.startswith("interface "):
-            m = re.match(r"interface\s+([A-Za-z_]\w*)", line)
+        _, rest = self._strip_top_level_visibility(line)
+        if rest.startswith("interface "):
+            m = re.match(r"interface\s+([A-Za-z_]\w*)", rest)
             if m:
                 self.pending_block_context = ("interface", m.group(1))
             else:
                 self.pending_block_context = ("interface", "")
-        elif line.startswith("class "):
-            m = re.match(r"class\s+([A-Za-z_]\w*)", line)
+        elif rest.startswith("class "):
+            m = re.match(r"class\s+([A-Za-z_]\w*)", rest)
             if m:
                 self.pending_block_context = ("class", m.group(1))
             else:
                 self.pending_block_context = ("class", "")
-        elif line.startswith("function ") or line.startswith("func "):
-            m = re.match(r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)", line)
+        elif rest.startswith("function ") or rest.startswith("func "):
+            m = re.match(r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)", rest)
             if m:
                 self.pending_block_context = ("function", m.group(1))
             else:
@@ -553,6 +790,31 @@ class Parser:
             current = self.class_parents.get(current)
         return False
 
+    def _type_implements(self, type_name: str, interface_name: str) -> bool:
+        if interface_name not in self.interfaces:
+            return False
+        current: str | None = type_name
+        seen: set[str] = set()
+        while current and current not in seen:
+            if interface_name in self.class_implements.get(current, []):
+                return True
+            seen.add(current)
+            current = self.class_parents.get(current)
+        return False
+
+    def _is_assignable_to(self, actual: str, declared: str) -> bool:
+        """Java-style: actual may be a subtype/implementer of declared."""
+        if actual == declared:
+            return True
+        primitives = {"int", "float", "char", "string", "bool"}
+        if declared in primitives or actual in primitives:
+            return False
+        if self._is_subtype(actual, declared):
+            return True
+        if self._type_implements(actual, declared):
+            return True
+        return False
+
     def _lookup_member(self, type_name: str, member: str) -> tuple[str | None, str | None]:
         current: str | None = type_name
         seen: set[str] = set()
@@ -560,10 +822,19 @@ class Parser:
             members = self.class_members.get(current, {})
             if member in members:
                 return current, members[member]
+            # Interface members are also visible through the declared interface type.
+            for iface in self.class_implements.get(current, []):
+                iface_members = self.class_members.get(iface, {})
+                if member in iface_members:
+                    return iface, iface_members[member]
             if current in seen:
                 break
             seen.add(current)
             current = self.class_parents.get(current)
+        if type_name in self.interfaces:
+            members = self.class_members.get(type_name, {})
+            if member in members:
+                return type_name, members[member]
         return None, None
 
     def _receiver_type(self, receiver: str) -> str | None:
@@ -587,7 +858,21 @@ class Parser:
         if not recv_type:
             return
         defining_cls, access = self._lookup_member(recv_type, member)
+        token = f"{receiver}.{member}"
+        column = raw_line.find(token) + 1 if token in raw_line else (raw_line.find(member) + 1 if raw_line else 1)
         if defining_cls is None or access is None:
+            known_type = (
+                recv_type in self.class_members
+                or recv_type in self.interfaces
+                or recv_type in self.class_parents
+            )
+            if known_type:
+                self._error(
+                    f"'{member}' is not a member of declared type {recv_type}.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column if column > 0 else 1,
+                )
             return
 
         current = self._current_class_name()
@@ -605,8 +890,6 @@ class Parser:
         if allowed:
             return
 
-        token = f"{receiver}.{member}"
-        column = raw_line.find(token) + 1 if token in raw_line else (raw_line.find(member) + 1 if raw_line else 1)
         self._error(
             f"Access denied: '{member}' is {access} in class {defining_cls}.",
             line_number,
@@ -619,6 +902,7 @@ class Parser:
             self._check_member_access(match.group(1), match.group(2), line_number, raw_line)
 
     def _record_class_declaration(self, line: str) -> None:
+        _, line = self._strip_top_level_visibility(line)
         interface = re.match(r"interface\s+(?P<name>[A-Za-z_]\w*)", line)
         if interface:
             name = interface.group("name")
@@ -809,12 +1093,14 @@ class Parser:
         if expr in {"null", "None"}:
             return None
 
-        cast = re.fullmatch(r"\(\s*(?P<type>int|float|char|string|bool)\s*\)\s*(?P<inner>.+)", expr)
+        cast = re.fullmatch(r"\(\s*(?P<type>[A-Za-z_]\w*)\s*\)\s*(?P<inner>.+)", expr)
         if cast:
             return cast.group("type")
 
         ctor = re.fullmatch(r"(?P<type>[A-Za-z_]\w*)\s*\(.*\)", expr)
-        if ctor and ctor.group("type") in self.class_members:
+        if ctor and (
+            ctor.group("type") in self.class_members or ctor.group("type") in self.interfaces
+        ):
             return ctor.group("type")
 
         if re.fullmatch(r"[A-Za-z_]\w*", expr):
@@ -859,12 +1145,12 @@ class Parser:
         inferred = self._infer_expr_type(expr)
         if inferred is None:
             return
-        if inferred == declared:
+        if self._is_assignable_to(inferred, declared):
             return
 
         column = raw_line.find(name) + 1 if raw_line else 1
         self._error(
-            f"Type mismatch: '{name}' is {declared} but assigned {inferred}.",
+            f"Type mismatch: cannot assign {inferred} to '{name}' of type {declared}.",
             line_number,
             raw_line.rstrip(),
             column,
@@ -885,17 +1171,42 @@ class Parser:
             return
 
         typed = re.fullmatch(
-            r"(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            r"(?P<type>[A-Za-z_]\w*)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
             line,
         )
         if not typed:
             return
+        type_name = typed.group("type")
+        reserved = {
+            "var",
+            "let",
+            "function",
+            "func",
+            "class",
+            "interface",
+            "if",
+            "else",
+            "loop",
+            "unless",
+            "return",
+            "import",
+            "from",
+            "all",
+            "public",
+            "private",
+            "protected",
+            "module",
+            "global",
+            "package",
+        }
+        if type_name in reserved:
+            return
         inferred = self._infer_expr_type(typed.group("expr").strip())
-        if inferred is None or inferred == typed.group("type"):
+        if inferred is None or self._is_assignable_to(inferred, type_name):
             return
         column = raw_line.find(typed.group("name")) + 1 if raw_line else 1
         self._error(
-            f"Type mismatch: '{typed.group('name')}' is {typed.group('type')} but initialized with {inferred}.",
+            f"Type mismatch: cannot assign {inferred} to '{typed.group('name')}' of type {type_name}.",
             line_number,
             raw_line.rstrip(),
             column,
@@ -929,12 +1240,18 @@ class Parser:
         if line.startswith("#"):
             return line
 
+        imported = self._translate_import_statement(line, line_number, raw_line)
+        if imported is not None:
+            return imported
+
+        self._record_top_level_export(line)
         self._set_pending_block_context(line)
         self._record_class_declaration(line)
         self._record_class_member(line)
         self._record_declared_variables(line)
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
+        self._enforce_seen_name_access(line, line_number, raw_line)
         self._enforce_var_initializer_type(line, line_number, raw_line)
         self._enforce_assignment_type(line, line_number, raw_line)
 
@@ -1085,33 +1402,62 @@ class Parser:
         return transformed
 
 
-def transpile(source_code: str) -> str:
+def transpile(source_code: str, *, source_path: Path | None = None) -> str:
     """Convert teaching language source into valid Python source."""
-    parser = Parser(source_code)
+    parser = Parser(source_code, source_path=source_path)
     return parser.parse()
 
 
+def transpile_with_modules(source_path: Path) -> dict[str, str]:
+    """Transpile a .pys entry file and all imported .pys modules.
+
+    Returns a mapping of module stem -> Python source text.
+    """
+    source_path = source_path.resolve()
+    module_cache: dict[Path, ModuleInfo] = {}
+    parser = Parser(
+        source_path.read_text(encoding="utf-8"),
+        source_path=source_path,
+        module_cache=module_cache,
+    )
+    modules = {source_path.stem: parser.parse()}
+    for path, info in module_cache.items():
+        modules[path.stem] = info.python
+    return modules
+
+
 def transpile_path(source_path: Path, target_path: Path) -> None:
-    """Transpile a file to Python and write the output."""
-    source_text = source_path.read_text(encoding="utf-8")
+    """Transpile a file to Python and write the output (plus imported modules)."""
+    source_path = source_path.resolve()
     if source_path.suffix == ".pys":
-        python_text = transpile(source_text)
-    else:
-        python_text = source_text
+        modules = transpile_with_modules(source_path)
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(modules[source_path.stem], encoding="utf-8")
+        for stem, python_text in modules.items():
+            if stem == source_path.stem:
+                continue
+            (target_path.parent / f"{stem}.py").write_text(python_text, encoding="utf-8")
+        return
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_text(python_text, encoding="utf-8")
+    target_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 def run_source(source_path: Path) -> int:
     """Transpile a source file and execute it with the current Python interpreter."""
+    source_path = source_path.resolve()
     if source_path.suffix == ".pys":
-        python_text = transpile(source_path.read_text(encoding="utf-8"))
-    else:
-        python_text = source_path.read_text(encoding="utf-8")
+        modules = transpile_with_modules(source_path)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            for stem, python_text in modules.items():
+                (temp_root / f"{stem}.py").write_text(python_text, encoding="utf-8")
+            main_file = temp_root / f"{source_path.stem}.py"
+            process = subprocess.run([sys.executable, str(main_file)], check=False, cwd=temp_root)
+            return process.returncode
 
     with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as temp_file:
-        temp_file.write(python_text)
+        temp_file.write(source_path.read_text(encoding="utf-8"))
         temp_filename = temp_file.name
 
     process = subprocess.run([sys.executable, temp_filename], check=False)

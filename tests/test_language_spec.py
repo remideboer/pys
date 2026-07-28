@@ -24,6 +24,18 @@ def test_translate_import_from() -> None:
     assert LANGUAGE.translate_line(line) == "from example import Car"
 
 
+def test_translate_import_all_and_module() -> None:
+    assert LANGUAGE.translate_line("import all from funcs.pys") == "from funcs import *"
+    assert LANGUAGE.translate_line("import funcs.pys") == "from funcs import *"
+    assert LANGUAGE.translate_line("import funcs") == "from funcs import *"
+
+
+def test_translate_visible_function() -> None:
+    assert LANGUAGE.translate_line("global function hello()") == "def hello():"
+    assert LANGUAGE.translate_line("package function greet(name)") == "def greet(name):"
+    assert LANGUAGE.translate_line("module function secret()") == "def secret():"
+
+
 def test_translate_loop_with_trailing_spaces() -> None:
     line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
@@ -32,6 +44,40 @@ def test_translate_loop_with_trailing_spaces() -> None:
 def test_translate_string_interpolation() -> None:
     line = 'print "{name} is {age} years old"'
     assert LANGUAGE.translate_line(line) == 'print(f"{name} is {age} years old")'
+
+
+def test_print_plus_switches_to_string_concat() -> None:
+    assert (
+        LANGUAGE.translate_line('print(3.14 + 10 + "addada")')
+        == 'print(str(3.14 + 10) + "addada")'
+    )
+    assert (
+        LANGUAGE.translate_line('print(3.14 + 10 + "addada" + 5)')
+        == 'print(str(3.14 + 10) + "addada" + str(5))'
+    )
+    assert (
+        LANGUAGE.translate_line('print("addada" + 3.14 + 10)')
+        == 'print("addada" + str(3.14) + str(10))'
+    )
+
+
+def test_typed_decl_translates_cast() -> None:
+    assert LANGUAGE.translate_line("int a = (int) f") == "a = int(f)"
+    assert LANGUAGE.translate_line("int a = (int)f") == "a = int(f)"
+    assert transpile("float f = 3.14\nint a = (int) f\nprint(a)\n") == "f = 3.14\na = int(f)\nprint(a)\n"
+
+
+def test_print_plus_concat_runtime() -> None:
+    source = """print(3.14 + 10 + "addada")
+print(3.14 + 10 + "addada" + 5)
+print("addada" + 3.14 + 10)
+"""
+    from transpiler.transpiler import transpile
+
+    py = transpile(source)
+    assert 'str(3.14 + 10) + "addada"' in py
+    namespace: dict = {}
+    exec(py, namespace)
 
 
 def test_translate_string_interpolation_in_print_parens() -> None:

@@ -15,7 +15,7 @@ def test_var_rejects_type_change() -> None:
     source = """var z = 30
 z = "adad"
 """
-    with pytest.raises(TranspileError, match=r"Type mismatch: 'z' is int but assigned string"):
+    with pytest.raises(TranspileError, match=r"Type mismatch: cannot assign string to 'z' of type int"):
         transpile(source)
 
 
@@ -38,5 +38,5 @@ def test_explicit_type_rejects_wrong_assignment() -> None:
     source = """int x = 10
 x = "nope"
 """
-    with pytest.raises(TranspileError, match=r"Type mismatch: 'x' is int but assigned string"):
+    with pytest.raises(TranspileError, match=r"Type mismatch: cannot assign string to 'x' of type int"):
         transpile(source)

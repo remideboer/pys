@@ -5,8 +5,8 @@ const path = require('path');
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
-  'pass', 'public', 'private', 'protected', 'module', 'this', 'super',
-  'not', 'and', 'or', 'true', 'false', 'null', 'print',
+  'pass', 'public', 'private', 'protected', 'module', 'global', 'package',
+  'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all',
 ];
 
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
@@ -95,9 +95,10 @@ import sys
 from pathlib import Path
 from transpiler.transpiler import Parser, TranspileError
 
-source = Path(sys.argv[1]).read_text(encoding='utf-8')
+source_path = Path(sys.argv[1])
+source = source_path.read_text(encoding='utf-8')
 try:
-    Parser(source).parse()
+    Parser(source, source_path=source_path).parse()
     print(json.dumps({"ok": True}))
 except TranspileError as exc:
     print(json.dumps({
@@ -230,8 +231,12 @@ except Exception as exc:
         super: 'Call parent constructor/method: `super(...)`',
         private: 'Visible only inside the defining class. Required on fields and methods.',
         protected: 'Visible in the class and subclasses. Required on fields and methods.',
-        module: 'Visible only within the same `.pys` file. Required on fields and methods.',
+        module: 'Module-only. On class members: same `.pys` file (required). On top-level functions/classes: default if omitted.',
+        global: 'Top-level export with global access across the whole project. Use: `global function name(...)`.',
+        package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
+        import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',
+        from: 'Used in `import name from module.pys` / `import all from module.pys`.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type',
         float: 'Floating-point type',
