@@ -1,39 +1,39 @@
-int x = 10;
-int y = 20;
+int x = 10
+int y = 20
 
 function greet(name){
-    print ("Hello, ");
+    print ("Hello, ")
 }
 
 if (x < y) {
-    greet("student");
+    greet("student")
 }
 else {
-    print("x is greater or equal to y");
+    print("x is greater or equal to y")
 }
 
-loop (int i = 0; i < 5; i++) {
-    print(i);
+loop (int i = 0, i < 5, i++) {
+    print(i)
 }
 
 class Car {
-    private string make;
-    private string model;
-    private int year;
+    private string make
+    private string model
+    private int year
 
     public Car(string make, string model, int year) {
-        this.make = make;
-        this.model = model;
-        this.year = year;
+        this.make = make
+        this.model = model
+        this.year = year
     }
 
     function drive() {
-        print("Car started: {this.make} {this.model} {this.year} driving");
+        print("Car started: {this.make} {this.model} {this.year} driving")
     }
 }
 
-Car car = Car();
+Car car = Car()
 
-car.make = "Toyota";
+car.make = "Toyota"
 
-car.drive();
+car.drive()

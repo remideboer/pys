@@ -38,7 +38,16 @@ function activate(context) {
 
   context.subscriptions.push(vscode.languages.registerCodeLensProvider({ language: 'pys' }, { provideCodeLenses }));
 
-  context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', (file) => {
+  async function saveAllFiles() {
+    try {
+      return vscode.workspace.saveAll();
+    } catch (error) {
+      console.error('Failed to save all files before run/debug:', error);
+      return false;
+    }
+  }
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
     const filePath = resolveFilePath(file);
     if (!filePath) {
       vscode.window.showErrorMessage('Invalid PYS file path.');
@@ -48,6 +57,11 @@ function activate(context) {
     const runner = workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
     if (!runner) {
       vscode.window.showErrorMessage('Workspace runner not found');
+      return;
+    }
+    const saved = await saveAllFiles();
+    if (!saved) {
+      vscode.window.showErrorMessage('Unable to save files before running.');
       return;
     }
     const term = vscode.window.createTerminal({ name: 'Run PYS' });
@@ -56,7 +70,7 @@ function activate(context) {
     term.sendText(cmd, true);
   }));
 
-  context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', (file) => {
+  context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
     const filePath = resolveFilePath(file);
     if (!filePath) {
       vscode.window.showErrorMessage('Invalid PYS file path.');
@@ -66,6 +80,11 @@ function activate(context) {
     const runner = workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
     if (!runner) {
       vscode.window.showErrorMessage('Workspace runner not found');
+      return;
+    }
+    const saved = await saveAllFiles();
+    if (!saved) {
+      vscode.window.showErrorMessage('Unable to save files before debugging.');
       return;
     }
     vscode.debug.startDebugging(undefined, {

@@ -42,6 +42,7 @@ class TranspileError(ValueError):
 
 class Parser:
     def __init__(self, source: str) -> None:
+        self.raw_lines = source.splitlines()
         self.source_lines = self._preprocess_source(source)
         self.output_lines: List[str] = []
         self.indent_stack: List[int] = [0]
@@ -49,6 +50,8 @@ class Parser:
         # block_context holds tuples like ("class", "ClassName") or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
         self.pending_block_context: tuple[str, str] | None = None
+        # Enforce formatting rules early: tabs, trailing whitespace, and indentation multiples.
+        self._enforce_formatting()
 
     def _preprocess_source(self, source: str) -> List[tuple[str, int]]:
         lines: List[tuple[str, int]] = []
@@ -100,13 +103,13 @@ class Parser:
                 current_line_number += 1
                 continue
 
-            if not in_string and paren_depth == 0 and char == ";":
-                if current.strip():
-                    lines.append((current, current_line_number))
-                    current = ""
-                    saw_blank_line = False
-                i += 1
-                continue
+            if not in_string and char == ";":
+                self._error(
+                    "Formatting Error: semicolons are not allowed; use line breaks instead.",
+                    current_line_number,
+                    current + char,
+                    1,
+                )
 
             if not in_string and char == "(":
                 paren_depth += 1
@@ -243,6 +246,82 @@ class Parser:
     def _error(self, message: str, line_number: int, line: str, column: int | None = None) -> NoReturn:
         snippet = line.rstrip()
         raise TranspileError(f"{message}", line_number, column, snippet)
+
+    def _enforce_formatting(self) -> None:
+        """Raise a Formatting Error if source contains tabs, trailing whitespace,
+        or incorrect indentation (when not using brace style)."""
+        # When using brace style we still require consistent indentation inside
+        # each brace-delimited block. Track expected indent per brace depth.
+        expected_indent_by_depth: dict[int, int | None] = {}
+        depth = 0
+        for idx, line in enumerate(self.raw_lines, start=1):
+            # Skip empty lines
+            if line.strip() == "":
+                continue
+            # Tabs are disallowed
+            if "\t" in line:
+                self._error(
+                    "Formatting Error: tabs are not allowed; replace tabs with spaces.",
+                    idx,
+                    line,
+                    1,
+                )
+            # Trailing whitespace is disallowed
+            if len(line) != len(line.rstrip(" \t")):
+                self._error(
+                    "Formatting Error: trailing whitespace is not allowed; remove extra spaces at the end of the line.",
+                    idx,
+                    line,
+                    len(line.rstrip(" \t")) + 1,
+                )
+
+            if self.brace_mode:
+                # Determine the current depth for this line before applying braces on it.
+                # Use a simple brace count (acceptable for teaching language).
+                # Treat lines that are only braces specially.
+                stripped = line.strip()
+                is_open_only = stripped == "{"
+                is_close_only = stripped == "}"
+
+                # For lines that contain code possibly with trailing/leading braces,
+                # we check the indentation at the current depth before updating depth.
+                if not is_open_only and not is_close_only:
+                    current_depth = depth
+                    leading = len(line) - len(line.lstrip(" "))
+                    if leading % INDENT_SIZE != 0:
+                        self._error(
+                            "Formatting Error: indentation must use the same number of spaces consistently.",
+                            idx,
+                            line,
+                            1,
+                        )
+                    expected = expected_indent_by_depth.get(current_depth)
+                    if expected is None:
+                        expected_indent_by_depth[current_depth] = leading
+                    elif expected != leading:
+                        self._error(
+                            f"Formatting Error: inconsistent indentation at brace depth {current_depth}; used {leading} spaces, while previous lines at this depth use {expected} spaces.",
+                            idx,
+                            line,
+                            leading + 1,
+                        )
+
+                # Now update depth according to number of braces on this line
+                opens = line.count("{")
+                closes = line.count("}")
+                depth += opens - closes
+                if depth < 0:
+                    depth = 0
+            else:
+                # If using indentation style (not brace_mode), leading spaces must be multiples of INDENT_SIZE
+                leading = len(line) - len(line.lstrip(" "))
+                if leading % INDENT_SIZE != 0:
+                    self._error(
+                        "Formatting Error: indentation must use the same number of spaces consistently.",
+                        idx,
+                        line,
+                        1,
+                    )
 
     def _set_pending_block_context(self, line: str) -> None:
         # Record the incoming block type and name so the open block can store it.

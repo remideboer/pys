@@ -65,7 +65,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|else\\s+if|while|for|loop|func|function|class|return|repeat|times|import|from|let|break|continue|pass|unless|int|float|bool|str|string|true|false|null)\\b"
+          "match": "\\b(?:if|else|elseif|else\\s+if|while|for|loop|func|function|class|return|repeat|times|import|from|let|break|continue|pass|unless|int|float|bool|str|string|true|false|null|this)\\b"
         }
       ]
     },

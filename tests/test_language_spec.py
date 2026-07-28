@@ -2,12 +2,12 @@ from transpiler.language_spec import LANGUAGE
 
 
 def test_translate_loop_general() -> None:
-    line = "loop(int i=0;i<3;i++)"
+    line = "loop(int i=0, i<3, i++)"
     assert LANGUAGE.translate_line(line) == "for i in range(0, 3):"
 
 
 def test_translate_loop_general_with_trailing_space() -> None:
-    line = "loop (int i = 0; i < 5; i++) "
+    line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
 
 
@@ -17,7 +17,7 @@ def test_translate_import_from() -> None:
 
 
 def test_translate_loop_with_trailing_spaces() -> None:
-    line = "loop (int i = 0; i < 5; i++) "
+    line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
 
 
