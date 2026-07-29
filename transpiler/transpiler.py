@@ -77,6 +77,7 @@ class Parser:
         source_path: Path | None = None,
         module_cache: dict[Path, "ModuleInfo"] | None = None,
         transpiling: set[Path] | None = None,
+        enforce_formatting: bool = True,
     ) -> None:
         self.source_path = source_path.resolve() if source_path is not None else None
         self.module_cache = module_cache if module_cache is not None else {}
@@ -140,7 +141,8 @@ class Parser:
         self.pending_block_context: tuple[str, str] | None = None
         self.loop_counters: list[set[str]] = []
         # Enforce formatting rules early: tabs, trailing whitespace, and indentation multiples.
-        self._enforce_formatting()
+        if enforce_formatting:
+            self._enforce_formatting()
 
     def _preprocess_source(self, source: str) -> List[tuple[str, int]]:
         lines: List[tuple[str, int]] = []

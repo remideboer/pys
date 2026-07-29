@@ -17,6 +17,9 @@
       "include": "#declarations"
     },
     {
+      "include": "#generics"
+    },
+    {
       "include": "#keywords"
     },
     {
@@ -201,7 +204,7 @@
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:<([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)>)?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:(<)([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)(>))?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -216,18 +219,24 @@
               "name": "entity.name.type.class.pys"
             },
             "5": {
-              "name": "storage.type.pys"
+              "name": "punctuation.definition.typeparameters.begin.pys"
             },
             "6": {
-              "name": "keyword.control.pys"
+              "name": "storage.type.pys"
             },
             "7": {
-              "name": "entity.name.type.class.pys"
+              "name": "punctuation.definition.typeparameters.end.pys"
             },
             "8": {
               "name": "keyword.control.pys"
             },
             "9": {
+              "name": "entity.name.type.class.pys"
+            },
+            "10": {
+              "name": "keyword.control.pys"
+            },
+            "11": {
               "name": "entity.name.type.interface.pys"
             }
           }
@@ -342,7 +351,45 @@
       "patterns": [
         {
           "name": "storage.type.pys",
-          "match": "\\b(?:var|int|float|char|bool|str|string)\\b"
+          "match": "\\b(?:var|int|float|char|bool|str|string|list|dict|tuple|set)\\b"
+        }
+      ]
+    },
+    "generics": {
+      "patterns": [
+        {
+          "name": "meta.type.parameters.pys",
+          "begin": "\\b((?:list|dict|tuple|set)|(?:[A-Z][A-Za-z0-9_]*))\\s*(<)(?=\\s*(?:int|float|char|string|bool|list|dict|tuple|set|[A-Z][A-Za-z0-9_]*)\\b)",
+          "beginCaptures": {
+            "1": {
+              "name": "storage.type.pys"
+            },
+            "2": {
+              "name": "punctuation.definition.typeparameters.begin.pys"
+            }
+          },
+          "end": ">",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.typeparameters.end.pys"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#generics"
+            },
+            {
+              "include": "#types"
+            },
+            {
+              "name": "punctuation.separator.typeparameters.pys",
+              "match": ","
+            },
+            {
+              "name": "entity.name.type.pys",
+              "match": "\\b[A-Za-z_]\\w*\\b"
+            }
+          ]
         }
       ]
     },
@@ -378,7 +425,7 @@
       "patterns": [
         {
           "name": "keyword.operator.pys",
-          "match": "[+\\-*/%!=<>&|]+|\\+\\+|--"
+          "match": "\\+\\+|--|<<|>>|<=|>=|==|!=|<>|[+\\-*/%!=<>&|]"
         },
         {
           "name": "invalid.illegal.pys",

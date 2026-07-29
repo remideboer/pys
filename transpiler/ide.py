@@ -10,24 +10,34 @@ from .pytypes import locate_attr_path, locate_type_definition
 from .transpiler import Parser, TranspileError
 
 
+def _error_dict(exc: TranspileError) -> dict:
+    return {
+        "message": exc.args[0] if exc.args else str(exc),
+        "line": exc.line_number,
+        "column": exc.column,
+        "code_line": exc.code_line,
+        "code": getattr(exc, "code", None),
+        "suggested_fix": getattr(exc, "suggested_fix", None),
+        "tips": list(getattr(exc, "tips", None) or []),
+        "source_file": str(exc.source_file) if exc.source_file else None,
+    }
+
+
 def analyze_file(source_path: Path) -> dict:
     source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
-    parser = Parser(source, source_path=source_path)
     error = None
+    try:
+        parser = Parser(source, source_path=source_path)
+    except TranspileError as exc:
+        # Formatting errors abort __init__; retry so IDE can still resolve types/symbols.
+        error = _error_dict(exc)
+        parser = Parser(source, source_path=source_path, enforce_formatting=False)
     try:
         parser.parse()
     except TranspileError as exc:
-        error = {
-            "message": exc.args[0] if exc.args else str(exc),
-            "line": exc.line_number,
-            "column": exc.column,
-            "code_line": exc.code_line,
-            "code": getattr(exc, "code", None),
-            "suggested_fix": getattr(exc, "suggested_fix", None),
-            "tips": list(getattr(exc, "tips", None) or []),
-            "source_file": str(exc.source_file) if exc.source_file else None,
-        }
+        if error is None:
+            error = _error_dict(exc)
 
     # Variable / local symbol declarations (in the .pys file)
     symbols = {
@@ -101,7 +111,11 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"ok": False, "message": "Usage: python -m transpiler.ide <file.pys> [symbol]"}))
         return 2
     path = Path(argv[0])
-    result = analyze_file(path)
+    try:
+        result = analyze_file(path)
+    except Exception as exc:
+        print(json.dumps({"ok": False, "error": {"message": f"{type(exc).__name__}: {exc}"}, "validated_types": [], "symbols": {}}))
+        return 1
     if len(argv) >= 2:
         symbol = argv[1]
         loc = lookup_symbol(result, symbol)
