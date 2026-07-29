@@ -1,35 +1,33 @@
-# shared: intentional cross-task mutation (Policy B).
+# shared: intentional cross-task mutation (not for ordinary inputs).
 
 global function demo_shared_counter() {
     print("--- demo_shared_counter ---")
     shared int counter = 0
     tasks {
-        task {
-            counter = counter + 1
+        task bump(int delta) {
+            counter = counter + delta
         }
         task {
-            counter = counter + 1
-        }
-        task {
-            counter = counter + 1
+            int a = await bump(1)
+            int b = await bump(1)
+            int c = await bump(1)
         }
     }
-    print("counter after 3 tasks:")
+    print("counter after 3 bumps:")
     print(counter)
 }
 
-global function demo_shared_with_readonly() {
-    print("--- demo_shared_with_readonly ---")
-    string tag = "batch"
+global function demo_shared_with_params() {
+    print("--- demo_shared_with_params ---")
     shared int hits = 0
     tasks {
-        task {
+        task hit(string tag) {
             print("tag=#s{tag}")
             hits = hits + 1
         }
         task {
-            print("tag=#s{tag}")
-            hits = hits + 1
+            int a = await hit("batch")
+            int b = await hit("batch")
         }
     }
     print("hits:")
@@ -39,18 +37,16 @@ global function demo_shared_with_readonly() {
 global function demo_shared_accumulate() {
     print("--- demo_shared_accumulate ---")
     shared int total = 0
-    int[] amounts = [5, 10, 15]
     tasks {
-        task {
-            total = total + amounts[0]
+        task add(int amount) {
+            total = total + amount
         }
         task {
-            total = total + amounts[1]
-        }
-        task {
-            total = total + amounts[2]
+            int a = await add(5)
+            int b = await add(10)
+            int c = await add(15)
         }
     }
-    print("total of [5,10,15]:")
+    print("total of 5+10+15:")
     print(total)
 }

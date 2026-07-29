@@ -20,15 +20,16 @@ import more
 print("========== PYS concurrency examples ==========")
 
 demo_join()
-demo_readonly_capture()
+demo_task_params()
 demo_task_locals()
 
 demo_await_one()
 demo_await_fan_in()
 demo_await_chain()
+demo_await_args()
 
 demo_shared_counter()
-demo_shared_with_readonly()
+demo_shared_with_params()
 demo_shared_accumulate()
 
 demo_two_groups()

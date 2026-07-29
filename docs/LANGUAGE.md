@@ -449,21 +449,19 @@ isolate memory.
 | `shared` | Outer name may be mutated across tasks |
 
 ```pys
-shared int counter = 0
 tasks {
-    task ready {
-        return 41
+    task add(int a, int b) {
+        return a + b
     }
     task {
-        int n = await ready
-        counter = counter + 1
-        print(n + 1)
+        int s = await add(10, 32)
+        print(s)
     }
 }
 ```
 
 Outer locals are **read-only** inside a task unless declared `shared`.  
-Runnable suite: `examples/concurrency/main.pys`.
+Prefer **parameters** for inputs. Runnable suite: `examples/concurrency/main.pys`.
 
 ---
 
@@ -505,7 +503,7 @@ For a full walkthrough, see `examples/main.pys` and `examples/vehicles.pys`.
 
 | File | Role |
 |------|------|
-| `docs/language.ebnf` | Formal EBNF |
+| `docs/language.ebnf` | Formal EBNF (includes concurrency) |
 | `docs/language-railroad.html` | Railroad diagram visuals |
 | `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` guide |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |

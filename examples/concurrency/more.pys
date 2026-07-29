@@ -1,28 +1,19 @@
-# examples/concurrency — more showcase scenarios (still same folder = package).
+# More showcase scenarios using parameterized tasks.
 
 global function demo_many_workers() {
     print("--- demo_many_workers ---")
     shared int done = 0
     tasks {
-        task {
-            print("w1")
+        task work(string id) {
+            print(id)
             done = done + 1
         }
         task {
-            print("w2")
-            done = done + 1
-        }
-        task {
-            print("w3")
-            done = done + 1
-        }
-        task {
-            print("w4")
-            done = done + 1
-        }
-        task {
-            print("w5")
-            done = done + 1
+            int a = await work("w1")
+            int b = await work("w2")
+            int c = await work("w3")
+            int d = await work("w4")
+            int e = await work("w5")
         }
     }
     print("workers finished count:")
@@ -33,15 +24,15 @@ global function demo_await_then_shared() {
     print("--- demo_await_then_shared ---")
     shared int log_count = 0
     tasks {
-        task first {
-            return 3
+        task first(int n) {
+            return n
         }
-        task second {
-            return 4
+        task second(int n) {
+            return n
         }
         task {
-            int a = await first
-            int b = await second
+            int a = await first(3)
+            int b = await second(4)
             log_count = log_count + 1
             print("product:")
             print(a * b)
@@ -55,20 +46,22 @@ global function demo_nested_groups_in_sequence() {
     print("--- demo_nested_groups_in_sequence ---")
     shared int phase = 0
     tasks {
+        task set_phase(int p) {
+            phase = p
+            print("phase set")
+        }
         task {
-            phase = 1
-            print("phase set to 1")
+            int ignored = await set_phase(1)
         }
     }
     tasks {
-        task {
+        task bump() {
             print("phase is:")
             print(phase)
             phase = phase + 1
         }
         task {
-            print("still phase before join:")
-            print(phase)
+            int ignored = await bump()
         }
     }
     print("final phase:")

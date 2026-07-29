@@ -8,7 +8,7 @@ Runnable showcase:
 python -m transpiler run examples/concurrency/main.pys
 ```
 
-Formal grammar: [`language.ebnf`](language.ebnf) · language overview: [`LANGUAGE.md`](LANGUAGE.md)
+Formal grammar: [`language.ebnf`](language.ebnf) · language overview: [`LANGUAGE.md`](LANGUAGE.md) · railroad: [`language-railroad.html`](language-railroad.html)
 
 ---
 
@@ -16,10 +16,14 @@ Formal grammar: [`language.ebnf`](language.ebnf) · language overview: [`LANGUAG
 
 | Keyword | Role |
 |---------|------|
-| **`task`** | One concurrent unit of work |
+| **`task`** | One concurrent unit of work (optional name + parameters) |
 | **`tasks`** | A **group** of tasks that run together; leaving the block **waits for all** |
-| **`await`** | **Wait until** this value is ready (usually a named task’s result) |
+| **`await`** | **Wait until** this value is ready (`await name` or `await name(args)`) |
 | **`shared`** | This variable **may be mutated** by more than one task |
+
+**Inputs:** pass **parameters** (`task work(int n) { … }` then `await work(3)`).  
+**Outputs:** `return` then `await`.  
+Do **not** feed tasks through outer captures — that becomes spaghetti. Captures stay for rare read-only constants; mutation uses `shared`.
 
 There is no `async function` coloring and no `import threading`. Stay on these keywords.
 
@@ -47,15 +51,16 @@ print("both finished")   # runs only after A and B complete
 What happens:
 
 1. Enter `tasks { … }`
-2. Start every child `task` (order of *prints* is not guaranteed)
-3. On the closing `}`, wait until every child has finished (or failed)
-4. Continue with the next statement
+2. Auto-start every **parameterless** `task` / `task name`
+3. Parameterized `task name(...)` are **templates** — they run when someone `await name(args)`
+4. On the closing `}`, wait until every started child has finished (or failed)
+5. Continue with the next statement
 
 That is **structured concurrency**: the block owns the children’s lifetime.
 
 ### Locals inside a task
 
-Names declared *inside* a task are private to that task:
+Names declared *inside* a task (including parameters) are private to that task:
 
 ```pys
 tasks {
@@ -68,9 +73,43 @@ tasks {
 
 ---
 
-## 2. `await` — wait until a result is ready
+## 2. Parameters (inputs) and `return` / `await` (outputs)
 
-Give a task a **name** to get a handle. Sibling tasks can `await` that handle.
+### Parameterized task — preferred inputs
+
+```pys
+tasks {
+    task add(int a, int b) {
+        return a + b
+    }
+    task {
+        int s = await add(10, 32)
+        print(s)    # 42
+    }
+}
+```
+
+| Form | Meaning |
+|------|---------|
+| `task name(type p, …) { … }` | Template — runs on `await name(…)` |
+| `await name(args)` | Start with args; wait; yield `return` value |
+| `task name { … }` | No params — auto-starts; `await name` |
+| `task { … }` | Anonymous auto-started unit |
+
+```pys
+tasks {
+    task greet(string name, int times) {
+        print("hello #s{name} x#i{times}")
+        return times
+    }
+    task {
+        int n = await greet("Ada", 3)
+        print(n)
+    }
+}
+```
+
+### Zero-arg named task
 
 ```pys
 tasks {
@@ -88,40 +127,40 @@ tasks {
 Rules:
 
 - `await` is **only** allowed inside a `task` body
-- `await name` waits for the named sibling (or other awaitable) to finish and yields its `return` value
-- Prefer **results via `return` + `await`** over poking shared state when you can
+- Prefer **parameters in + `return`/`await` out** — not outer captures for inputs
+- `await name(args)` requires `task name(...)` (parentheses on the declaration)
 
-### Fan-in (several producers, one consumer)
+### Fan-in
 
 ```pys
 tasks {
-    task left {
-        return 10
+    task left(int n) {
+        return n
     }
-    task right {
-        return 32
+    task right(int n) {
+        return n
     }
     task {
-        int a = await left
-        int b = await right
+        int a = await left(10)
+        int b = await right(32)
         print(a + b)    # 42
     }
 }
 ```
 
-### Chain (pipeline of results)
+### Chain
 
 ```pys
 tasks {
-    task step1 {
-        return 2
+    task step1(int n) {
+        return n
     }
-    task step2 {
-        int x = await step1
+    task step2(int x) {
         return x * 3
     }
     task {
-        int y = await step2
+        int mid = await step1(2)
+        int y = await step2(mid)
         print(y)        # 6
     }
 }
@@ -131,9 +170,12 @@ Do **not** build cycles (`a` awaits `b` and `b` awaits `a`) — that can deadloc
 
 ---
 
-## 3. Capture rules — read-only unless `shared`
+## 3. Capture rules — last resort (prefer parameters)
 
 Anything declared **outside** a task and used inside it is a **capture**.
+**Prefer task parameters for inputs.** Captures are easy to overuse and create
+spaghetti. Keep them for read-only constants; use `shared` only for intentional
+cross-task mutation.
 
 | Capture kind | Read | Write |
 |--------------|------|-------|
@@ -288,18 +330,32 @@ tasks {
     task { /* work */ }
 }
 
-# Named result
+# Parameters in, return/await out
 tasks {
-    task name { return expr }
+    task work(int x, string label) {
+        print(label)
+        return x + 1
+    }
     task {
-        Type x = await name
+        int y = await work(3, "job")
     }
 }
 
-# Explicit shared mutation
+# Zero-arg named auto task
+tasks {
+    task ready { return 1 }
+    task {
+        int n = await ready
+    }
+}
+
+# Explicit shared mutation (not for ordinary inputs)
 shared int n = 0
 tasks {
-    task { n = n + 1 }
+    task bump(int d) { n = n + d }
+    task {
+        int ignored = await bump(1)
+    }
 }
 ```
 
@@ -310,9 +366,9 @@ tasks {
 | File | Focus |
 |------|--------|
 | [`examples/concurrency/main.pys`](../examples/concurrency/main.pys) | Runs the full suite |
-| [`basics.pys`](../examples/concurrency/basics.pys) | Join, read-only capture, task locals |
-| [`awaiting.pys`](../examples/concurrency/awaiting.pys) | `await`, fan-in, chain |
-| [`shared_state.pys`](../examples/concurrency/shared_state.pys) | `shared` counters / accumulate |
+| [`basics.pys`](../examples/concurrency/basics.pys) | Join, task parameters, task locals |
+| [`awaiting.pys`](../examples/concurrency/awaiting.pys) | `await`, parameterized fan-in / chain / args |
+| [`shared_state.pys`](../examples/concurrency/shared_state.pys) | `shared` + parameterized bumps |
 | [`pipeline.pys`](../examples/concurrency/pipeline.pys) | Stages, mixed await + shared |
 | [`more.pys`](../examples/concurrency/more.pys) | Many workers, phased groups |
 

@@ -1,5 +1,5 @@
 # examples/concurrency — structured tasks / await / shared (Policy B)
-# Package helpers used by main.pys in this folder.
+# Prefer task parameters for inputs; shared only for cross-task mutation.
 
 # ── Basic join: tasks block waits for every child ─────────
 global function demo_join() {
@@ -18,17 +18,16 @@ global function demo_join() {
     print("all workers finished")
 }
 
-# ── Read-only capture: outer locals are readable ──────────
-global function demo_readonly_capture() {
-    print("--- demo_readonly_capture ---")
-    string label = "probe"
-    int seed = 7
+# ── Parameters instead of capturing outer inputs ──────────
+global function demo_task_params() {
+    print("--- demo_task_params ---")
     tasks {
-        task {
+        task show(string label, int seed) {
             print("label=#s{label} seed=#i{seed}")
+            return 0
         }
         task {
-            print("seed squared idea: #i{seed}")
+            int ignored = await show("probe", 7)
         }
     }
 }

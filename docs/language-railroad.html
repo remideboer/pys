@@ -102,6 +102,7 @@
     <p>
       Visual syntax diagrams for the modern brace-style grammar.
       Source of truth: <a href="language.ebnf">language.ebnf</a>
+      · Concurrency semantics: <a href="CONCURRENCY.md">CONCURRENCY.md</a>
       &middot; Overview: <a href="LANGUAGE.md">LANGUAGE.md</a>
     </p>
     <div class="legend">
@@ -386,6 +387,15 @@
       )
     },
     {
+      id: 'declaration',
+      title: 'declaration',
+      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | interface_decl ;',
+      node: Choice(
+        N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'),
+        N('function_decl'), N('class_decl'), N('interface_decl')
+      )
+    },
+    {
       id: 'function_decl',
       title: 'function_decl',
       ebnf: '[ top_visibility ] "function" [ return_type ] identifier "(" [ parameter_list ] ")" block | "func" ...',
@@ -492,6 +502,40 @@
         Opt(N('type_name')), N('identifier'), T('in'), N('expression'),
         T(')'), N('block')
       )
+    },
+    {
+      id: 'shared_decl',
+      title: 'shared_decl',
+      ebnf: '"shared" type_name identifier "=" expression ;',
+      node: Seq(T('shared'), N('type_name'), N('identifier'), T('='), N('expression'))
+    },
+    {
+      id: 'tasks_stmt',
+      title: 'tasks_stmt',
+      ebnf: '"tasks" "{" { tasks_item } "}" ;',
+      node: Seq(T('tasks'), T('{'), Star(N('tasks_item')), T('}'))
+    },
+    {
+      id: 'tasks_item',
+      title: 'tasks_item',
+      ebnf: 'tasks_item = task_stmt | statement ;',
+      node: Choice(N('task_stmt'), N('statement'))
+    },
+    {
+      id: 'task_stmt',
+      title: 'task_stmt',
+      ebnf: '"task" [ identifier [ "(" [ parameter_list ] ")" ] ] block ;',
+      node: Seq(
+        T('task'),
+        Opt(Seq(N('identifier'), Opt(Seq(T('('), Opt(N('parameter_list')), T(')'))))),
+        N('block')
+      )
+    },
+    {
+      id: 'await_expr',
+      title: 'await_stmt / await_expr',
+      ebnf: '"await" expression   |   "await" cast_expr  (* only inside task *) ;',
+      node: Seq(T('await'), N('expression'))
     },
     {
       id: 'assignment',

@@ -16,7 +16,7 @@ INDENT_SIZE = 4
 TOP_LEVEL_VISIBILITY = ("global", "package", "module")
 
 # Injected when a file uses tasks / task / await / shared.
-_CONCURRENCY_PREAMBLE = '''from concurrent.futures import Future, ThreadPoolExecutor, wait as _pys_wait
+_CONCURRENCY_PREAMBLE = '''from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait as _pys_wait
 from threading import Event as _PysEvent, Lock as _PysLock
 
 class _PysShared:
@@ -45,22 +45,59 @@ def _pys_await(value):
         return result()
     return value
 
-def _pys_run_tasks(fns, futures):
-    if not fns:
-        return
-    ready = _PysEvent()
-    def _wrap(fn):
-        def _inner():
-            ready.wait()
-            return fn()
-        return _inner
-    with ThreadPoolExecutor(max_workers=max(1, len(fns))) as pool:
-        for name, fn in fns.items():
-            futures[name] = pool.submit(_wrap(fn))
-        ready.set()
-        done, _ = _pys_wait(futures.values())
-        for fut in done:
-            fut.result()
+class _PysTaskGroup:
+    """Autos start on run(); parameterized templates via call(name, *args)."""
+    def __init__(self):
+        self.futures = {}
+        self.templates = {}
+        self._autos = {}
+        self._pending = []
+        self._pool = None
+        self._gate = _PysEvent()
+        self._lock = _PysLock()
+
+    def add_auto(self, name, fn):
+        self._autos[name] = fn
+
+    def add_template(self, name, fn):
+        self.templates[name] = fn
+
+    def call(self, name, *args):
+        fn = self.templates.get(name)
+        if fn is None:
+            raise NameError("unknown task template %r" % (name,))
+        def _run(fn=fn, args=args):
+            self._gate.wait()
+            return fn(*args)
+        fut = self._pool.submit(_run)
+        with self._lock:
+            self._pending.append(fut)
+        return fut
+
+    def run(self):
+        workers = max(1, len(self._autos) + max(len(self.templates), 1))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            self._pool = pool
+            for name, fn in self._autos.items():
+                def _run(fn=fn):
+                    self._gate.wait()
+                    return fn()
+                fut = pool.submit(_run)
+                self.futures[name] = fut
+                with self._lock:
+                    self._pending.append(fut)
+            self._gate.set()
+            while True:
+                with self._lock:
+                    batch = list(self._pending)
+                    self._pending.clear()
+                if not batch:
+                    break
+                done, not_done = _pys_wait(batch, return_when=FIRST_COMPLETED)
+                with self._lock:
+                    self._pending.extend(not_done)
+                for fut in done:
+                    fut.result()
 
 '''
 
@@ -138,14 +175,18 @@ class Parser:
         self.fixed_vars: set[str] = set()
         # Names declared with shared (mutable across tasks; Policy B).
         self.shared_variables: set[str] = set()
-        # Named task handles awaitable inside sibling tasks.
+        # Named zero-arg tasks (auto-started); parameterized templates are separate.
         self.task_handles: set[str] = set()
+        self.task_templates: set[str] = set()
         self.needs_concurrency_runtime = False
         self._task_serial = 0
-        # Stack of dict variable names for each open `tasks` block.
-        self._tasks_fn_maps: list[str] = []
+        # Stack of _PysTaskGroup variable names for open `tasks` blocks.
+        self._tasks_groups: list[str] = []
         # Locals declared inside each open task (for capture rules).
         self._task_locals_stack: list[set[str]] = []
+        # Pending task header meta until `{` opens: (py_params, is_template)
+        self._pending_task_meta: tuple[str, bool] | None = None
+        self._task_meta_stack: list[tuple[str, bool]] = []
         # Names brought into scope by import.
         self.imported_names: set[str] = set()
         # Names seen via imported modules but not in scope here:
@@ -559,14 +600,25 @@ class Parser:
         else:
             self.loop_counters.append(set())
         if ctx is not None and ctx[0] == "task":
-            self._task_locals_stack.append(set())
+            locals_set: set[str] = set()
+            meta = self._pending_task_meta
+            self._pending_task_meta = None
+            if meta is None:
+                meta = ("", False)
+            self._task_meta_stack.append(meta)
+            py_params, _is_template = meta
+            if py_params:
+                for part in py_params.split(","):
+                    pname = part.strip()
+                    if pname:
+                        locals_set.add(pname)
+                        self.declared_variables.add(pname)
+            self._task_locals_stack.append(locals_set)
         if ctx is not None and ctx[0] == "tasks":
             group = ctx[1]
-            map_name = f"_pys_task_fns_{group}"
-            fut_name = f"_pys_futures_{group}"
+            tg_name = f"_pys_tg_{group}"
             indent = self.indent_stack[-1]
-            self.output_lines.append(f"{' ' * indent}{fut_name} = {{}}")
-            self.output_lines.append(f"{' ' * indent}{map_name} = {{}}")
+            self.output_lines.append(f"{' ' * indent}{tg_name} = _PysTaskGroup()")
 
     def _close_block(self, line_number: int) -> None:
         if not self.brace_mode:
@@ -579,23 +631,26 @@ class Parser:
                 self._task_locals_stack.pop()
             handle = closing_ctx[1]
             fn_name = f"__pys_task_{handle}"
-            indent = self.indent_stack[-1]
-            if not self._tasks_fn_maps:
+            if not self._tasks_groups:
                 self._error("`task` must appear inside `tasks`.", line_number, "}")
-            map_name = self._tasks_fn_maps[-1]
-            # Emit registration at the tasks-body indent (parent of this task).
+            tg_name = self._tasks_groups[-1]
             parent_indent = self.indent_stack[-2] if len(self.indent_stack) >= 2 else 0
-            self.output_lines.append(f"{' ' * parent_indent}{map_name}[{handle!r}] = {fn_name}")
+            meta = self._task_meta_stack.pop() if self._task_meta_stack else ("", False)
+            _py_params, is_template = meta
+            if is_template:
+                self.output_lines.append(
+                    f"{' ' * parent_indent}{tg_name}.add_template({handle!r}, {fn_name})"
+                )
+            else:
+                self.output_lines.append(
+                    f"{' ' * parent_indent}{tg_name}.add_auto({handle!r}, {fn_name})"
+                )
         elif closing_ctx is not None and closing_ctx[0] == "tasks":
             indent = self.indent_stack[-1]
-            if not self._tasks_fn_maps:
-                self._error("Internal error: closing `tasks` without map.", line_number, "}")
-            map_name = self._tasks_fn_maps.pop()
-            group = map_name.rsplit("_", 1)[-1]
-            fut_name = f"_pys_futures_{group}"
-            self.output_lines.append(
-                f"{' ' * indent}_pys_run_tasks({map_name}, {fut_name})"
-            )
+            if not self._tasks_groups:
+                self._error("Internal error: closing `tasks` without group.", line_number, "}")
+            tg_name = self._tasks_groups.pop()
+            self.output_lines.append(f"{' ' * indent}{tg_name}.run()")
         self.indent_stack.pop()
         if self.loop_counters:
             self.loop_counters.pop()
@@ -1299,8 +1354,11 @@ class Parser:
                     self.pending_block_context = None
         elif rest == "tasks" or rest.startswith("tasks "):
             self.pending_block_context = ("tasks", "")
-        elif rest == "task" or re.match(r"task\s+[A-Za-z_]\w*$", rest):
-            m = re.match(r"task(?:\s+(?P<name>[A-Za-z_]\w*))?$", rest)
+        elif rest == "task" or re.match(r"task\s+", rest):
+            m = re.match(
+                r"task(?:\s+(?P<name>[A-Za-z_]\w*)(?P<params>\([^)]*\))?)?$",
+                rest,
+            )
             name = (m.group("name") if m else None) or ""
             self.pending_block_context = ("task", name)
         else:
@@ -2050,12 +2108,23 @@ class Parser:
 
     def _translate_await_expr(self, expr: str) -> str:
         expr = expr.strip()
+        tg = "_pys_tg_0"
+        if self._tasks_groups:
+            tg = self._tasks_groups[-1]
+
+        call = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)", expr)
+        if call:
+            name = call.group("name")
+            args = call.group("args").strip()
+            args_py = self._rewrite_shared_reads(args) if args else ""
+            if args_py:
+                return f"_pys_await({tg}.call({name!r}, {args_py}))"
+            return f"_pys_await({tg}.call({name!r}))"
+
         if re.fullmatch(r"[A-Za-z_]\w*", expr) and expr in self.task_handles:
-            fut = "_pys_futures_0"
-            if self._tasks_fn_maps:
-                group = self._tasks_fn_maps[-1].rsplit("_", 1)[-1]
-                fut = f"_pys_futures_{group}"
-            return f"_pys_await({fut}[{expr!r}])"
+            return f"_pys_await({tg}.futures[{expr!r}])"
+        if re.fullmatch(r"[A-Za-z_]\w*", expr) and expr in self.task_templates:
+            return f"_pys_await({tg}.call({expr!r}))"
         return f"_pys_await({self._rewrite_shared_reads(expr)})"
 
     def _register_external_type(self, type_name: str) -> bool:
@@ -2656,13 +2725,16 @@ class Parser:
             self.needs_concurrency_runtime = True
             group = self._task_serial
             self._task_serial += 1
-            map_name = f"_pys_task_fns_{group}"
-            self._tasks_fn_maps.append(map_name)
+            tg_name = f"_pys_tg_{group}"
+            self._tasks_groups.append(tg_name)
             self.pending_block_context = ("tasks", str(group))
             # Suite wrapper so nested task `def`s are valid Python.
             return "if True:"
 
-        task_hdr = re.fullmatch(r"task(?:\s+(?P<name>[A-Za-z_]\w*))?", line)
+        task_hdr = re.fullmatch(
+            r"task(?:\s+(?P<name>[A-Za-z_]\w*)(?P<params>\([^)]*\))?)?",
+            line,
+        )
         if task_hdr:
             if not self._inside_tasks():
                 self._error(
@@ -2671,13 +2743,30 @@ class Parser:
                     raw_line.rstrip(),
                 )
             handle = task_hdr.group("name")
+            params_raw = task_hdr.group("params")
+            is_template = params_raw is not None
             if not handle:
+                if is_template:
+                    self._error(
+                        "Parameterized tasks must be named: `task name(type p) { ... }`.",
+                        line_number,
+                        raw_line.rstrip(),
+                    )
                 handle = f"_anon_{self._task_serial}"
                 self._task_serial += 1
+            elif is_template:
+                self.task_templates.add(handle)
             else:
                 self.task_handles.add(handle)
+            py_params = ""
+            if params_raw is not None:
+                inner = params_raw[1:-1].strip()
+                py_params = _strip_type_annotation(inner) if inner else ""
+            self._pending_task_meta = (py_params, is_template)
             self.pending_block_context = ("task", handle)
             self.needs_concurrency_runtime = True
+            if py_params:
+                return f"def __pys_task_{handle}({py_params}):"
             return f"def __pys_task_{handle}():"
 
         shared_decl = re.fullmatch(
@@ -2689,9 +2778,7 @@ class Parser:
             self.needs_concurrency_runtime = True
             name = shared_decl.group("name")
             expr = shared_decl.group("expr").strip()
-            # Reuse normal expression translation for the initializer.
             init = LANGUAGE.translate_line(f"int __pys_tmp = {expr}")
-            # typed_decl → "__pys_tmp = <expr>"
             rhs = init.split("=", 1)[1].strip() if "=" in init else expr
             return f"{name} = _PysShared({rhs})"
 
@@ -2702,15 +2789,44 @@ class Parser:
                     line_number,
                     raw_line.rstrip(),
                 )
-            # Statement form: await expr
+
+            def _check_await_target(expr: str) -> None:
+                expr = expr.strip()
+                call = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)", expr)
+                if call:
+                    name = call.group("name")
+                    if name in self.task_handles and name not in self.task_templates:
+                        self._error(
+                            f"Task '{name}' has no parameters; use `await {name}` "
+                            f"(or declare `task {name}(...) {{ ... }}`).",
+                            line_number,
+                            raw_line.rstrip(),
+                        )
+                    if name not in self.task_templates:
+                        self._error(
+                            f"Unknown parameterized task '{name}'. "
+                            f"Declare `task {name}(...) {{ ... }}` in this tasks group.",
+                            line_number,
+                            raw_line.rstrip(),
+                        )
+                    return
+                if re.fullmatch(r"[A-Za-z_]\w*", expr):
+                    if expr in self.task_templates:
+                        return
+                    if expr in self.task_handles:
+                        return
+
             if line.startswith("await "):
-                return self._rewrite_shared_python(self._translate_await_expr(line[len("await ") :]))
-            # Embedded in assignment / decl / call args
+                target = line[len("await ") :]
+                _check_await_target(target)
+                return self._rewrite_shared_python(self._translate_await_expr(target))
+
             def _await_sub(match: re.Match[str]) -> str:
+                _check_await_target(match.group(1))
                 return self._translate_await_expr(match.group(1))
 
             line = re.sub(
-                r"\bawait\s+(\([^)]+\)|[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)",
+                r"\bawait\s+(\([^)]+\)|[A-Za-z_]\w*\s*\([^)]*\)|[A-Za-z_]\w*)",
                 _await_sub,
                 line,
             )
