@@ -2,6 +2,7 @@
   "files.associations": {
     "*.pys": "pys"
   },
+  "pys.mainFile": "examples/main.pys",
   "npm.exclude": [
     "**/pys-language",
     "**/pys-language/**"

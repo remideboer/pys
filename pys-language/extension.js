@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const cp = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 const PYS_KEYWORDS = [
@@ -29,6 +30,26 @@ function resolveFilePath(file) {
   return fileString;
 }
 
+function getConfiguredMainRelative() {
+  const value = vscode.workspace.getConfiguration('pys').get('mainFile', '');
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function resolveMainFilePath() {
+  const relative = getConfiguredMainRelative();
+  if (!relative) {
+    return null;
+  }
+  const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+  if (!workspace) {
+    return null;
+  }
+  if (path.isAbsolute(relative)) {
+    return relative;
+  }
+  return path.join(workspace.uri.fsPath, relative);
+}
+
 function activate(context) {
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
@@ -38,6 +59,26 @@ function activate(context) {
 
   const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
 
+  const mainStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+  mainStatus.command = 'pys.runMain';
+  context.subscriptions.push(mainStatus);
+
+  function refreshMainFileUi() {
+    const relative = getConfiguredMainRelative();
+    const absolute = resolveMainFilePath();
+    const exists = absolute && fs.existsSync(absolute);
+    vscode.commands.executeCommand('setContext', 'pys.hasMainFile', Boolean(relative));
+    if (!relative) {
+      mainStatus.hide();
+      return;
+    }
+    const label = path.basename(relative);
+    mainStatus.text = exists ? `$(play) PYS: ${label}` : `$(warning) PYS main missing`;
+    mainStatus.tooltip = exists
+      ? `Run main file (${relative})`
+      : `Configured main file not found: ${relative}`;
+    mainStatus.show();
+  }
   function usageTipsEnabled() {
     return vscode.workspace.getConfiguration('pys').get('libraryTyping.usageTips', false);
   }
@@ -596,6 +637,9 @@ function activate(context) {
         }
       }
     }
+    if (event.affectsConfiguration('pys.mainFile')) {
+      refreshMainFileUi();
+    }
   }));
 
   for (const document of vscode.workspace.textDocuments) {
@@ -603,6 +647,8 @@ function activate(context) {
       scheduleValidate(document);
     }
   }
+
+  refreshMainFileUi();
 
   async function saveAllFiles() {
     try {
@@ -613,19 +659,37 @@ function activate(context) {
     }
   }
 
-  context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
+  function getRunnerPath() {
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    return workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
+  }
+
+  function resolveTargetPysFile(file) {
     let filePath = resolveFilePath(file);
     if (!filePath && vscode.window.activeTextEditor) {
-      filePath = vscode.window.activeTextEditor.document.uri.fsPath;
+      const active = vscode.window.activeTextEditor.document;
+      if (active.languageId === 'pys' || active.uri.fsPath.toLowerCase().endsWith('.pys')) {
+        filePath = active.uri.fsPath;
+      }
     }
     if (!filePath) {
-      vscode.window.showErrorMessage('Invalid PYS file path.');
+      filePath = resolveMainFilePath();
+    }
+    return filePath;
+  }
+
+  async function runPysFile(filePath) {
+    if (!filePath) {
+      vscode.window.showErrorMessage('No PYS file to run. Set pys.mainFile or open a .pys file.');
       return;
     }
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
-    const runner = workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
-    if (!runner) {
-      vscode.window.showErrorMessage('Workspace runner not found');
+    const runner = getRunnerPath();
+    if (!runner || !fs.existsSync(runner)) {
+      vscode.window.showErrorMessage('Workspace runner not found (.vscode/run_pys.py).');
+      return;
+    }
+    if (!fs.existsSync(filePath)) {
+      vscode.window.showErrorMessage(`PYS file not found: ${filePath}`);
       return;
     }
     const saved = await saveAllFiles();
@@ -635,23 +699,21 @@ function activate(context) {
     }
     const term = vscode.window.createTerminal({ name: 'Run PYS' });
     term.show();
-    const cmd = `python "${runner}" "${filePath}"`;
-    term.sendText(cmd, true);
-  }));
+    term.sendText(`python "${runner}" "${filePath}"`, true);
+  }
 
-  context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
-    let filePath = resolveFilePath(file);
-    if (!filePath && vscode.window.activeTextEditor) {
-      filePath = vscode.window.activeTextEditor.document.uri.fsPath;
-    }
+  async function debugPysFile(filePath) {
     if (!filePath) {
-      vscode.window.showErrorMessage('Invalid PYS file path.');
+      vscode.window.showErrorMessage('No PYS file to debug. Set pys.mainFile or open a .pys file.');
       return;
     }
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
-    const runner = workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
-    if (!runner) {
-      vscode.window.showErrorMessage('Workspace runner not found');
+    const runner = getRunnerPath();
+    if (!runner || !fs.existsSync(runner)) {
+      vscode.window.showErrorMessage('Workspace runner not found (.vscode/run_pys.py).');
+      return;
+    }
+    if (!fs.existsSync(filePath)) {
+      vscode.window.showErrorMessage(`PYS file not found: ${filePath}`);
       return;
     }
     const saved = await saveAllFiles();
@@ -664,8 +726,63 @@ function activate(context) {
       type: 'python',
       request: 'launch',
       program: runner,
-      args: [filePath]
+      args: [filePath],
     });
+  }
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
+    await runPysFile(resolveTargetPysFile(file));
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
+    await debugPysFile(resolveTargetPysFile(file));
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.runMain', async () => {
+    const mainPath = resolveMainFilePath();
+    if (!mainPath) {
+      vscode.window.showErrorMessage('No main file set. Use "PYS: Set as Main File" or set pys.mainFile.');
+      return;
+    }
+    await runPysFile(mainPath);
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.debugMain', async () => {
+    const mainPath = resolveMainFilePath();
+    if (!mainPath) {
+      vscode.window.showErrorMessage('No main file set. Use "PYS: Set as Main File" or set pys.mainFile.');
+      return;
+    }
+    await debugPysFile(mainPath);
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.setAsMainFile', async (file) => {
+    let filePath = resolveFilePath(file);
+    if (!filePath && vscode.window.activeTextEditor) {
+      filePath = vscode.window.activeTextEditor.document.uri.fsPath;
+    }
+    if (!filePath || !filePath.toLowerCase().endsWith('.pys')) {
+      vscode.window.showErrorMessage('Select a .pys file to set as main.');
+      return;
+    }
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      vscode.window.showErrorMessage('Open a workspace folder to set a main file.');
+      return;
+    }
+    let relative = path.relative(workspace.uri.fsPath, filePath);
+    if (!relative || relative.startsWith('..')) {
+      vscode.window.showErrorMessage('Main file must be inside the workspace folder.');
+      return;
+    }
+    relative = relative.replace(/\\/g, '/');
+    await vscode.workspace.getConfiguration('pys').update(
+      'mainFile',
+      relative,
+      vscode.ConfigurationTarget.Workspace,
+    );
+    refreshMainFileUi();
+    vscode.window.showInformationMessage(`PYS main file set to ${relative}`);
   }));
 }
 

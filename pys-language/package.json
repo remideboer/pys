@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.23",
+  "version": "0.0.24",
   "publisher": "local",
   "private": true,
   "scripts": {},
@@ -17,6 +17,11 @@
     "configuration": {
       "title": "PYS",
       "properties": {
+        "pys.mainFile": {
+          "type": "string",
+          "default": "",
+          "description": "Workspace-relative path to the main .pys entry file (for example examples/main.pys). Used by Run/Debug Main."
+        },
         "pys.libraryTyping.usageTips": {
           "type": "boolean",
           "default": false,
@@ -71,6 +76,23 @@
         "title": "Debug File",
         "category": "PYS",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "pys.runMain",
+        "title": "Run Main File",
+        "category": "PYS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "pys.debugMain",
+        "title": "Debug Main File",
+        "category": "PYS",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "pys.setAsMainFile",
+        "title": "Set as Main File",
+        "category": "PYS"
       }
     ],
     "menus": {
@@ -84,6 +106,16 @@
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys && !isInDiffEditor",
           "group": "navigation@1"
+        },
+        {
+          "command": "pys.runMain",
+          "when": "pys.hasMainFile && !isInDiffEditor",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pys.debugMain",
+          "when": "pys.hasMainFile && !isInDiffEditor",
+          "group": "navigation@3"
         }
       ],
       "editor/title": [
@@ -108,13 +140,33 @@
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys",
           "group": "navigation@2"
+        },
+        {
+          "command": "pys.setAsMainFile",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@3"
         }
       ],
       "explorer/context": [
         {
           "command": "pys.runFile",
           "when": "resourceExtname == .pys",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "pys.setAsMainFile",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pys.runMain",
+          "when": "pys.hasMainFile"
+        },
+        {
+          "command": "pys.debugMain",
+          "when": "pys.hasMainFile"
         }
       ]
     },
@@ -128,6 +180,16 @@
         "command": "pys.debugFile",
         "key": "ctrl+shift+d",
         "when": "resourceExtname == .pys"
+      },
+      {
+        "command": "pys.runMain",
+        "key": "ctrl+alt+r",
+        "when": "pys.hasMainFile"
+      },
+      {
+        "command": "pys.debugMain",
+        "key": "ctrl+alt+d",
+        "when": "pys.hasMainFile"
       }
     ]
   },
@@ -135,6 +197,10 @@
   "activationEvents": [
     "onLanguage:pys",
     "onCommand:pys.runFile",
-    "onCommand:pys.debugFile"
+    "onCommand:pys.debugFile",
+    "onCommand:pys.runMain",
+    "onCommand:pys.debugMain",
+    "onCommand:pys.setAsMainFile",
+    "onStartupFinished"
   ]
 }
