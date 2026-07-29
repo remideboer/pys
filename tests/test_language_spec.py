@@ -45,6 +45,10 @@ def test_translate_const_decl() -> None:
     assert transpile("const int MAX = 10 + 5\nprint(MAX)\n") == "MAX = 10 + 5\nprint(MAX)\n"
 
 
+def test_translate_array_loop() -> None:
+    assert LANGUAGE.translate_line("numbers.loop(print)") == "list(map(print, numbers))"
+
+
 def test_translate_loop_with_trailing_spaces() -> None:
     line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"

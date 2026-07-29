@@ -100,6 +100,13 @@ def _translate_cast(type_name: str, expr: str) -> str:
     return rewritten
 
 
+def _translate_array_loop(match: Match[str]) -> str:
+    array_name = match.group("array")
+    fn_name = match.group("fn")
+    # Ensure the loop body is executed for side effects (e.g. print).
+    return f"list(map({fn_name}, {array_name}))"
+
+
 def _split_top_level_plus(expr: str) -> list[str]:
     parts: list[str] = []
     current: list[str] = []
@@ -410,6 +417,11 @@ LANGUAGE.add_regex(
     "typed_array",
     r"(?P<type>int|float|char|string|bool)\[(?P<size>\d+)\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
     lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
+)
+LANGUAGE.add_regex(
+    "array_loop",
+    r"(?P<array>[A-Za-z_]\w*)\s*\.\s*loop\s*\(\s*(?P<fn>[A-Za-z_]\w*)\s*\)",
+    _translate_array_loop,
 )
 LANGUAGE.add_regex(
     "import_all_from",

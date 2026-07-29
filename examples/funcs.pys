@@ -2,6 +2,7 @@ global const float PI = 3.14159265358979323846
 
 package function greet(name){
     print ("Hello, {name} ")
+    print ("Hello, {name} again ")
 }
 
 global function hello(){

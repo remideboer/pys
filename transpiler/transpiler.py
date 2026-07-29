@@ -33,13 +33,15 @@ class TranspileError(ValueError):
         line_number: int | None = None,
         column: int | None = None,
         code_line: str | None = None,
+        source_file: Path | None = None,
     ) -> None:
         super().__init__(message)
         self.line_number = line_number
         self.column = column
         self.code_line = code_line
-    
-    def __str__(self) -> str:  # include line/column in the message when available
+        self.source_file = source_file
+
+    def __str__(self) -> str:
         base = super().__str__()
         parts: list[str] = []
         if self.line_number is not None:
@@ -246,6 +248,7 @@ class Parser:
                     exc.line_number or original_line_number,
                     exc.column,
                     exc.code_line or raw_line.rstrip(),
+                    source_file=exc.source_file or self.source_path,
                 ) from exc
             except ValueError as exc:
                 column = raw_line.find(stripped) + 1 if raw_line and stripped else 1
@@ -398,7 +401,7 @@ class Parser:
 
     def _error(self, message: str, line_number: int, line: str, column: int | None = None) -> NoReturn:
         snippet = line.rstrip()
-        raise TranspileError(f"{message}", line_number, column, snippet)
+        raise TranspileError(message, line_number, column, snippet, source_file=self.source_path)
 
     def _enforce_formatting(self) -> None:
         """Raise a Formatting Error if source contains tabs, trailing whitespace,

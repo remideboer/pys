@@ -101,12 +101,14 @@ try:
     Parser(source, source_path=source_path).parse()
     print(json.dumps({"ok": True}))
 except TranspileError as exc:
+    sf = getattr(exc, "source_file", None)
     print(json.dumps({
         "ok": False,
-        "message": str(exc),
+        "message": exc.args[0] if exc.args else str(exc),
         "line": getattr(exc, "line_number", None),
         "column": getattr(exc, "column", None),
         "code_line": getattr(exc, "code_line", None),
+        "source_file": str(sf) if sf else None,
     }))
 except Exception as exc:
     print(json.dumps({"ok": False, "message": f"{type(exc).__name__}: {exc}"}))
