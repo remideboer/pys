@@ -1,0 +1,47 @@
+# examples/concurrency — structured tasks / await / shared (Policy B)
+# Package helpers used by main.pys in this folder.
+
+# ── Basic join: tasks block waits for every child ─────────
+global function demo_join() {
+    print("--- demo_join ---")
+    tasks {
+        task {
+            print("worker A")
+        }
+        task {
+            print("worker B")
+        }
+        task {
+            print("worker C")
+        }
+    }
+    print("all workers finished")
+}
+
+# ── Read-only capture: outer locals are readable ──────────
+global function demo_readonly_capture() {
+    print("--- demo_readonly_capture ---")
+    string label = "probe"
+    int seed = 7
+    tasks {
+        task {
+            print("label=#s{label} seed=#i{seed}")
+        }
+        task {
+            print("seed squared idea: #i{seed}")
+        }
+    }
+}
+
+# ── Local bindings inside a task are fine ─────────────────
+global function demo_task_locals() {
+    print("--- demo_task_locals ---")
+    tasks {
+        task {
+            int x = 10
+            int y = 20
+            print("local sum=#i{x}")
+            print(y)
+        }
+    }
+}

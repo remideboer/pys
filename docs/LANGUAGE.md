@@ -39,11 +39,12 @@ Typical procedural statements:
 
 | Form | Role |
 |------|------|
-| Declarations | Bind names (`int x = 1`, `var`, `const`, `fix`) |
+| Declarations | Bind names (`int x = 1`, `var`, `const`, `fix`, `shared`) |
 | Assignment | `x = …`, `x += 1`, `x++` / `x--` |
 | Expression statement | Call a function or method |
 | `print` / `return` | Output / leave a function |
 | `break` / `continue` / `pass` | Loop control / empty body |
+| `tasks` / `task` / `await` | Structured concurrency (see §11) |
 
 `print` accepts a bare expression or parentheses:
 
@@ -432,7 +433,82 @@ Tuple / list indexes keep their element types, so `#s{row[0]}` fails if
 
 ---
 
-## 11. Quick example (dense)
+## 11. Concurrency (`tasks` / `task` / `await` / `shared`)
+
+One concurrent unit, structured lifetime, explicit shared mutation. Tasks in the
+same process **share memory** (like OS threads); the `tasks` block does not
+isolate memory — it only starts children and waits for them as a group.
+
+### Vocabulary
+
+| Keyword | Meaning |
+|---------|---------|
+| `task { … }` | One concurrent unit |
+| `tasks { … }` | Bundle of tasks; leaving the block waits for all (and surfaces errors) |
+| `await expr` | Wait until that value is ready (task handle / future) |
+| `shared` | This variable may be mutated across tasks |
+
+### Structured group
+
+```pys
+tasks {
+    task {
+        print("a")
+    }
+    task {
+        print("b")
+    }
+}
+# both finished here
+```
+
+A `task` must appear inside `tasks`. Named tasks create an awaitable handle:
+
+```pys
+tasks {
+    task ready {
+        return 41
+    }
+    task {
+        int n = await ready
+        print(n + 1)
+    }
+}
+```
+
+`await` is only legal inside a `task` body.
+
+### Capture rules (Policy B)
+
+Outer locals captured by a `task` are **read-only** unless declared `shared`.
+Mutation of a non-shared outer name is a transpile error.
+
+```pys
+int local = 1
+shared int counter = 0
+
+tasks {
+    task {
+        print(local)       # OK: read
+        # local = 2        # error: capture is immutable
+        counter = counter + 1   # OK: explicitly shared
+    }
+}
+```
+
+`shared` makes cross-task mutation intentional and visible in the source — not
+tribal knowledge. Prefer immutable captures and message-style results (`return` /
+`await`) when you can; use `shared` when tasks must update common state.
+
+### Runtime note
+
+The transpiler lowers `tasks`/`task` to a thread-pool join. `shared` values use
+a locked cell. Do not import `threading` / `asyncio` for this pattern in PYS
+source — stay on the language keywords.
+
+---
+
+## 12. Quick example (dense)
 
 ```pys
 import vehicles
@@ -474,5 +550,6 @@ For a full walkthrough, see `examples/main.pys` and `examples/vehicles.pys`.
 | `docs/language-railroad.html` | Railroad diagram visuals |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
 | `examples/main.pys` | Dense feature showcase (not the curriculum path) |
+| `examples/concurrency/` | `tasks` / `task` / `await` / `shared` showcase package |
 | `transpiler/language_spec.py` | Line translation rules |
 | `pys.deps` | External Python dependencies (not language syntax) |

@@ -1,0 +1,61 @@
+# Pipelines and multiple tasks groups in one program.
+
+global function demo_two_groups() {
+    print("--- demo_two_groups ---")
+    tasks {
+        task {
+            print("group-1 / a")
+        }
+        task {
+            print("group-1 / b")
+        }
+    }
+    print("group 1 done; starting group 2")
+    tasks {
+        task {
+            print("group-2 / c")
+        }
+        task {
+            print("group-2 / d")
+        }
+    }
+    print("group 2 done")
+}
+
+global function demo_pipeline_stages() {
+    print("--- demo_pipeline_stages ---")
+    # Stage 1: produce parts concurrently, then join.
+    shared int part_a = 0
+    shared int part_b = 0
+    tasks {
+        task {
+            part_a = 21
+        }
+        task {
+            part_b = 21
+        }
+    }
+    # Stage 2: combine (after stage 1 joined).
+    int combined = part_a + part_b
+    print("pipeline combined:")
+    print(combined)
+}
+
+global function demo_mixed_await_and_shared() {
+    print("--- demo_mixed_await_and_shared ---")
+    shared int seen = 0
+    tasks {
+        task prepared {
+            seen = seen + 1
+            return 100
+        }
+        task {
+            int value = await prepared
+            seen = seen + 1
+            print("value:")
+            print(value)
+        }
+    }
+    print("seen count:")
+    print(seen)
+}

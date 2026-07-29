@@ -1,0 +1,42 @@
+# examples/concurrency/main.pys
+# Entry point for the concurrency subpackage (sibling of examples/main.pys).
+#
+# Run:
+#   python -m transpiler run examples/concurrency/main.pys
+#
+# Vocabulary (Policy B):
+#   tasks { }  — run children together; leave block = wait for all
+#   task { }   — one concurrent unit (optionally named for await)
+#   await x    — wait until named task / future is ready
+#   shared     — allow mutation of this name across tasks
+# Captured outer locals are read-only unless declared shared.
+
+import basics
+import awaiting
+import shared_state
+import pipeline
+import more
+
+print("========== PYS concurrency examples ==========")
+
+demo_join()
+demo_readonly_capture()
+demo_task_locals()
+
+demo_await_one()
+demo_await_fan_in()
+demo_await_chain()
+
+demo_shared_counter()
+demo_shared_with_readonly()
+demo_shared_accumulate()
+
+demo_two_groups()
+demo_pipeline_stages()
+demo_mixed_await_and_shared()
+
+demo_many_workers()
+demo_await_then_shared()
+demo_nested_groups_in_sequence()
+
+print("========== concurrency examples done ==========")

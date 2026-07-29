@@ -1,0 +1,56 @@
+# shared: intentional cross-task mutation (Policy B).
+
+global function demo_shared_counter() {
+    print("--- demo_shared_counter ---")
+    shared int counter = 0
+    tasks {
+        task {
+            counter = counter + 1
+        }
+        task {
+            counter = counter + 1
+        }
+        task {
+            counter = counter + 1
+        }
+    }
+    print("counter after 3 tasks:")
+    print(counter)
+}
+
+global function demo_shared_with_readonly() {
+    print("--- demo_shared_with_readonly ---")
+    string tag = "batch"
+    shared int hits = 0
+    tasks {
+        task {
+            print("tag=#s{tag}")
+            hits = hits + 1
+        }
+        task {
+            print("tag=#s{tag}")
+            hits = hits + 1
+        }
+    }
+    print("hits:")
+    print(hits)
+}
+
+global function demo_shared_accumulate() {
+    print("--- demo_shared_accumulate ---")
+    shared int total = 0
+    int[] amounts = [5, 10, 15]
+    tasks {
+        task {
+            total = total + amounts[0]
+        }
+        task {
+            total = total + amounts[1]
+        }
+        task {
+            total = total + amounts[2]
+        }
+    }
+    print("total of [5,10,15]:")
+    print(total)
+}

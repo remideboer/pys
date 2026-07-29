@@ -1,0 +1,50 @@
+# Named tasks + await: wait until a sibling result is ready.
+
+global function demo_await_one() {
+    print("--- demo_await_one ---")
+    tasks {
+        task answer {
+            return 41
+        }
+        task {
+            int n = await answer
+            int next = n + 1
+            print("awaited #i{n}, next=#i{next}")
+        }
+    }
+}
+
+global function demo_await_fan_in() {
+    print("--- demo_await_fan_in ---")
+    tasks {
+        task left {
+            return 10
+        }
+        task right {
+            return 32
+        }
+        task {
+            int a = await left
+            int b = await right
+            print("fan-in sum=#i{a}")
+            print(a + b)
+        }
+    }
+}
+
+global function demo_await_chain() {
+    print("--- demo_await_chain ---")
+    tasks {
+        task step1 {
+            return 2
+        }
+        task step2 {
+            int x = await step1
+            return x * 3
+        }
+        task {
+            int y = await step2
+            print("2 * 3 = #i{y}")
+        }
+    }
+}

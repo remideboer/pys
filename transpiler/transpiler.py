@@ -15,6 +15,55 @@ from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_
 INDENT_SIZE = 4
 TOP_LEVEL_VISIBILITY = ("global", "package", "module")
 
+# Injected when a file uses tasks / task / await / shared.
+_CONCURRENCY_PREAMBLE = '''from concurrent.futures import Future, ThreadPoolExecutor, wait as _pys_wait
+from threading import Event as _PysEvent, Lock as _PysLock
+
+class _PysShared:
+    __slots__ = ("value", "_lock")
+    def __init__(self, value):
+        self.value = value
+        self._lock = _PysLock()
+    def set(self, value):
+        with self._lock:
+            self.value = value
+            return value
+    def iadd(self, delta):
+        with self._lock:
+            self.value += delta
+            return self.value
+    def isub(self, delta):
+        with self._lock:
+            self.value -= delta
+            return self.value
+
+def _pys_await(value):
+    if isinstance(value, Future):
+        return value.result()
+    result = getattr(value, "result", None)
+    if callable(result):
+        return result()
+    return value
+
+def _pys_run_tasks(fns, futures):
+    if not fns:
+        return
+    ready = _PysEvent()
+    def _wrap(fn):
+        def _inner():
+            ready.wait()
+            return fn()
+        return _inner
+    with ThreadPoolExecutor(max_workers=max(1, len(fns))) as pool:
+        for name, fn in fns.items():
+            futures[name] = pool.submit(_wrap(fn))
+        ready.set()
+        done, _ = _pys_wait(futures.values())
+        for fut in done:
+            fut.result()
+
+'''
+
 
 @dataclass
 class ModuleInfo:
@@ -87,6 +136,16 @@ class Parser:
         self.constants: set[str] = set()
         # Names declared with fix (runtime-initialized, immutable after assignment).
         self.fixed_vars: set[str] = set()
+        # Names declared with shared (mutable across tasks; Policy B).
+        self.shared_variables: set[str] = set()
+        # Named task handles awaitable inside sibling tasks.
+        self.task_handles: set[str] = set()
+        self.needs_concurrency_runtime = False
+        self._task_serial = 0
+        # Stack of dict variable names for each open `tasks` block.
+        self._tasks_fn_maps: list[str] = []
+        # Locals declared inside each open task (for capture rules).
+        self._task_locals_stack: list[set[str]] = []
         # Names brought into scope by import.
         self.imported_names: set[str] = set()
         # Names seen via imported modules but not in scope here:
@@ -343,6 +402,8 @@ class Parser:
             python_text = "from abc import ABC, abstractmethod\n" + python_text
         if self.needs_array_import:
             python_text = "from array import array\n" + python_text
+        if self.needs_concurrency_runtime:
+            python_text = _CONCURRENCY_PREAMBLE + python_text
         try:
             ast.parse(python_text)
         except SyntaxError as exc:
@@ -497,12 +558,44 @@ class Parser:
             self.loop_counters.append({ctx[1]})
         else:
             self.loop_counters.append(set())
+        if ctx is not None and ctx[0] == "task":
+            self._task_locals_stack.append(set())
+        if ctx is not None and ctx[0] == "tasks":
+            group = ctx[1]
+            map_name = f"_pys_task_fns_{group}"
+            fut_name = f"_pys_futures_{group}"
+            indent = self.indent_stack[-1]
+            self.output_lines.append(f"{' ' * indent}{fut_name} = {{}}")
+            self.output_lines.append(f"{' ' * indent}{map_name} = {{}}")
 
     def _close_block(self, line_number: int) -> None:
         if not self.brace_mode:
             self._error("Unexpected closing brace.", line_number, "}")
         if len(self.indent_stack) == 1:
             self._error("Unexpected closing brace.", line_number, "}")
+        closing_ctx = self.block_context[-1] if len(self.block_context) > 1 else None
+        if closing_ctx is not None and closing_ctx[0] == "task":
+            if self._task_locals_stack:
+                self._task_locals_stack.pop()
+            handle = closing_ctx[1]
+            fn_name = f"__pys_task_{handle}"
+            indent = self.indent_stack[-1]
+            if not self._tasks_fn_maps:
+                self._error("`task` must appear inside `tasks`.", line_number, "}")
+            map_name = self._tasks_fn_maps[-1]
+            # Emit registration at the tasks-body indent (parent of this task).
+            parent_indent = self.indent_stack[-2] if len(self.indent_stack) >= 2 else 0
+            self.output_lines.append(f"{' ' * parent_indent}{map_name}[{handle!r}] = {fn_name}")
+        elif closing_ctx is not None and closing_ctx[0] == "tasks":
+            indent = self.indent_stack[-1]
+            if not self._tasks_fn_maps:
+                self._error("Internal error: closing `tasks` without map.", line_number, "}")
+            map_name = self._tasks_fn_maps.pop()
+            group = map_name.rsplit("_", 1)[-1]
+            fut_name = f"_pys_futures_{group}"
+            self.output_lines.append(
+                f"{' ' * indent}_pys_run_tasks({map_name}, {fut_name})"
+            )
         self.indent_stack.pop()
         if self.loop_counters:
             self.loop_counters.pop()
@@ -1204,8 +1297,20 @@ class Parser:
                     self.pending_block_context = ("loop", var)
                 else:
                     self.pending_block_context = None
+        elif rest == "tasks" or rest.startswith("tasks "):
+            self.pending_block_context = ("tasks", "")
+        elif rest == "task" or re.match(r"task\s+[A-Za-z_]\w*$", rest):
+            m = re.match(r"task(?:\s+(?P<name>[A-Za-z_]\w*))?$", rest)
+            name = (m.group("name") if m else None) or ""
+            self.pending_block_context = ("task", name)
         else:
             self.pending_block_context = None
+
+    def _inside_tasks(self) -> bool:
+        return any(context is not None and context[0] == "tasks" for context in self.block_context)
+
+    def _inside_task(self) -> bool:
+        return any(context is not None and context[0] == "task" for context in self.block_context)
 
     def _inside_class(self) -> bool:
         return any(context is not None and context[0] == "class" for context in self.block_context)
@@ -1829,6 +1934,130 @@ class Parser:
                 column,
             )
 
+    def _enforce_task_capture(self, line: str, line_number: int, raw_line: str) -> None:
+        """Policy B: outer captures are read-only unless declared shared."""
+        if not self._inside_task():
+            return
+        decl = re.match(
+            r"^(?:shared\s+)?(?:var|(?:int|float|char|string|bool|[A-Za-z_]\w*))\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=",
+            line,
+        )
+        if decl:
+            return
+
+        assign = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
+        mutate = re.fullmatch(
+            r"(?P<name>[A-Za-z_]\w*)\s*(?:\+\+|--|[+\-*/%]=)\s*(?P<expr>.*)",
+            line,
+        )
+        name = None
+        if assign:
+            name = assign.group("name")
+        elif mutate:
+            name = mutate.group("name")
+        if not name:
+            return
+        task_locals = self._task_locals_stack[-1] if self._task_locals_stack else set()
+        if name in task_locals or name in self.shared_variables:
+            return
+        if name in self.declared_variables or name in self.imported_names:
+            column = raw_line.find(name) + 1 if raw_line else 1
+            self._error(
+                f"Cannot assign to '{name}' inside task; captured variables are read-only. "
+                f"Declare it `shared` to allow cross-task mutation.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+
+    def _rewrite_shared_python(self, python_line: str) -> str:
+        """Rewrite shared cells to .value / .set / .iadd after line translation."""
+        if not self.shared_variables:
+            return python_line
+        if "_PysShared(" in python_line:
+            return python_line
+
+        stripped = python_line.strip()
+        assign = re.fullmatch(
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            stripped,
+        )
+        if assign and assign.group("name") in self.shared_variables:
+            name = assign.group("name")
+            expr = self._rewrite_shared_reads(assign.group("expr"))
+            return f"{name}.set({expr})"
+
+        iadd = re.fullmatch(
+            r"(?P<name>[A-Za-z_]\w*)\s*\+=\s*(?P<expr>.+)",
+            stripped,
+        )
+        if iadd and iadd.group("name") in self.shared_variables:
+            name = iadd.group("name")
+            expr = self._rewrite_shared_reads(iadd.group("expr").strip() or "1")
+            return f"{name}.iadd({expr})"
+
+        isub = re.fullmatch(
+            r"(?P<name>[A-Za-z_]\w*)\s*-=\s*(?P<expr>.+)",
+            stripped,
+        )
+        if isub and isub.group("name") in self.shared_variables:
+            name = isub.group("name")
+            expr = self._rewrite_shared_reads(isub.group("expr").strip() or "1")
+            return f"{name}.isub({expr})"
+
+        return self._rewrite_shared_reads(python_line)
+
+    def _rewrite_shared_reads(self, text: str) -> str:
+        """Replace shared names with `.value`, leaving string/char literals intact."""
+        if not self.shared_variables:
+            return text
+        out: list[str] = []
+        i = 0
+        n = len(text)
+        while i < n:
+            ch = text[i]
+            if ch in {'"', "'"}:
+                quote = ch
+                out.append(ch)
+                i += 1
+                while i < n:
+                    c = text[i]
+                    out.append(c)
+                    if c == "\\" and i + 1 < n:
+                        out.append(text[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    if c == quote:
+                        break
+                continue
+            # identifier start
+            if ch.isalpha() or ch == "_":
+                j = i + 1
+                while j < n and (text[j].isalnum() or text[j] == "_"):
+                    j += 1
+                word = text[i:j]
+                if word in self.shared_variables:
+                    out.append(f"{word}.value")
+                else:
+                    out.append(word)
+                i = j
+                continue
+            out.append(ch)
+            i += 1
+        return "".join(out)
+
+    def _translate_await_expr(self, expr: str) -> str:
+        expr = expr.strip()
+        if re.fullmatch(r"[A-Za-z_]\w*", expr) and expr in self.task_handles:
+            fut = "_pys_futures_0"
+            if self._tasks_fn_maps:
+                group = self._tasks_fn_maps[-1].rsplit("_", 1)[-1]
+                fut = f"_pys_futures_{group}"
+            return f"_pys_await({fut}[{expr!r}])"
+        return f"_pys_await({self._rewrite_shared_reads(expr)})"
+
     def _register_external_type(self, type_name: str) -> bool:
         """Resolve type_name to a known class/interface/library type. Returns True if valid."""
         primitives = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
@@ -1916,6 +2145,23 @@ class Parser:
         raw_line: str | None = None,
     ) -> None:
         source_line = raw_line if raw_line is not None else line
+        shared_match = re.fullmatch(
+            r"shared\s+(?P<type>int|float|char|string|bool|[A-Za-z_]\w*)\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+        if shared_match:
+            name = shared_match.group("name")
+            type_name = shared_match.group("type")
+            self.declared_variables.add(name)
+            self.shared_variables.add(name)
+            self.variable_types[name] = type_name
+            self.needs_concurrency_runtime = True
+            if self._inside_task() and self._task_locals_stack:
+                self._task_locals_stack[-1].add(name)
+            self._record_symbol(name, line_number, line)
+            return
+
         const_match = self._match_const_decl(line)
         if const_match:
             name = const_match.group("name")
@@ -1940,6 +2186,8 @@ class Parser:
             expr = var_match.group("expr").strip()
             inferred = self._infer_expr_type(expr)
             self.declared_variables.add(name)
+            if self._inside_task() and self._task_locals_stack:
+                self._task_locals_stack[-1].add(name)
             if inferred:
                 self.variable_types[name] = inferred
                 if not inferred.startswith("module:"):
@@ -1981,6 +2229,10 @@ class Parser:
                     "pass",
                     "break",
                     "continue",
+                    "tasks",
+                    "task",
+                    "await",
+                    "shared",
                 }:
                     return
                 # Bare `Type name` without `=` is only a declaration inside classes;
@@ -1992,6 +2244,8 @@ class Parser:
                 else:
                     self._register_external_type(type_name)
                 self.declared_variables.add(name)
+                if self._inside_task() and self._task_locals_stack:
+                    self._task_locals_stack[-1].add(name)
                 full = self._full_type_from_source(source_line, type_name)
                 self.variable_types[name] = full or type_name
                 if "=" in line:
@@ -2379,6 +2633,7 @@ class Parser:
         self._enforce_const_declaration(line, line_number, raw_line)
         self._enforce_fix_declaration(line, line_number, raw_line)
         self._enforce_const_assignment(line, line_number, raw_line)
+        self._enforce_task_capture(line, line_number, raw_line)
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
         self._enforce_seen_name_access(line, line_number, raw_line)
@@ -2394,6 +2649,70 @@ class Parser:
                 line_number,
                 raw_line.rstrip(),
                 column,
+            )
+
+        # --- concurrency: tasks / task / await / shared ---
+        if re.fullmatch(r"tasks", line):
+            self.needs_concurrency_runtime = True
+            group = self._task_serial
+            self._task_serial += 1
+            map_name = f"_pys_task_fns_{group}"
+            self._tasks_fn_maps.append(map_name)
+            self.pending_block_context = ("tasks", str(group))
+            # Suite wrapper so nested task `def`s are valid Python.
+            return "if True:"
+
+        task_hdr = re.fullmatch(r"task(?:\s+(?P<name>[A-Za-z_]\w*))?", line)
+        if task_hdr:
+            if not self._inside_tasks():
+                self._error(
+                    "`task` must appear inside a `tasks` block.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            handle = task_hdr.group("name")
+            if not handle:
+                handle = f"_anon_{self._task_serial}"
+                self._task_serial += 1
+            else:
+                self.task_handles.add(handle)
+            self.pending_block_context = ("task", handle)
+            self.needs_concurrency_runtime = True
+            return f"def __pys_task_{handle}():"
+
+        shared_decl = re.fullmatch(
+            r"shared\s+(?P<type>int|float|char|string|bool|[A-Za-z_]\w*)\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+        if shared_decl:
+            self.needs_concurrency_runtime = True
+            name = shared_decl.group("name")
+            expr = shared_decl.group("expr").strip()
+            # Reuse normal expression translation for the initializer.
+            init = LANGUAGE.translate_line(f"int __pys_tmp = {expr}")
+            # typed_decl → "__pys_tmp = <expr>"
+            rhs = init.split("=", 1)[1].strip() if "=" in init else expr
+            return f"{name} = _PysShared({rhs})"
+
+        if re.search(r"\bawait\b", line):
+            if not self._inside_task():
+                self._error(
+                    "`await` is only allowed inside a `task` body.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            # Statement form: await expr
+            if line.startswith("await "):
+                return self._rewrite_shared_python(self._translate_await_expr(line[len("await ") :]))
+            # Embedded in assignment / decl / call args
+            def _await_sub(match: re.Match[str]) -> str:
+                return self._translate_await_expr(match.group(1))
+
+            line = re.sub(
+                r"\bawait\s+(\([^)]+\)|[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)",
+                _await_sub,
+                line,
             )
 
         # Class members with parentheses are constructors/methods (access modifier required).
@@ -2535,6 +2854,16 @@ class Parser:
         if transformed == line and line.strip() == "":
             return ""
 
+        if transformed == line and line.startswith("print "):
+            expression = line[6:].strip()
+            if expression == "":
+                self._error(
+                    "Invalid print statement; expected `print expression`.",
+                    line_number,
+                    line,
+                )
+            return self._rewrite_shared_python(_rewrite_inclusive_slices(f"print({expression})"))
+
         if transformed == line and line.startswith("var "):
             assignment = line[4:].strip()
             if "=" not in assignment:
@@ -2543,7 +2872,7 @@ class Parser:
                     line_number,
                     line,
                 )
-            return assignment
+            return self._rewrite_shared_python(assignment)
 
         if transformed == line and line.startswith("func "):
             match = re.fullmatch(r"func\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*", line)
@@ -2556,17 +2885,7 @@ class Parser:
             name, args = match.groups()
             return f"def {name}({args}):"
 
-        if transformed == line and line.startswith("print "):
-            expression = line[6:].strip()
-            if expression == "":
-                self._error(
-                    "Invalid print statement; expected `print expression`.",
-                    line_number,
-                    line,
-                )
-            return _rewrite_inclusive_slices(f"print({expression})")
-
-        return _rewrite_inclusive_slices(transformed)
+        return self._rewrite_shared_python(_rewrite_inclusive_slices(transformed))
 
 
 def transpile(source_code: str, *, source_path: Path | None = None) -> str:

@@ -118,7 +118,8 @@ This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.
 Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) - overview in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), visuals in [`docs/language-railroad.html`](docs/language-railroad.html).
 
 **Curriculum:** [`tutorials/`](tutorials/) — whole-task classes with scaffolding and JIT cards.  
-**Showcase:** `examples/main.pys` (dense reference, not lesson 1).
+**Showcase:** `examples/main.pys` (dense reference, not lesson 1).  
+**Concurrency:** `examples/concurrency/main.pys` (`tasks` / `task` / `await` / `shared`).
 
 Supported `.pys` syntax (see also `examples/main.pys`):
 
@@ -128,6 +129,7 @@ Supported `.pys` syntax (see also `examples/main.pys`):
 - `if` / `else if` / `else`, `unless`, `loop` (C-for, while, foreach)
 - `print`, string interpolation `{x}` and typed `#i{x}` / `#s{...}` / ...
 - Imports: `import mod`, `import name from mod.pys`, external packages via `pys.deps`
+- Concurrency: `tasks` / `task` / `await` / `shared` (structured group; see `docs/LANGUAGE.md`)
 
 ### Indentation rules
 

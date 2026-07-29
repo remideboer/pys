@@ -168,13 +168,19 @@ statement        = declaration_stmt
                  | if_stmt
                  | unless_stmt
                  | loop_stmt
+                 | tasks_stmt
+                 | task_stmt
+                 | await_stmt
                  | return_stmt
                  | print_stmt
                  | "break"
                  | "continue"
                  | "pass" ;
 
-declaration_stmt = var_decl | const_decl | fix_decl ;
+declaration_stmt = var_decl | const_decl | fix_decl | shared_decl ;
+
+(* shared: intentionally mutable across tasks (Policy B capture rules) *)
+shared_decl      = "shared" , type_name , identifier , "=" , expression ;
 
 assignment       = lvalue , "=" , expression
                  | lvalue , ( "+=" | "-=" | "*=" | "/=" | "%=" ) , expression
@@ -215,6 +221,22 @@ for_step         = identifier , ( "++" | "--" )
 while_loop       = "loop" , "(" , expression , ")" , block ;
 
 foreach_loop     = "loop" , "(" , [ type_name ] , identifier , "in" , expression , ")" , block ;
+
+(* ------------------------- Concurrency ------------------------- *)
+
+(* Structured concurrency: tasks { task { … } … } joins on block exit.
+   Captured outer locals are read-only unless declared shared.
+   await is only valid inside a task body. *)
+
+tasks_stmt       = "tasks" , block ;
+
+task_stmt        = "task" , [ identifier ] , block ;
+(* Optional identifier names the task handle for await inside sibling tasks. *)
+
+await_stmt       = "await" , expression ;
+(* Also allowed as a subexpression: type name = await expression *)
+
+await_expr       = "await" , expression ;
 
 rel_op           = "<" | "<=" | ">" | ">=" | "==" | "!=" | "<>" ;
 
@@ -310,4 +332,5 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   public private protected global package module
   int float char string bool list dict tuple set
   true false null
+  tasks task await shared
 *)
