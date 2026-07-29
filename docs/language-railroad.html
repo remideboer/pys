@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PYS language - EBNF railroad diagrams</title>
+  <style>
+    :root {
+      --bg: #f7f7f5;
+      --panel: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #5c5c5c;
+      --line: #d8d8d4;
+      --accent: #0b6e4f;
+      --term: #1b4332;
+      --term-bg: #d8f3dc;
+      --nt: #1d3557;
+      --nt-bg: #e8f1fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.45;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    header h1 { margin: 0 0 0.35rem; font-size: 1.35rem; }
+    header p { margin: 0; color: var(--muted); max-width: 70ch; }
+    header a { color: var(--accent); }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    nav a {
+      text-decoration: none;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0.2rem 0.7rem;
+      font-size: 0.85rem;
+      background: var(--bg);
+    }
+    nav a:hover { border-color: var(--accent); color: var(--accent); }
+    main { padding: 1rem 1.5rem 3rem; max-width: 1100px; margin: 0 auto; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1rem 1.1rem 1.2rem;
+      margin: 1rem 0;
+    }
+    section h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1.05rem;
+      font-family: ui-monospace, Consolas, monospace;
+      color: var(--accent);
+    }
+    section .ebnf {
+      margin: 0 0 0.85rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-family: ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+    .diagram {
+      overflow-x: auto;
+      padding: 0.35rem 0;
+    }
+    .diagram svg { display: block; }
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .swatch {
+      width: 1rem; height: 0.75rem; border-radius: 3px; border: 1px solid #999;
+    }
+    .swatch.term { background: var(--term-bg); border-color: var(--term); }
+    .swatch.nt { background: var(--nt-bg); border-color: var(--nt); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>PYS EBNF railroad diagrams</h1>
+    <p>
+      Visual syntax diagrams for the modern brace-style grammar.
+      Source of truth: <a href="language.ebnf">language.ebnf</a>
+      &middot; Overview: <a href="LANGUAGE.md">LANGUAGE.md</a>
+    </p>
+    <div class="legend">
+      <span><i class="swatch term"></i> terminal (keyword / punctuation)</span>
+      <span><i class="swatch nt"></i> non-terminal (other rule)</span>
+    </div>
+  </header>
+  <nav id="toc"></nav>
+  <main id="diagrams"></main>
+
+  <script>
+  /* Railroad SVG renderer - ladder layout so every branch connects. */
+  var VS = 14;
+  var HS = 12;
+  var AR = 10;
+  var PAD = 12;
+  var STROKE = '#333';
+
+  function T(text) { return { k: 't', text: String(text) }; }
+  function N(text) { return { k: 'n', text: String(text) }; }
+  function Seq() { return { k: 'seq', items: Array.prototype.slice.call(arguments) }; }
+  function Choice() { return { k: 'choice', items: Array.prototype.slice.call(arguments) }; }
+  function Opt(item) { return { k: 'opt', item: item }; }
+  function Star(item) { return { k: 'star', item: item }; }
+  function Plus(item) { return { k: 'plus', item: item }; }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function hline(x1, y, x2) {
+    if (x2 < x1) { var t = x1; x1 = x2; x2 = t; }
+    if (x2 - x1 < 0.5) return '';
+    return '<path d="M' + x1 + ' ' + y + 'H' + x2 + '" fill="none" stroke="' + STROKE + '" stroke-width="2"/>';
+  }
+
+  function vline(x, y1, y2) {
+    if (y2 < y1) { var t = y1; y1 = y2; y2 = t; }
+    if (y2 - y1 < 0.5) return '';
+    return '<path d="M' + x + ' ' + y1 + 'V' + y2 + '" fill="none" stroke="' + STROKE + '" stroke-width="2"/>';
+  }
+
+  function measure(node) {
+    if (node.k === 't' || node.k === 'n') {
+      var w = Math.max(32, node.text.length * 8.0 + 20);
+      return { w: w, up: 14, down: 14 };
+    }
+    if (node.k === 'seq') {
+      var sw = 0, su = 0, sd = 0;
+      for (var i = 0; i < node.items.length; i++) {
+        var sm = measure(node.items[i]);
+        sw += sm.w + (i ? HS : 0);
+        su = Math.max(su, sm.up);
+        sd = Math.max(sd, sm.down);
+      }
+      return { w: sw, up: su, down: sd };
+    }
+    if (node.k === 'choice') {
+      var ms = [];
+      var maxW = 0;
+      var total = 0;
+      for (var c = 0; c < node.items.length; c++) {
+        var cm = measure(node.items[c]);
+        ms.push(cm);
+        maxW = Math.max(maxW, cm.w);
+        total += cm.up + cm.down + (c ? VS : 0);
+      }
+      return {
+        w: maxW + AR * 2 + 16,
+        up: ms[0].up,
+        down: total - ms[0].up,
+        _ms: ms,
+        _maxW: maxW
+      };
+    }
+    if (node.k === 'opt') {
+      var om = measure(node.item);
+      return { w: om.w + AR * 2 + 16, up: om.up, down: om.down + VS + 10 };
+    }
+    if (node.k === 'star' || node.k === 'plus') {
+      var rm = measure(node.item);
+      return {
+        w: rm.w + AR * 2 + 20,
+        up: rm.up + (node.k === 'star' ? VS + 8 : 0),
+        down: rm.down + VS + 10
+      };
+    }
+    return { w: 20, up: 10, down: 10 };
+  }
+
+  function render(node, x, y) {
+    var m = measure(node);
+    var svg = '';
+
+    if (node.k === 't' || node.k === 'n') {
+      var fill = node.k === 't' ? '#d8f3dc' : '#e8f1fb';
+      var stroke = node.k === 't' ? '#1b4332' : '#1d3557';
+      var rx = node.k === 't' ? 12 : 4;
+      svg += '<rect x="' + x + '" y="' + (y - 12) + '" width="' + m.w + '" height="24" rx="' + rx + '" fill="' + fill + '" stroke="' + stroke + '"/>';
+      svg += '<text x="' + (x + m.w / 2) + '" y="' + (y + 4) + '" text-anchor="middle" font-family="ui-monospace,Consolas,monospace" font-size="12" fill="' + stroke + '">' + esc(node.text) + '</text>';
+      return { svg: svg, w: m.w };
+    }
+
+    if (node.k === 'seq') {
+      var cx = x;
+      for (var i = 0; i < node.items.length; i++) {
+        if (i) {
+          svg += hline(cx, y, cx + HS);
+          cx += HS;
+        }
+        var r = render(node.items[i], cx, y);
+        svg += r.svg;
+        cx += r.w;
+      }
+      return { svg: svg, w: m.w };
+    }
+
+    if (node.k === 'choice') {
+      var ms = m._ms;
+      var maxW = m._maxW;
+      var leftSpine = x + AR;
+      var rightSpine = x + m.w - AR;
+      var contentLeft = leftSpine + 8;
+      var contentRight = rightSpine - 8;
+
+      /* rail y for each branch */
+      var rails = [];
+      var ry = y;
+      for (var i = 0; i < node.items.length; i++) {
+        rails.push(ry);
+        if (i + 1 < node.items.length) {
+          ry += ms[i].down + VS + ms[i + 1].up;
+        }
+      }
+
+      /* enter / exit on first rail */
+      svg += hline(x, y, leftSpine);
+      svg += hline(rightSpine, y, x + m.w);
+
+      /* vertical spines */
+      if (rails.length > 1) {
+        svg += vline(leftSpine, rails[0], rails[rails.length - 1]);
+        svg += vline(rightSpine, rails[0], rails[rails.length - 1]);
+      }
+
+      for (var b = 0; b < node.items.length; b++) {
+        var rail = rails[b];
+        svg += hline(leftSpine, rail, contentLeft);
+        var br = render(node.items[b], contentLeft, rail);
+        svg += br.svg;
+        /* stretch to right edge of choice so merge always meets */
+        svg += hline(contentLeft + br.w, rail, contentRight);
+        svg += hline(contentRight, rail, rightSpine);
+      }
+      return { svg: svg, w: m.w };
+    }
+
+    if (node.k === 'opt') {
+      var left = x + AR + 8;
+      var right = x + m.w - AR - 8;
+      var bypass = y + measure(node.item).down + VS / 2 + 6;
+      svg += hline(x, y, left);
+      var r = render(node.item, left, y);
+      svg += r.svg;
+      svg += hline(left + r.w, y, x + m.w);
+      /* bypass below */
+      svg += hline(x + AR, y, x + AR);
+      svg += vline(x + AR, y, bypass);
+      svg += hline(x + AR, bypass, x + m.w - AR);
+      svg += vline(x + m.w - AR, bypass, y);
+      return { svg: svg, w: m.w };
+    }
+
+    if (node.k === 'star' || node.k === 'plus') {
+      var left = x + AR + 10;
+      var inner = measure(node.item);
+      var loopY = y + inner.down + VS / 2 + 6;
+      svg += hline(x, y, left);
+      var r = render(node.item, left, y);
+      svg += r.svg;
+      svg += hline(left + r.w, y, x + m.w);
+      /* repeat loop below */
+      svg += vline(left + r.w + 6, y, loopY);
+      svg += hline(left - 6, loopY, left + r.w + 6);
+      svg += vline(left - 6, loopY, y);
+      svg += hline(left - 6, y, left);
+      if (node.k === 'star') {
+        var above = y - inner.up - VS / 2 - 4;
+        svg += vline(x + AR, y, above);
+        svg += hline(x + AR, above, x + m.w - AR);
+        svg += vline(x + m.w - AR, above, y);
+      }
+      return { svg: svg, w: m.w };
+    }
+
+    return { svg: '', w: m.w };
+  }
+
+  function diagram(node) {
+    var m = measure(node);
+    var width = m.w + PAD * 2 + 16;
+    var height = m.up + m.down + PAD * 2;
+    var y = PAD + m.up;
+    var startX = PAD + 8;
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">';
+    svg += '<circle cx="' + (startX - 4) + '" cy="' + y + '" r="3" fill="' + STROKE + '"/>';
+    var r = render(node, startX, y);
+    svg += r.svg;
+    svg += '<circle cx="' + (startX + m.w + 4) + '" cy="' + y + '" r="3" fill="' + STROKE + '"/>';
+    svg += hline(startX - 4, y, startX);
+    svg += hline(startX + m.w, y, startX + m.w + 4);
+    svg += '</svg>';
+    return svg;
+  }
+
+  var rules = [
+    {
+      id: 'program',
+      title: 'program',
+      ebnf: 'program = { top_level } ;',
+      node: Star(N('top_level'))
+    },
+    {
+      id: 'top_level',
+      title: 'top_level',
+      ebnf: 'top_level = import_stmt | declaration | statement ;',
+      node: Choice(N('import_stmt'), N('declaration'), N('statement'))
+    },
+    {
+      id: 'import_stmt',
+      title: 'import_stmt',
+      ebnf: 'import_stmt = "import" module_ref | "import" "all" "from" module_ref | "import" identifier "from" module_ref ;',
+      node: Choice(
+        Seq(T('import'), N('module_ref')),
+        Seq(T('import'), T('all'), T('from'), N('module_ref')),
+        Seq(T('import'), N('identifier'), T('from'), N('module_ref'))
+      )
+    },
+    {
+      id: 'type_expr',
+      title: 'type_expr',
+      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type ;',
+      node: Choice(
+        N('primitive_type'),
+        Seq(N('collection_type'), Opt(N('type_args'))),
+        Seq(N('named_type'), Opt(N('type_args'))),
+        N('array_type')
+      )
+    },
+    {
+      id: 'array_type',
+      title: 'array_type',
+      ebnf: 'array_type = primitive_type "[" [ integer ] "]" ;',
+      node: Seq(N('primitive_type'), T('['), Opt(N('integer')), T(']'))
+    },
+    {
+      id: 'var_decl',
+      title: 'var_decl',
+      ebnf: 'var_decl = type_name identifier "=" expression | "var" identifier "=" expression | array_type identifier "=" array_literal ;',
+      node: Choice(
+        Seq(N('type_name'), N('identifier'), T('='), N('expression')),
+        Seq(T('var'), N('identifier'), T('='), N('expression')),
+        Seq(N('array_type'), N('identifier'), T('='), N('array_literal'))
+      )
+    },
+    {
+      id: 'const_decl',
+      title: 'const_decl / fix_decl',
+      ebnf: '[ top_visibility ] ("const"|"fix") primitive_type identifier "=" expression ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        Choice(T('const'), T('fix')),
+        N('primitive_type'),
+        N('identifier'),
+        T('='),
+        N('expression')
+      )
+    },
+    {
+      id: 'function_decl',
+      title: 'function_decl',
+      ebnf: '[ top_visibility ] "function" [ return_type ] identifier "(" [ parameter_list ] ")" block | "func" ...',
+      node: Choice(
+        Seq(
+          Opt(N('top_visibility')),
+          T('function'),
+          Opt(N('return_type')),
+          N('identifier'),
+          T('('),
+          Opt(N('parameter_list')),
+          T(')'),
+          N('block')
+        ),
+        Seq(T('func'), N('identifier'), T('('), Opt(N('parameter_list')), T(')'), N('block'))
+      )
+    },
+    {
+      id: 'class_decl',
+      title: 'class_decl',
+      ebnf: '[ top_visibility ] [ "sealed" ] "class" identifier [ type_params ] [ inherits/super Id ] [ implements Id {"," Id} ] class_body ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        Opt(T('sealed')),
+        T('class'),
+        N('identifier'),
+        Opt(N('type_params')),
+        Opt(Seq(Choice(T('inherits'), T('super')), N('identifier'))),
+        Opt(Seq(T('implements'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
+        N('class_body')
+      )
+    },
+    {
+      id: 'interface_decl',
+      title: 'interface_decl',
+      ebnf: '[ top_visibility ] "interface" identifier "{" { interface_method } "}" ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        T('interface'),
+        N('identifier'),
+        T('{'),
+        Star(N('interface_method')),
+        T('}')
+      )
+    },
+    {
+      id: 'method_decl',
+      title: 'method_decl',
+      ebnf: 'member_access [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      node: Seq(
+        N('member_access'),
+        Opt(N('return_type')),
+        N('identifier'),
+        T('('),
+        Opt(N('parameter_list')),
+        T(')'),
+        N('block')
+      )
+    },
+    {
+      id: 'if_stmt',
+      title: 'if_stmt',
+      ebnf: '"if" "(" expression ")" block { "else" "if" "(" expression ")" block } [ "else" block ] ;',
+      node: Seq(
+        T('if'), T('('), N('expression'), T(')'), N('block'),
+        Star(Seq(T('else'), T('if'), T('('), N('expression'), T(')'), N('block'))),
+        Opt(Seq(T('else'), N('block')))
+      )
+    },
+    {
+      id: 'unless_stmt',
+      title: 'unless_stmt',
+      ebnf: '"unless" "(" expression ")" block ;',
+      node: Seq(T('unless'), T('('), N('expression'), T(')'), N('block'))
+    },
+    {
+      id: 'loop_stmt',
+      title: 'loop_stmt',
+      ebnf: 'loop_stmt = c_for_loop | while_loop | foreach_loop ;',
+      node: Choice(N('c_for_loop'), N('while_loop'), N('foreach_loop'))
+    },
+    {
+      id: 'c_for_loop',
+      title: 'c_for_loop',
+      ebnf: '"loop" "(" for_init "," for_cond "," for_step ")" block ;',
+      node: Seq(
+        T('loop'), T('('),
+        N('for_init'), T(','), N('for_cond'), T(','), N('for_step'),
+        T(')'), N('block')
+      )
+    },
+    {
+      id: 'while_loop',
+      title: 'while_loop',
+      ebnf: '"loop" "(" expression ")" block ;',
+      node: Seq(T('loop'), T('('), N('expression'), T(')'), N('block'))
+    },
+    {
+      id: 'foreach_loop',
+      title: 'foreach_loop',
+      ebnf: '"loop" "(" [ type_name ] identifier "in" expression ")" block ;',
+      node: Seq(
+        T('loop'), T('('),
+        Opt(N('type_name')), N('identifier'), T('in'), N('expression'),
+        T(')'), N('block')
+      )
+    },
+    {
+      id: 'assignment',
+      title: 'assignment',
+      ebnf: 'lvalue "=" expression | lvalue compound_op expression | lvalue ("++"|"--") ;',
+      node: Choice(
+        Seq(N('lvalue'), T('='), N('expression')),
+        Seq(N('lvalue'), N('compound_op'), N('expression')),
+        Seq(N('lvalue'), Choice(T('++'), T('--')))
+      )
+    },
+    {
+      id: 'compound_op',
+      title: 'compound_op',
+      ebnf: 'compound_op = "+=" | "-=" | "*=" | "/=" | "%=" ;',
+      node: Choice(T('+='), T('-='), T('*='), T('/='), T('%='))
+    },
+    {
+      id: 'print_stmt',
+      title: 'print_stmt',
+      ebnf: '"print" expression | "print" "(" expression ")" ;',
+      node: Choice(
+        Seq(T('print'), N('expression')),
+        Seq(T('print'), T('('), N('expression'), T(')'))
+      )
+    },
+    {
+      id: 'expression',
+      title: 'cast_expr',
+      ebnf: 'cast_expr = [ "(" type_name ")" ] postfix_expr ;',
+      node: Seq(
+        Opt(Seq(T('('), N('type_name'), T(')'))),
+        N('postfix_expr')
+      )
+    },
+    {
+      id: 'constructor_call',
+      title: 'constructor_call',
+      ebnf: 'named_type [ type_args ] "(" [ arg_list ] ")" ;',
+      node: Seq(N('named_type'), Opt(N('type_args')), T('('), Opt(N('arg_list')), T(')'))
+    },
+    {
+      id: 'slice_or_index',
+      title: 'slice_or_index',
+      ebnf: 'expression | [ expression ] ":" [ expression ] [ ":" expression ] ;',
+      node: Choice(
+        N('expression'),
+        Seq(Opt(N('expression')), T(':'), Opt(N('expression')), Opt(Seq(T(':'), N('expression'))))
+      )
+    }
+  ];
+
+  var main = document.getElementById('diagrams');
+  var toc = document.getElementById('toc');
+  rules.forEach(function (rule) {
+    var a = document.createElement('a');
+    a.href = '#' + rule.id;
+    a.textContent = rule.title;
+    toc.appendChild(a);
+
+    var sec = document.createElement('section');
+    sec.id = rule.id;
+    sec.innerHTML = '<h2>' + esc(rule.title) + '</h2><p class="ebnf">' + esc(rule.ebnf) + '</p><div class="diagram">' + diagram(rule.node) + '</div>';
+    main.appendChild(sec);
+  });
+  </script>
+</body>
+</html>

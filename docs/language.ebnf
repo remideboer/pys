@@ -1,0 +1,312 @@
+(*
+  PYS - Extended Backus-Naur Form (EBNF)
+  ========================================
+  Teaching language that transpiles to Python.
+
+  Notation (ISO/IEC 14977-style, with common extensions):
+    =       definition
+    ,       concatenation
+    |       alternation
+    [ ... ]   optional
+    { ... }   zero or more repetitions
+    ( ... )   grouping
+    "..."     terminal string
+    (* ... *) comment
+
+  Lexical conventions:
+    - Source uses UTF-8; statements end at newline (no ";").
+    - Indentation is 4 spaces when not using braces; tabs are illegal.
+    - Brace mode is active when the file contains "{" or "}".
+    - Identifiers are case-sensitive.
+
+  This grammar describes the *intended* modern surface (brace style + typed
+  declarations). A short "Legacy" appendix lists older indent-style forms that
+  the transpiler still accepts.
+*)
+
+(* ------------------------- Lexical ------------------------- *)
+
+letter           = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
+                 | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
+                 | "U" | "V" | "W" | "X" | "Y" | "Z"
+                 | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j"
+                 | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t"
+                 | "u" | "v" | "w" | "x" | "y" | "z" | "_" ;
+digit            = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+identifier       = letter , { letter | digit } ;
+
+integer          = digit , { digit } ;
+float            = digit , { digit } , "." , digit , { digit } ;
+boolean          = "true" | "false" ;
+null_lit         = "null" ;
+
+char_lit         = "'" , character , "'" ;
+string_lit       = '"' , { string_char } , '"'
+                 | "'" , { string_char } , "'" ;
+
+line_comment     = "#" , { character } ;
+block_comment    = "##" , { character } , "/#" ;
+
+(* ------------------------- Program ------------------------- *)
+
+program          = { top_level } ;
+
+top_level        = import_stmt
+                 | declaration
+                 | statement ;
+
+(* ------------------------- Imports ------------------------- *)
+
+import_stmt      = "import" , module_ref
+                 | "import" , "all" , "from" , module_ref
+                 | "import" , identifier , "from" , module_ref ;
+
+module_ref       = module_name , [ ".pys" ] ;
+module_name      = identifier , { ( "." | "/" ) , identifier } ;
+
+(* External Python packages from pys.deps / stdlib use the same import forms,
+   e.g. import mysql.connector *)
+
+(* ------------------------- Visibility ------------------------- *)
+
+top_visibility   = "global" | "package" | "module" ;
+(* Omit -> module-private for top-level exports *)
+
+member_access    = "public" | "private" | "protected" | "module" ;
+
+(* ------------------------- Types ------------------------- *)
+
+primitive_type   = "int" | "float" | "char" | "string" | "bool" ;
+
+array_type       = primitive_type , "[" , [ integer ] , "]" ;
+
+named_type       = identifier ;   (* class, interface, or library type *)
+
+type_args        = "<" , type_expr , { "," , type_expr } , ">" ;
+
+type_expr        = primitive_type
+                 | collection_type , [ type_args ]
+                 | named_type , [ type_args ]
+                 | array_type ;
+
+collection_type  = "list" | "dict" | "tuple" | "set" ;
+
+type_name        = type_expr ;
+
+(* ------------------------- Declarations ------------------------- *)
+
+declaration      = var_decl
+                 | const_decl
+                 | fix_decl
+                 | function_decl
+                 | class_decl
+                 | interface_decl ;
+
+var_decl         = type_name , identifier , "=" , expression
+                 | "var" , identifier , "=" , expression
+                 | array_type , identifier , "=" , array_literal ;
+
+const_decl       = [ top_visibility ] , "const" , primitive_type ,
+                   identifier , "=" , expression ;
+
+fix_decl         = [ top_visibility ] , "fix" , primitive_type ,
+                   identifier , "=" , expression ;
+
+(* ------------------------- Functions ------------------------- *)
+
+function_decl    = [ top_visibility ] , "function" , [ return_type ] ,
+                   identifier , "(" , [ parameter_list ] , ")" , block
+                 | "func" , identifier , "(" , [ parameter_list ] , ")" , block ;
+
+return_type      = primitive_type | named_type | array_type ;
+
+parameter_list   = parameter , { "," , parameter } ;
+parameter        = [ type_name ] , identifier ;
+
+(* ------------------------- Classes ------------------------- *)
+
+class_decl       = [ top_visibility ] , [ "sealed" ] , "class" , identifier ,
+                   [ type_params ] ,
+                   [ ( "inherits" | "super" ) , identifier ] ,
+                   [ "implements" , identifier , { "," , identifier } ] ,
+                   class_body ;
+
+type_params      = "<" , identifier , { "," , identifier } , ">" ;
+
+class_body       = "{" , { class_member } , "}" ;
+
+class_member     = field_decl | method_decl | constructor_decl ;
+
+field_decl       = member_access , type_name , identifier , [ "=" , expression ] ;
+
+method_decl      = member_access , [ return_type ] , identifier ,
+                   "(" , [ parameter_list ] , ")" , block ;
+
+constructor_decl = member_access , identifier ,
+                   "(" , [ parameter_list ] , ")" , block ;
+
+(* Class methods MUST use member_access; "function" / "func" inside a class is illegal.
+   Constructor name equals the enclosing class name. *)
+
+(* ------------------------- Interfaces ------------------------- *)
+
+interface_decl   = [ top_visibility ] , "interface" , identifier ,
+                   "{" , { interface_method } , "}" ;
+
+interface_method = "public" , [ return_type ] , identifier ,
+                   "(" , [ parameter_list ] , ")" ;
+(* No body, no fields. Implementing classes must provide matching methods. *)
+
+(* ------------------------- Blocks & statements ------------------------- *)
+
+block            = "{" , { statement } , "}" ;
+
+statement        = declaration_stmt
+                 | assignment
+                 | expression_stmt
+                 | if_stmt
+                 | unless_stmt
+                 | loop_stmt
+                 | return_stmt
+                 | print_stmt
+                 | "break"
+                 | "continue"
+                 | "pass" ;
+
+declaration_stmt = var_decl | const_decl | fix_decl ;
+
+assignment       = lvalue , "=" , expression
+                 | lvalue , ( "+=" | "-=" | "*=" | "/=" | "%=" ) , expression
+                 | lvalue , ( "++" | "--" ) ;
+
+lvalue           = identifier
+                 | "this" , "." , identifier
+                 | identifier , "." , identifier
+                 | postfix_expr , "[" , expression , "]" ;
+
+expression_stmt  = expression ;
+
+return_stmt      = "return" , [ expression ] ;
+
+print_stmt       = "print" , expression
+                 | "print" , "(" , expression , ")" ;
+
+(* ------------------------- Control flow ------------------------- *)
+
+if_stmt          = "if" , "(" , expression , ")" , block ,
+                   { "else" , "if" , "(" , expression , ")" , block } ,
+                   [ "else" , block ] ;
+
+unless_stmt      = "unless" , "(" , expression , ")" , block ;
+(* Transpiles to: if not (expression) *)
+
+loop_stmt        = c_for_loop | while_loop | foreach_loop ;
+
+c_for_loop       = "loop" , "(" , for_init , "," , for_cond , "," , for_step , ")" , block ;
+
+for_init         = [ primitive_type ] , identifier , "=" , expression ;
+for_cond         = identifier , rel_op , expression ;
+for_step         = identifier , ( "++" | "--" )
+                 | identifier , ( "+=" | "-=" ) , expression ;
+(* Init, condition, and step must refer to the same loop variable.
+   That variable is immutable inside the loop body. *)
+
+while_loop       = "loop" , "(" , expression , ")" , block ;
+
+foreach_loop     = "loop" , "(" , [ type_name ] , identifier , "in" , expression , ")" , block ;
+
+rel_op           = "<" | "<=" | ">" | ">=" | "==" | "!=" | "<>" ;
+
+(* ------------------------- Expressions ------------------------- *)
+
+expression       = or_expr ;
+
+or_expr          = and_expr , { ( "||" | "or" ) , and_expr } ;
+and_expr         = not_expr , { ( "&&" | "and" ) , not_expr } ;
+not_expr         = [ "!" | "not" ] , cmp_expr ;
+cmp_expr         = add_expr , [ rel_op , add_expr ] ;
+add_expr         = mul_expr , { ( "+" | "-" ) , mul_expr } ;
+mul_expr         = unary_expr , { ( "*" | "/" | "%" ) , unary_expr } ;
+
+unary_expr       = [ "+" | "-" ] , cast_expr ;
+cast_expr        = [ "(" , type_name , ")" ] , postfix_expr ;
+
+postfix_expr     = primary ,
+                   { "." , identifier , [ call_suffix ]
+                   | "[" , slice_or_index , "]"
+                   | call_suffix
+                   | "++"
+                   | "--" } ;
+
+call_suffix      = "(" , [ arg_list ] , ")" ;
+
+primary          = identifier
+                 | "this"
+                 | "super"
+                 | literal
+                 | array_literal
+                 | "(" , expression , ")"
+                 | constructor_call ;
+
+constructor_call = named_type , [ type_args ] , "(" , [ arg_list ] , ")" ;
+
+arg_list         = argument , { "," , argument } ;
+argument         = [ identifier , "=" ] , expression ;
+
+literal          = integer | float | boolean | null_lit | char_lit | string_lit ;
+
+array_literal    = "[" , [ expression , { "," , expression } ] , "]" ;
+
+slice_or_index   = expression
+                 | [ expression ] , ":" , [ expression ] , [ ":" , expression ] ;
+(* Array slices use inclusive end indices in PYS (adjusted when transpiling). *)
+
+(* Special forms rewritten by the transpiler:
+     this(args)          -> constructor chaining
+     super(args)         -> super().__init__(args)
+     super.name(args)    -> super().name(args)
+     name.loop(fn)       -> list(map(fn, name))
+*)
+
+(* ------------------------- Strings & interpolation ------------------------- *)
+
+(* Inside string_lit:
+     { expression }              plain interpolation
+     #s{ expression }            must be string
+     #i{ expression }            must be int
+     #f{ expression }            must be float
+     #c{ expression }            must be char
+     #b{ expression }            must be bool
+     #o{ expression }            must be a non-primitive object
+     \#                          literal '#'
+*)
+
+(* ------------------------- Appendix A: Legacy indent style ------------------------- *)
+
+(* Still accepted when the file does not use braces: *)
+
+legacy_if        = "if" , expression , "then" , ":"
+                 , { "elif" , expression , "then" , ":" }
+                 , [ "else" , ":" ] ;
+
+legacy_for       = "for" , expression , "do" , ":" ;
+legacy_while     = "while" , expression , "do" , ":" ;
+legacy_repeat    = "repeat" , integer , "times" , ":" ;
+legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
+
+(* Bodies follow as indented blocks (4 spaces). "let" is rejected; use "var".
+   Semicolons are illegal. *)
+
+(* ------------------------- Appendix B: Keywords ------------------------- *)
+
+(*
+  Reserved / significant words:
+
+  if else unless loop while for repeat times then do elif
+  function func return class interface implements inherits super sealed
+  import from all var const fix print pass break continue
+  this and or not
+  public private protected global package module
+  int float char string bool list dict tuple set
+  true false null
+*)

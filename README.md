@@ -62,20 +62,16 @@ This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.
 
 ## Language Features
 
-Supported `.pys` syntax:
+Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) - overview in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), visuals in [`docs/language-railroad.html`](docs/language-railroad.html).
 
-- `# comment` → comment
-- `let x = 1` → `x = 1`
-- `func name(args):` → `def name(args):`
-- `if condition then:` → `if condition:`
-- `elif condition then:` → `elif condition:`
-- `else:` → `else:`
-- `for x in range(5) do:` → `for x in range(5):`
-- `while x < 5 do:` → `while x < 5:`
-- `repeat 3 times:` → `for _ in range(3):`
-- `print hello` → `print("hello")`
-- `return value` → `return value`
-- `pass` → `pass`
+Supported `.pys` syntax (see also `examples/main.pys`):
+
+- `# comment` / `## ... /#` block comments
+- Typed declarations: `int x = 1`, `var z = 1`, `const` / `fix`
+- `function` / `func`, classes, interfaces, `sealed`, `inherits`, `implements`
+- `if` / `else if` / `else`, `unless`, `loop` (C-for, while, foreach)
+- `print`, string interpolation `{x}` and typed `#i{x}` / `#s{...}` / ...
+- Imports: `import mod`, `import name from mod.pys`, external packages via `pys.deps`
 
 ### Indentation rules
 
