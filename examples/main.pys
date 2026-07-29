@@ -26,6 +26,10 @@ var z = 30
 # const: compile-time immutable
 const int MAX = 100
 
+# fix: runtime immutable (any expression, then locked)
+fix int fixedSum = x + y
+print(fixedSum)
+
 # ── Explicit casting ─────────────────────────────────────
 int a = (int) f
 

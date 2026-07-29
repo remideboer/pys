@@ -542,6 +542,12 @@ def _translate_const_decl(match: Match[str]) -> str:
     return f"{name} = {_rewrite_plus_expr(expr)}"
 
 
+def _translate_fix_decl(match: Match[str]) -> str:
+    name = match.group("name")
+    expr = match.group("expr").strip()
+    return f"{name} = {_rewrite_plus_expr(expr)}"
+
+
 def _translate_assignment(match: Match[str]) -> str:
     name = match.group("name")
     expr = match.group("expr").strip()
@@ -559,6 +565,16 @@ LANGUAGE.add_regex(
     "const_decl",
     r"const\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
     _translate_const_decl,
+)
+LANGUAGE.add_regex(
+    "visible_fix_decl",
+    r"(?:global|package|module)\s+fix\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    _translate_fix_decl,
+)
+LANGUAGE.add_regex(
+    "fix_decl",
+    r"fix\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    _translate_fix_decl,
 )
 LANGUAGE.add_regex(
     "var_decl",

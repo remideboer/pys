@@ -45,6 +45,12 @@ def test_translate_const_decl() -> None:
     assert transpile("const int MAX = 10 + 5\nprint(MAX)\n") == "MAX = 10 + 5\nprint(MAX)\n"
 
 
+def test_translate_fix_decl() -> None:
+    assert LANGUAGE.translate_line("fix int x = sum(4, 5)") == "x = sum(4, 5)"
+    assert LANGUAGE.translate_line("global fix int n = 1 + 2") == "n = 1 + 2"
+    assert transpile("fix int x = 4 + 5\nprint(x)\n") == "x = 4 + 5\nprint(x)\n"
+
+
 def test_translate_array_loop() -> None:
     assert LANGUAGE.translate_line("numbers.loop(print)") == "list(map(print, numbers))"
 

@@ -21,6 +21,7 @@ class ModuleInfo:
     python: str
     exports: dict[str, str]
     constants: set[str]
+    fixed_vars: set[str]
     types: dict[str, str]
     class_parents: dict[str, str | None]
     class_implements: dict[str, list[str]]
@@ -74,6 +75,8 @@ class Parser:
         self.exports: dict[str, str] = {}
         # Names declared with const (immutable after declaration).
         self.constants: set[str] = set()
+        # Names declared with fix (runtime-initialized, immutable after assignment).
+        self.fixed_vars: set[str] = set()
         # Names brought into scope by import.
         self.imported_names: set[str] = set()
         # Names seen via imported modules but not in scope here:
@@ -702,7 +705,7 @@ class Parser:
 
     def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
         match = re.match(
-            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|(?:sealed\s+)?class\b|interface\b|const\b)",
+            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|(?:sealed\s+)?class\b|interface\b|const\b|fix\b)",
             line,
         )
         if not match:
@@ -725,6 +728,11 @@ class Parser:
         if not match:
             match = re.match(
                 r"const\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=",
+                rest,
+            )
+        if not match:
+            match = re.match(
+                r"fix\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)\s*=",
                 rest,
             )
         if match:
@@ -776,6 +784,7 @@ class Parser:
                 python=python,
                 exports=dict(child.exports),
                 constants=set(child.constants),
+                fixed_vars=set(child.fixed_vars),
                 types={
                     name: child.variable_types[name]
                     for name in child.exports
@@ -818,6 +827,8 @@ class Parser:
                 self.variable_types[name] = info.types[name]
             if name in info.constants:
                 self.constants.add(name)
+            if name in info.fixed_vars:
+                self.fixed_vars.add(name)
             self.seen_module_names.pop(name, None)
         for name, visibility in info.exports.items():
             accessible = name in visible
@@ -1443,6 +1454,13 @@ class Parser:
             line,
         )
 
+    def _match_fix_decl(self, line: str) -> re.Match[str] | None:
+        return re.fullmatch(
+            r"(?:(?P<vis>global|package|module)\s+)?fix\s+(?P<type>int|float|char|string|bool)\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+
     def _enforce_const_declaration(self, line: str, line_number: int, raw_line: str) -> None:
         const_match = self._match_const_decl(line)
         if not const_match:
@@ -1481,22 +1499,83 @@ class Parser:
         self.variable_types[name] = type_name
         self.constants.add(name)
 
+    def _enforce_fix_declaration(self, line: str, line_number: int, raw_line: str) -> None:
+        fix_match = self._match_fix_decl(line)
+        if not fix_match:
+            if re.match(r"^(?:(?:global|package|module)\s+)?fix\b", line):
+                self._error(
+                    "Invalid fix declaration; expected `fix <type> name = value` "
+                    "(optional visibility: global/package/module).",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            return
+
+        name = fix_match.group("name")
+        type_name = fix_match.group("type")
+        expr = fix_match.group("expr").strip()
+
+        inferred = self._infer_expr_type(expr)
+        if inferred is not None and not self._is_assignable_to(inferred, type_name):
+            column = raw_line.find(name) + 1 if raw_line else 1
+            self._error(
+                f"Type mismatch: cannot assign {inferred} to fix '{name}' of type {type_name}.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+
+        self.declared_variables.add(name)
+        self.variable_types[name] = type_name
+        self.fixed_vars.add(name)
+
     def _enforce_const_assignment(self, line: str, line_number: int, raw_line: str) -> None:
-        if self._match_const_decl(line):
+        if self._match_const_decl(line) or self._match_fix_decl(line):
             return
         assign = re.fullmatch(r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
-        if not assign:
+        if assign:
+            name = assign.group("name")
+            if name in self.constants:
+                column = raw_line.find(name) + 1 if raw_line else 1
+                self._error(
+                    f"Cannot assign to const '{name}'. Constants are fixed at compile time.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column,
+                )
+            if name in self.fixed_vars:
+                column = raw_line.find(name) + 1 if raw_line else 1
+                self._error(
+                    f"Cannot assign to fix '{name}'. Fixed variables are immutable after assignment.",
+                    line_number,
+                    raw_line.rstrip(),
+                    column,
+                )
             return
-        name = assign.group("name")
-        if name not in self.constants:
-            return
-        column = raw_line.find(name) + 1 if raw_line else 1
-        self._error(
-            f"Cannot assign to const '{name}'. Constants are fixed at compile time.",
-            line_number,
-            raw_line.rstrip(),
-            column,
+
+        mutate = re.fullmatch(
+            r"(?P<name>[A-Za-z_]\w*)\s*(?:\+\+|--|[+\-*/%]=)\s*(?P<expr>.*)",
+            line,
         )
+        if not mutate:
+            return
+        name = mutate.group("name")
+        if name in self.constants:
+            column = raw_line.find(name) + 1 if raw_line else 1
+            self._error(
+                f"Cannot modify const '{name}'. Constants are fixed at compile time.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
+        if name in self.fixed_vars:
+            column = raw_line.find(name) + 1 if raw_line else 1
+            self._error(
+                f"Cannot modify fix '{name}'. Fixed variables are immutable after assignment.",
+                line_number,
+                raw_line.rstrip(),
+                column,
+            )
 
     def _record_declared_variables(self, line: str) -> None:
         primitives = {"int", "float", "char", "string", "bool"}
@@ -1507,6 +1586,14 @@ class Parser:
             self.declared_variables.add(name)
             self.variable_types[name] = const_match.group("type")
             self.constants.add(name)
+            return
+
+        fix_match = self._match_fix_decl(line)
+        if fix_match:
+            name = fix_match.group("name")
+            self.declared_variables.add(name)
+            self.variable_types[name] = fix_match.group("type")
+            self.fixed_vars.add(name)
             return
 
         var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
@@ -1529,7 +1616,7 @@ class Parser:
             if match:
                 name = match.group("name")
                 type_name = match.group("type")
-                if type_name in {"const", "global", "package", "module", "var", "function", "func", "class", "interface"}:
+                if type_name in {"const", "fix", "global", "package", "module", "var", "function", "func", "class", "interface", "sealed"}:
                     return
                 self.declared_variables.add(name)
                 self.variable_types[name] = type_name
@@ -1591,7 +1678,7 @@ class Parser:
     def _enforce_assignment_type(self, line: str, line_number: int, raw_line: str) -> None:
         # Declarations establish type elsewhere; only check plain reassignments here.
         if re.match(
-            r"^(?:var|const|global|package|module|public|private|protected|int|float|char|string|bool)\b",
+            r"^(?:var|const|fix|global|package|module|public|private|protected|int|float|char|string|bool)\b",
             line,
         ):
             return
@@ -1718,8 +1805,10 @@ class Parser:
             "protected",
             "module",
             "const",
+            "fix",
             "global",
             "package",
+            "sealed",
         }
         if type_name in reserved:
             return
@@ -1778,6 +1867,7 @@ class Parser:
         self._record_class_member(line)
         self._record_declared_variables(line)
         self._enforce_const_declaration(line, line_number, raw_line)
+        self._enforce_fix_declaration(line, line_number, raw_line)
         self._enforce_const_assignment(line, line_number, raw_line)
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)

@@ -30,7 +30,7 @@
   },
   "onEnterRules": [
     {
-      "beforeText": "^\\s*(?:if|else if|else|unless|while|for|loop|function|func|class|interface|public|private|protected|module|global|package|const|sealed).*\\{\\s*$",
+      "beforeText": "^\\s*(?:if|else if|else|unless|while|for|loop|function|func|class|interface|public|private|protected|module|global|package|const|fix|sealed).*\\{\\s*$",
       "action": { "indentAction": "Indent" }
     },
     {

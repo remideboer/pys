@@ -299,6 +299,31 @@ MAX = 20
         transpile(source)
 
 
+def test_fix_allows_runtime_initializer() -> None:
+    source = """int a = 4
+int b = 5
+fix int x = a + b
+print(x)
+"""
+    assert "x = a + b" in transpile(source)
+
+
+def test_fix_rejects_reassignment() -> None:
+    source = """fix int x = 9
+x = 10
+"""
+    with pytest.raises(TranspileError, match="Cannot assign to fix 'x'"):
+        transpile(source)
+
+
+def test_fix_rejects_increment() -> None:
+    source = """fix int x = 9
+x++
+"""
+    with pytest.raises(TranspileError, match="Cannot modify fix 'x'"):
+        transpile(source)
+
+
 def test_const_requires_compile_time_initializer() -> None:
     source = """int x = 10
 const int Y = x

@@ -5,7 +5,7 @@ const path = require('path');
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
-  'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const',
+  'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
 ];
 
@@ -235,6 +235,7 @@ except Exception as exc:
         protected: 'Visible in the class and subclasses. Required on fields and methods.',
         module: 'Module-only. On class members: same `.pys` file (required). On top-level functions/classes: default if omitted.',
         const: 'Compile-time constant: `const float PI = 3.14` or `global const float PI = 3.14`.\nCannot be reassigned; initializer must be a constant expression.',
+        fix: 'Runtime immutability: `fix int x = sum(4, 5)`. Initializer may be any expression; value cannot change after assignment.',
         global: 'Top-level export with global access across the whole project. Use: `global function name(...)` or `global const float PI = ...`.',
         package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',

@@ -160,8 +160,26 @@
           }
         },
         {
+          "name": "meta.fix.declaration.pys",
+          "match": "\\b(?:(global|package|module)\\s+)?(fix)\\s+(int|float|char|string|bool)\\s+([A-Za-z_]\\w*)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "storage.modifier.pys"
+            },
+            "3": {
+              "name": "storage.type.pys"
+            },
+            "4": {
+              "name": "variable.other.constant.pys"
+            }
+          }
+        },
+        {
           "name": "storage.modifier.pys",
-          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:sealed\\s+)?class|interface|const)\\b)"
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:sealed\\s+)?class|interface|const|fix)\\b)"
         },
         {
           "name": "meta.function.declaration.pys",
@@ -304,7 +322,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const|sealed)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",
