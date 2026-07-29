@@ -1171,7 +1171,9 @@ class Parser:
                     coll = foreach.group("expr").strip()
                     self.declared_variables.add(var)
                     if type_name:
-                        self.variable_types[var] = type_name
+                        src = raw_line or line
+                        full = self._full_type_from_source(src, type_name)
+                        self.variable_types[var] = full or type_name
                     elif line_number:
                         self._hint_untyped_loop_var(var, coll, line_number, raw_line or line)
                     self.pending_block_context = ("loop", var)
@@ -1281,16 +1283,74 @@ class Parser:
             current = self.class_parents.get(current)
         return False
 
+    @staticmethod
+    def _base_type_name(type_name: str) -> str:
+        """Strip generic args: tuple<int, string> -> tuple."""
+        t = type_name.strip()
+        if "<" in t:
+            return t.split("<", 1)[0].strip()
+        return t
+
+    @staticmethod
+    def _split_angled_commas(text: str) -> list[str]:
+        parts: list[str] = []
+        depth = 0
+        current: list[str] = []
+        for ch in text:
+            if ch == "<":
+                depth += 1
+            elif ch == ">":
+                depth = max(depth - 1, 0)
+            if ch == "," and depth == 0:
+                parts.append("".join(current).strip())
+                current = []
+                continue
+            current.append(ch)
+        tail = "".join(current).strip()
+        if tail:
+            parts.append(tail)
+        return parts
+
+    @classmethod
+    def _extract_type_args(cls, type_name: str) -> list[str]:
+        """Return args from tuple<int, string, string> (supports nested <>)."""
+        t = type_name.strip()
+        lt = t.find("<")
+        if lt < 0 or not t.endswith(">"):
+            return []
+        return cls._split_angled_commas(t[lt + 1 : -1])
+
+    def _full_type_from_source(self, raw_line: str, base: str) -> str | None:
+        """If source has base<...>, return that full type string (balanced <>)."""
+        m = re.search(rf"\b{re.escape(base)}\s*<", raw_line)
+        if not m:
+            return None
+        start = m.start()
+        depth = 0
+        for j in range(m.end() - 1, len(raw_line)):
+            ch = raw_line[j]
+            if ch == "<":
+                depth += 1
+            elif ch == ">":
+                depth -= 1
+                if depth == 0:
+                    return re.sub(r"\s+", " ", raw_line[start : j + 1].strip())
+        return None
+
     def _is_assignable_to(self, actual: str, declared: str) -> bool:
         """Java-style: actual may be a subtype/implementer of declared."""
         if actual == declared:
             return True
-        primitives = {"int", "float", "char", "string", "bool"}
-        if declared in primitives or actual in primitives:
-            return False
-        if self._is_subtype(actual, declared):
+        a_base = self._base_type_name(actual)
+        d_base = self._base_type_name(declared)
+        if a_base == d_base:
             return True
-        if self._type_implements(actual, declared):
+        primitives = {"int", "float", "char", "string", "bool"}
+        if d_base in primitives or a_base in primitives:
+            return False
+        if self._is_subtype(a_base, d_base):
+            return True
+        if self._type_implements(a_base, d_base):
             return True
         return False
 
@@ -1907,7 +1967,8 @@ class Parser:
                 else:
                     self._register_external_type(type_name)
                 self.declared_variables.add(name)
-                self.variable_types[name] = type_name
+                full = self._full_type_from_source(source_line, type_name)
+                self.variable_types[name] = full or type_name
                 if "=" in line:
                     expr = line.split("=", 1)[1].strip()
                     info = self._infer_expr_info(expr)
@@ -2064,6 +2125,21 @@ class Parser:
         if re.fullmatch(r"[A-Za-z_]\w*", expr):
             return self.variable_types.get(expr)
 
+        indexed = re.fullmatch(r"(?P<recv>[A-Za-z_]\w*)\[(?P<idx>[^\]]+)\]", expr)
+        if indexed:
+            recv_t = self.variable_types.get(indexed.group("recv"))
+            if not recv_t:
+                return None
+            if recv_t.endswith("[]"):
+                return recv_t[:-2]
+            args = self._extract_type_args(recv_t)
+            idx = indexed.group("idx").strip()
+            if args and re.fullmatch(r"\d+", idx):
+                i = int(idx)
+                if 0 <= i < len(args):
+                    return args[i]
+            return None
+
         member = re.fullmatch(r"(?P<recv>this|super|[A-Za-z_]\w*)\.(?P<name>[A-Za-z_]\w*)", expr)
         if member:
             # Field value types are not tracked yet; only class identity for receivers.
@@ -2156,19 +2232,20 @@ class Parser:
             var_type = self._infer_expr_type(expr) or self.variable_types.get(expr)
             if var_type is None:
                 continue
+            check_type = self._base_type_name(var_type)
             allowed = spec_to_types[spec]
             if spec == "o":
-                if var_type in primitives:
+                if check_type in primitives:
                     column = raw_line.find(m.group(0)) + 1 if raw_line else 1
                     self._error(
-                        f"Typed interpolation #o{{}} requires an object type, but '{expr}' is {var_type}.",
+                        f"Typed interpolation #o{{}} requires an object type, but '{expr}' is {check_type}.",
                         line_number, raw_line.rstrip(), column,
                     )
-            elif var_type not in allowed:
+            elif check_type not in allowed:
                 spec_label = {"s": "string", "i": "int", "f": "float", "c": "char", "b": "bool"}[spec]
                 column = raw_line.find(m.group(0)) + 1 if raw_line else 1
                 self._error(
-                    f"Typed interpolation #{spec}{{}} requires {spec_label}, but '{expr}' is {var_type}.",
+                    f"Typed interpolation #{spec}{{}} requires {spec_label}, but '{expr}' is {check_type}.",
                     line_number, raw_line.rstrip(), column,
                 )
 

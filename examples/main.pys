@@ -13,15 +13,16 @@ MySQLCursor mycursor = mydb.cursor()
 mycursor.execute("SELECT * FROM combiteelt.soort")
 
 # return type from fetchall() is known → declare it (IDE suggests this if omitted)
-list<tuple<string, string, string>> result = mycursor.fetchall()
+list<tuple> result = mycursor.fetchall()
 print(result)
-loop (tuple<string, string, string> x in result) {
-    print(x)
+loop (tuple x in result) {
+    print("ID: {x[0]}, Naam-NL: {x[1]}, Naam-LT: {x[2]}")
 }
+
 list<tuple<int, string, string>> result2 = mycursor.fetchall()
 print(result2)
 loop (tuple<int, string, string> x in result2) {
-    print(x[0])
+    print("#i{x[0]} is an int, #s{x[1]} is a string, #s{x[2]} is a string")
 }
 mycursor.close()
 mydb.close()

@@ -160,6 +160,27 @@ def test_typed_interpolation_object_rejects_primitive() -> None:
         transpile(source)
 
 
+def test_typed_interpolation_tuple_index_rejects_wrong_spec() -> None:
+    source = (
+        "list<tuple<int, string, string>> rows = null\n"
+        "loop (tuple<int, string, string> x in rows) {\n"
+        '    print("#s{x[0]} wrong")\n'
+        "}\n"
+    )
+    with pytest.raises(TranspileError, match=r"requires string.*'x\[0\]' is int"):
+        transpile(source)
+
+
+def test_typed_interpolation_tuple_index_accepts_correct_spec() -> None:
+    source = (
+        "list<tuple<int, string, string>> rows = null\n"
+        "loop (tuple<int, string, string> x in rows) {\n"
+        '    print("#i{x[0]} #s{x[1]} #s{x[2]}")\n'
+        "}\n"
+    )
+    transpile(source)
+
+
 def test_print_plus_switches_to_string_concat() -> None:
     assert (
         LANGUAGE.translate_line('print(3.14 + 10 + "addada")')
