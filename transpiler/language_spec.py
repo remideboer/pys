@@ -630,7 +630,8 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "visible_function_def",
-    r"(?:global|package|module)\s+function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+    # global function name(...)  or  global function AppStore openStore(...)
+    r"(?:global|package|module)\s+function(?:\s+(?P<rtype>[A-Za-z_]\w*(?:<[^>\n]*>)?(?:\[\])?))?\s+(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
     _translate_function,
 )
 LANGUAGE.add_regex(
@@ -748,7 +749,8 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "function_def",
-    r"function(?:\s+(?:(?P<rtype>int|float|char|string)\s+))?\s*(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
+    # function name(...)  or  function AppStore openStore(...)
+    r"function(?:\s+(?P<rtype>[A-Za-z_]\w*(?:<[^>\n]*>)?(?:\[\])?))?\s+(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)\s*(?::\s*)?",
     _translate_function,
 )
 LANGUAGE.add_regex(

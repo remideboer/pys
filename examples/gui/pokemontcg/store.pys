@@ -149,11 +149,11 @@ package class AppStore {
     }
 }
 
-global function defaultDataDir() {
+global function Path defaultDataDir() {
     return Path("data")
 }
 
-global function openStore() {
+global function AppStore openStore() {
     AppStore store = AppStore(defaultDataDir())
     store.loadAll()
     return store

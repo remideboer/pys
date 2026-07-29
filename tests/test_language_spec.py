@@ -34,6 +34,31 @@ def test_translate_visible_function() -> None:
     assert LANGUAGE.translate_line("global function hello()") == "def hello():"
     assert LANGUAGE.translate_line("package function greet(name)") == "def greet(name):"
     assert LANGUAGE.translate_line("module function secret()") == "def secret():"
+    assert LANGUAGE.translate_line("global function AppStore openStore()") == "def openStore():"
+    assert LANGUAGE.translate_line("package function int multiply(int a, int b)") == "def multiply(a, b):"
+
+
+def test_return_requires_declared_type() -> None:
+    with pytest.raises(TranspileError, match="return type"):
+        transpile(
+            """
+global function bad() {
+    return 1
+}
+"""
+        )
+
+
+def test_function_return_type_form_ok() -> None:
+    out = transpile(
+        """
+global function int answer() {
+    return 42
+}
+"""
+    )
+    assert "def answer():" in out
+    assert "return 42" in out
 
 
 def test_translate_const_decl() -> None:

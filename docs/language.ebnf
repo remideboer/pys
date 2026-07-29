@@ -125,6 +125,10 @@ function_decl    = [ top_visibility ] , "function" , [ return_type ] ,
                    identifier , "(" , [ parameter_list ] , ")" , block
                  | "func" , identifier , "(" , [ parameter_list ] , ")" , block ;
 
+(* Return type is required when the body contains `return expr`.
+   Form:  global function AppStore openStore()
+*)
+
 return_type      = primitive_type | named_type | array_type ;
 
 parameter_list   = parameter , { "," , parameter } ;

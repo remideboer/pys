@@ -243,9 +243,12 @@ function secret() {
 Rules:
 
 1. Prefer `function`; short form `func` also exists
-2. Optional return type before the name: `function int multiply(…)`
+2. **Return type is required** when the body returns a value. Place it after
+   `function` and before the name: `global function AppStore openStore()` /
+   `package function int multiply(…)`
 3. Parameters may be typed: `int a`
 4. Visibility on the function controls who may import it (see §7)
+5. Void functions (no value returned) may omit the return type
 
 Inside a **class**, do not write `function` / `func` — methods use member access
 modifiers instead (`public name(…) { … }`).

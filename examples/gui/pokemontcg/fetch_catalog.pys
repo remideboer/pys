@@ -10,12 +10,12 @@ const string API = "https://api.tcgdex.net/v2/en"
 const string SET_ID = "swsh3"
 const int MAX_CARDS = 35
 
-global function httpGetJson(string url) {
+global function dict httpGetJson(string url) {
     string body = urllib.request.urlopen(url).read().decode("utf-8")
     return json.loads(body)
 }
 
-global function slimCard(dict raw) {
+global function dict slimCard(dict raw) {
     list attacks = []
     list rawAttacks = []
     if ("attacks" in raw) {

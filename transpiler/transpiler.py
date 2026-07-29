@@ -14,6 +14,7 @@ from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_
 
 INDENT_SIZE = 4
 TOP_LEVEL_VISIBILITY = ("global", "package", "module")
+_NOT_IN_FUNCTION = object()
 
 # Injected when a file uses tasks / task / await / shared.
 _CONCURRENCY_PREAMBLE = '''from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait as _pys_wait
@@ -190,6 +191,9 @@ class Parser:
         # Pending task header meta until `{` opens: (py_params, is_template)
         self._pending_task_meta: tuple[str, bool] | None = None
         self._task_meta_stack: list[tuple[str, bool]] = []
+        # Declared return type for the next function block (None = void / undeclared).
+        self._pending_function_return_type: str | None = None
+        self._function_return_type_stack: list[str | None] = []
         # Names brought into scope by import.
         self.imported_names: set[str] = set()
         # Names seen via imported modules but not in scope here:
@@ -598,6 +602,9 @@ class Parser:
         ctx = self.pending_block_context
         self.block_context.append(ctx)
         self.pending_block_context = None
+        if ctx is not None and ctx[0] == "function":
+            self._function_return_type_stack.append(self._pending_function_return_type)
+            self._pending_function_return_type = None
         if ctx is not None and ctx[0] == "loop":
             self.loop_counters.append({ctx[1]})
         else:
@@ -629,6 +636,9 @@ class Parser:
         if len(self.indent_stack) == 1:
             self._error("Unexpected closing brace.", line_number, "}")
         closing_ctx = self.block_context[-1] if len(self.block_context) > 1 else None
+        if closing_ctx is not None and closing_ctx[0] == "function":
+            if self._function_return_type_stack:
+                self._function_return_type_stack.pop()
         if closing_ctx is not None and closing_ctx[0] == "task":
             if self._task_locals_stack:
                 self._task_locals_stack.pop()
@@ -919,8 +929,17 @@ class Parser:
         return f"{name} = array('{typecode}')"
 
     def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
+        # global function AppStore openStore(...)  /  global function name(...)
         match = re.match(
-            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|(?:sealed\s+)?class\b|interface\b|const\b|fix\b)",
+            r"^(?P<vis>global|package|module)\s+"
+            r"(?="
+            r"function\b"
+            r"|func\b"
+            r"|(?:sealed\s+)?class\b"
+            r"|interface\b"
+            r"|const\b"
+            r"|fix\b"
+            r")",
             line,
         )
         if not match:
@@ -935,7 +954,7 @@ class Parser:
             rest = line
             visibility = "module"
         match = re.match(
-            r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(",
+            r"(?:function|func)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:<[^>\n]*>)?(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(",
             rest,
         )
         if not match:
@@ -1308,6 +1327,7 @@ class Parser:
                 self.pending_block_context = ("interface", m.group(1))
             else:
                 self.pending_block_context = ("interface", "")
+            self._pending_function_return_type = None
         elif rest.startswith("class ") or rest.startswith("sealed "):
             stripped = re.sub(r"^sealed\s+", "", rest)
             m = re.match(r"class\s+([A-Za-z_]\w*)", stripped)
@@ -1315,25 +1335,34 @@ class Parser:
                 self.pending_block_context = ("class", m.group(1))
             else:
                 self.pending_block_context = ("class", "")
+            self._pending_function_return_type = None
         elif rest.startswith("function ") or rest.startswith("func "):
-            m = re.match(r"(?:function|func)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)", rest)
+            # Correct form: function AppStore openStore(...)  or  function name(...)
+            m = re.match(
+                r"(?:function|func)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:<[^>\n]*>)?(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)",
+                rest,
+            )
             if m:
-                self.pending_block_context = ("function", m.group(1))
+                self.pending_block_context = ("function", m.group("name"))
+                self._pending_function_return_type = m.group("rtype")
             else:
                 self.pending_block_context = ("function", "")
+                self._pending_function_return_type = None
         elif re.match(
-            r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?[A-Za-z_]\w*\s*\(",
+            r"(?:public|private|protected|module)\s+(?:(?:[A-Za-z_]\w*(?:\[\])?)\s+)?[A-Za-z_]\w*\s*\(",
             line,
         ):
             # Abstract interface methods have no body block.
             if self._directly_inside_interface():
                 self.pending_block_context = None
+                self._pending_function_return_type = None
             else:
                 m = re.match(
-                    r"(?:public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?([A-Za-z_]\w*)\s*\(",
+                    r"(?:public|private|protected|module)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\(",
                     line,
                 )
-                self.pending_block_context = ("function", m.group(1) if m else "")
+                self.pending_block_context = ("function", m.group("name") if m else "")
+                self._pending_function_return_type = m.group("rtype") if m else None
         elif rest.startswith("loop"):
             m = re.match(
                 r"loop\s*\(\s*(?:(?:int|float|char|string|bool)\s+)?(?P<var>[A-Za-z_]\w*)\s*=\s*[^,]+,",
@@ -1371,6 +1400,43 @@ class Parser:
             self.pending_block_context = ("task", name)
         else:
             self.pending_block_context = None
+            self._pending_function_return_type = None
+
+    def _current_function_return_type(self) -> str | None | object:
+        """Return declared return type for innermost function, or a sentinel if not in a function."""
+        for context in reversed(self.block_context):
+            if context is not None and context[0] == "function":
+                if self._function_return_type_stack:
+                    return self._function_return_type_stack[-1]
+                return None
+        return _NOT_IN_FUNCTION
+
+    def _enforce_function_return_declared(
+        self,
+        line: str,
+        line_number: int,
+        raw_line: str,
+    ) -> None:
+        """A `return expr` requires a declared return type on the enclosing function."""
+        if not re.match(r"return\b", line):
+            return
+        if re.fullmatch(r"return", line.strip()):
+            return
+        if not re.match(r"return\s+\S", line):
+            return
+        declared = self._current_function_return_type()
+        if declared is _NOT_IN_FUNCTION:
+            return
+        if declared:
+            return
+        # Methods use block_context ("function", name) too — same rule applies.
+        self._error(
+            "Functions that return a value must declare a return type in the signature "
+            "(e.g. `global function AppStore openStore()` or `public int capacity()`).",
+            line_number,
+            raw_line.rstrip(),
+            code="pys.missing-return-type",
+        )
 
     def _inside_tasks(self) -> bool:
         return any(context is not None and context[0] == "tasks" for context in self.block_context)
@@ -2807,6 +2873,7 @@ class Parser:
         self._enforce_typed_interpolation(line, line_number, raw_line)
         self._enforce_var_initializer_type(line, line_number, raw_line)
         self._enforce_assignment_type(line, line_number, raw_line)
+        self._enforce_function_return_declared(line, line_number, raw_line)
 
         if re.match(r"^let\b", line):
             column = raw_line.find("let") + 1 if raw_line else 1
