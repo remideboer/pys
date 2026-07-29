@@ -11,24 +11,48 @@ This project is a starter transpiler for a simple Python-like teaching language.
 ## Getting Started
 
 ### Install
-Use your normal Python environment:
+Use a normal system (or user) Python — **no project venv**:
 
 ```bash
 python -m pip install -e .
 ```
 
+Dependencies for `.pys` programs are declared in `pys.deps` and cached in a central
+repository (`~/.pys/repository`), similar to Maven's `.m2`. The runner downloads
+missing packages with pip on first use and reuses them afterwards (flyweight).
+
 ### Run a sample file
 
 ```bash
-python -m transpiler run examples/hello.pys
+python -m transpiler run examples/main.pys
 ```
 
 ### Transpile only
 
 ```bash
-python -m transpiler transpile examples/hello.pys .transpiled/hello.py
+python -m transpiler transpile examples/main.pys .transpiled/main.py
 ```
 
+### Project dependencies (`pys.deps`)
+
+Place a `pys.deps` file in the project root (or any parent of the `.pys` file).
+The runner reads it automatically:
+
+```
+[interpreter]
+	version: >=3.10
+	# path: C:\Python311\python.exe
+
+[dependencies]
+	matplotlib
+	mysql-connector-python
+		version: 8.0.33
+		build: run
+```
+
+- `version` defaults to latest when omitted
+- `build: run|test` is optional (omit = both)
+- Override the central repo with env `PYS_REPO`
 ## VS Code Integration
 
 This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.

@@ -143,6 +143,22 @@ c1.drive();
 print("brand of the car is {c1.brand()"); # error, access to c1.brand() is restricted to it's module
 
 
+# dependency management like gradle / maven
+# not using venv — runner refers to central repo (~/.pys/repository) like maven .m2
+# flyweight: each package/version installed once, shared across projects
+# file: pys.deps (read by transpiler/runner; pip downloads into the central repo)
+[interpreter]
+	version: [default any| >=3.9 | < 3.5]
+	path: [for specific path]
+[dependencies]
+	mysql-connector-python
+		version: [default latest when no version is given]
+		build: [run|test] # optional
+	matplotlib
+	my-lib
+	my-other-lib
+
+
 
 
 

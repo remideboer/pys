@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import re
 import subprocess
 import sys
@@ -2072,7 +2073,20 @@ def transpile_path(source_path: Path, target_path: Path) -> None:
 
 def run_source(source_path: Path) -> int:
     """Transpile a source file and execute it with the current Python interpreter."""
+    from .deps import DepsError, load_deps, prepend_pythonpath, resolve_python_executable, resolve_site_paths
+
     source_path = source_path.resolve()
+    env = dict(os.environ)
+    python_exe = sys.executable
+    try:
+        deps_config = load_deps(source_path)
+        if deps_config is not None:
+            python_exe = resolve_python_executable(deps_config)
+            site_paths = resolve_site_paths(deps_config, build="run", python=python_exe)
+            env = prepend_pythonpath(site_paths, env)
+    except DepsError as exc:
+        raise TranspileError(str(exc), source_file=source_path) from exc
+
     if source_path.suffix == ".pys":
         modules = transpile_with_modules(source_path)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -2080,12 +2094,17 @@ def run_source(source_path: Path) -> int:
             for stem, python_text in modules.items():
                 (temp_root / f"{stem}.py").write_text(python_text, encoding="utf-8")
             main_file = temp_root / f"{source_path.stem}.py"
-            process = subprocess.run([sys.executable, str(main_file)], check=False, cwd=temp_root)
+            process = subprocess.run(
+                [python_exe, str(main_file)],
+                check=False,
+                cwd=temp_root,
+                env=env,
+            )
             return process.returncode
 
     with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as temp_file:
         temp_file.write(source_path.read_text(encoding="utf-8"))
         temp_filename = temp_file.name
 
-    process = subprocess.run([sys.executable, temp_filename], check=False)
+    process = subprocess.run([python_exe, temp_filename], check=False, env=env)
     return process.returncode
