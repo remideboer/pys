@@ -131,6 +131,22 @@ class Parser:
                 continue
 
             if not in_string and char == "#":
+                if i + 1 < len(source) and source[i + 1] == "#":
+                    # Multiline comment: ## ... /#
+                    if current.strip():
+                        lines.append((current.rstrip(), current_line_number))
+                        current = ""
+                    end = source.find("/#", i + 2)
+                    if end == -1:
+                        self._error(
+                            "Unterminated multiline comment. Close with /#.",
+                            current_line_number,
+                            source[i:].split("\n")[0],
+                        )
+                    block = source[i:end + 2]
+                    current_line_number += block.count("\n")
+                    i = end + 2
+                    continue
                 if current.strip():
                     lines.append((current.rstrip(), current_line_number))
                     current = ""
@@ -413,9 +429,17 @@ class Parser:
         # each brace-delimited block. Track expected indent per brace depth.
         expected_indent_by_depth: dict[int, int | None] = {}
         depth = 0
+        in_multiline_comment = False
         for idx, line in enumerate(self.raw_lines, start=1):
-            # Skip empty lines and comment-only lines
             stripped = line.strip()
+            if in_multiline_comment:
+                if "/#" in stripped:
+                    in_multiline_comment = False
+                continue
+            if stripped.startswith("##"):
+                if "/#" not in stripped[2:]:
+                    in_multiline_comment = True
+                continue
             if stripped == "" or stripped.startswith("#"):
                 continue
             # Tabs are disallowed

@@ -49,6 +49,20 @@ def test_translate_array_loop() -> None:
     assert LANGUAGE.translate_line("numbers.loop(print)") == "list(map(print, numbers))"
 
 
+def test_multiline_comment_stripped() -> None:
+    source = "int x = 10\n## this is\na multiline\ncomment /#\nprint(x)\n"
+    result = transpile(source)
+    assert "x = 10" in result
+    assert "print(x)" in result
+    assert "multiline" not in result
+
+
+def test_unterminated_multiline_comment() -> None:
+    source = "## this never closes\nint x = 10\n"
+    with pytest.raises(TranspileError, match="Unterminated multiline comment"):
+        transpile(source)
+
+
 def test_translate_loop_with_trailing_spaces() -> None:
     line = "loop (int i = 0, i < 5, i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
