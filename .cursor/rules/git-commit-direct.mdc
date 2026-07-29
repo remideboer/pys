@@ -1,38 +1,30 @@
 ---
-description: Always invoke git commit directly (bypass Cursor trailer wrapper)
+description: Use cmd for shell; call git commit via Python subprocess
 alwaysApply: true
 ---
 
-# Git commits: call git directly
+# Shell and git commits
 
-When creating commits, do **not** run `git commit` through the Cursor shell as a plain shell command. The environment may inject `--trailer`, which fails on older Git (e.g. 2.24: `error: unknown option 'trailer'`).
+On Windows, run shell commands with **cmd**, not PowerShell.
 
-## Do this instead
-
-Invoke git via a subprocess so no wrapper can rewrite the argv:
-
-```python
-# PowerShell / any OS
-python -c "
-from pathlib import Path
-import subprocess
-msg = Path('.git/COMMIT_EDITMSG_TMP')
-msg.write_text('commit subject\n\nbody\n', encoding='utf-8')
-r = subprocess.run(['git', 'commit', '-F', str(msg)])
-msg.unlink(missing_ok=True)
-raise SystemExit(r.returncode)
-"
+```text
+cmd /c "git status"
+cmd /c "git add path1 path2"
 ```
 
-Or call the real binary with an explicit argv that you control from Python/`subprocess` (same idea).
+## Git commit
 
-## Still follow normal commit protocol
+Do **not** run `git commit` as a plain shell command (Cursor may inject `--trailer`, which breaks old Git). Commit via Python:
 
-- Only commit when the user asks
-- Stage intentional files only (no secrets, no `.vsix` junk unless requested)
-- Prefer a message file (`-F`) over fragile multiline `-m` on PowerShell
-- Verify with `git status` / `git log -1` after commit
+```text
+cmd /c "python -c \"from pathlib import Path; import subprocess; p=Path('.git/COMMIT_EDITMSG_TMP'); p.write_text('subject\\n\\nbody\\n', encoding='utf-8'); r=subprocess.run(['git','commit','-F',str(p)]); p.unlink(missing_ok=True); raise SystemExit(r.returncode)\""
+```
 
-## Still OK as shell commands
+Or write a short `.py` under `.git/`, run it with `cmd /c python .git/commit_via_py.py`, then delete it.
 
-`git status`, `git diff`, `git log`, `git add` — these are fine in the shell. Only **`git commit`** must go through a direct subprocess.
+## Protocol
+
+- Only commit when asked
+- Stage only intentional files (no secrets, no `.vsix` unless asked)
+- Verify with `git status` / `git log -1`
+- `git status`, `diff`, `log`, `add` are fine via `cmd /c`

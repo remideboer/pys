@@ -6,8 +6,7 @@ import mysql.connector
 # also valid: import hello from funcs.pys
 # log() in vehicles.pys is module-private and NOT importable
 
-MySQLConnection mydb = mysql.connector.connect("localhost", "root", "kitnipper", "test")
-
+MySQLConnection mydb = mysql.connector.connect(host="localhost", user="root", password="kitnipper", database="combiteelt")
 
 MySQLCursor mycursor = mydb.cursor()
 
@@ -15,10 +14,13 @@ mycursor.execute("SELECT * FROM combiteelt.soort")
 
 # return type from fetchall() is known → declare it (IDE suggests this if omitted)
 list result = mycursor.fetchall()
+print(result)
+# loop (x in result) {
+#     print(x)
+# }
+mycursor.close()
+mydb.close()
 
-loop (x in result) {
-    print(x)
-}
 hello()
 print(PI)
 
