@@ -239,3 +239,31 @@ def test_sealed_class_rejects_inheritance() -> None:
     source = "sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n"
     with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
         Parser(source).parse()
+
+
+def test_inclusive_slice_rewrite() -> None:
+    from transpiler.language_spec import _rewrite_inclusive_slices
+
+    assert _rewrite_inclusive_slices("arr[1:5]") == "arr[1:(5) + 1]"
+    assert _rewrite_inclusive_slices("arr[3:]") == "arr[3:]"
+    assert _rewrite_inclusive_slices("arr[:3]") == "arr[:(3) + 1]"
+    assert _rewrite_inclusive_slices("arr[1:6:2]") == "arr[1:(6) + 1:2]"
+    assert _rewrite_inclusive_slices("arr[i]") == "arr[i]"
+    assert _rewrite_inclusive_slices("print(arr[1:5])") == "print(arr[1:(5) + 1])"
+
+
+def test_array_slicing_transpiles_and_runs() -> None:
+    source = (
+        "int[] arr = [1, 2, 3, 4, 5, 6, 7]\n"
+        "print(arr[1:5])\n"
+        "print(arr[3:])\n"
+        "print(arr[:3])\n"
+        "print(arr[1:6:2])\n"
+    )
+    python = transpile(source)
+    assert "arr[1:(5) + 1]" in python
+    assert "arr[3:]" in python
+    assert "arr[:(3) + 1]" in python
+    assert "arr[1:(6) + 1:2]" in python
+    ns: dict = {}
+    exec(python, ns)  # noqa: S102 — test harness

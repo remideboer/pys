@@ -210,6 +210,153 @@ def _translate_plus_term(term: str) -> str:
     return _translate_string_literal(term)
 
 
+def _split_top_level_colons(content: str) -> list[str]:
+    """Split slice content on ':' at top level (ignore nested [] () and strings)."""
+    parts: list[str] = []
+    current: list[str] = []
+    depth_paren = 0
+    depth_bracket = 0
+    in_string = False
+    quote = ""
+    i = 0
+    while i < len(content):
+        ch = content[i]
+        if in_string:
+            current.append(ch)
+            if ch == "\\" and i + 1 < len(content):
+                current.append(content[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                in_string = False
+            i += 1
+            continue
+        if ch in {'"', "'"}:
+            in_string = True
+            quote = ch
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "(":
+            depth_paren += 1
+            current.append(ch)
+            i += 1
+            continue
+        if ch == ")":
+            depth_paren = max(depth_paren - 1, 0)
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "[":
+            depth_bracket += 1
+            current.append(ch)
+            i += 1
+            continue
+        if ch == "]":
+            depth_bracket = max(depth_bracket - 1, 0)
+            current.append(ch)
+            i += 1
+            continue
+        if ch == ":" and depth_paren == 0 and depth_bracket == 0:
+            parts.append("".join(current))
+            current = []
+            i += 1
+            continue
+        current.append(ch)
+        i += 1
+    parts.append("".join(current))
+    return parts
+
+
+def _translate_slice_content(content: str) -> str:
+    """PYS slices include the end index; Python excludes it — bump end by 1."""
+    parts = _split_top_level_colons(content)
+    if len(parts) < 2 or len(parts) > 3:
+        return content
+    start = _rewrite_inclusive_slices(parts[0])
+    end = parts[1].strip()
+    if end:
+        end = f"({_rewrite_inclusive_slices(end)}) + 1"
+    else:
+        end = ""
+    if len(parts) == 2:
+        return f"{start}:{end}"
+    step = _rewrite_inclusive_slices(parts[2])
+    return f"{start}:{end}:{step}"
+
+
+def _rewrite_inclusive_slices(text: str) -> str:
+    """Rewrite [start:end] / [start:end:step] so end is inclusive (end+1 for Python)."""
+    if ":" not in text or "[" not in text:
+        return text
+    result: list[str] = []
+    i = 0
+    in_string = False
+    quote = ""
+    while i < len(text):
+        ch = text[i]
+        if in_string:
+            result.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                result.append(text[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                in_string = False
+            i += 1
+            continue
+        if ch in {'"', "'"}:
+            in_string = True
+            quote = ch
+            result.append(ch)
+            i += 1
+            continue
+        if ch == "[":
+            # Find matching ']'
+            depth = 1
+            j = i + 1
+            nested_string = False
+            nested_quote = ""
+            while j < len(text) and depth > 0:
+                c = text[j]
+                if nested_string:
+                    if c == "\\" and j + 1 < len(text):
+                        j += 2
+                        continue
+                    if c == nested_quote:
+                        nested_string = False
+                    j += 1
+                    continue
+                if c in {'"', "'"}:
+                    nested_string = True
+                    nested_quote = c
+                    j += 1
+                    continue
+                if c == "[":
+                    depth += 1
+                elif c == "]":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            if depth != 0:
+                result.append(ch)
+                i += 1
+                continue
+            inner = text[i + 1 : j]
+            if ":" in inner:
+                result.append("[")
+                result.append(_translate_slice_content(inner))
+                result.append("]")
+            else:
+                result.append(text[i : j + 1])
+            i = j + 1
+            continue
+        result.append(ch)
+        i += 1
+    return "".join(result)
+
+
 def _rewrite_plus_expr(expr: str) -> str:
     """Left-associative +: numeric until a string appears, then concatenate with str()."""
     expr = expr.strip()

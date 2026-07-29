@@ -9,7 +9,7 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import List, NoReturn
 
-from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_type
+from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_type, _rewrite_inclusive_slices
 
 INDENT_SIZE = 4
 TOP_LEVEL_VISIBILITY = ("global", "package", "module")
@@ -1934,9 +1934,9 @@ class Parser:
                     line_number,
                     line,
                 )
-            return f"print({expression})"
+            return _rewrite_inclusive_slices(f"print({expression})")
 
-        return transformed
+        return _rewrite_inclusive_slices(transformed)
 
 
 def transpile(source_code: str, *, source_path: Path | None = None) -> str:

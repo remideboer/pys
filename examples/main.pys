@@ -67,6 +67,13 @@ int[3] primes = [2, 3, 5]
 # functional iteration
 numbers.loop(print)
 
+# slicing: end index is inclusive; optional step
+int[] arr = [1, 2, 3, 4, 5, 6, 7]
+print(arr[1:5])
+print(arr[3:])
+print(arr[:3])
+print(arr[1:6:2])
+
 # ── Control flow ─────────────────────────────────────────
 # for loop (loop counter is immutable inside the body)
 loop (int i = 0, i < 3, i++) {
