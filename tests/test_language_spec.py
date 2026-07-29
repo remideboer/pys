@@ -57,6 +57,23 @@ def test_multiline_comment_stripped() -> None:
     assert "multiline" not in result
 
 
+def test_loop_counter_immutability_rejects_assignment() -> None:
+    source = "loop(int i=0, i<5, i++) {\n    i = 3\n}\n"
+    with pytest.raises(TranspileError, match="Loop counter 'i' is immutable"):
+        transpile(source)
+
+
+def test_loop_counter_immutability_rejects_increment() -> None:
+    source = "loop(int i=0, i<5, i++) {\n    i++\n}\n"
+    with pytest.raises(TranspileError, match="Loop counter 'i' is immutable"):
+        transpile(source)
+
+
+def test_loop_counter_allowed_outside_loop() -> None:
+    source = "int i = 0\nloop(int i=0, i<5, i++) {\n    print(i)\n}\ni = 10\n"
+    transpile(source)
+
+
 def test_unterminated_multiline_comment() -> None:
     source = "## this never closes\nint x = 10\n"
     with pytest.raises(TranspileError, match="Unterminated multiline comment"):

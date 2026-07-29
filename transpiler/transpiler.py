@@ -91,6 +91,7 @@ class Parser:
         # block_context holds tuples like ("class", "ClassName"), ("interface", "Name"), or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
         self.pending_block_context: tuple[str, str] | None = None
+        self.loop_counters: list[set[str]] = []
         # Enforce formatting rules early: tabs, trailing whitespace, and indentation multiples.
         self._enforce_formatting()
 
@@ -406,8 +407,13 @@ class Parser:
                 "{",
             )
         self.indent_stack.append(self.indent_stack[-1] + INDENT_SIZE)
-        self.block_context.append(self.pending_block_context)
+        ctx = self.pending_block_context
+        self.block_context.append(ctx)
         self.pending_block_context = None
+        if ctx is not None and ctx[0] == "loop":
+            self.loop_counters.append({ctx[1]})
+        else:
+            self.loop_counters.append(set())
 
     def _close_block(self, line_number: int) -> None:
         if not self.brace_mode:
@@ -415,6 +421,8 @@ class Parser:
         if len(self.indent_stack) == 1:
             self._error("Unexpected closing brace.", line_number, "}")
         self.indent_stack.pop()
+        if self.loop_counters:
+            self.loop_counters.pop()
         if len(self.block_context) > 1:
             self.block_context.pop()
 
@@ -915,6 +923,15 @@ class Parser:
                     line,
                 )
                 self.pending_block_context = ("function", m.group(1) if m else "")
+        elif rest.startswith("loop"):
+            m = re.match(
+                r"loop\s*\(\s*(?:(?:int|float|char|string|bool)\s+)?(?P<var>[A-Za-z_]\w*)\s*=\s*[^,]+,",
+                rest,
+            )
+            if m:
+                self.pending_block_context = ("loop", m.group("var"))
+            else:
+                self.pending_block_context = None
         else:
             self.pending_block_context = None
 
@@ -1460,6 +1477,28 @@ class Parser:
             column,
         )
 
+    def _enforce_loop_counter_immutability(self, line: str, line_number: int, raw_line: str) -> None:
+        if not self.loop_counters:
+            return
+        active = set()
+        for counters in self.loop_counters:
+            active |= counters
+        if not active:
+            return
+        for var in active:
+            if re.match(rf"^{re.escape(var)}\s*=\s*", line):
+                column = raw_line.find(var) + 1 if raw_line else 1
+                self._error(
+                    f"Loop counter '{var}' is immutable and cannot be modified inside the loop.",
+                    line_number, raw_line.rstrip(), column,
+                )
+            if re.match(rf"^{re.escape(var)}\s*(\+\+|--|(\+|-)\s*=)", line):
+                column = raw_line.find(var) + 1 if raw_line else 1
+                self._error(
+                    f"Loop counter '{var}' is immutable and cannot be modified inside the loop.",
+                    line_number, raw_line.rstrip(), column,
+                )
+
     def _enforce_typed_interpolation(self, line: str, line_number: int, raw_line: str) -> None:
         spec_to_types: dict[str, set[str]] = {
             "s": {"string"},
@@ -1596,6 +1635,7 @@ class Parser:
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
         self._enforce_seen_name_access(line, line_number, raw_line)
+        self._enforce_loop_counter_immutability(line, line_number, raw_line)
         self._enforce_typed_interpolation(line, line_number, raw_line)
         self._enforce_var_initializer_type(line, line_number, raw_line)
         self._enforce_assignment_type(line, line_number, raw_line)
