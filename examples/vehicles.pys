@@ -1,7 +1,7 @@
 # module: vehicles.pys — vehicle class hierarchy
 # demonstrates interfaces, inheritance, and visibility modifiers
 
-# ── Interfaces (package: importable from the same folder) ─
+# ── Interfaces (package: importable from any file) ────────
 package interface Drivable {
     public start()
     public move()
@@ -125,6 +125,16 @@ package class CargoPlane inherits Plane implements Loadable {
 
     public int capacity() {
         return this.maxLoad
+    }
+}
+
+# ── Ship: Vehicle + Loadable ────────────────────────────
+package class Ship inherits Vehicle implements Loadable {
+    private int maxLoad
+
+    public Ship(string make, string model, int year, int maxLoad) {
+        super(make, model, year)
+        this.maxLoad = maxLoad
     }
 }
 

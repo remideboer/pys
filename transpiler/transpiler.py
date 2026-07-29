@@ -90,6 +90,7 @@ class Parser:
         self.interface_methods: dict[str, dict[str, int]] = {}
         self.class_implements: dict[str, list[str]] = {}
         self.interfaces: set[str] = set()
+        self.class_decl_lines: dict[str, int] = {}
         self.generic_type_params: dict[str, list[str]] = {}
         self.needs_abc_import = False
         self.needs_array_import = False
@@ -1051,15 +1052,21 @@ class Parser:
                 required = self.interface_methods.get(interface_name, {})
                 for method_name, arity in required.items():
                     if method_name not in available:
+                        decl_line = self.class_decl_lines.get(class_name, 0)
                         raise TranspileError(
                             f"Class {class_name} must implement abstract method "
-                            f"'{method_name}' from interface {interface_name}."
+                            f"'{method_name}' from interface {interface_name}.",
+                            line_number=decl_line,
+                            source_file=self.source_path,
                         )
                     if available[method_name] != arity:
+                        decl_line = self.class_decl_lines.get(class_name, 0)
                         raise TranspileError(
                             f"Class {class_name} method '{method_name}' does not match "
                             f"interface {interface_name} (expected {arity} parameter(s), "
-                            f"found {available[method_name]})."
+                            f"found {available[method_name]}).",
+                            line_number=decl_line,
+                            source_file=self.source_path,
                         )
 
     def _is_subtype(self, child: str, parent: str) -> bool:
@@ -1227,7 +1234,7 @@ class Parser:
             return type_name in self.generic_type_params[cls]
         return False
 
-    def _record_class_declaration(self, line: str) -> None:
+    def _record_class_declaration(self, line: str, line_number: int = 0) -> None:
         _, line = self._strip_top_level_visibility(line)
         interface = re.match(r"interface\s+(?P<name>[A-Za-z_]\w*)", line)
         if interface:
@@ -1244,6 +1251,7 @@ class Parser:
         )
         if inherits_implements:
             name = inherits_implements.group("name")
+            self.class_decl_lines[name] = line_number
             self.class_parents[name] = inherits_implements.group("parent")
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1260,6 +1268,7 @@ class Parser:
         )
         if implements:
             name = implements.group("name")
+            self.class_decl_lines[name] = line_number
             self.class_parents.setdefault(name, None)
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1274,6 +1283,7 @@ class Parser:
         )
         if inherits:
             name = inherits.group("name")
+            self.class_decl_lines[name] = line_number
             self.class_parents[name] = inherits.group("parent")
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1281,6 +1291,7 @@ class Parser:
         simple = re.match(r"class\s+(?P<name>[A-Za-z_]\w*)", line)
         if simple:
             name = simple.group("name")
+            self.class_decl_lines[name] = line_number
             self.class_parents.setdefault(name, None)
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1737,7 +1748,7 @@ class Parser:
         line = self._rewrite_generic_type_args(line)
         self._record_top_level_export(line)
         self._set_pending_block_context(line)
-        self._record_class_declaration(line)
+        self._record_class_declaration(line, line_number)
         self._record_class_member(line)
         self._record_declared_variables(line)
         self._enforce_const_declaration(line, line_number, raw_line)
