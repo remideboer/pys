@@ -607,6 +607,11 @@ LANGUAGE.add_regex(
     lambda match: f"{match.group('name')} -= 1",
 )
 LANGUAGE.add_regex(
+    "this_call",
+    r"this\s*\((?P<args>.*)\)",
+    lambda match: f"self.__init__({_strip_type_annotation(match.group('args').strip())})",
+)
+LANGUAGE.add_regex(
     "super_call",
     r"super\s*\((?P<args>.*)\)",
     lambda match: f"super().__init__({match.group('args').strip()})",

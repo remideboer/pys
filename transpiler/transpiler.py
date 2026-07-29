@@ -383,12 +383,17 @@ class Parser:
             overload_index = overloads.index(method_lines)
             if overload_index == 0:
                 dispatcher = f"    def {method_name}(self, *args):\n"
-                for idx, _ in enumerate(overloads):
-                    dispatcher += f"        if len(args) == {idx}:\n"
-                    if idx == 0:
+                for idx, overload in enumerate(overloads):
+                    header_match = re.match(r"^    def\s+[A-Za-z_]\w*\s*\(self(?:,\s*(?P<params>.*))?\)\s*:", overload[0])
+                    param_count = 0
+                    if header_match and header_match.group("params"):
+                        param_count = len([p for p in header_match.group("params").split(",") if p.strip()])
+                    dispatcher += f"        if len(args) == {param_count}:\n"
+                    if param_count == 0:
                         dispatcher += f"            return self._{method_name}_{idx}()\n"
                     else:
-                        dispatcher += f"            return self._{method_name}_{idx}(args[0])\n"
+                        arg_refs = ", ".join(f"args[{j}]" for j in range(param_count))
+                        dispatcher += f"            return self._{method_name}_{idx}({arg_refs})\n"
                 dispatcher += "        raise TypeError(f\"{method_name}() got an unexpected number of arguments\")\n"
                 transformed.append(dispatcher.rstrip("\n"))
             helper_def = method_lines[0].replace(f"def {method_name}", f"def _{method_name}_{overload_index}", 1)
