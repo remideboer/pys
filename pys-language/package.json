@@ -2,9 +2,10 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "publisher": "local",
   "private": true,
+  "icon": "icons/pys-icon.png",
   "scripts": {},
   "engines": {
     "vscode": "^1.80.0"
@@ -34,7 +35,11 @@
         "id": "pys",
         "aliases": ["PYS", "pys"],
         "extensions": [".pys"],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/pys-light.svg",
+          "dark": "./icons/pys-dark.svg"
+        }
       }
     ],
     "grammars": [

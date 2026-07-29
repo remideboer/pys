@@ -9,6 +9,7 @@ Local Cursor / VS Code extension for the PYS teaching language.
 - Snippets for functions, classes, loops, `inherits`, and interpolation
 - Live diagnostics via the workspace transpiler
 - Keyword / type completions and hover hints
+- Language / file icons for `.pys` (braces + run triangle)
 - Run / Debug editor title controls for `.pys` files (same Run slot as Python/Java)
   - `Ctrl+Shift+R` / `Ctrl+Shift+D` — run/debug current `.pys` file
   - `Ctrl+Alt+R` / `Ctrl+Alt+D` — run/debug configured main file
@@ -20,7 +21,7 @@ Local Cursor / VS Code extension for the PYS teaching language.
 ```powershell
 cd pys-language
 npx --yes @vscode/vsce package --allow-missing-repository
-cursor --install-extension .\pys-language-0.0.24.vsix --force
+cursor --install-extension .\pys-language-0.0.25.vsix --force
 ```
 
 Then reload the window (`Developer: Reload Window`).
