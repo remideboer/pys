@@ -461,7 +461,8 @@ tasks {
 ```
 
 Outer locals are **read-only** inside a task unless declared `shared`.  
-Prefer **parameters** for inputs. Runnable suite: `examples/concurrency/main.pys`.
+Prefer **parameters** for inputs. Await edges in a group must form a **DAG** —
+cycles are **rejected** (`pys.await-cycle`). Runnable suite: `examples/concurrency/main.pys`.
 
 ---
 

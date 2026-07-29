@@ -198,7 +198,80 @@ tasks {
 }
 ```
 
-Do **not** build cycles (`a` awaits `b` and `b` awaits `a`) — that can deadlock.
+Do **not** build cycles (`a` awaits `b` and `b` awaits `a`) — the transpiler
+**rejects** await cycles (they would deadlock).
+
+---
+
+## 2b. Deadlocks and await cycles (rejected)
+
+The concurrency model does **not** prevent every possible hang, but the
+transpiler **rejects await cycles** inside a `tasks` group.
+
+**Illegal (mutual wait):**
+
+```pys
+tasks {
+    task a {
+        int x = await b    # ERROR: cycle a → b → a
+        return 1
+    }
+    task b {
+        int y = await a
+        return 2
+    }
+}
+```
+
+**Illegal (self-wait):**
+
+```pys
+tasks {
+    task a {
+        int x = await a    # ERROR
+        return 1
+    }
+}
+```
+
+**Proper use — acyclic producer → consumer:**
+
+```pys
+tasks {
+    task produce(int n) {
+        return n * 2
+    }
+    task {
+        int v = await produce(21)   # consumer waits on producer only
+        print(v)
+    }
+}
+```
+
+**Proper use — stages (separate groups):**
+
+```pys
+tasks {
+    task stage1 { return 1 }
+    task {
+        int x = await stage1
+        # copy out via shared if needed later
+    }
+}
+tasks {
+    task stage2(int n) { return n + 1 }
+    task {
+        int y = await stage2(1)
+    }
+}
+```
+
+Rules of thumb:
+
+1. Await dependencies must form a **DAG** (no loops).
+2. Prefer one **consumer** that awaits producers — not peers awaiting each other.
+3. Use a later `tasks` block for the next stage instead of circular waits.
+4. Structured `tasks { }` still joins children; cycles are about *await edges*, not forgotten joins.
 
 ---
 
@@ -348,7 +421,7 @@ print(seen)    # 2
 | `await` outside a `task` | Illegal — nowhere to suspend |
 | Assigning to a non-`shared` outer name | Capture is read-only |
 | `import threading` / `asyncio` for this | Language keywords are the API |
-| Deadlock cycles with mutual `await` | Group never finishes |
+| Await cycles (`a`↔`b`, or `await` self) | **Rejected** at transpile time (`pys.await-cycle`) |
 
 There is **no** public `run()` / `start()` pair. Lifetime is the `tasks` block; results are `return` + `await`.
 

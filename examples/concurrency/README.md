@@ -36,3 +36,6 @@ tasks {
 ```
 
 Prefer parameters for inputs; use `shared` only for intentional cross-task mutation.
+
+Await edges inside one `tasks` group must form a DAG (no `a`↔`b` cycles) —
+the transpiler rejects cycles. See `docs/CONCURRENCY.md` §2b.

@@ -142,3 +142,86 @@ print(counter)
     out = transpile(source)
     assert '"counter stays literal"' in out
     assert "print(counter.value)" in out
+
+
+def test_await_cycle_rejected() -> None:
+    source = """
+tasks {
+    task a {
+        int x = await b
+        return 1
+    }
+    task b {
+        int y = await a
+        return 2
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Await cycle"):
+        transpile(source)
+
+
+def test_await_self_cycle_rejected() -> None:
+    source = """
+tasks {
+    task a {
+        int x = await a
+        return 1
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Await cycle"):
+        transpile(source)
+
+
+def test_await_template_cycle_rejected() -> None:
+    source = """
+tasks {
+    task ping(int n) {
+        int x = await pong(n)
+        return x
+    }
+    task pong(int n) {
+        int y = await ping(n)
+        return y
+    }
+    task {
+        int z = await ping(1)
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Await cycle"):
+        transpile(source)
+
+
+def test_acyclic_await_ok() -> None:
+    source = """
+tasks {
+    task b {
+        return 2
+    }
+    task a {
+        int x = await b
+        return x + 1
+    }
+    task {
+        int y = await a
+        print(y)
+    }
+}
+"""
+    out = transpile(source)
+    assert ".run()" in out
+
+
+def test_await_unknown_task_rejected() -> None:
+    source = """
+tasks {
+    task a {
+        int x = await missing
+        return 1
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Unknown task"):
+        transpile(source)

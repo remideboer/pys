@@ -235,6 +235,7 @@ rel_op           = "<" | "<=" | ">" | ">=" | "==" | "!=" | "<>" ;
    - Inputs: task name(type p, ...) { } then await name(args)
    - Outputs: return expr then await name / await name(args)
    - await only inside a task body (statement or expression)
+   - await edges within a tasks group must form a DAG (cycles rejected)
    - outer captures are read-only unless declared shared
      (prefer parameters over captures for inputs)
 *)

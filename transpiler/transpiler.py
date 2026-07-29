@@ -182,6 +182,9 @@ class Parser:
         self._task_serial = 0
         # Stack of _PysTaskGroup variable names for open `tasks` blocks.
         self._tasks_groups: list[str] = []
+        # Per open tasks group: await dependency graph (waiter -> awaited names).
+        self._await_graphs: list[dict[str, set[str]]] = []
+        self._tasks_group_nodes: list[set[str]] = []
         # Locals declared inside each open task (for capture rules).
         self._task_locals_stack: list[set[str]] = []
         # Pending task header meta until `{` opens: (py_params, is_template)
@@ -649,6 +652,11 @@ class Parser:
             indent = self.indent_stack[-1]
             if not self._tasks_groups:
                 self._error("Internal error: closing `tasks` without group.", line_number, "}")
+            self._reject_await_cycles(line_number)
+            if self._await_graphs:
+                self._await_graphs.pop()
+            if self._tasks_group_nodes:
+                self._tasks_group_nodes.pop()
             tg_name = self._tasks_groups.pop()
             self.output_lines.append(f"{' ' * indent}{tg_name}.run()")
         self.indent_stack.pop()
@@ -1369,6 +1377,95 @@ class Parser:
 
     def _inside_task(self) -> bool:
         return any(context is not None and context[0] == "task" for context in self.block_context)
+
+    def _current_task_handle(self) -> str | None:
+        for context in reversed(self.block_context):
+            if context is not None and context[0] == "task":
+                return context[1]
+        return None
+
+    def _record_await_edge(self, target: str) -> None:
+        """Record waiter -> awaited for cycle detection within the current tasks group."""
+        if not self._await_graphs:
+            return
+        waiter = self._current_task_handle()
+        if not waiter:
+            return
+        self._await_graphs[-1].setdefault(waiter, set()).add(target)
+
+    def _reject_await_cycles(self, line_number: int) -> None:
+        if not self._await_graphs:
+            return
+        nodes = self._tasks_group_nodes[-1] if self._tasks_group_nodes else set()
+        raw = self._await_graphs[-1]
+        for waiter, targets in raw.items():
+            for target in sorted(targets):
+                if target not in nodes:
+                    self._error(
+                        f"Unknown task '{target}' in await "
+                        f"(from task '{waiter}'). "
+                        f"Declare it in this `tasks` group.",
+                        line_number,
+                        "}",
+                        code="pys.await-unknown",
+                    )
+        graph = {
+            waiter: {t for t in targets if t in nodes}
+            for waiter, targets in raw.items()
+            if waiter in nodes
+        }
+        cycle = self._find_await_cycle(graph)
+        if not cycle:
+            return
+        path = " → ".join(cycle)
+        self._error(
+            f"Await cycle in tasks group (would deadlock): {path}. "
+            f"Await dependencies must form a DAG — a task must not wait "
+            f"(directly or indirectly) on itself. Prefer a consumer that "
+            f"awaits producers, not mutual awaits.",
+            line_number,
+            "}",
+            code="pys.await-cycle",
+        )
+
+    @staticmethod
+    def _find_await_cycle(graph: dict[str, set[str]]) -> list[str] | None:
+        """Return a cycle path [a, b, ..., a] if present."""
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: dict[str, int] = {}
+        parent: dict[str, str | None] = {}
+        nodes = set(graph)
+        for targets in graph.values():
+            nodes.update(targets)
+
+        def dfs(u: str) -> list[str] | None:
+            color[u] = GRAY
+            for v in graph.get(u, ()):
+                c = color.get(v, WHITE)
+                if c == WHITE:
+                    parent[v] = u
+                    found = dfs(v)
+                    if found:
+                        return found
+                elif c == GRAY:
+                    path = [v]
+                    x: str | None = u
+                    while x is not None and x != v:
+                        path.append(x)
+                        x = parent.get(x)
+                    path.append(v)
+                    path.reverse()
+                    return path
+            color[u] = BLACK
+            return None
+
+        for n in nodes:
+            if color.get(n, WHITE) == WHITE:
+                parent[n] = None
+                found = dfs(n)
+                if found:
+                    return found
+        return None
 
     def _inside_class(self) -> bool:
         return any(context is not None and context[0] == "class" for context in self.block_context)
@@ -2727,6 +2824,8 @@ class Parser:
             self._task_serial += 1
             tg_name = f"_pys_tg_{group}"
             self._tasks_groups.append(tg_name)
+            self._await_graphs.append({})
+            self._tasks_group_nodes.append(set())
             self.pending_block_context = ("tasks", str(group))
             # Suite wrapper so nested task `def`s are valid Python.
             return "if True:"
@@ -2758,6 +2857,8 @@ class Parser:
                 self.task_templates.add(handle)
             else:
                 self.task_handles.add(handle)
+            if self._tasks_group_nodes:
+                self._tasks_group_nodes[-1].add(handle)
             py_params = ""
             if params_raw is not None:
                 inner = params_raw[1:-1].strip()
@@ -2802,19 +2903,13 @@ class Parser:
                             line_number,
                             raw_line.rstrip(),
                         )
-                    if name not in self.task_templates:
-                        self._error(
-                            f"Unknown parameterized task '{name}'. "
-                            f"Declare `task {name}(...) {{ ... }}` in this tasks group.",
-                            line_number,
-                            raw_line.rstrip(),
-                        )
+                    # Forward refs OK; unknown names checked when the group closes.
+                    self._record_await_edge(name)
                     return
                 if re.fullmatch(r"[A-Za-z_]\w*", expr):
-                    if expr in self.task_templates:
-                        return
-                    if expr in self.task_handles:
-                        return
+                    # Always record (incl. forward refs / self) for cycle checks.
+                    self._record_await_edge(expr)
+                    return
 
             if line.startswith("await "):
                 target = line[len("await ") :]
