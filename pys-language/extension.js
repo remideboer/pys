@@ -42,6 +42,21 @@ function activate(context) {
     return vscode.workspace.getConfiguration('pys').get('libraryTyping.usageTips', false);
   }
 
+  /** Show Run/Debug title icons only for .pys files without Error diagnostics. */
+  function refreshRunnableContext(document) {
+    const active = vscode.window.activeTextEditor;
+    if (!active || active.document.languageId !== 'pys' || active.document.uri.scheme !== 'file') {
+      vscode.commands.executeCommand('setContext', 'pys.fileRunnable', false);
+      return;
+    }
+    if (document && active.document.uri.toString() !== document.uri.toString()) {
+      return;
+    }
+    const diags = diagnosticCollection.get(active.document.uri) || [];
+    const hasError = diags.some((d) => d.severity === vscode.DiagnosticSeverity.Error);
+    vscode.commands.executeCommand('setContext', 'pys.fileRunnable', !hasError);
+  }
+
   function appendTips(message, tips) {
     if (!usageTipsEnabled() || !tips || !tips.length) {
       return message;
@@ -116,12 +131,14 @@ function activate(context) {
   async function validateDocument(document) {
     if (document.languageId !== 'pys' || document.uri.scheme !== 'file') {
       diagnosticCollection.delete(document.uri);
+      refreshRunnableContext(document);
       return;
     }
 
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
       diagnosticCollection.delete(document.uri);
+      refreshRunnableContext(document);
       return;
     }
 
@@ -175,6 +192,7 @@ function activate(context) {
             diagnostics.push(createHintDiagnostic(hint, document));
           }
           diagnosticCollection.set(document.uri, diagnostics);
+          afterDiagnosticsUpdated(document);
         } catch (error) {
           diagnosticCollection.set(document.uri, [
             new vscode.Diagnostic(
@@ -183,6 +201,7 @@ function activate(context) {
               vscode.DiagnosticSeverity.Error,
             ),
           ]);
+          afterDiagnosticsUpdated(document);
         }
         resolve();
       });
@@ -191,6 +210,7 @@ function activate(context) {
           validateChild = null;
         }
         diagnosticCollection.set(document.uri, []);
+        afterDiagnosticsUpdated(document);
         resolve();
       });
     });
@@ -206,21 +226,35 @@ function activate(context) {
   }
 
   function provideCodeLenses(document, token) {
+    const diags = diagnosticCollection.get(document.uri) || [];
+    if (diags.some((d) => d.severity === vscode.DiagnosticSeverity.Error)) {
+      return [];
+    }
     const top = new vscode.Range(0, 0, 0, 0);
     const runCmd = {
-      title: 'Run',
+      title: '$(play) Run',
       command: 'pys.runFile',
       arguments: [document.uri]
     };
     const debugCmd = {
-      title: 'Debug',
+      title: '$(debug-alt) Debug',
       command: 'pys.debugFile',
       arguments: [document.uri]
     };
     return [new vscode.CodeLens(top, runCmd), new vscode.CodeLens(top, debugCmd)];
   }
 
-  context.subscriptions.push(vscode.languages.registerCodeLensProvider({ language: 'pys' }, { provideCodeLenses }));
+  const codeLensChange = new vscode.EventEmitter();
+  context.subscriptions.push(codeLensChange);
+  context.subscriptions.push(vscode.languages.registerCodeLensProvider(
+    { language: 'pys' },
+    { provideCodeLenses, onDidChangeCodeLenses: codeLensChange.event },
+  ));
+
+  function afterDiagnosticsUpdated(document) {
+    refreshRunnableContext(document);
+    codeLensChange.fire();
+  }
   context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ language: 'pys' }, {
     provideCompletionItems() {
       const items = [];
@@ -540,9 +574,19 @@ function activate(context) {
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (editor && editor.document.languageId === 'pys') {
+      refreshRunnableContext(editor.document);
       scheduleValidate(editor.document);
+    } else {
+      refreshRunnableContext(null);
     }
   }));
+
+  // Optimistic: show Run/Debug until the first validation reports an Error.
+  if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'pys') {
+    vscode.commands.executeCommand('setContext', 'pys.fileRunnable', true);
+  } else {
+    vscode.commands.executeCommand('setContext', 'pys.fileRunnable', false);
+  }
 
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration('pys.libraryTyping')) {

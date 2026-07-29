@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.21",
+  "version": "0.0.23",
   "publisher": "local",
   "private": true,
   "scripts": {},
@@ -62,44 +62,58 @@
     "commands": [
       {
         "command": "pys.runFile",
-        "title": "PYS: Run File",
+        "title": "Run File",
+        "category": "PYS",
         "icon": "$(play)"
       },
       {
         "command": "pys.debugFile",
-        "title": "PYS: Debug File",
+        "title": "Debug File",
+        "category": "PYS",
         "icon": "$(debug-alt)"
       }
     ],
     "menus": {
-      "editor/title": [
+      "editor/title/run": [
         {
           "command": "pys.runFile",
-          "when": "resourceLangId == pys",
-          "group": "navigation"
+          "when": "resourceExtname == .pys && !isInDiffEditor",
+          "group": "navigation@0"
         },
         {
           "command": "pys.debugFile",
-          "when": "resourceLangId == pys",
-          "group": "navigation"
+          "when": "resourceExtname == .pys && !isInDiffEditor",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys && !isInDiffEditor",
+          "group": "navigation@100"
+        },
+        {
+          "command": "pys.runFile",
+          "when": "resourceExtname == .pys && !isInDiffEditor",
+          "group": "navigation@101"
         }
       ],
       "editor/context": [
         {
           "command": "pys.runFile",
-          "when": "resourceLangId == pys",
-          "group": "navigation"
+          "when": "resourceExtname == .pys",
+          "group": "navigation@1"
         },
         {
           "command": "pys.debugFile",
-          "when": "resourceLangId == pys",
-          "group": "navigation"
+          "when": "resourceExtname == .pys",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
         {
           "command": "pys.runFile",
-          "when": "resourceLangId == pys",
+          "when": "resourceExtname == .pys",
           "group": "navigation"
         }
       ]
@@ -108,12 +122,12 @@
       {
         "command": "pys.runFile",
         "key": "ctrl+shift+r",
-        "when": "editorLangId == pys"
+        "when": "resourceExtname == .pys"
       },
       {
         "command": "pys.debugFile",
         "key": "ctrl+shift+d",
-        "when": "editorLangId == pys"
+        "when": "resourceExtname == .pys"
       }
     ]
   },
