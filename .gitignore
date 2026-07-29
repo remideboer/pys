@@ -15,8 +15,9 @@ venv/
 env/
 ENV/
 
-# VS Code
-.vscode/
+# VS Code — ignore local IDE files, keep shared settings
+.vscode/*
+!.vscode/settings.json
 
 # Pytest
 .pytest_cache/

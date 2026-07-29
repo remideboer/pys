@@ -1,0 +1,113 @@
+{
+  "files.associations": {
+    "*.pys": "pys"
+  },
+  "npm.exclude": [
+    "**/pys-language",
+    "**/pys-language/**"
+  ],
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "keyword.control.pys",
+        "settings": {
+          "foreground": "#569CD6",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "storage.type.pys",
+        "settings": {
+          "foreground": "#4EC9B0",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "storage.type",
+        "settings": {
+          "foreground": "#4EC9B0"
+        }
+      },
+      {
+        "scope": [
+          "punctuation.definition.typeparameters.begin.pys",
+          "punctuation.definition.typeparameters.end.pys",
+          "punctuation.separator.typeparameters.pys"
+        ],
+        "settings": {
+          "foreground": "#808080"
+        }
+      },
+      {
+        "scope": "storage.modifier.pys",
+        "settings": {
+          "foreground": "#C586C0",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "entity.name.function.pys",
+        "settings": {
+          "foreground": "#DCDCAA"
+        }
+      },
+      {
+        "scope": "entity.name.type.class.pys",
+        "settings": {
+          "foreground": "#4EC9B0",
+          "fontStyle": "bold"
+        }
+      },
+      {
+        "scope": "meta.interpolation.pys",
+        "settings": {
+          "foreground": "#9CDCFE"
+        }
+      },
+      {
+        "scope": "string.quoted.pys",
+        "settings": {
+          "foreground": "#CE9178"
+        }
+      },
+      {
+        "scope": "constant.numeric.pys",
+        "settings": {
+          "foreground": "#B5CEA8"
+        }
+      },
+      {
+        "scope": "constant.language.pys",
+        "settings": {
+          "foreground": "#569CD6"
+        }
+      },
+      {
+        "scope": "invalid.illegal.pys",
+        "settings": {
+          "foreground": "#F44747"
+        }
+      }
+    ]
+  },
+  "editor.defaultFormatter": "ms-python.python",
+  "python.languageServer": "None",
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}"
+  ],
+  "python.analysis.indexing": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "debug.saveBeforeStart": "allEditorsInActiveGroup",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  },
+  "[pys]": {
+    "editor.defaultFormatter": "ms-python.python",
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": true
+    }
+  }
+}
