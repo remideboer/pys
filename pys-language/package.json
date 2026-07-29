@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.18",
+  "version": "0.0.20",
   "publisher": "local",
   "engines": {
     "vscode": "^1.80.0"
@@ -12,6 +12,16 @@
     "Snippets"
   ],
   "contributes": {
+    "configuration": {
+      "title": "PYS",
+      "properties": {
+        "pys.libraryTyping.usageTips": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show optional tips for using weakly typed Python library values in a typed way (for example typed loop variables)."
+        }
+      }
+    },
     "languages": [
       {
         "id": "pys",

@@ -46,6 +46,7 @@ class TranspileError(ValueError):
         source_file: Path | None = None,
         code: str | None = None,
         suggested_fix: str | None = None,
+        tips: list[str] | None = None,
     ) -> None:
         super().__init__(message)
         self.line_number = line_number
@@ -54,6 +55,7 @@ class TranspileError(ValueError):
         self.source_file = source_file
         self.code = code
         self.suggested_fix = suggested_fix
+        self.tips = tips or []
 
     def __str__(self) -> str:
         base = super().__str__()
@@ -116,6 +118,10 @@ class Parser:
         self.symbol_locations: dict[str, tuple[Path, int, int]] = {}
         # Type definitions (library or user class) for go-to-definition on type names
         self.type_definitions: dict[str, tuple[Path, int, int]] = {}
+        # list/dict variable → best-known element/value type (from library inference)
+        self.collection_element_types: dict[str, str] = {}
+        # Soft IDE hints (untyped library boundary, typed-usage tips)
+        self.typing_hints: list[dict] = []
         # Validated type names (primitives + user + library) for highlighting
         self.validated_types: set[str] = {
             "int",
@@ -309,6 +315,7 @@ class Parser:
                     source_file=exc.source_file or self.source_path,
                     code=getattr(exc, "code", None),
                     suggested_fix=getattr(exc, "suggested_fix", None),
+                    tips=getattr(exc, "tips", None),
                 ) from exc
             except ValueError as exc:
                 column = raw_line.find(stripped) + 1 if raw_line and stripped else 1
@@ -509,6 +516,7 @@ class Parser:
         *,
         code: str | None = None,
         suggested_fix: str | None = None,
+        tips: list[str] | None = None,
     ) -> NoReturn:
         snippet = line.rstrip()
         raise TranspileError(
@@ -519,6 +527,7 @@ class Parser:
             source_file=self.source_path,
             code=code,
             suggested_fix=suggested_fix,
+            tips=tips,
         )
 
     def _enforce_formatting(self) -> None:
@@ -1102,7 +1111,12 @@ class Parser:
         self._record_seen_module_exports(info, selected)
         return f"from {module_name} import {', '.join(selected)}"
 
-    def _set_pending_block_context(self, line: str) -> None:
+    def _set_pending_block_context(
+        self,
+        line: str,
+        line_number: int = 0,
+        raw_line: str | None = None,
+    ) -> None:
         # Record the incoming block type and name so the open block can store it.
         _, rest = self._strip_top_level_visibility(line)
         if rest.startswith("interface "):
@@ -1152,9 +1166,12 @@ class Parser:
                 if foreach:
                     var = foreach.group("var")
                     type_name = foreach.group("type")
+                    coll = foreach.group("expr").strip()
                     self.declared_variables.add(var)
                     if type_name:
                         self.variable_types[var] = type_name
+                    elif line_number:
+                        self._hint_untyped_loop_var(var, coll, line_number, raw_line or line)
                     self.pending_block_context = ("loop", var)
                 else:
                     self.pending_block_context = None
@@ -1805,7 +1822,13 @@ class Parser:
             column = raw_hint.find(name) + 1
         self.symbol_locations[name] = (self.source_path, line_number, column)
 
-    def _record_declared_variables(self, line: str, line_number: int = 0) -> None:
+    def _record_declared_variables(
+        self,
+        line: str,
+        line_number: int = 0,
+        raw_line: str | None = None,
+    ) -> None:
+        source_line = raw_line if raw_line is not None else line
         const_match = self._match_const_decl(line)
         if const_match:
             name = const_match.group("name")
@@ -1885,9 +1908,115 @@ class Parser:
                 self.variable_types[name] = type_name
                 if "=" in line:
                     expr = line.split("=", 1)[1].strip()
-                    self._infer_expr_type(expr)
+                    info = self._infer_expr_info(expr)
+                    if info:
+                        self._register_external_type(info.pys_type)
+                        self._bind_collection_element(name, info)
+                        if (
+                            info.from_external
+                            and info.weak
+                            and line_number
+                            and not self._source_type_has_args(source_line, type_name)
+                        ):
+                            self._hint_untyped_library_value(
+                                name, info, line_number, source_line
+                            )
+                    else:
+                        self._infer_expr_type(expr)
                 self._record_symbol(name, line_number, line)
                 break
+
+    def _source_type_has_args(self, raw_line: str, type_name: str) -> bool:
+        """True when the source declaration uses generics, e.g. list<tuple<...>>."""
+        return re.search(rf"\b{re.escape(type_name)}\s*<", raw_line) is not None
+
+    def _infer_expr_info(self, expr: str):
+        """Return rich inference for call expressions; None if not a known call."""
+        expr = expr.strip()
+        if not expr:
+            return None
+        from .pytypes import infer_call_return_info
+
+        call = re.fullmatch(
+            r"(?P<recv>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.(?P<method>[A-Za-z_]\w*)\s*\(.*\)",
+            expr,
+        )
+        if not call:
+            return None
+        return infer_call_return_info(
+            call.group("recv"),
+            call.group("method"),
+            variable_types=self.variable_types,
+            imported_modules=self.imported_modules,
+            site_paths=self._deps_paths(),
+            type_modules=self.type_modules,
+        )
+
+    def _bind_collection_element(self, name: str, info) -> None:
+        if info.element_type and info.pys_type in {"list", "set", "tuple"}:
+            self.collection_element_types[name] = info.element_type
+        elif info.element_type and info.pys_type == "dict":
+            self.collection_element_types[name] = info.element_type
+
+    def _hint_untyped_library_value(self, name: str, info, line_number: int, raw_line: str) -> None:
+        from .pytypes import _usage_tips_for
+
+        column = raw_line.find(name) + 1 if name in raw_line else 1
+        tips = _usage_tips_for(info.pys_type, info.element_type, name)
+        element_note = (
+            f" Best element/row type for this API: `{info.element_type}`."
+            if info.element_type
+            else ""
+        )
+        self.typing_hints.append(
+            {
+                "line": line_number,
+                "column": column,
+                "code": "pys.untyped-library",
+                "message": (
+                    f"'{name}' comes from a Python library with weak/untyped return information."
+                    f" Prefer treating it as typed in PYS.{element_note}"
+                ),
+                "tips": tips,
+                "suggested_loop": (
+                    f"loop ({info.element_type} x in {name})"
+                    if info.pys_type == "list" and info.element_type
+                    else None
+                ),
+                "element_type": info.element_type,
+                "pys_type": info.pys_type,
+            }
+        )
+
+    def _hint_untyped_loop_var(
+        self,
+        var: str,
+        collection: str,
+        line_number: int,
+        raw_line: str,
+    ) -> None:
+        elem = self.collection_element_types.get(collection)
+        if not elem:
+            return
+        column = raw_line.find(var) + 1 if var in raw_line else 1
+        suggested = f"loop ({elem} {var} in {collection})"
+        self.typing_hints.append(
+            {
+                "line": line_number,
+                "column": column,
+                "code": "pys.untyped-loop-var",
+                "message": (
+                    f"Loop variable '{var}' is untyped. Collection '{collection}' yields `{elem}` "
+                    f"elements (from a weakly typed Python API). Prefer `{suggested}`."
+                ),
+                "tips": [
+                    f"Write `{suggested} {{ ... }}` so the loop variable is checked like other PYS types."
+                ],
+                "suggested_loop": suggested,
+                "element_type": elem,
+                "pys_type": elem,
+            }
+        )
 
     def _infer_expr_type(self, expr: str) -> str | None:
         expr = expr.strip()
@@ -1915,24 +2044,10 @@ class Parser:
             return cast.group("type")
 
         # Method / function call: recv.method(...) or dotted.module.func(...)
-        call = re.fullmatch(
-            r"(?P<recv>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.(?P<method>[A-Za-z_]\w*)\s*\(.*\)",
-            expr,
-        )
-        if call:
-            from .pytypes import infer_call_return_type
-
-            inferred = infer_call_return_type(
-                call.group("recv"),
-                call.group("method"),
-                variable_types=self.variable_types,
-                imported_modules=self.imported_modules,
-                site_paths=self._deps_paths(),
-                type_modules=self.type_modules,
-            )
-            if inferred:
-                self._register_external_type(inferred)
-                return inferred
+        info = self._infer_expr_info(expr)
+        if info:
+            self._register_external_type(info.pys_type)
+            return info.pys_type
 
         # Module-level call without trailing method split already handled above;
         # also: TypeName(...) constructors for known classes / external types
@@ -2153,10 +2268,10 @@ class Parser:
         line = self._strip_generic_params(line)
         line = self._rewrite_generic_type_args(line)
         self._record_top_level_export(line)
-        self._set_pending_block_context(line)
+        self._set_pending_block_context(line, line_number, raw_line)
         self._record_class_declaration(line, line_number)
         self._record_class_member(line)
-        self._record_declared_variables(line, line_number)
+        self._record_declared_variables(line, line_number, raw_line)
         self._enforce_const_declaration(line, line_number, raw_line)
         self._enforce_fix_declaration(line, line_number, raw_line)
         self._enforce_const_assignment(line, line_number, raw_line)
@@ -2277,15 +2392,34 @@ class Parser:
             name = assignment_match.group("name")
             if name not in self.declared_variables and name not in {"self", "True", "False", "None"}:
                 expr = assignment_match.group("expr").strip()
-                inferred = self._infer_expr_type(expr)
+                info = self._infer_expr_info(expr)
+                inferred = info.pys_type if info else self._infer_expr_type(expr)
                 if inferred and not inferred.startswith("module:"):
                     suggestion = f"{inferred} {name} = {expr}"
+                    from .pytypes import _usage_tips_for
+
+                    tips = []
+                    message = (
+                        f"Undeclared variable '{name}'. Suggested declaration: `{suggestion}`"
+                    )
+                    if info and info.from_external and info.weak:
+                        element_note = (
+                            f" Best element/row type for this API: `{info.element_type}`."
+                            if info.element_type
+                            else ""
+                        )
+                        message += (
+                            " This value comes from a Python library with weak/untyped return "
+                            f"information; declare a type and prefer typed use in PYS.{element_note}"
+                        )
+                        tips = _usage_tips_for(inferred, info.element_type, name)
                     self._error(
-                        f"Undeclared variable '{name}'. Suggested declaration: `{suggestion}`",
+                        message,
                         line_number,
                         raw_line.rstrip(),
                         code="pys.missing-type",
                         suggested_fix=suggestion,
+                        tips=tips or None,
                     )
                 self._error(
                     f"Undeclared variable '{name}'. Variables must be declared with a type before assignment.",

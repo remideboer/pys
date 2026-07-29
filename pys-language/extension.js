@@ -36,6 +36,19 @@ function activate(context) {
   let validateTimer = null;
   let validateChild = null;
 
+  const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
+
+  function usageTipsEnabled() {
+    return vscode.workspace.getConfiguration('pys').get('libraryTyping.usageTips', false);
+  }
+
+  function appendTips(message, tips) {
+    if (!usageTipsEnabled() || !tips || !tips.length) {
+      return message;
+    }
+    return `${message}\n${tips.map((tip) => `Tip: ${tip}`).join('\n')}`;
+  }
+
   function createDiagnosticFromError(parsed, document) {
     const line = Number(parsed.line || 1);
     const column = Number(parsed.column || 1);
@@ -61,7 +74,7 @@ function activate(context) {
     const end = new vscode.Position(Math.max(line - 1, 0), endCol);
     const diagnostic = new vscode.Diagnostic(
       new vscode.Range(start, end),
-      parsed.message || 'PYS syntax error',
+      appendTips(parsed.message || 'PYS syntax error', parsed.tips),
       vscode.DiagnosticSeverity.Error,
     );
     diagnostic.source = 'PYS';
@@ -81,6 +94,25 @@ function activate(context) {
     return diagnostic;
   }
 
+  function createHintDiagnostic(hint, document) {
+    const line = Math.max(Number(hint.line || 1) - 1, 0);
+    const column = Math.max(Number(hint.column || 1) - 1, 0);
+    const lineText = document.lineAt(line).text;
+    const rest = lineText.slice(column);
+    const word = rest.match(/^[A-Za-z_]\w*/);
+    const endCol = word ? column + word[0].length : Math.min(column + 1, lineText.length);
+    const diagnostic = new vscode.Diagnostic(
+      new vscode.Range(new vscode.Position(line, column), new vscode.Position(line, endCol)),
+      appendTips(hint.message || 'PYS typing hint', hint.tips),
+      vscode.DiagnosticSeverity.Information,
+    );
+    diagnostic.source = 'PYS';
+    diagnostic.code = hint.code || 'pys.untyped-library';
+    const key = `${document.uri.toString()}:${hint.line}:${diagnostic.code}`;
+    hintMeta.set(key, hint);
+    return diagnostic;
+  }
+
   async function validateDocument(document) {
     if (document.languageId !== 'pys' || document.uri.scheme !== 'file') {
       diagnosticCollection.delete(document.uri);
@@ -95,32 +127,6 @@ function activate(context) {
 
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
-    const pythonCode = `
-import json
-import sys
-from pathlib import Path
-from transpiler.transpiler import Parser, TranspileError
-
-source_path = Path(sys.argv[1])
-source = source_path.read_text(encoding='utf-8')
-try:
-    Parser(source, source_path=source_path).parse()
-    print(json.dumps({"ok": True}))
-except TranspileError as exc:
-    sf = getattr(exc, "source_file", None)
-    print(json.dumps({
-        "ok": False,
-        "message": exc.args[0] if exc.args else str(exc),
-        "line": getattr(exc, "line_number", None),
-        "column": getattr(exc, "column", None),
-        "code_line": getattr(exc, "code_line", None),
-        "source_file": str(sf) if sf else None,
-        "code": getattr(exc, "code", None),
-        "suggested_fix": getattr(exc, "suggested_fix", None),
-    }))
-except Exception as exc:
-    print(json.dumps({"ok": False, "message": f"{type(exc).__name__}: {exc}"}))
-`;
 
     if (validateChild) {
       try {
@@ -132,13 +138,17 @@ except Exception as exc:
     }
 
     return new Promise((resolve) => {
-      const child = cp.spawn(pythonExecutable, ['-c', pythonCode, document.uri.fsPath], {
-        cwd: workspacePath,
-        env: {
-          ...process.env,
-          PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
+      const child = cp.spawn(
+        pythonExecutable,
+        ['-m', 'transpiler.ide', document.uri.fsPath],
+        {
+          cwd: workspacePath,
+          env: {
+            ...process.env,
+            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
+          },
         },
-      });
+      );
       validateChild = child;
       let output = '';
       child.stdout.on('data', (chunk) => {
@@ -151,14 +161,20 @@ except Exception as exc:
         }
         try {
           const parsed = JSON.parse(output.trim() || '{"ok": true}');
-          if (parsed.ok) {
-            diagnosticCollection.set(document.uri, []);
-            resolve();
-            return;
+          const diagnostics = [];
+          // Clear stale hint metadata for this document
+          for (const key of [...hintMeta.keys()]) {
+            if (key.startsWith(`${document.uri.toString()}:`)) {
+              hintMeta.delete(key);
+            }
           }
-
-          const diagnostic = createDiagnosticFromError(parsed, document);
-          diagnosticCollection.set(document.uri, [diagnostic]);
+          if (!parsed.ok && parsed.error) {
+            diagnostics.push(createDiagnosticFromError(parsed.error, document));
+          }
+          for (const hint of parsed.hints || []) {
+            diagnostics.push(createHintDiagnostic(hint, document));
+          }
+          diagnosticCollection.set(document.uri, diagnostics);
         } catch (error) {
           diagnosticCollection.set(document.uri, [
             new vscode.Diagnostic(
@@ -479,6 +495,31 @@ except Exception as exc:
         }
       }
 
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.untyped-loop-var') {
+          continue;
+        }
+        const key = `${document.uri.toString()}:${diagnostic.range.start.line + 1}:${diagnostic.code}`;
+        const hint = hintMeta.get(key);
+        if (!hint || !hint.suggested_loop) {
+          continue;
+        }
+        const action = new vscode.CodeAction(
+          `Use typed loop: ${hint.suggested_loop}`,
+          vscode.CodeActionKind.QuickFix,
+        );
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        action.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(diagnostic.range.start.line);
+        const replaced = line.text.replace(
+          /loop\s*\(\s*(?:[A-Za-z_]\w*\s+)?[A-Za-z_]\w*\s+in\s+[^)]+\)/,
+          hint.suggested_loop,
+        );
+        action.edit.replace(document.uri, line.range, replaced);
+        actions.push(action);
+      }
+
       return actions;
     }
   }));
@@ -500,6 +541,16 @@ except Exception as exc:
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
     if (editor && editor.document.languageId === 'pys') {
       scheduleValidate(editor.document);
+    }
+  }));
+
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('pys.libraryTyping')) {
+      for (const document of vscode.workspace.textDocuments) {
+        if (document.languageId === 'pys') {
+          scheduleValidate(document);
+        }
+      }
     }
   }));
 

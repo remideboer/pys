@@ -8,9 +8,20 @@ import re
 import sys
 import types
 import typing
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Any, get_args, get_origin
+
+
+@dataclass
+class InferredReturn:
+    """Best-effort PYS type for a library/user call."""
+
+    pys_type: str
+    element_type: str | None = None
+    from_external: bool = False
+    weak: bool = False  # container/API with no precise element/shape typing
 
 
 def _annotation_to_pys_type(annotation: Any) -> str | None:
@@ -46,6 +57,82 @@ def _annotation_to_pys_type(annotation: Any) -> str | None:
 
     name = getattr(annotation, "__name__", None)
     return name if isinstance(name, str) else None
+
+
+def _annotation_element_type(annotation: Any) -> str | None:
+    """Element/value type for List[T], Sequence[T], etc."""
+    if annotation is None:
+        return None
+    if isinstance(annotation, str):
+        text = annotation.strip()
+        for container in ("List", "list", "Sequence", "Iterable", "Tuple", "tuple"):
+            if text.startswith(container + "[") and text.endswith("]"):
+                inner = text[len(container) + 1 : -1]
+                first = _split_top_level_commas(inner)[0] if inner else ""
+                if first == "..." or not first:
+                    return None
+                return _string_annotation_to_pys_type(first)
+        return None
+    origin = get_origin(annotation)
+    if origin is None:
+        return None
+    args = [a for a in get_args(annotation) if a is not type(None)]
+    if not args:
+        return None
+    origin_name = getattr(origin, "__name__", "") or ""
+    if origin in {list, tuple, set} or origin_name in {
+        "list",
+        "List",
+        "tuple",
+        "Tuple",
+        "set",
+        "Set",
+        "Sequence",
+        "Iterable",
+    }:
+        return _annotation_to_pys_type(args[0])
+    if origin in {dict} or origin_name in {"dict", "Dict"}:
+        if len(args) >= 2:
+            return _annotation_to_pys_type(args[1])
+    return None
+
+
+def _usable_pys_element(name: str | None) -> str | None:
+    """Keep only element types that are meaningful in PYS; drop RowType/Any/etc."""
+    if not name:
+        return None
+    if name in {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}:
+        return name
+    return None
+
+
+def _element_type_heuristic(recv_type: str | None, method_name: str | None) -> str | None:
+    """When annotations lack element types, use common library conventions."""
+    if not method_name:
+        return None
+    name = method_name.lower()
+    if name in {"fetchall", "fetchmany"}:
+        if recv_type and "dict" in recv_type.lower():
+            return "dict"
+        return "tuple"
+    if name == "fetchone":
+        if recv_type and "dict" in recv_type.lower():
+            return "dict"
+        return "tuple"
+    return None
+
+
+def _usage_tips_for(pys_type: str, element_type: str | None, var_name: str = "result") -> list[str]:
+    tips: list[str] = []
+    if pys_type == "list" and element_type:
+        tips.append(
+            f"Iterate with a typed loop variable: `loop ({element_type} x in {var_name}) {{ ... }}`"
+        )
+    elif pys_type in {"list", "dict", "tuple", "set"}:
+        tips.append(
+            f"Prefer declaring how you use `{var_name}` with an explicit element/row type when possible."
+        )
+    return tips
 
 
 def _string_annotation_to_pys_type(text: str) -> str | None:
@@ -222,15 +309,48 @@ def infer_call_return_type(
     site_paths: list[Path],
     type_modules: dict[str, str],
 ) -> str | None:
-    """Infer PYS type name for receiver.method(...) or module.attr(...).
+    info = infer_call_return_info(
+        receiver_expr,
+        method_name,
+        variable_types=variable_types,
+        imported_modules=imported_modules,
+        site_paths=site_paths,
+        type_modules=type_modules,
+    )
+    return info.pys_type if info else None
 
-    imported_modules maps top-level import name -> python module path (e.g. mysql -> mysql)
-    type_modules maps type name -> python module that defines it (for locating methods on instances)
-    """
+
+def infer_call_return_info(
+    receiver_expr: str,
+    method_name: str | None,
+    *,
+    variable_types: dict[str, str],
+    imported_modules: dict[str, str],
+    site_paths: list[Path],
+    type_modules: dict[str, str],
+) -> InferredReturn | None:
+    """Infer PYS type (+ optional element type) for a library/module call."""
     recv = receiver_expr.strip()
+
+    def _pack(pys: str | None, ann: Any, recv_type: str | None, external: bool) -> InferredReturn | None:
+        if not pys:
+            return None
+        element = _usable_pys_element(_annotation_element_type(ann)) or _element_type_heuristic(
+            recv_type, method_name
+        )
+        weak = False
+        if external and pys in {"list", "dict", "tuple", "set"}:
+            # Containers from Python libs are treated as weakly typed at the PYS boundary.
+            weak = True
+        return InferredReturn(
+            pys_type=pys,
+            element_type=element,
+            from_external=external,
+            weak=weak,
+        )
+
     # mysql.connector.connect → module attr chain ending in call target
     if method_name is None:
-        # full call on dotted path: mysql.connector.connect
         if "." not in recv:
             return None
         head, *rest = recv.split(".")
@@ -244,8 +364,11 @@ def infer_call_return_type(
         ann = _get_return_annotation(target)
         pys = _annotation_to_pys_type(ann)
         if pys:
-            _remember_type_origin(pys, target, type_modules)
-        return pys
+            # Do not record container names as type_modules origins.
+            if pys not in {"list", "dict", "tuple", "set", "int", "float", "bool", "str", "string"}:
+                _remember_type_origin(pys, target, type_modules)
+            return _pack(pys, ann, None, external=True)
+        return None
 
     # mydb.cursor → instance method; receiver has a known type
     recv_type = variable_types.get(recv)
@@ -256,15 +379,42 @@ def infer_call_return_type(
             if module is not None:
                 cls = getattr(module, recv_type, None)
                 if cls is None:
-                    # search submodule exports
                     cls = _find_class_in_package(origin_mod, recv_type, site_paths)
                 if cls is not None:
                     target = getattr(cls, method_name, None)
                     ann = _get_return_annotation(target)
                     pys = _annotation_to_pys_type(ann)
-                    if pys:
+                    if pys and pys not in {
+                        "list",
+                        "dict",
+                        "tuple",
+                        "set",
+                        "int",
+                        "float",
+                        "bool",
+                        "str",
+                        "string",
+                    }:
                         _remember_type_origin(pys, target, type_modules, fallback_module=origin_mod)
-                    return pys
+                    info = _pack(pys, ann, recv_type, external=True)
+                    if info:
+                        return info
+                    # Annotation missing entirely — still apply DB-API heuristics
+                    element = _element_type_heuristic(recv_type, method_name)
+                    if element and method_name in {"fetchall", "fetchmany"}:
+                        return InferredReturn(
+                            pys_type="list",
+                            element_type=element,
+                            from_external=True,
+                            weak=True,
+                        )
+                    if element and method_name == "fetchone":
+                        return InferredReturn(
+                            pys_type=element,
+                            element_type=None,
+                            from_external=True,
+                            weak=True,
+                        )
 
     # mysql.connector — treat as module path + attribute
     if "." in recv:
@@ -277,9 +427,19 @@ def infer_call_return_type(
                 target = getattr(parent, method_name, None) if parent is not None else None
                 ann = _get_return_annotation(target)
                 pys = _annotation_to_pys_type(ann)
-                if pys:
+                if pys and pys not in {
+                    "list",
+                    "dict",
+                    "tuple",
+                    "set",
+                    "int",
+                    "float",
+                    "bool",
+                    "str",
+                    "string",
+                }:
                     _remember_type_origin(pys, target, type_modules)
-                return pys
+                return _pack(pys, ann, None, external=True)
     return None
 
 

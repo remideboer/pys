@@ -257,3 +257,76 @@ def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert loc is not None
     assert loc["file"].replace("\\", "/").endswith("demo/__init__.py")
     assert loc["line"] == 2
+
+
+def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.ide import analyze_file
+    from transpiler.transpiler import Parser, TranspileError
+
+    site = tmp_path / "site"
+    mod = site / "demo"
+    mod.mkdir(parents=True)
+    (mod / "__init__.py").write_text(
+        "class Cursor:\n"
+        "    def fetchall(self) -> list:\n"
+        "        return []\n"
+        "class Conn:\n"
+        "    def cursor(self) -> Cursor:\n"
+        "        return Cursor()\n"
+        "def connect() -> Conn:\n"
+        "    return Conn()\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+
+    # Missing type → suggest list + weak-library note + tips payload
+    missing = tmp_path / "missing.pys"
+    missing.write_text(
+        "import demo\n"
+        "Conn db = demo.connect()\n"
+        "Cursor cur = db.cursor()\n"
+        "rows = cur.fetchall()\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TranspileError) as caught:
+        Parser(missing.read_text(encoding="utf-8"), source_path=missing).parse()
+    assert caught.value.code == "pys.missing-type"
+    assert "list rows" in (caught.value.suggested_fix or "")
+    assert "weak/untyped" in str(caught.value)
+    assert any("tuple" in tip for tip in (caught.value.tips or []))
+
+    typed = tmp_path / "typed.pys"
+    typed.write_text(
+        "import demo\n"
+        "Conn db = demo.connect()\n"
+        "Cursor cur = db.cursor()\n"
+        "list rows = cur.fetchall()\n"
+        "loop (x in rows) {\n"
+        "    print(x)\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    analysis = analyze_file(typed)
+    assert analysis["ok"]
+    codes = {h["code"] for h in analysis["hints"]}
+    assert "pys.untyped-library" in codes
+    assert "pys.untyped-loop-var" in codes
+    assert analysis["collection_element_types"].get("rows") == "tuple"
+    loop_hint = next(h for h in analysis["hints"] if h["code"] == "pys.untyped-loop-var")
+    assert loop_hint["suggested_loop"] == "loop (tuple x in rows)"
+
+    # User already wrote generics → no untyped-library hint
+    precise = tmp_path / "precise.pys"
+    precise.write_text(
+        "import demo\n"
+        "Conn db = demo.connect()\n"
+        "Cursor cur = db.cursor()\n"
+        "list<tuple> rows = cur.fetchall()\n"
+        "loop (tuple x in rows) {\n"
+        "    print(x)\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    precise_analysis = analyze_file(precise)
+    assert precise_analysis["ok"]
+    assert precise_analysis["hints"] == []

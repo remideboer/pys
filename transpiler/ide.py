@@ -25,6 +25,7 @@ def analyze_file(source_path: Path) -> dict:
             "code_line": exc.code_line,
             "code": getattr(exc, "code", None),
             "suggested_fix": getattr(exc, "suggested_fix", None),
+            "tips": list(getattr(exc, "tips", None) or []),
             "source_file": str(exc.source_file) if exc.source_file else None,
         }
 
@@ -60,10 +61,12 @@ def analyze_file(source_path: Path) -> dict:
     return {
         "ok": error is None,
         "error": error,
+        "hints": list(parser.typing_hints),
         "symbols": symbols,
         "variable_types": dict(parser.variable_types),
         "type_modules": dict(parser.type_modules),
         "imported_modules": dict(parser.imported_modules),
+        "collection_element_types": dict(parser.collection_element_types),
         "validated_types": sorted(parser.validated_types),
         "_site_paths": [str(p) for p in site_paths],
     }
