@@ -119,7 +119,7 @@ Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) - overview in 
 
 **Curriculum:** [`tutorials/`](tutorials/) — whole-task classes with scaffolding and JIT cards.  
 **Showcase:** `examples/main.pys` (dense reference, not lesson 1).  
-**Concurrency:** `examples/concurrency/main.pys` (`tasks` / `task` / `await` / `shared`).
+**Concurrency:** [`docs/CONCURRENCY.md`](docs/CONCURRENCY.md) · run `examples/concurrency/main.pys`.
 
 Supported `.pys` syntax (see also `examples/main.pys`):
 
@@ -129,7 +129,7 @@ Supported `.pys` syntax (see also `examples/main.pys`):
 - `if` / `else if` / `else`, `unless`, `loop` (C-for, while, foreach)
 - `print`, string interpolation `{x}` and typed `#i{x}` / `#s{...}` / ...
 - Imports: `import mod`, `import name from mod.pys`, external packages via `pys.deps`
-- Concurrency: `tasks` / `task` / `await` / `shared` (structured group; see `docs/LANGUAGE.md`)
+- Concurrency: `tasks` / `task` / `await` / `shared` — see [`docs/CONCURRENCY.md`](docs/CONCURRENCY.md)
 
 ### Indentation rules
 
