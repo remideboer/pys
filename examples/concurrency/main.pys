@@ -27,6 +27,7 @@ demo_await_one()
 demo_await_fan_in()
 demo_await_chain()
 demo_await_args()
+demo_await_to_outer()
 
 demo_shared_counter()
 demo_shared_with_params()

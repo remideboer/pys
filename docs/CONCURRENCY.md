@@ -73,18 +73,50 @@ tasks {
 
 ---
 
-## 2. Parameters (inputs) and `return` / `await` (outputs)
+## 2. How `return` is used — only through `await`
+
+A task’s `return` value is **not** automatically available outside the `tasks`
+block. Another task must **`await`** that task; the await expression *is* the
+returned value.
+
+```text
+  producer                         consumer (another task)
+  ────────                         ───────────────────────
+  task answer {                    task {
+      return 41   ──────►              int n = await answer
+  }                                    # n is 41 here
+                                   }
+```
+
+Same idea with parameters:
+
+```text
+  task add(int a, int b) { return a + b }
+
+  int s = await add(10, 32)
+  #        └── runs add with 10,32
+  #  s  ←── whatever add returned (42)
+```
+
+Important:
+
+- `return` inside a task = “this is my result when someone awaits me”
+- `await name` / `await name(args)` = “run/wait for that task and give me its return value”
+- You **cannot** write `int x = answer` — that is not how results flow
+- After the whole `tasks { }` block finishes, those returns are gone unless you
+  copied them into an outer/`shared` variable while still inside a consumer task
 
 ### Parameterized task — preferred inputs
 
 ```pys
 tasks {
     task add(int a, int b) {
-        return a + b
+        return a + b          # output of this task
     }
     task {
+        # await add(...)  →  starts add, waits, becomes the returned int
         int s = await add(10, 32)
-        print(s)    # 42
+        print(s)              # 42
     }
 }
 ```

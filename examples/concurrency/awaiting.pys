@@ -1,11 +1,19 @@
 # Named tasks + await, including parameterized tasks.
+#
+# How return works:
+#   return VALUE   inside a named/parameterized task
+#   int x = await that_task   (or await that_task(args))
+#   → x receives VALUE
+# There is no other way to read a task’s return.
 
 global function demo_await_one() {
     print("--- demo_await_one ---")
     tasks {
+        # Producer: return value is 41
         task answer {
             return 41
         }
+        # Consumer: await plugs that return into n
         task {
             int n = await answer
             int next = n + 1
@@ -24,6 +32,7 @@ global function demo_await_fan_in() {
             return n
         }
         task {
+            # Each await ...(...) runs that task and yields its return
             int a = await left(10)
             int b = await right(32)
             print("fan-in sum:")
@@ -42,6 +51,7 @@ global function demo_await_chain() {
             return x * 3
         }
         task {
+            # Pipe returns: mid gets step1's return; y gets step2's return
             int mid = await step1(2)
             int y = await step2(mid)
             print("2 * 3 = #i{y}")
@@ -57,9 +67,27 @@ global function demo_await_args() {
             return times
         }
         task {
+            # greet returns times (3); await binds it to n
             int n = await greet("Ada", 3)
             print("returned:")
             print(n)
         }
     }
+}
+
+# Keep a return after the tasks block finishes: copy it while still inside.
+global function demo_await_to_outer() {
+    print("--- demo_await_to_outer ---")
+    shared int kept = 0
+    tasks {
+        task compute(int x) {
+            return x * 10
+        }
+        task {
+            int result = await compute(5)
+            kept = result
+        }
+    }
+    print("kept after tasks joined:")
+    print(kept)
 }
