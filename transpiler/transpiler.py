@@ -100,6 +100,8 @@ class Parser:
         self.generic_type_params: dict[str, list[str]] = {}
         self.needs_abc_import = False
         self.needs_array_import = False
+        self._deps_site_paths: list[Path] | None = None
+        self._deps_site_paths_loaded = False
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
         # block_context holds tuples like ("class", "ClassName"), ("interface", "Name"), or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
@@ -739,25 +741,81 @@ class Parser:
         if match:
             self.exports[match.group("name")] = visibility
 
-    def _resolve_module_path(self, module_ref: str, line_number: int, raw_line: str) -> Path:
+    def _deps_paths(self) -> list[Path]:
+        if self._deps_site_paths_loaded:
+            return self._deps_site_paths or []
+        self._deps_site_paths_loaded = True
+        self._deps_site_paths = []
+        if self.source_path is None:
+            return []
+        from .deps import DepsError, ensure_site_paths_for
+
+        try:
+            self._deps_site_paths = ensure_site_paths_for(self.source_path, build="run", quiet=True)
+        except DepsError:
+            self._deps_site_paths = []
+        return self._deps_site_paths
+
+    def _find_pys_module_path(self, module_ref: str) -> Path | None:
         ref = module_ref.strip().strip("\"'")
         if not ref:
-            self._error("Import module path is empty.", line_number, raw_line.rstrip())
+            return None
         path = Path(ref)
         if path.suffix.lower() != ".pys":
+            # Dotted Python-style names are not .pys file paths.
+            if "." in ref and not ref.lower().endswith(".pys"):
+                return None
             path = path.with_suffix(".pys")
         if not path.is_absolute():
             base = self.source_path.parent if self.source_path is not None else Path.cwd()
             path = (base / path).resolve()
         else:
             path = path.resolve()
-        if not path.exists():
+        return path if path.exists() else None
+
+    def _resolve_module_path(self, module_ref: str, line_number: int, raw_line: str) -> Path:
+        ref = module_ref.strip().strip("\"'")
+        if not ref:
+            self._error("Import module path is empty.", line_number, raw_line.rstrip())
+        path = self._find_pys_module_path(ref)
+        if path is None:
             self._error(
-                f"Cannot find module '{module_ref}'. Expected file: {path}",
+                f"Cannot find module '{module_ref}'. Expected a .pys file or a declared Python dependency.",
                 line_number,
                 raw_line.rstrip(),
             )
         return path
+
+    def _translate_external_import(
+        self,
+        module_ref: str,
+        names: list[str] | None,
+        line_number: int,
+        raw_line: str,
+    ) -> str | None:
+        """Pass through Python package imports from pys.deps / stdlib."""
+        from .deps import is_external_python_module
+
+        ref = module_ref.strip().strip("\"'")
+        if ref.lower().endswith(".pys"):
+            return None
+        if not is_external_python_module(ref, self._deps_paths()):
+            return None
+
+        top = ref.split(".", 1)[0]
+        self.imported_names.add(top)
+        self.declared_variables.add(top)
+
+        if names is None:
+            # `import mysql.connector` or `import all from mysql.connector`
+            if re.fullmatch(r"import\s+all\s+from\s+.+", raw_line.strip()):
+                return f"from {ref} import *"
+            return f"import {ref}"
+
+        for name in names:
+            self.imported_names.add(name)
+            self.declared_variables.add(name)
+        return f"from {ref} import {', '.join(names)}"
 
     def _same_package(self, other: Path) -> bool:
         if self.source_path is None:
@@ -929,35 +987,51 @@ class Parser:
         if import_all:
             module_ref = import_all.group("module")
             names = None
+            is_import_all = True
         elif import_name and import_name.group("name") != "all":
             module_ref = import_name.group("module")
             names = [import_name.group("name")]
+            is_import_all = False
         elif import_module:
             module_ref = import_module.group("module")
             names = None
+            is_import_all = False
         else:
             return None
 
-        module_path = self._resolve_module_path(module_ref, line_number, raw_line)
-        info = self._load_module(module_path)
+        pys_path = self._find_pys_module_path(module_ref)
+        if pys_path is None:
+            external = self._translate_external_import(module_ref, names, line_number, raw_line)
+            if external is not None:
+                return external
+            self._error(
+                f"Cannot find module '{module_ref}'. Expected a .pys file next to this source "
+                f"or a Python package from pys.deps / the standard library.",
+                line_number,
+                raw_line.rstrip(),
+            )
+
+        info = self._load_module(pys_path)
         visible = self._visible_exports_for_import(info)
-        module_name = module_path.stem
+        module_name = pys_path.stem
 
         if names is None:
             if not visible:
                 self._error(
-                    f"Module '{module_path.name}' has no global/package exports visible here.",
+                    f"Module '{pys_path.name}' has no global/package exports visible here.",
                     line_number,
                     raw_line.rstrip(),
                 )
             self._record_seen_module_exports(info, visible)
+            if is_import_all or import_module:
+                return f"from {module_name} import {', '.join(visible)}"
             return f"from {module_name} import {', '.join(visible)}"
 
         selected: list[str] = []
         for name in names:
             if name not in info.exports:
                 self._error(
-                    f"'{name}' is not defined in module '{module_path.name}'.",
+                    f"'{name}' is not defined in module '{pys_path.name}'.",
                     line_number,
                     raw_line.rstrip(),
                 )
@@ -965,7 +1039,7 @@ class Parser:
             if name not in visible:
                 where = "this package" if visibility == "package" else "this module"
                 self._error(
-                    f"Cannot import '{name}' from '{module_path.name}': it is {visibility}-scoped "
+                    f"Cannot import '{name}' from '{pys_path.name}': it is {visibility}-scoped "
                     f"(visible only in {where}).",
                     line_number,
                     raw_line.rstrip(),

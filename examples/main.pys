@@ -1,6 +1,7 @@
 # ── Imports ──────────────────────────────────────────────
 import funcs
 import vehicles
+import mysql.connector
 # also valid: import all from funcs.pys
 # also valid: import hello from funcs.pys
 # log() in vehicles.pys is module-private and NOT importable

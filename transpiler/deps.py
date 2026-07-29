@@ -325,6 +325,7 @@ def ensure_dependency(
     repo_root: Path | None = None,
     index: int | None = None,
     total: int | None = None,
+    quiet: bool = False,
 ) -> Path:
     """Install (if needed) and return the flyweight package directory."""
     repo = repo_root or default_repo_root()
@@ -334,16 +335,20 @@ def ensure_dependency(
     version_label = dep.version or "latest"
     label = f"{dep.name} ({version_label})"
 
+    def _status(message: str) -> None:
+        if not quiet:
+            print(f"  {message}", file=sys.stderr)
+
     if dep.version:
         target = package_root / dep.version
         if target.is_dir() and _read_installed_version(target):
-            print(f"  {prefix}cached  {label}", file=sys.stderr)
+            _status(f"{prefix}cached  {label}")
             return target  # flyweight hit
-        progress = f"{prefix}downloading {label}"
+        progress = None if quiet else f"{prefix}downloading {label}"
         _pip_install(python, f"{dep.name}=={dep.version}", target, progress_label=progress)
         if not _read_installed_version(target):
             raise DepsError(f"Install of {dep.name}=={dep.version} produced no dist-info in {target}")
-        print(f"  {prefix}downloaded {label}", file=sys.stderr)
+        _status(f"{prefix}downloaded {label}")
         return target
 
     # latest: reuse LATEST pointer when present
@@ -351,13 +356,13 @@ def ensure_dependency(
     if pointer.is_file():
         pointed = package_root / pointer.read_text(encoding="utf-8").strip()
         if pointed.is_dir() and _read_installed_version(pointed):
-            print(f"  {prefix}cached  {dep.name} ({pointed.name})", file=sys.stderr)
+            _status(f"{prefix}cached  {dep.name} ({pointed.name})")
             return pointed
 
     staging = package_root / "_staging_latest"
     if staging.exists():
         shutil.rmtree(staging, ignore_errors=True)
-    progress = f"{prefix}downloading {label}"
+    progress = None if quiet else f"{prefix}downloading {label}"
     _pip_install(python, dep.name, staging, progress_label=progress)
     version = _read_installed_version(staging)
     if not version:
@@ -368,7 +373,7 @@ def ensure_dependency(
     else:
         shutil.move(str(staging), str(target))
     pointer.write_text(version + "\n", encoding="utf-8")
-    print(f"  {prefix}downloaded {dep.name} ({version})", file=sys.stderr)
+    _status(f"{prefix}downloaded {dep.name} ({version})")
     return target
 
 
@@ -386,12 +391,13 @@ def resolve_site_paths(
     build: str = "run",
     python: str | None = None,
     repo_root: Path | None = None,
+    quiet: bool = False,
 ) -> list[Path]:
     """Ensure dependencies are present in the central repo; return paths for PYTHONPATH."""
     python_exe = python or resolve_python_executable(config)
     deps = deps_for_build(config, build=build)
     total = len(deps)
-    if total:
+    if total and not quiet:
         noun = "dependency" if total == 1 else "dependencies"
         print(f"Resolving {total} {noun}...", file=sys.stderr)
     paths: list[Path] = []
@@ -403,9 +409,10 @@ def resolve_site_paths(
                 repo_root=repo_root,
                 index=index,
                 total=total,
+                quiet=quiet,
             )
         )
-    if total:
+    if total and not quiet:
         print("Dependencies ready.", file=sys.stderr)
     return paths
 
@@ -418,3 +425,44 @@ def prepend_pythonpath(paths: Iterable[Path], env: dict[str, str] | None = None)
     existing = merged.get("PYTHONPATH", "")
     merged["PYTHONPATH"] = extra if not existing else f"{extra}{os.pathsep}{existing}"
     return merged
+
+
+def module_present_on_paths(module_ref: str, site_paths: Iterable[Path]) -> bool:
+    """True if dotted module_ref exists under any site path (as file or package)."""
+    parts = [p for p in module_ref.split(".") if p]
+    if not parts:
+        return False
+    for site in site_paths:
+        base = Path(site)
+        candidate = base.joinpath(*parts)
+        if candidate.with_suffix(".py").is_file():
+            return True
+        if (candidate / "__init__.py").is_file():
+            return True
+        if candidate.is_dir() and any(candidate.iterdir()):
+            return True
+    return False
+
+
+def is_external_python_module(module_ref: str, site_paths: Iterable[Path] | None = None) -> bool:
+    """True if module_ref is importable from deps site paths or the stdlib."""
+    ref = module_ref.strip().strip("\"'")
+    if not ref or "/" in ref or "\\" in ref or ref.lower().endswith(".pys"):
+        return False
+    paths = list(site_paths or [])
+    if paths and module_present_on_paths(ref, paths):
+        return True
+    try:
+        import importlib.util
+
+        return importlib.util.find_spec(ref) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+
+
+def ensure_site_paths_for(start: Path, *, build: str = "run", quiet: bool = False) -> list[Path]:
+    """Load pys.deps near start (if any) and ensure packages are present."""
+    config = load_deps(start)
+    if config is None:
+        return []
+    return resolve_site_paths(config, build=build, quiet=quiet)

@@ -97,3 +97,30 @@ def test_prepend_pythonpath(tmp_path: Path) -> None:
     env = prepend_pythonpath([a, b], {"PYTHONPATH": "old", "PATH": "x"})
     assert env["PYTHONPATH"].startswith(str(a))
     assert "old" in env["PYTHONPATH"]
+
+
+def test_external_python_import_passes_through(tmp_path: Path) -> None:
+    from transpiler.transpiler import Parser
+
+    # Fake a site package: pkgutil is stdlib; use math which is always available.
+    main = tmp_path / "main.pys"
+    main.write_text("import math\nprint(math.pi)\n", encoding="utf-8")
+    python = Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+    assert "import math" in python
+
+
+def test_external_dep_import_from_site_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.transpiler import Parser
+
+    site = tmp_path / "site"
+    pkg = site / "mysql" / "connector"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr(
+        "transpiler.transpiler.Parser._deps_paths",
+        lambda self: [site],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import mysql.connector\n", encoding="utf-8")
+    python = Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+    assert "import mysql.connector" in python
