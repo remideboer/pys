@@ -1,0 +1,355 @@
+# ── Imports ──────────────────────────────────────────────
+import funcs
+# also valid: import all from funcs.pys
+# also valid: import hello from funcs.pys
+
+hello()
+print(PI)
+
+# ── Comments ─────────────────────────────────────────────
+# single-line comment
+## multi-line comment
+   spans multiple lines
+/#
+
+# ── Variables & types ────────────────────────────────────
+int x = 10
+int y = 20
+float f = 3.14
+char letter = 'A'
+string greeting = "hello"
+bool flag = true
+var z = 30
+
+# const: compile-time immutable
+const int MAX = 100
+
+# ── Explicit casting ─────────────────────────────────────
+int a = (int) f
+
+# ── String interpolation ────────────────────────────────
+print("a is {a}, f is {f}")
+
+# typed interpolation: type guards (not casts)
+print("#s{greeting} is a string")
+print("#i{x} is an int")
+print("#f{f} is a float")
+print("#c{letter} is a char")
+print("#b{flag} is a bool")
+
+# escape the # operator
+print("the \# symbol is for typed interpolation")
+
+# mixed: plain + typed in one string
+print("#i{x} plus {y} equals #i{z}")
+
+# ── Operators ────────────────────────────────────────────
+# + auto-switches between numeric and string concat
+print(3.14 + 10 + " is a number")
+print("sum: " + 3 + 5)
+
+# true/false/null → True/False/None
+print(true)
+print(false)
+
+# ── Arrays ───────────────────────────────────────────────
+# memory-efficient (array.array for primitives, list for strings)
+int[] numbers = [1, 2, 3, 4, 5]
+float[] floats = [1.1, 2.2, 3.3]
+string[] names = ["John", "Jane", "Jim"]
+bool[] flags = [true, false, true]
+
+# sized array: length must match exactly
+int[3] primes = [2, 3, 5]
+
+# functional iteration
+numbers.loop(print)
+
+# ── Control flow ─────────────────────────────────────────
+# for loop (loop counter is immutable inside the body)
+loop (int i = 0, i < 3, i++) {
+    print(i)
+}
+
+# while loop (auto-detected from single condition)
+int counter = 0
+loop (counter < 3) {
+    print(counter)
+    counter++
+}
+
+# if / else if / else
+if (x < y) {
+    print("x is less than y")
+}
+else if (x == y) {
+    print("x equals y")
+}
+else {
+    print("x is greater than y")
+}
+
+# unless (negated if)
+unless (x > 100) {
+    print("x is not greater than 100")
+}
+
+# ── Functions & visibility ────────────────────────────────
+# global: accessible from any file that imports this module
+global function add(int a, int b) {
+    print(a + b)
+}
+
+# package: accessible only from files in the same folder
+package function int multiply(int a, int b) {
+    return a * b
+}
+
+# module-private (default): only usable in this file
+function secret() {
+    print("only main.pys can call me")
+}
+
+add(3, 4)
+int result = multiply(5, 6)
+print(result)
+secret()
+
+# package function: accessible because main.pys is in the same folder as funcs.pys
+greet("student")
+# internal_helper() would fail: it is module-private to funcs.pys
+
+# ── Interfaces ───────────────────────────────────────────
+# base capability: every vehicle can start, move, stop
+interface Drivable {
+    public start()
+    public move()
+    public stop()
+}
+
+# additional capabilities via separate interfaces
+interface Flyable {
+    public takeoff()
+    public land()
+}
+
+interface Loadable {
+    public load(int weight)
+    public int capacity()
+}
+
+# ── Base class ───────────────────────────────────────────
+# Vehicle implements Drivable (start, move, stop)
+class Vehicle implements Drivable {
+    protected string make
+    protected string model
+    protected int year
+
+    # constructor chaining: delegates to the 3-arg constructor
+    public Vehicle(string make, string model) {
+        this(make, model, 2024)
+    }
+
+    public Vehicle(string make, string model, int year) {
+        this.make = make
+        this.model = model
+        this.year = year
+    }
+
+    public start() {
+        print("{this.make} {this.model} starting")
+    }
+
+    public move() {
+        print("{this.make} {this.model} moving")
+    }
+
+    public stop() {
+        print("{this.make} {this.model} stopped")
+    }
+}
+
+# ── Car: inherits Vehicle ────────────────────────────────
+class Car inherits Vehicle {
+    public Car(string make, string model, int year) {
+        super(make, model, year)
+    }
+
+    # method overloading by signature
+    public move() {
+        print("{this.make} {this.model} ({this.year}) driving")
+    }
+
+    public move(string driver) {
+        print("{driver} drives {this.make} {this.model}")
+    }
+}
+
+# ── Truck: inherits Vehicle + implements Loadable ────────
+class Truck inherits Vehicle implements Loadable {
+    private int maxLoad
+
+    public Truck(string make, string model, int year, int maxLoad) {
+        super(make, model, year)
+        this.maxLoad = maxLoad
+    }
+
+    public move() {
+        print("{this.make} {this.model} ({this.year}) hauling")
+    }
+
+    public load(int weight) {
+        print("Loading {weight}kg onto {this.make} {this.model}")
+    }
+
+    public int capacity() {
+        return this.maxLoad
+    }
+}
+
+# ── Plane: inherits Vehicle + implements Flyable ─────────
+class Plane inherits Vehicle implements Flyable {
+    private int altitude
+
+    public Plane(string make, string model, int year) {
+        super(make, model, year)
+        this.altitude = 0
+    }
+
+    public move() {
+        print("{this.make} {this.model} flying at {this.altitude}ft")
+    }
+
+    public takeoff() {
+        this.altitude = 35000
+        print("{this.make} {this.model} taking off")
+    }
+
+    public land() {
+        this.altitude = 0
+        print("{this.make} {this.model} landing")
+    }
+}
+
+# ── CargoPlane: inherits Plane + implements Loadable ─────
+# multiple interfaces: Flyable (from Plane) + Loadable
+class CargoPlane inherits Plane implements Loadable {
+    private int maxLoad
+
+    public CargoPlane(string make, string model, int year, int maxLoad) {
+        super(make, model, year)
+        this.maxLoad = maxLoad
+    }
+
+    public load(int weight) {
+        print("Loading {weight}kg into {this.make} {this.model} cargo hold")
+    }
+
+    public int capacity() {
+        return this.maxLoad
+    }
+}
+
+# ── Instantiation & method calls ─────────────────────────
+Car car = Car("Toyota", "Corolla", 2020)
+car.start()
+car.move()
+car.move("Alice")
+car.stop()
+
+Car defaultCar = Car("VW", "Beetle", 1976)
+
+Truck truck = Truck("Ford", "F-150", 2024, 5000)
+truck.start()
+truck.move()
+truck.load(3000)
+print(truck.capacity())
+truck.stop()
+
+Plane plane = Plane("Boeing", "737", 2023)
+plane.start()
+plane.takeoff()
+plane.move()
+plane.land()
+plane.stop()
+
+CargoPlane cargo = CargoPlane("Airbus", "A400M", 2022, 37000)
+cargo.start()
+cargo.takeoff()
+cargo.load(20000)
+cargo.move()
+cargo.land()
+cargo.stop()
+
+# ── Polymorphism: declared type vs actual type ───────────
+# declared as Drivable, actual is Car
+Drivable d = car
+d.start()
+d.move()
+d.stop()
+
+# declared as Vehicle, actual is Truck
+Vehicle v = truck
+v.move()
+
+# declared as Flyable, actual is CargoPlane
+Flyable flyer = cargo
+flyer.takeoff()
+flyer.land()
+
+# declared as Loadable, actual is CargoPlane
+Loadable loader = cargo
+loader.load(15000)
+print(loader.capacity())
+
+# ── Typed interpolation with objects ─────────────────────
+print("#o{car} is an object")
+print("#o{cargo} is an object")
+
+# ── Generics ─────────────────────────────────────────────
+# type parameters available at runtime (U() instantiates the type)
+class Pair<T, U> {
+    private T first
+    private U second
+
+    public Pair(T first, U second) {
+        this.first = first
+        this.second = second
+    }
+
+    public T getFirst() {
+        return this.first
+    }
+
+    public U getSecond() {
+        return this.second
+    }
+}
+
+Pair<Car, Truck> pair = Pair<Car, Truck>(car, truck)
+pair.getFirst().move()
+pair.getSecond().move()
+
+class Box<T> {
+    private T[] items
+
+    public Box() {
+        this.items = []
+    }
+
+    public add(T item) {
+        this.items.append(item)
+    }
+
+    public T get(int index) {
+        return this.items[index]
+    }
+}
+
+Box<Vehicle> fleet = Box<Vehicle>()
+fleet.add(car)
+fleet.add(truck)
+fleet.add(plane)
+fleet.get(0).move()
+fleet.get(1).move()
+fleet.get(2).move()

@@ -1,18 +1,18 @@
+# module: funcs.pys — demonstrates visibility modifiers
+
+# global: accessible from any file
 global const float PI = 3.14159265358979323846
 
-package function greet(name){
-    print ("Hello, {name} ")
-    print ("Hello, {name} again ")
+global function hello() {
+    print("Hello, World!")
 }
 
-global function hello(){
-    print ("Hello, World!")
+# package: accessible only within the same folder
+package function greet(string name) {
+    print("Hello, {name}!")
 }
 
-module function doei(){
-    print ("Doei!")
-}
-
-function doei2(){
-    print ("Doei! 2")
+# module-private (default): not accessible outside this file
+function internal_helper() {
+    print("I am private to funcs.pys")
 }
