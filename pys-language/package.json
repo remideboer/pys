@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "publisher": "local",
   "private": true,
   "icon": "icons/pys-icon.png",

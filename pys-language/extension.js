@@ -8,6 +8,7 @@ const PYS_KEYWORDS = [
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
+  'tasks', 'task', 'await', 'shared',
 ];
 
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
@@ -17,6 +18,7 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'print', 'all', 'sealed',
+  'tasks', 'task', 'await', 'shared',
 ]);
 const PYS_MD_TYPES = new Set(['int', 'float', 'char', 'string', 'bool', 'list', 'dict', 'tuple', 'set']);
 const PYS_MD_CONSTANTS = new Set(['true', 'false', 'null']);
@@ -392,6 +394,10 @@ function activate(context) {
         sealed: 'Prevents inheritance: `sealed class Ship { ... }`. No class may use `inherits` on a sealed class.',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',
         from: 'Used in `import name from module.pys` / `import all from module.pys`.',
+        tasks: 'Structured concurrency group: `tasks { task { … } }`. Leaving the block waits for all children.',
+        task: 'One concurrent unit inside `tasks`. Named: `task ready { return 1 }` then `await ready` in a sibling.',
+        await: 'Wait until a value is ready (named task handle / future). Only inside a `task` body.',
+        shared: 'Cross-task mutable cell: `shared int counter = 0`. Outer captures are otherwise read-only inside tasks.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type',
         float: 'Floating-point type',
