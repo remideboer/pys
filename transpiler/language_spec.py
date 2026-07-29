@@ -470,7 +470,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "visible_class_inherits_implements",
-    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    r"(?:global|package|module)\s+(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
     lambda match: (
         f"class {match.group('name')}({match.group('parent')}, "
         + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
@@ -479,7 +479,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "visible_class_implements",
-    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    r"(?:global|package|module)\s+(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
     lambda match: (
         f"class {match.group('name')}("
         + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
@@ -488,12 +488,12 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "visible_class_inherits",
-    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
+    r"(?:global|package|module)\s+(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
     lambda match: f"class {match.group('name')}({match.group('super')}):",
 )
 LANGUAGE.add_regex(
     "visible_class",
-    r"(?:global|package|module)\s+class\s+(?P<name>[A-Za-z_]\w*)",
+    r"(?:global|package|module)\s+(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)",
     lambda match: f"class {match.group('name')}:",
 )
 LANGUAGE.add_regex(
@@ -529,7 +529,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "class_inherits_implements",
-    r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    r"(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
     lambda match: (
         f"class {match.group('name')}({match.group('parent')}, "
         + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
@@ -538,7 +538,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "class_implements",
-    r"class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
+    r"(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
     lambda match: (
         f"class {match.group('name')}("
         + ", ".join(part.strip() for part in match.group("interfaces").split(",") if part.strip())
@@ -547,8 +547,13 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "class_inherits",
-    r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
+    r"(?:sealed\s+)?class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<super>[A-Za-z_]\w*)",
     lambda match: f"class {match.group('name')}({match.group('super')}):",
+)
+LANGUAGE.add_regex(
+    "sealed_class",
+    r"sealed\s+class\s+(?P<name>[A-Za-z_]\w*)",
+    lambda match: f"class {match.group('name')}:",
 )
 LANGUAGE.add("class", "class {name}", "class {name}:")
 LANGUAGE.add_regex(

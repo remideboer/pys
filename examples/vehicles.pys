@@ -128,13 +128,21 @@ package class CargoPlane inherits Plane implements Loadable {
     }
 }
 
-# ── Ship: Vehicle + Loadable ────────────────────────────
-package class Ship inherits Vehicle implements Loadable {
+# ── Ship: sealed — cannot be extended with inherits ─────
+package sealed class Ship inherits Vehicle implements Loadable {
     private int maxLoad
 
     public Ship(string make, string model, int year, int maxLoad) {
         super(make, model, year)
         this.maxLoad = maxLoad
+    }
+
+    public load(int weight) {
+        print("Loading {weight}kg onto {this.make} {this.model}")
+    }
+
+    public int capacity() {
+        return this.maxLoad
     }
 }
 

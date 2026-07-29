@@ -1,7 +1,7 @@
 import pytest
 
 from transpiler.language_spec import LANGUAGE
-from transpiler.transpiler import TranspileError, transpile
+from transpiler.transpiler import Parser, TranspileError, transpile
 
 
 def test_translate_loop_general() -> None:
@@ -224,3 +224,18 @@ def test_translate_interface_and_implements() -> None:
 def test_translate_super_call() -> None:
     assert LANGUAGE.translate_line("super(make, model, year)") == "super().__init__(make, model, year)"
     assert LANGUAGE.translate_line("super.drive()") == "super().drive()"
+
+
+def test_sealed_class_transpiles() -> None:
+    assert LANGUAGE.translate_line("sealed class Ship") == "class Ship:"
+    assert LANGUAGE.translate_line("package sealed class Ship") == "class Ship:"
+    assert (
+        LANGUAGE.translate_line("package sealed class Ship inherits Vehicle implements Loadable")
+        == "class Ship(Vehicle, Loadable):"
+    )
+
+
+def test_sealed_class_rejects_inheritance() -> None:
+    source = "sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n"
+    with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
+        Parser(source).parse()

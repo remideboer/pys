@@ -27,6 +27,7 @@ class ModuleInfo:
     interfaces: set[str]
     class_members: dict[str, dict[str, str]]
     class_methods: dict[str, dict[str, int]]
+    sealed_classes: set[str]
 
 
 class TranspileError(ValueError):
@@ -91,6 +92,7 @@ class Parser:
         self.class_implements: dict[str, list[str]] = {}
         self.interfaces: set[str] = set()
         self.class_decl_lines: dict[str, int] = {}
+        self.sealed_classes: set[str] = set()
         self.generic_type_params: dict[str, list[str]] = {}
         self.needs_abc_import = False
         self.needs_array_import = False
@@ -284,6 +286,7 @@ class Parser:
             raise TranspileError("Unclosed block at end of file.")
 
         self._enforce_interface_implementations()
+        self._enforce_sealed_classes()
 
         python_text = "\n".join(self.output_lines) + "\n"
         # Normalize common object references from source language to Python.
@@ -699,7 +702,7 @@ class Parser:
 
     def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
         match = re.match(
-            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|class\b|interface\b|const\b)",
+            r"^(?P<vis>global|package|module)\s+(?=function\b|func\b|(?:sealed\s+)?class\b|interface\b|const\b)",
             line,
         )
         if not match:
@@ -783,6 +786,7 @@ class Parser:
                 interfaces=set(child.interfaces),
                 class_members=dict(child.class_members),
                 class_methods=dict(child.class_methods),
+                sealed_classes=set(child.sealed_classes),
             )
             self.module_cache[path] = info
             return info
@@ -848,6 +852,8 @@ class Parser:
                 self.class_members[name] = info.class_members[name]
             if name in info.class_methods:
                 self.class_methods[name] = info.class_methods[name]
+            if name in info.sealed_classes:
+                self.sealed_classes.add(name)
 
     def _enforce_seen_name_access(self, line: str, line_number: int, raw_line: str) -> None:
         builtins = {
@@ -965,8 +971,9 @@ class Parser:
                 self.pending_block_context = ("interface", m.group(1))
             else:
                 self.pending_block_context = ("interface", "")
-        elif rest.startswith("class "):
-            m = re.match(r"class\s+([A-Za-z_]\w*)", rest)
+        elif rest.startswith("class ") or rest.startswith("sealed "):
+            stripped = re.sub(r"^sealed\s+", "", rest)
+            m = re.match(r"class\s+([A-Za-z_]\w*)", stripped)
             if m:
                 self.pending_block_context = ("class", m.group(1))
             else:
@@ -1068,6 +1075,16 @@ class Parser:
                             line_number=decl_line,
                             source_file=self.source_path,
                         )
+
+    def _enforce_sealed_classes(self) -> None:
+        for class_name, parent in self.class_parents.items():
+            if parent and parent in self.sealed_classes:
+                decl_line = self.class_decl_lines.get(class_name, 0)
+                raise TranspileError(
+                    f"Class {class_name} cannot inherit from sealed class {parent}.",
+                    line_number=decl_line,
+                    source_file=self.source_path,
+                )
 
     def _is_subtype(self, child: str, parent: str) -> bool:
         current: str | None = child
@@ -1236,6 +1253,10 @@ class Parser:
 
     def _record_class_declaration(self, line: str, line_number: int = 0) -> None:
         _, line = self._strip_top_level_visibility(line)
+        is_sealed = False
+        if re.match(r"sealed\s+", line):
+            is_sealed = True
+            line = re.sub(r"^sealed\s+", "", line)
         interface = re.match(r"interface\s+(?P<name>[A-Za-z_]\w*)", line)
         if interface:
             name = interface.group("name")
@@ -1249,9 +1270,14 @@ class Parser:
             r"class\s+(?P<name>[A-Za-z_]\w*)\s+(?:inherits|super)\s+(?P<parent>[A-Za-z_]\w*)\s+implements\s+(?P<interfaces>.+)",
             line,
         )
+        def _register(name: str) -> None:
+            self.class_decl_lines[name] = line_number
+            if is_sealed:
+                self.sealed_classes.add(name)
+
         if inherits_implements:
             name = inherits_implements.group("name")
-            self.class_decl_lines[name] = line_number
+            _register(name)
             self.class_parents[name] = inherits_implements.group("parent")
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1268,7 +1294,7 @@ class Parser:
         )
         if implements:
             name = implements.group("name")
-            self.class_decl_lines[name] = line_number
+            _register(name)
             self.class_parents.setdefault(name, None)
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1283,7 +1309,7 @@ class Parser:
         )
         if inherits:
             name = inherits.group("name")
-            self.class_decl_lines[name] = line_number
+            _register(name)
             self.class_parents[name] = inherits.group("parent")
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
@@ -1291,7 +1317,7 @@ class Parser:
         simple = re.match(r"class\s+(?P<name>[A-Za-z_]\w*)", line)
         if simple:
             name = simple.group("name")
-            self.class_decl_lines[name] = line_number
+            _register(name)
             self.class_parents.setdefault(name, None)
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})

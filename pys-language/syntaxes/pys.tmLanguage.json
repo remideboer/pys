@@ -161,7 +161,7 @@
         },
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(global|package|module)(?=\\s+(?:function|func|class|interface|const)\\b)"
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:sealed\\s+)?class|interface|const)\\b)"
         },
         {
           "name": "meta.function.declaration.pys",
@@ -183,30 +183,33 @@
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:<([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)>)?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:<([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)>)?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "keyword.control.pys"
+              "name": "storage.modifier.pys"
             },
             "3": {
-              "name": "entity.name.type.class.pys"
+              "name": "keyword.control.pys"
             },
             "4": {
-              "name": "storage.type.pys"
-            },
-            "5": {
-              "name": "keyword.control.pys"
-            },
-            "6": {
               "name": "entity.name.type.class.pys"
             },
-            "7": {
+            "5": {
+              "name": "storage.type.pys"
+            },
+            "6": {
               "name": "keyword.control.pys"
             },
+            "7": {
+              "name": "entity.name.type.class.pys"
+            },
             "8": {
+              "name": "keyword.control.pys"
+            },
+            "9": {
               "name": "entity.name.type.interface.pys"
             }
           }
@@ -301,7 +304,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|sealed)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",

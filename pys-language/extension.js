@@ -6,7 +6,7 @@ const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const',
-  'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all',
+  'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
 ];
 
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
@@ -238,6 +238,7 @@ except Exception as exc:
         global: 'Top-level export with global access across the whole project. Use: `global function name(...)` or `global const float PI = ...`.',
         package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
+        sealed: 'Prevents inheritance: `sealed class Ship { ... }`. No class may use `inherits` on a sealed class.',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',
         from: 'Used in `import name from module.pys` / `import all from module.pys`.',
         string: 'Text type (transpiles to Python `str`)',
