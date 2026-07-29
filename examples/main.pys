@@ -1,7 +1,9 @@
 # ── Imports ──────────────────────────────────────────────
 import funcs
+import vehicles
 # also valid: import all from funcs.pys
 # also valid: import hello from funcs.pys
+# log() in vehicles.pys is module-private and NOT importable
 
 hello()
 print(PI)
@@ -119,138 +121,7 @@ secret()
 greet("student")
 # internal_helper() would fail: it is module-private to funcs.pys
 
-# ── Interfaces ───────────────────────────────────────────
-# base capability: every vehicle can start, move, stop
-interface Drivable {
-    public start()
-    public move()
-    public stop()
-}
-
-# additional capabilities via separate interfaces
-interface Flyable {
-    public takeoff()
-    public land()
-}
-
-interface Loadable {
-    public load(int weight)
-    public int capacity()
-}
-
-# ── Base class ───────────────────────────────────────────
-# Vehicle implements Drivable (start, move, stop)
-class Vehicle implements Drivable {
-    protected string make
-    protected string model
-    protected int year
-
-    # constructor chaining: delegates to the 3-arg constructor
-    public Vehicle(string make, string model) {
-        this(make, model, 2024)
-    }
-
-    public Vehicle(string make, string model, int year) {
-        this.make = make
-        this.model = model
-        this.year = year
-    }
-
-    public start() {
-        print("{this.make} {this.model} starting")
-    }
-
-    public move() {
-        print("{this.make} {this.model} moving")
-    }
-
-    public stop() {
-        print("{this.make} {this.model} stopped")
-    }
-}
-
-# ── Car: inherits Vehicle ────────────────────────────────
-class Car inherits Vehicle {
-    public Car(string make, string model, int year) {
-        super(make, model, year)
-    }
-
-    # method overloading by signature
-    public move() {
-        print("{this.make} {this.model} ({this.year}) driving")
-    }
-
-    public move(string driver) {
-        print("{driver} drives {this.make} {this.model}")
-    }
-}
-
-# ── Truck: inherits Vehicle + implements Loadable ────────
-class Truck inherits Vehicle implements Loadable {
-    private int maxLoad
-
-    public Truck(string make, string model, int year, int maxLoad) {
-        super(make, model, year)
-        this.maxLoad = maxLoad
-    }
-
-    public move() {
-        print("{this.make} {this.model} ({this.year}) hauling")
-    }
-
-    public load(int weight) {
-        print("Loading {weight}kg onto {this.make} {this.model}")
-    }
-
-    public int capacity() {
-        return this.maxLoad
-    }
-}
-
-# ── Plane: inherits Vehicle + implements Flyable ─────────
-class Plane inherits Vehicle implements Flyable {
-    private int altitude
-
-    public Plane(string make, string model, int year) {
-        super(make, model, year)
-        this.altitude = 0
-    }
-
-    public move() {
-        print("{this.make} {this.model} flying at {this.altitude}ft")
-    }
-
-    public takeoff() {
-        this.altitude = 35000
-        print("{this.make} {this.model} taking off")
-    }
-
-    public land() {
-        this.altitude = 0
-        print("{this.make} {this.model} landing")
-    }
-}
-
-# ── CargoPlane: inherits Plane + implements Loadable ─────
-# multiple interfaces: Flyable (from Plane) + Loadable
-class CargoPlane inherits Plane implements Loadable {
-    private int maxLoad
-
-    public CargoPlane(string make, string model, int year, int maxLoad) {
-        super(make, model, year)
-        this.maxLoad = maxLoad
-    }
-
-    public load(int weight) {
-        print("Loading {weight}kg into {this.make} {this.model} cargo hold")
-    }
-
-    public int capacity() {
-        return this.maxLoad
-    }
-}
-
-# ── Instantiation & method calls ─────────────────────────
+# ── Vehicle classes (from vehicles.pys) ──────────────────
 Car car = Car("Toyota", "Corolla", 2020)
 car.start()
 car.move()

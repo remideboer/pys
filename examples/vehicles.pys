@@ -1,0 +1,134 @@
+# module: vehicles.pys — vehicle class hierarchy
+# demonstrates interfaces, inheritance, and visibility modifiers
+
+# ── Interfaces (package: importable from the same folder) ─
+package interface Drivable {
+    public start()
+    public move()
+    public stop()
+}
+
+package interface Flyable {
+    public takeoff()
+    public land()
+}
+
+package interface Loadable {
+    public load(int weight)
+    public int capacity()
+}
+
+# ── Base class ───────────────────────────────────────────
+package class Vehicle implements Drivable {
+    protected string make
+    protected string model
+    protected int year
+
+    # constructor chaining
+    public Vehicle(string make, string model) {
+        this(make, model, 2024)
+    }
+
+    public Vehicle(string make, string model, int year) {
+        this.make = make
+        this.model = model
+        this.year = year
+    }
+
+    public start() {
+        print("{this.make} {this.model} starting")
+    }
+
+    public move() {
+        print("{this.make} {this.model} moving")
+    }
+
+    public stop() {
+        print("{this.make} {this.model} stopped")
+    }
+}
+
+# ── Car ──────────────────────────────────────────────────
+package class Car inherits Vehicle {
+    public Car(string make, string model, int year) {
+        super(make, model, year)
+    }
+
+    # method overloading
+    public move() {
+        print("{this.make} {this.model} ({this.year}) driving")
+    }
+
+    public move(string driver) {
+        print("{driver} drives {this.make} {this.model}")
+    }
+}
+
+# ── Truck: Vehicle + Loadable ────────────────────────────
+package class Truck inherits Vehicle implements Loadable {
+    private int maxLoad
+
+    public Truck(string make, string model, int year, int maxLoad) {
+        super(make, model, year)
+        this.maxLoad = maxLoad
+    }
+
+    public move() {
+        print("{this.make} {this.model} ({this.year}) hauling")
+    }
+
+    public load(int weight) {
+        print("Loading {weight}kg onto {this.make} {this.model}")
+    }
+
+    public int capacity() {
+        return this.maxLoad
+    }
+}
+
+# ── Plane: Vehicle + Flyable ────────────────────────────
+package class Plane inherits Vehicle implements Flyable {
+    private int altitude
+
+    public Plane(string make, string model, int year) {
+        super(make, model, year)
+        this.altitude = 0
+    }
+
+    public move() {
+        print("{this.make} {this.model} flying at {this.altitude}ft")
+    }
+
+    public takeoff() {
+        this.altitude = 35000
+        print("{this.make} {this.model} taking off")
+    }
+
+    public land() {
+        this.altitude = 0
+        print("{this.make} {this.model} landing")
+    }
+}
+
+# ── CargoPlane: Plane + Loadable (layered interfaces) ────
+package class CargoPlane inherits Plane implements Loadable {
+    private int maxLoad
+
+    public CargoPlane(string make, string model, int year, int maxLoad) {
+        super(make, model, year)
+        this.maxLoad = maxLoad
+    }
+
+    public load(int weight) {
+        print("Loading {weight}kg into {this.make} {this.model} cargo hold")
+    }
+
+    public int capacity() {
+        return this.maxLoad
+    }
+}
+
+# module-private helper: not accessible outside this file
+function log(string msg) {
+    print("vehicles.log: {msg}")
+}

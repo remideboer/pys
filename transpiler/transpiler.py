@@ -22,6 +22,11 @@ class ModuleInfo:
     exports: dict[str, str]
     constants: set[str]
     types: dict[str, str]
+    class_parents: dict[str, str | None]
+    class_implements: dict[str, list[str]]
+    interfaces: set[str]
+    class_members: dict[str, dict[str, str]]
+    class_methods: dict[str, dict[str, int]]
 
 
 class TranspileError(ValueError):
@@ -772,6 +777,11 @@ class Parser:
                     for name in child.exports
                     if name in child.variable_types
                 },
+                class_parents=dict(child.class_parents),
+                class_implements=dict(child.class_implements),
+                interfaces=set(child.interfaces),
+                class_members=dict(child.class_members),
+                class_methods=dict(child.class_methods),
             )
             self.module_cache[path] = info
             return info
@@ -812,6 +822,31 @@ class Parser:
             if name in self.imported_names or name in self.exports:
                 continue
             self.seen_module_names[name] = (info.path.name, visibility, accessible)
+        # Merge class hierarchy so polymorphism checks work across modules.
+        # Transitively include parents and interfaces referenced by imported names.
+        to_merge: set[str] = set(imported_set)
+        merged: set[str] = set()
+        while to_merge:
+            name = to_merge.pop()
+            if name in merged:
+                continue
+            merged.add(name)
+            if name in info.class_parents:
+                self.class_parents[name] = info.class_parents[name]
+                parent = info.class_parents[name]
+                if parent and parent not in merged:
+                    to_merge.add(parent)
+            if name in info.class_implements:
+                self.class_implements[name] = info.class_implements[name]
+                for iface in info.class_implements[name]:
+                    if iface not in merged:
+                        to_merge.add(iface)
+            if name in info.interfaces:
+                self.interfaces.add(name)
+            if name in info.class_members:
+                self.class_members[name] = info.class_members[name]
+            if name in info.class_methods:
+                self.class_methods[name] = info.class_methods[name]
 
     def _enforce_seen_name_access(self, line: str, line_number: int, raw_line: str) -> None:
         builtins = {
