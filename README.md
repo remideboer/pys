@@ -36,10 +36,6 @@ cursor --install-extension .\pys-language-0.0.25.vsix --force
 
 Then reload the window. Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
 
-Dependencies for `.pys` programs are declared in `pys.deps` and cached in a central
-repository (`~/.pys/repository`), similar to Maven's `.m2`. The runner downloads
-missing packages with pip on first use and reuses them afterwards (flyweight).
-
 ### Run a tutorial or sample
 
 ```bash
@@ -53,10 +49,41 @@ python -m transpiler run examples/main.pys
 python -m transpiler transpile examples/main.pys .transpiled/main.py
 ```
 
-### Project dependencies (`pys.deps`)
+### Dependency management (`pys.deps`)
 
-Place a `pys.deps` file in the project root (or any parent of the `.pys` file).
-The runner reads it automatically:
+PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
+packages for `.pys` programs are declared in a `pys.deps` file and resolved
+through a **Maven-style central repository** shared across projects.
+
+**How it works**
+
+1. On run/transpile, the tool walks upward from the `.pys` file until it finds
+   `pys.deps`.
+2. It checks the optional `[interpreter]` constraint (and optional `path`).
+3. For each entry under `[dependencies]`, it looks in the central repo:
+   `~/.pys/repository/packages/<name>/<version>/`.
+4. Missing packages are installed once with `pip install --target` into that
+   folder (flyweight cache). Later projects reuse the same install.
+5. Those package folders are prepended to `PYTHONPATH` for the generated
+   Python process — imports like `import matplotlib` then resolve normally.
+
+**Layout**
+
+```
+~/.pys/repository/
+  packages/
+    matplotlib/
+      3.8.0/          # pinned or resolved "latest"
+      LATEST          # pointer file when version was omitted
+    mysql_connector_python/
+      8.0.33/
+```
+
+Override the repo root with env `PYS_REPO` if needed.
+
+**Declare dependencies**
+
+Place `pys.deps` in the project root (or any parent of the `.pys` file):
 
 ```
 [interpreter]
@@ -70,9 +97,15 @@ The runner reads it automatically:
 		build: run
 ```
 
-- `version` defaults to latest when omitted
-- `build: run|test` is optional (omit = both)
-- Override the central repo with env `PYS_REPO`
+| Field | Meaning |
+| --- | --- |
+| package name (indented line) | PyPI name; required |
+| `version` | Pin (e.g. `8.0.33`). Omit = resolve once as latest and cache |
+| `build` | `run`, `test`, or omit (= available for both) |
+
+Stdlib modules need no entry. Non-stdlib packages must be listed in `pys.deps`
+before you `import` them from `.pys`.
+
 ## VS Code Integration
 
 This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.
