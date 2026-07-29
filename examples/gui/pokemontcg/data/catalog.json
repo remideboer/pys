@@ -1,0 +1,1012 @@
+{
+  "source": "TCGdex",
+  "setId": "swsh3",
+  "cards": [
+    {
+      "id": "swsh3-1",
+      "name": "Butterfree V",
+      "category": "Pokemon",
+      "hp": 190,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Holo Rare V",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Dizzying Poison",
+          "damage": "",
+          "cost": [
+            "Grass"
+          ]
+        },
+        {
+          "name": "Blasting Wind",
+          "damage": "130",
+          "cost": [
+            "Grass",
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/1"
+    },
+    {
+      "id": "swsh3-2",
+      "name": "Butterfree VMAX",
+      "category": "Pokemon",
+      "hp": 300,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Holo Rare VMAX",
+      "setName": "Darkness Ablaze",
+      "stage": "VMAX",
+      "retreat": 0,
+      "attacks": [
+        {
+          "name": "G-Max Toxbreeze",
+          "damage": "150",
+          "cost": [
+            "Grass",
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/2"
+    },
+    {
+      "id": "swsh3-3",
+      "name": "Paras",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Scratch",
+          "damage": "20",
+          "cost": [
+            "Grass"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/3"
+    },
+    {
+      "id": "swsh3-4",
+      "name": "Parasect",
+      "category": "Pokemon",
+      "hp": 120,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Mushroom Tackle",
+          "damage": "30",
+          "cost": [
+            "Grass"
+          ]
+        },
+        {
+          "name": "Solar Beam",
+          "damage": "110",
+          "cost": [
+            "Grass",
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/4"
+    },
+    {
+      "id": "swsh3-5",
+      "name": "Carnivine",
+      "category": "Pokemon",
+      "hp": 90,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Return",
+          "damage": "20",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Giga Drain",
+          "damage": "40",
+          "cost": [
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/5"
+    },
+    {
+      "id": "swsh3-6",
+      "name": "Pansage",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Seed Bomb",
+          "damage": "10",
+          "cost": [
+            "Grass"
+          ]
+        },
+        {
+          "name": "Bite",
+          "damage": "20",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/6"
+    },
+    {
+      "id": "swsh3-7",
+      "name": "Simisage",
+      "category": "Pokemon",
+      "hp": 100,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Seed Bomb",
+          "damage": "30",
+          "cost": [
+            "Grass"
+          ]
+        },
+        {
+          "name": "Giga Impact",
+          "damage": "110",
+          "cost": [
+            "Colorless",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/7"
+    },
+    {
+      "id": "swsh3-8",
+      "name": "Karrablast",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Continuous Headbutt",
+          "damage": "20\u00d7",
+          "cost": [
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/8"
+    },
+    {
+      "id": "swsh3-9",
+      "name": "Shelmet",
+      "category": "Pokemon",
+      "hp": 70,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Spray Fluid",
+          "damage": "10",
+          "cost": [
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/9"
+    },
+    {
+      "id": "swsh3-10",
+      "name": "Accelgor",
+      "category": "Pokemon",
+      "hp": 90,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 0,
+      "attacks": [
+        {
+          "name": "Jet Headbutt",
+          "damage": "70",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/10"
+    },
+    {
+      "id": "swsh3-11",
+      "name": "Rowlet",
+      "category": "Pokemon",
+      "hp": 50,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Wind Shard",
+          "damage": "",
+          "cost": [
+            "Colorless",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/11"
+    },
+    {
+      "id": "swsh3-12",
+      "name": "Dartrix",
+      "category": "Pokemon",
+      "hp": 80,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Razor Leaf",
+          "damage": "40",
+          "cost": [
+            "Grass"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/12"
+    },
+    {
+      "id": "swsh3-13",
+      "name": "Decidueye",
+      "category": "Pokemon",
+      "hp": 140,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Holo Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage2",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Splitting Arrow",
+          "damage": "90",
+          "cost": [
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/13"
+    },
+    {
+      "id": "swsh3-14",
+      "name": "Bounsweet",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Synthesis",
+          "damage": "",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Flop",
+          "damage": "20",
+          "cost": [
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/14"
+    },
+    {
+      "id": "swsh3-15",
+      "name": "Steenee",
+      "category": "Pokemon",
+      "hp": 80,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Captivate",
+          "damage": "",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Smack",
+          "damage": "40",
+          "cost": [
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/15"
+    },
+    {
+      "id": "swsh3-16",
+      "name": "Tsareena",
+      "category": "Pokemon",
+      "hp": 150,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage2",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Power Whip",
+          "damage": "",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Time Out Kick",
+          "damage": "100",
+          "cost": [
+            "Grass",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/16"
+    },
+    {
+      "id": "swsh3-17",
+      "name": "Wimpod",
+      "category": "Pokemon",
+      "hp": 70,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Gnaw and Run",
+          "damage": "10",
+          "cost": [
+            "Grass"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/17"
+    },
+    {
+      "id": "swsh3-18",
+      "name": "Golisopod",
+      "category": "Pokemon",
+      "hp": 130,
+      "types": [
+        "Grass"
+      ],
+      "rarity": "Holo Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Hard Times Slash",
+          "damage": "30+",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Smash Turn",
+          "damage": "70",
+          "cost": [
+            "Grass",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/18"
+    },
+    {
+      "id": "swsh3-19",
+      "name": "Charizard V",
+      "category": "Pokemon",
+      "hp": 220,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare V",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Claw Slash",
+          "damage": "80",
+          "cost": [
+            "Colorless",
+            "Colorless",
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Fire Spin",
+          "damage": "220",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/19"
+    },
+    {
+      "id": "swsh3-20",
+      "name": "Charizard VMAX",
+      "category": "Pokemon",
+      "hp": 330,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare VMAX",
+      "setName": "Darkness Ablaze",
+      "stage": "VMAX",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Claw Slash",
+          "damage": "100",
+          "cost": [
+            "Colorless",
+            "Colorless",
+            "Colorless"
+          ]
+        },
+        {
+          "name": "G-Max Wildfire",
+          "damage": "300",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Fire",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/20"
+    },
+    {
+      "id": "swsh3-21",
+      "name": "Houndoom V",
+      "category": "Pokemon",
+      "hp": 210,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare V",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Searing Flame",
+          "damage": "20",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Vengeful Flame",
+          "damage": "100+",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/21"
+    },
+    {
+      "id": "swsh3-22",
+      "name": "Torchic",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Call for Family",
+          "damage": "",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Live Coal",
+          "damage": "10",
+          "cost": [
+            "Fire"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/22"
+    },
+    {
+      "id": "swsh3-23",
+      "name": "Combusken",
+      "category": "Pokemon",
+      "hp": 90,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Smash Kick",
+          "damage": "20",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Heat Beak",
+          "damage": "40",
+          "cost": [
+            "Fire",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/23"
+    },
+    {
+      "id": "swsh3-24",
+      "name": "Blaziken",
+      "category": "Pokemon",
+      "hp": 170,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage2",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Turbo Drive",
+          "damage": "130",
+          "cost": [
+            "Fire",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/24"
+    },
+    {
+      "id": "swsh3-25",
+      "name": "Heatran",
+      "category": "Pokemon",
+      "hp": 130,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 4,
+      "attacks": [
+        {
+          "name": "Fire Fang",
+          "damage": "30",
+          "cost": [
+            "Fire",
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Raging Flare",
+          "damage": "80+",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/25"
+    },
+    {
+      "id": "swsh3-26",
+      "name": "Pansear",
+      "category": "Pokemon",
+      "hp": 60,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Live Coal",
+          "damage": "10",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Bite",
+          "damage": "20",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/26"
+    },
+    {
+      "id": "swsh3-27",
+      "name": "Simisear",
+      "category": "Pokemon",
+      "hp": 100,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Flare",
+          "damage": "30",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Giga Impact",
+          "damage": "110",
+          "cost": [
+            "Colorless",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/27"
+    },
+    {
+      "id": "swsh3-28",
+      "name": "Galarian Darmanitan",
+      "category": "Pokemon",
+      "hp": 140,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Headbutt",
+          "damage": "40",
+          "cost": [
+            "Colorless"
+          ]
+        },
+        {
+          "name": "Frozen Heat",
+          "damage": "110+",
+          "cost": [
+            "Water",
+            "Water",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/28"
+    },
+    {
+      "id": "swsh3-29",
+      "name": "Larvesta",
+      "category": "Pokemon",
+      "hp": 70,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 2,
+      "attacks": [
+        {
+          "name": "Singe",
+          "damage": "",
+          "cost": [
+            "Fire"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/29"
+    },
+    {
+      "id": "swsh3-30",
+      "name": "Volcarona",
+      "category": "Pokemon",
+      "hp": 120,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Cauterize",
+          "damage": "80",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Fire Wing",
+          "damage": "110",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/30"
+    },
+    {
+      "id": "swsh3-31",
+      "name": "Fletchinder",
+      "category": "Pokemon",
+      "hp": 70,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Uncommon",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage1",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Searing Flame",
+          "damage": "20",
+          "cost": [
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/31"
+    },
+    {
+      "id": "swsh3-32",
+      "name": "Talonflame",
+      "category": "Pokemon",
+      "hp": 140,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Rare",
+      "setName": "Darkness Ablaze",
+      "stage": "Stage2",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Mach Flight",
+          "damage": "120",
+          "cost": [
+            "Fire",
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/32"
+    },
+    {
+      "id": "swsh3-33",
+      "name": "Centiskorch V",
+      "category": "Pokemon",
+      "hp": 210,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare V",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "Radiating Heat",
+          "damage": "20",
+          "cost": [
+            "Fire"
+          ]
+        },
+        {
+          "name": "Burning Train",
+          "damage": "180",
+          "cost": [
+            "Fire",
+            "Fire",
+            "Fire",
+            "Fire"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/33"
+    },
+    {
+      "id": "swsh3-34",
+      "name": "Centiskorch VMAX",
+      "category": "Pokemon",
+      "hp": 320,
+      "types": [
+        "Fire"
+      ],
+      "rarity": "Holo Rare VMAX",
+      "setName": "Darkness Ablaze",
+      "stage": "VMAX",
+      "retreat": 3,
+      "attacks": [
+        {
+          "name": "G-Max Centiferno",
+          "damage": "40+",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/34"
+    },
+    {
+      "id": "swsh3-35",
+      "name": "Galarian Mr. Mime",
+      "category": "Pokemon",
+      "hp": 80,
+      "types": [
+        "Water"
+      ],
+      "rarity": "Common",
+      "setName": "Darkness Ablaze",
+      "stage": "Basic",
+      "retreat": 1,
+      "attacks": [
+        {
+          "name": "Reflect",
+          "damage": "",
+          "cost": [
+            "Water"
+          ]
+        },
+        {
+          "name": "Icy Snow",
+          "damage": "30",
+          "cost": [
+            "Colorless",
+            "Colorless"
+          ]
+        }
+      ],
+      "image": "https://assets.tcgdex.net/en/swsh/swsh3/35"
+    }
+  ]
+}

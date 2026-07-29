@@ -1,0 +1,9 @@
+# main.pys — Pokemon TCG Tkinter demo entry point
+# Run: python -m transpiler run examples/gui/pokemontcg/main.pys
+
+import store
+import ui
+
+AppStore appStore = openStore()
+PokemonApp app = PokemonApp(appStore)
+app.run()

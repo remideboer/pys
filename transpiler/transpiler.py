@@ -3163,11 +3163,18 @@ def run_source(source_path: Path) -> int:
             for stem, python_text in modules.items():
                 (temp_root / f"{stem}.py").write_text(python_text, encoding="utf-8")
             main_file = temp_root / f"{source_path.stem}.py"
+            # Run with the source folder as cwd so relative data files resolve;
+            # put the temp modules first on PYTHONPATH for sibling imports.
+            run_env = dict(env)
+            existing = run_env.get("PYTHONPATH", "")
+            run_env["PYTHONPATH"] = (
+                str(temp_root) if not existing else str(temp_root) + os.pathsep + existing
+            )
             process = subprocess.run(
                 [python_exe, str(main_file)],
                 check=False,
-                cwd=temp_root,
-                env=env,
+                cwd=str(source_path.parent),
+                env=run_env,
             )
             return process.returncode
 

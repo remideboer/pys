@@ -1,0 +1,164 @@
+# fetch_catalog.pys — extract a slim catalog from TCGdex REST v2
+# Docs: https://tcgdex.dev/rest  and  https://tcgdex.dev/sdks/python
+# Writes data/catalog.json (offline use by the GUI).
+
+import json
+import urllib.request
+from pathlib import Path
+
+const string API = "https://api.tcgdex.net/v2/en"
+const string SET_ID = "swsh3"
+const int MAX_CARDS = 35
+
+global function httpGetJson(string url) {
+    string body = urllib.request.urlopen(url).read().decode("utf-8")
+    return json.loads(body)
+}
+
+global function slimCard(dict raw) {
+    list attacks = []
+    list rawAttacks = []
+    if ("attacks" in raw) {
+        if (raw["attacks"] != null) {
+            rawAttacks = raw["attacks"]
+        }
+    }
+    loop (dict a in rawAttacks) {
+        string dmg = ""
+        if ("damage" in a) {
+            if (a["damage"] != null) {
+                dmg = str(a["damage"])
+            }
+        }
+        list cost = []
+        if ("cost" in a) {
+            if (a["cost"] != null) {
+                loop (string c in a["cost"]) {
+                    cost.append(c)
+                }
+            }
+        }
+        string aname = ""
+        if ("name" in a) {
+            if (a["name"] != null) {
+                aname = a["name"]
+            }
+        }
+        dict atk = dict()
+        atk["name"] = aname
+        atk["damage"] = dmg
+        atk["cost"] = cost
+        attacks.append(atk)
+    }
+
+    list types = []
+    if ("types" in raw) {
+        if (raw["types"] != null) {
+            loop (string t in raw["types"]) {
+                types.append(t)
+            }
+        }
+    }
+
+    int hp = 0
+    if ("hp" in raw) {
+        if (raw["hp"] != null) {
+            hp = raw["hp"]
+        }
+    }
+    int retreat = 0
+    if ("retreat" in raw) {
+        if (raw["retreat"] != null) {
+            retreat = raw["retreat"]
+        }
+    }
+
+    string setName = ""
+    if ("set" in raw) {
+        if (raw["set"] != null) {
+            dict s = raw["set"]
+            if ("name" in s) {
+                if (s["name"] != null) {
+                    setName = s["name"]
+                }
+            }
+        }
+    }
+
+    string rarity = ""
+    if ("rarity" in raw) {
+        if (raw["rarity"] != null) {
+            rarity = raw["rarity"]
+        }
+    }
+    string stage = ""
+    if ("stage" in raw) {
+        if (raw["stage"] != null) {
+            stage = raw["stage"]
+        }
+    }
+    string category = ""
+    if ("category" in raw) {
+        if (raw["category"] != null) {
+            category = raw["category"]
+        }
+    }
+    string image = ""
+    if ("image" in raw) {
+        if (raw["image"] != null) {
+            image = raw["image"]
+        }
+    }
+    string name = ""
+    if ("name" in raw) {
+        if (raw["name"] != null) {
+            name = raw["name"]
+        }
+    }
+
+    dict out = dict()
+    out["id"] = raw["id"]
+    out["name"] = name
+    out["category"] = category
+    out["hp"] = hp
+    out["types"] = types
+    out["rarity"] = rarity
+    out["setName"] = setName
+    out["stage"] = stage
+    out["retreat"] = retreat
+    out["attacks"] = attacks
+    out["image"] = image
+    return out
+}
+
+global function main() {
+    print("Fetching set {SET_ID} from TCGdex...")
+    dict setData = httpGetJson(API + "/sets/" + SET_ID)
+    list briefs = setData["cards"]
+    list cards = []
+    int n = 0
+    int total = len(briefs)
+    if (total > MAX_CARDS) {
+        total = MAX_CARDS
+    }
+    loop (int i = 0, i < total, i++) {
+        dict brief = briefs[i]
+        string cid = brief["id"]
+        print("  #i{i} {cid}")
+        dict raw = httpGetJson(API + "/cards/" + cid)
+        cards.append(slimCard(raw))
+        n = n + 1
+    }
+    dict payload = dict()
+    payload["source"] = "TCGdex"
+    payload["setId"] = SET_ID
+    payload["cards"] = cards
+    Path dataDir = Path("data")
+    dataDir.mkdir(parents=True, exist_ok=True)
+    Path outPath = dataDir / ("catalog" + ".json")
+    string text = json.dumps(payload, indent=2)
+    outPath.write_text(text, encoding="utf-8")
+    print("Wrote #i{n} cards to data/catalog.json")
+}
+
+main()
