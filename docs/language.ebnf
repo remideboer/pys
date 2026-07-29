@@ -58,6 +58,7 @@ top_level        = import_stmt
 (* ------------------------- Imports ------------------------- *)
 
 import_stmt      = "import" , module_ref
+                 | "import" , module_ref , "as" , identifier
                  | "import" , "all" , "from" , module_ref
                  | "import" , identifier , "from" , module_ref ;
 
@@ -65,7 +66,7 @@ module_ref       = module_name , [ ".pys" ] ;
 module_name      = identifier , { ( "." | "/" ) , identifier } ;
 
 (* External Python packages from pys.deps / stdlib use the same import forms,
-   e.g. import mysql.connector *)
+   e.g. import mysql.connector , import tkinter as tk *)
 
 (* ------------------------- Visibility ------------------------- *)
 

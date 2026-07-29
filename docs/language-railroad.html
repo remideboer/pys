@@ -337,9 +337,10 @@
     {
       id: 'import_stmt',
       title: 'import_stmt',
-      ebnf: 'import_stmt = "import" module_ref | "import" "all" "from" module_ref | "import" identifier "from" module_ref ;',
+      ebnf: 'import_stmt = "import" module_ref | "import" module_ref "as" identifier | "import" "all" "from" module_ref | "import" identifier "from" module_ref ;',
       node: Choice(
         Seq(T('import'), N('module_ref')),
+        Seq(T('import'), N('module_ref'), T('as'), N('identifier')),
         Seq(T('import'), T('all'), T('from'), N('module_ref')),
         Seq(T('import'), N('identifier'), T('from'), N('module_ref'))
       )

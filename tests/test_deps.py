@@ -109,6 +109,18 @@ def test_external_python_import_passes_through(tmp_path: Path) -> None:
     assert "import math" in python
 
 
+def test_stdlib_import_as_alias(tmp_path: Path) -> None:
+    from transpiler.transpiler import Parser
+
+    main = tmp_path / "main.pys"
+    main.write_text("import tkinter as tk\nprint(tk)\n", encoding="utf-8")
+    parser = Parser(main.read_text(encoding="utf-8"), source_path=main)
+    python = parser.parse()
+    assert "import tkinter as tk" in python
+    assert parser.imported_modules.get("tk") == "tkinter"
+    assert parser.variable_types.get("tk") == "module:tkinter"
+
+
 def test_external_dep_import_from_site_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from transpiler.transpiler import Parser
 

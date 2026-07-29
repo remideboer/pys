@@ -12,6 +12,7 @@ forms remain for compatibility (see Appendix A in the EBNF).
 ```pys
 import vehicles
 import mysql.connector
+import tkinter as tk
 
 global const float PI = 3.14159
 

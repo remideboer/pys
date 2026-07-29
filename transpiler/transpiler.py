@@ -848,6 +848,7 @@ class Parser:
         names: list[str] | None,
         line_number: int,
         raw_line: str,
+        alias: str | None = None,
     ) -> str | None:
         """Pass through Python package imports from pys.deps / stdlib."""
         from .deps import is_external_python_module
@@ -859,15 +860,19 @@ class Parser:
             return None
 
         top = ref.split(".", 1)[0]
-        self.imported_names.add(top)
-        self.declared_variables.add(top)
-        self.imported_modules[top] = top
-        self.variable_types[top] = f"module:{top}"
+        local = alias or top
+        self.imported_names.add(local)
+        self.declared_variables.add(local)
+        # Alias maps to the imported module; bare import maps the root name.
+        self.imported_modules[local] = ref if alias else top
+        self.variable_types[local] = f"module:{ref if alias else top}"
 
         if names is None:
             # `import mysql.connector` or `import all from mysql.connector`
             if re.fullmatch(r"import\s+all\s+from\s+.+", raw_line.strip()):
                 return f"from {ref} import *"
+            if alias:
+                return f"import {ref} as {alias}"
             return f"import {ref}"
 
         for name in names:
@@ -1041,14 +1046,19 @@ class Parser:
     def _translate_import_statement(self, line: str, line_number: int, raw_line: str) -> str | None:
         import_all = re.fullmatch(r"import\s+all\s+from\s+(?P<module>.+)", line)
         import_name = re.fullmatch(r"import\s+(?P<name>[A-Za-z_]\w*)\s+from\s+(?P<module>.+)", line)
+        import_as = re.fullmatch(
+            r"import\s+(?P<module>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+as\s+(?P<alias>[A-Za-z_]\w*)",
+            line,
+        )
         import_module = re.fullmatch(r"import\s+(?P<module>.+)", line)
-        if not (import_all or import_name or import_module):
+        if not (import_all or import_name or import_as or import_module):
             return None
 
         if self.source_path is None:
             # Keep naive translation for string-only transpile calls/tests.
             return None
 
+        alias: str | None = None
         if import_all:
             module_ref = import_all.group("module")
             names = None
@@ -1057,6 +1067,11 @@ class Parser:
             module_ref = import_name.group("module")
             names = [import_name.group("name")]
             is_import_all = False
+        elif import_as:
+            module_ref = import_as.group("module")
+            names = None
+            is_import_all = False
+            alias = import_as.group("alias")
         elif import_module:
             module_ref = import_module.group("module")
             names = None
@@ -1066,12 +1081,22 @@ class Parser:
 
         pys_path = self._find_pys_module_path(module_ref)
         if pys_path is None:
-            external = self._translate_external_import(module_ref, names, line_number, raw_line)
+            external = self._translate_external_import(
+                module_ref, names, line_number, raw_line, alias=alias
+            )
             if external is not None:
                 return external
             self._error(
                 f"Cannot find module '{module_ref}'. Expected a .pys file next to this source "
                 f"or a Python package from pys.deps / the standard library.",
+                line_number,
+                raw_line.rstrip(),
+            )
+
+        if alias is not None:
+            self._error(
+                "Alias imports (`import … as …`) are only supported for Python packages "
+                "from pys.deps / the standard library.",
                 line_number,
                 raw_line.rstrip(),
             )

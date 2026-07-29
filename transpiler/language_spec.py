@@ -476,7 +476,14 @@ def _translate_import_all_from(match: Match[str]) -> str:
 
 def _translate_import_module(match: Match[str]) -> str:
     # Placeholder; Parser rewrites this to import visible names when a source path is known.
-    return f"from {_normalize_module_ref(match.group('module'))} import *"
+    module = match.group("module").strip()
+    aliased = re.fullmatch(
+        r"(?P<ref>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+as\s+(?P<alias>[A-Za-z_]\w*)",
+        module,
+    )
+    if aliased:
+        return f"import {aliased.group('ref')} as {aliased.group('alias')}"
+    return f"from {_normalize_module_ref(module)} import *"
 
 
 def _default_value_for_type(type_name: str) -> str:
