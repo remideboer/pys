@@ -69,7 +69,7 @@ def _strip_type_annotation(text: str) -> str:
     parts = [p.strip() for p in text.split(",")]
     stripped_parts: list[str] = []
     for part in parts:
-        stripped = re.sub(r"^(int|float|char|string|bool)\s+", "", part)
+        stripped = re.sub(r"^[A-Za-z_]\w*(?:\[\])?\s+(?=[A-Za-z_])", "", part)
         stripped_parts.append(stripped)
     return ", ".join(stripped_parts)
 
@@ -558,12 +558,12 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "access_member_decl",
-    r"(?:private|protected|module|public)\s+(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<expr>.+))?",
+    r"(?:private|protected|module|public)\s+(?P<type>[A-Za-z_]\w*(?:\[\])?)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<expr>.+))?",
     _translate_member_decl,
 )
 LANGUAGE.add_regex(
     "method_def",
-    r"(?:public|private|protected|module)\s+(?:(?P<rtype>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
+    r"(?:public|private|protected|module)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
     _translate_function,
 )
 LANGUAGE.add_regex(

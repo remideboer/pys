@@ -85,6 +85,7 @@ class Parser:
         self.interface_methods: dict[str, dict[str, int]] = {}
         self.class_implements: dict[str, list[str]] = {}
         self.interfaces: set[str] = set()
+        self.generic_type_params: dict[str, list[str]] = {}
         self.needs_abc_import = False
         self.needs_array_import = False
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
@@ -284,6 +285,7 @@ class Parser:
         python_text = re.sub(r"\btrue\b", "True", python_text)
         python_text = re.sub(r"\bfalse\b", "False", python_text)
         python_text = re.sub(r"\bnull\b", "None", python_text)
+        python_text = self._inject_generic_type_assignments(python_text)
         python_text = self._rewrite_overloaded_methods(python_text)
         if self.needs_abc_import:
             python_text = "from abc import ABC, abstractmethod\n" + python_text
@@ -302,6 +304,19 @@ class Parser:
                 code_line=code_line,
             ) from exc
         return python_text
+
+    def _inject_generic_type_assignments(self, python_text: str) -> str:
+        lines = python_text.split("\n")
+        result: list[str] = []
+        for line in lines:
+            result.append(line)
+            m = re.match(r"^(\s*)def __init__\(self,.*(__\w+__=object).*\):", line)
+            if m:
+                indent = m.group(1) + " " * INDENT_SIZE
+                kwargs = re.findall(r"__([A-Za-z_]\w*)__=object", line)
+                for param in kwargs:
+                    result.append(f"{indent}{param} = __{param}__")
+        return "\n".join(result)
 
     def _rewrite_overloaded_methods(self, python_text: str) -> str:
         lines = python_text.splitlines()
@@ -382,17 +397,28 @@ class Parser:
                 continue
             overload_index = overloads.index(method_lines)
             if overload_index == 0:
-                dispatcher = f"    def {method_name}(self, *args):\n"
+                has_type_kwargs = any(
+                    re.search(r"__\w+__=object", ol[0]) for ol in overloads
+                )
+                if has_type_kwargs:
+                    dispatcher = f"    def {method_name}(self, *args, **kwargs):\n"
+                else:
+                    dispatcher = f"    def {method_name}(self, *args):\n"
                 for idx, overload in enumerate(overloads):
                     header_match = re.match(r"^    def\s+[A-Za-z_]\w*\s*\(self(?:,\s*(?P<params>.*))?\)\s*:", overload[0])
                     param_count = 0
                     if header_match and header_match.group("params"):
-                        param_count = len([p for p in header_match.group("params").split(",") if p.strip()])
+                        positional = [p for p in header_match.group("params").split(",")
+                                      if p.strip() and "__" not in p]
+                        param_count = len(positional)
                     dispatcher += f"        if len(args) == {param_count}:\n"
                     if param_count == 0:
-                        dispatcher += f"            return self._{method_name}_{idx}()\n"
+                        fwd = "**kwargs" if has_type_kwargs else ""
+                        dispatcher += f"            return self._{method_name}_{idx}({fwd})\n"
                     else:
                         arg_refs = ", ".join(f"args[{j}]" for j in range(param_count))
+                        if has_type_kwargs:
+                            arg_refs += ", **kwargs"
                         dispatcher += f"            return self._{method_name}_{idx}({arg_refs})\n"
                 dispatcher += "        raise TypeError(f\"{method_name}() got an unexpected number of arguments\")\n"
                 transformed.append(dispatcher.rstrip("\n"))
@@ -1124,6 +1150,48 @@ class Parser:
         for match in re.finditer(r"\b(this|super|[A-Za-z_]\w*)\.([A-Za-z_]\w*)\b", line):
             self._check_member_access(match.group(1), match.group(2), line_number, raw_line)
 
+    def _strip_generic_params(self, line: str) -> str:
+        """Strip <T, U> from class declarations, recording type params."""
+        m = re.match(r"((?:(?:global|package|module)\s+)?class\s+[A-Za-z_]\w*)\s*<([^>]+)>(.*)", line)
+        if not m:
+            return line
+        class_match = re.match(r"(?:(?:global|package|module)\s+)?class\s+([A-Za-z_]\w*)", m.group(1))
+        if class_match:
+            class_name = class_match.group(1)
+            params = [p.strip() for p in m.group(2).split(",") if p.strip()]
+            self.generic_type_params[class_name] = params
+        return m.group(1) + m.group(3)
+
+    def _rewrite_generic_type_args(self, line: str) -> str:
+        """Rewrite generic type args: strip from type positions, inject into constructor calls."""
+        def _replace_constructor(m: re.Match[str]) -> str:
+            class_name = m.group(1)
+            type_args = [t.strip() for t in m.group(2).split(",")]
+            rest = m.group(3) or ""
+            params = self.generic_type_params.get(class_name, [])
+            if params and rest.startswith("("):
+                inner = rest[1:].rstrip(")")
+                kwargs = ", ".join(f"__{p}__={a}" for p, a in zip(params, type_args))
+                if inner.strip():
+                    return f"{class_name}({inner}, {kwargs})"
+                return f"{class_name}({kwargs})"
+            return f"{class_name}{rest}"
+
+        line = re.sub(
+            r"\b([A-Za-z_]\w*)<([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)>(\(.*\))?",
+            _replace_constructor,
+            line,
+        )
+        # Strip any remaining generic type annotations (e.g. in type positions of declarations)
+        line = re.sub(r"<[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*>", "", line)
+        return line
+
+    def _is_type_param(self, type_name: str) -> bool:
+        cls = self._current_class_name()
+        if cls and cls in self.generic_type_params:
+            return type_name in self.generic_type_params[cls]
+        return False
+
     def _record_class_declaration(self, line: str) -> None:
         _, line = self._strip_top_level_visibility(line)
         interface = re.match(r"interface\s+(?P<name>[A-Za-z_]\w*)", line)
@@ -1218,7 +1286,7 @@ class Parser:
             return
 
         field = re.fullmatch(
-            r"(?P<access>public|private|protected|module)\s+(?:int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?",
+            r"(?P<access>public|private|protected|module)\s+(?:[A-Za-z_]\w*(?:\[\])?)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*.+)?",
             line,
         )
         if field:
@@ -1226,7 +1294,7 @@ class Parser:
             return
 
         method = re.fullmatch(
-            r"(?P<access>public|private|protected|module)\s+(?:(?:int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+            r"(?P<access>public|private|protected|module)\s+(?:(?:[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
             line,
         )
         if method and method.group("name") != cls_name:
@@ -1630,6 +1698,8 @@ class Parser:
         if array_decl is not None:
             return array_decl
 
+        line = self._strip_generic_params(line)
+        line = self._rewrite_generic_type_args(line)
         self._record_top_level_export(line)
         self._set_pending_block_context(line)
         self._record_class_declaration(line)
@@ -1707,7 +1777,7 @@ class Parser:
                 )
 
             member_fn_match = re.fullmatch(
-                r"(?:public|private|protected|module)\s+(?:(?P<rtype>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
+                r"(?:public|private|protected|module)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*)\)",
                 line,
             )
             if member_fn_match:
@@ -1715,12 +1785,16 @@ class Parser:
                 name = member_fn_match.group("name")
                 args_raw = member_fn_match.group("args").strip()
                 if cls_name and name == cls_name:
+                    type_params = self.generic_type_params.get(cls_name, [])
+                    type_kwargs = [f"__{p}__=object" for p in type_params]
                     if not args_raw:
+                        if type_kwargs:
+                            return f"def __init__(self, {', '.join(type_kwargs)}):"
                         return "def __init__(self):"
                     params = []
                     for part in [p.strip() for p in args_raw.split(",") if p.strip()]:
                         m = re.fullmatch(
-                            r"(?:(?P<type>int|float|char|string|bool)\s+)?(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<default>.+))?",
+                            r"(?:(?P<type>[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<default>.+))?",
                             part,
                         )
                         if not m:
@@ -1737,7 +1811,8 @@ class Parser:
                         else:
                             default_val = "None"
                         params.append(f"{pname}={default_val}")
-                    args = "self, " + ", ".join(params)
+                    all_params = params + type_kwargs
+                    args = "self, " + ", ".join(all_params)
                     return f"def __init__({args}):"
 
                 args = _strip_type_annotation(args_raw)

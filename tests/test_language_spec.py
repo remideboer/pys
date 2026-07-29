@@ -57,6 +57,23 @@ def test_multiline_comment_stripped() -> None:
     assert "multiline" not in result
 
 
+def test_generic_class_transpiles() -> None:
+    source = (
+        "class Box<T> {\n"
+        "    private T value\n"
+        "    public Box(T value) {\n"
+        "        this.value = value\n"
+        "    }\n"
+        "    public T get() {\n"
+        "        return this.value\n"
+        "    }\n"
+        "}\n"
+    )
+    result = transpile(source)
+    assert "class Box:" in result
+    assert "def get(self):" in result
+
+
 def test_loop_counter_immutability_rejects_assignment() -> None:
     source = "loop(int i=0, i<5, i++) {\n    i = 3\n}\n"
     with pytest.raises(TranspileError, match="Loop counter 'i' is immutable"):

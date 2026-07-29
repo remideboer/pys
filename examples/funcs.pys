@@ -9,6 +9,10 @@ global function hello(){
     print ("Hello, World!")
 }
 
-function doei(){
+module function doei(){
     print ("Doei!")
+}
+
+function doei2(){
+    print ("Doei! 2")
 }

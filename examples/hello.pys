@@ -1,6 +1,9 @@
 import funcs
-# same as: import all from funcs.pys
-
+#   same as: import all from funcs.pys
+##
+    test these multi-line comments
+    test these multi-line comments
+/#
 hello()
 print(PI)
 
@@ -63,6 +66,10 @@ class Car implements Startable {
     protected string model
     protected int year
 
+    public Car(string make, string model) {
+        this(make, model, 1976)
+    }
+
     public Car(string make, string model, int year) {
         this.make = make
         this.model = model
@@ -103,6 +110,10 @@ Car car = Car("Toyota", "Corolla", 2020)
 car.drive()
 car.drive("DODODODOD")
 
+car = Car("Toyota", "Corolla")
+car.drive()
+car.drive("DODODODOD")
+
 Truck truck = Truck("Ford", "F-150", 2020, 1000)
 truck.drive()
 
@@ -119,3 +130,65 @@ truck2.haul(1000)
 
 print("#o{car} is an object")
 print(car)
+
+class Container<T, U> {
+    private T[] items
+    private U item
+
+    public Container() {
+        this([], U())
+    }
+
+    public Container(T[] items) {
+        this(items, U())
+    }
+
+    public Container(T[] items, U item) {
+        this.items = items
+        this.item = item
+    }
+
+    public add(T item) {
+        this.items.append(item)
+    }
+
+    public T get(int index) {
+        return this.items[index]
+    }
+
+    public U get_the_item() {
+        return this.item
+    }
+}
+
+class Box<T> {
+    private T[] items
+
+    public Box() {
+        this.items = []
+    }
+
+    public add(T item) {
+        this.items.append(item)
+    }
+
+    public T get(int index) {
+        return this.items[index]
+    }
+}
+
+Container<Car, Truck> container = Container<Car, Truck>()
+container.add(car)
+container.add(truck)
+print(container.get(0).drive())
+print(container.get_the_item().drive())
+
+Box<Truck> box = Box<Truck>()
+box.add(truck)
+print(box.get(0).drive())
+
+Box<int> box = Box<int>()
+box.add(5)
+print(box.get(0))
+
+print(box)

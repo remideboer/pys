@@ -183,7 +183,7 @@
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:<([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)>)?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -195,15 +195,18 @@
               "name": "entity.name.type.class.pys"
             },
             "4": {
-              "name": "keyword.control.pys"
+              "name": "storage.type.pys"
             },
             "5": {
-              "name": "entity.name.type.class.pys"
-            },
-            "6": {
               "name": "keyword.control.pys"
             },
+            "6": {
+              "name": "entity.name.type.class.pys"
+            },
             "7": {
+              "name": "keyword.control.pys"
+            },
+            "8": {
               "name": "entity.name.type.interface.pys"
             }
           }
