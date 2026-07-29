@@ -26,6 +26,17 @@ print(3.14 + 10 + "addada")
 print(3.14 + 10 + "addada" + 10)
 print("addada" + 10 + 15)
 
+# typed string interpolation (type guards, not casts)
+string greeting = "hello"
+char letter = 'A'
+bool flag = true
+print("#s{greeting} is a string")
+print("#i{x} is an int")
+print("#f{f} is a float")
+print("#c{letter} is a char")
+print("#b{flag} is a bool")
+print("the \# symbol is used for typed interpolation")
+
 
 if (x < y) {
     greet("student")
@@ -106,4 +117,5 @@ Truck truck2 = truck
 truck2.haul(1000)
 
 
+print("#o{car} is an object")
 print(car)

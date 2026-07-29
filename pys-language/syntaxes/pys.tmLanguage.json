@@ -48,7 +48,7 @@
         },
         {
           "name": "comment.line.number-sign.pys",
-          "match": "#(?![sfic]\\{).*?$"
+          "match": "#(?![sficbo]\\{).*?$"
         }
       ]
     },
@@ -65,7 +65,7 @@
             },
             {
               "name": "meta.interpolation.typed.pys",
-              "begin": "#[sfic]\\{",
+              "begin": "#[sficbo]\\{",
               "beginCaptures": {
                 "0": {
                   "name": "punctuation.definition.interpolation.begin.pys"

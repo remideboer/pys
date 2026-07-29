@@ -264,6 +264,9 @@ class Parser:
         python_text = "\n".join(self.output_lines) + "\n"
         # Normalize common object references from source language to Python.
         python_text = python_text.replace("this.", "self.")
+        python_text = re.sub(r"\btrue\b", "True", python_text)
+        python_text = re.sub(r"\bfalse\b", "False", python_text)
+        python_text = re.sub(r"\bnull\b", "None", python_text)
         python_text = self._rewrite_overloaded_methods(python_text)
         if self.needs_abc_import:
             python_text = "from abc import ABC, abstractmethod\n" + python_text
@@ -1433,6 +1436,39 @@ class Parser:
             column,
         )
 
+    def _enforce_typed_interpolation(self, line: str, line_number: int, raw_line: str) -> None:
+        spec_to_types: dict[str, set[str]] = {
+            "s": {"string"},
+            "i": {"int"},
+            "f": {"float"},
+            "c": {"char"},
+            "b": {"bool"},
+            "o": set(),  # any non-primitive (class/interface)
+        }
+        primitives = {"int", "float", "char", "string", "bool"}
+
+        for m in re.finditer(r"#([sficbo])\{([^}]+)\}", line):
+            spec = m.group(1)
+            expr = m.group(2).strip()
+            var_type = self._infer_expr_type(expr) or self.variable_types.get(expr)
+            if var_type is None:
+                continue
+            allowed = spec_to_types[spec]
+            if spec == "o":
+                if var_type in primitives:
+                    column = raw_line.find(m.group(0)) + 1 if raw_line else 1
+                    self._error(
+                        f"Typed interpolation #o{{}} requires an object type, but '{expr}' is {var_type}.",
+                        line_number, raw_line.rstrip(), column,
+                    )
+            elif var_type not in allowed:
+                spec_label = {"s": "string", "i": "int", "f": "float", "c": "char", "b": "bool"}[spec]
+                column = raw_line.find(m.group(0)) + 1 if raw_line else 1
+                self._error(
+                    f"Typed interpolation #{spec}{{}} requires {spec_label}, but '{expr}' is {var_type}.",
+                    line_number, raw_line.rstrip(), column,
+                )
+
     def _enforce_var_initializer_type(self, line: str, line_number: int, raw_line: str) -> None:
         var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
         if var_match:
@@ -1536,6 +1572,7 @@ class Parser:
         self._enforce_class_member_access(line, line_number, raw_line)
         self._enforce_expression_member_access(line, line_number, raw_line)
         self._enforce_seen_name_access(line, line_number, raw_line)
+        self._enforce_typed_interpolation(line, line_number, raw_line)
         self._enforce_var_initializer_type(line, line_number, raw_line)
         self._enforce_assignment_type(line, line_number, raw_line)
 

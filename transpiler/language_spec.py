@@ -81,13 +81,33 @@ def _strip_optional_parens(value: str) -> str:
     return value
 
 
+def _translate_typed_interpolation(content: str) -> str:
+    """Strip typed interpolation markers — type checking is done by the transpiler."""
+
+    def _replace(m: re.Match[str]) -> str:
+        return "{" + m.group(2) + "}"
+
+    content = re.sub(r"#([sficbo])\{([^}]+)\}", _replace, content)
+    return content
+
+
 def _translate_string_literal(value: str) -> str:
     value = _strip_optional_parens(value.strip())
     if value.startswith(("f'", 'f"', "F'", 'F"')):
         return value
     if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-        if "{" in value and "}" in value:
-            return f"f{value}"
+        inner = value[1:-1]
+        quote = value[0]
+        has_typed = re.search(r"(?<!\\)#[sficbo]\{", inner) is not None
+        has_escape = "\\#" in inner
+        has_plain = "{" in inner and "}" in inner
+
+        if has_typed or has_escape or has_plain:
+            if has_typed:
+                inner = _translate_typed_interpolation(inner)
+            if has_escape:
+                inner = inner.replace("\\#", "#")
+            return f"f{quote}{inner}{quote}"
     return value
 
 

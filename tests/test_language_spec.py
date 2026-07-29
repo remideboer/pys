@@ -59,6 +59,53 @@ def test_translate_string_interpolation() -> None:
     assert LANGUAGE.translate_line(line) == 'print(f"{name} is {age} years old")'
 
 
+def test_translate_typed_string_interpolation() -> None:
+    assert LANGUAGE.translate_line('print "#s{x} is a string"') == 'print(f"{x} is a string")'
+    assert LANGUAGE.translate_line('print "#i{y} is an int"') == 'print(f"{y} is an int")'
+    assert LANGUAGE.translate_line('print "#f{z} is a float"') == 'print(f"{z} is a float")'
+    assert LANGUAGE.translate_line('print "#c{ch} is a char"') == 'print(f"{ch} is a char")'
+    assert LANGUAGE.translate_line('print "#b{x} is a bool"') == 'print(f"{x} is a bool")'
+    assert LANGUAGE.translate_line('print "#o{car} is an object"') == 'print(f"{car} is an object")'
+
+
+def test_translate_escape_hash() -> None:
+    assert LANGUAGE.translate_line(r'print "\# is a hash"') == 'print(f"# is a hash")'
+
+
+def test_typed_interpolation_mixed_with_plain() -> None:
+    line = 'print "#i{x} plus {y} equals #s{result}"'
+    result = LANGUAGE.translate_line(line)
+    assert result == 'print(f"{x} plus {y} equals {result}")'
+
+
+def test_typed_interpolation_rejects_wrong_type() -> None:
+    source = 'float f = 3.14\nprint("#i{f} wrong")\n'
+    with pytest.raises(TranspileError, match="requires int.*is float"):
+        transpile(source)
+
+
+def test_typed_interpolation_accepts_correct_type() -> None:
+    source = 'int x = 10\nprint("#i{x} ok")\n'
+    transpile(source)
+
+
+def test_typed_interpolation_string_rejects_char() -> None:
+    source = "char c = 'A'\nprint(\"#s{c} wrong\")\n"
+    with pytest.raises(TranspileError, match="requires string.*is char"):
+        transpile(source)
+
+
+def test_true_false_null_translation() -> None:
+    assert "True" in transpile("bool b = true\n")
+    assert "False" in transpile("bool b = false\n")
+
+
+def test_typed_interpolation_object_rejects_primitive() -> None:
+    source = 'int x = 10\nprint("#o{x} wrong")\n'
+    with pytest.raises(TranspileError, match="requires an object.*is int"):
+        transpile(source)
+
+
 def test_print_plus_switches_to_string_concat() -> None:
     assert (
         LANGUAGE.translate_line('print(3.14 + 10 + "addada")')
