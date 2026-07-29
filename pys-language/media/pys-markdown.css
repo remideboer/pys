@@ -1,0 +1,26 @@
+/* PYS fenced code in Markdown preview */
+.vscode-body pre code.language-pys,
+.vscode-body pre.hljs code.language-pys,
+.vscode-body .pys-md {
+  font-family: var(--vscode-editor-font-family, Consolas, monospace);
+  white-space: pre;
+  tab-size: 4;
+}
+
+.vscode-body .pys-md .k { color: #569cd6; font-weight: 600; }      /* keyword */
+.vscode-body .pys-md .t { color: #4ec9b0; }                        /* type */
+.vscode-body .pys-md .s { color: #ce9178; }                        /* string */
+.vscode-body .pys-md .c { color: #6a9955; font-style: italic; }    /* comment */
+.vscode-body .pys-md .n { color: #b5cea8; }                        /* number */
+.vscode-body .pys-md .b { color: #569cd6; }                        /* bool/null */
+.vscode-body .pys-md .f { color: #dcdcaa; }                        /* builtin / call-ish */
+.vscode-body .pys-md .p { color: #d4d4d4; }                        /* plain */
+
+.vscode-body.vscode-light .pys-md .k { color: #0000ff; font-weight: 600; }
+.vscode-body.vscode-light .pys-md .t { color: #267f99; }
+.vscode-body.vscode-light .pys-md .s { color: #a31515; }
+.vscode-body.vscode-light .pys-md .c { color: #008000; font-style: italic; }
+.vscode-body.vscode-light .pys-md .n { color: #098658; }
+.vscode-body.vscode-light .pys-md .b { color: #0000ff; }
+.vscode-body.vscode-light .pys-md .f { color: #795e26; }
+.vscode-body.vscode-light .pys-md .p { color: #000000; }

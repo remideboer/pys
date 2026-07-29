@@ -12,6 +12,57 @@ const PYS_KEYWORDS = [
 
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
 
+const PYS_MD_KEYWORDS = new Set([
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
+  'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
+  'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
+  'this', 'super', 'not', 'and', 'or', 'print', 'all', 'sealed',
+]);
+const PYS_MD_TYPES = new Set(['int', 'float', 'char', 'string', 'bool', 'list', 'dict', 'tuple', 'set']);
+const PYS_MD_CONSTANTS = new Set(['true', 'false', 'null']);
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function highlightPysForMarkdown(code) {
+  // Keep whitespace as its own tokens so formatting survives preview.
+  const tokenPattern =
+    /(\s+|##[\s\S]*?\/#|\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])'|\b\d+\.?\d*\b|\b[A-Za-z_]\w*\b|[^\s])/g;
+  let out = '';
+  let match;
+  while ((match = tokenPattern.exec(code)) !== null) {
+    const tok = match[0];
+    if (/^\s+$/.test(tok)) {
+      out += escapeHtml(tok);
+      continue;
+    }
+    let cls = 'p';
+    if (tok.startsWith('##') || tok.startsWith('#') || tok.startsWith('//')) {
+      cls = 'c';
+    } else if (
+      (tok.startsWith('"') && tok.endsWith('"')) ||
+      (tok.startsWith("'") && tok.endsWith("'"))
+    ) {
+      cls = 's';
+    } else if (/^\d/.test(tok)) {
+      cls = 'n';
+    } else if (PYS_MD_CONSTANTS.has(tok)) {
+      cls = 'b';
+    } else if (PYS_MD_KEYWORDS.has(tok)) {
+      cls = 'k';
+    } else if (PYS_MD_TYPES.has(tok)) {
+      cls = 't';
+    }
+    out += `<span class="${cls}">${escapeHtml(tok)}</span>`;
+  }
+  return `<pre class="hljs"><code class="language-pys pys-md">${out}</code></pre>\n`;
+}
+
 function resolveFilePath(file) {
   if (!file) {
     return null;
@@ -784,6 +835,23 @@ function activate(context) {
     refreshMainFileUi();
     vscode.window.showInformationMessage(`PYS main file set to ${relative}`);
   }));
+
+  // Markdown preview highlighter for ```pys fences (editor uses TextMate injection).
+  return {
+    extendMarkdownIt(md) {
+      const originalHighlight = md.options.highlight;
+      md.options.highlight = (str, lang) => {
+        if (lang && String(lang).toLowerCase() === 'pys') {
+          return highlightPysForMarkdown(str);
+        }
+        if (typeof originalHighlight === 'function') {
+          return originalHighlight(str, lang);
+        }
+        return null;
+      };
+      return md;
+    },
+  };
 }
 
 function deactivate() {}

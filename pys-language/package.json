@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.25",
+  "version": "0.0.28",
   "publisher": "local",
   "private": true,
   "icon": "icons/pys-icon.png",
@@ -12,7 +12,8 @@
   },
   "categories": [
     "Programming Languages",
-    "Snippets"
+    "Snippets",
+    "Other"
   ],
   "contributes": {
     "configuration": {
@@ -47,7 +48,22 @@
         "language": "pys",
         "scopeName": "source.pys",
         "path": "./syntaxes/pys.tmLanguage.json"
+      },
+      {
+        "scopeName": "markdown.pys.codeblock",
+        "path": "./syntaxes/pys.markdown.codeblock.json",
+        "injectTo": [
+          "text.html.markdown",
+          "source.mdx"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.pys": "pys"
+        }
       }
+    ],
+    "markdown.markdownItPlugins": true,
+    "markdown.previewStyles": [
+      "./media/pys-markdown.css"
     ],
     "semanticTokenTypes": [
       {
@@ -201,6 +217,7 @@
   "main": "./extension.js",
   "activationEvents": [
     "onLanguage:pys",
+    "onLanguage:markdown",
     "onCommand:pys.runFile",
     "onCommand:pys.debugFile",
     "onCommand:pys.runMain",
