@@ -84,6 +84,7 @@ class Parser:
         self.class_implements: dict[str, list[str]] = {}
         self.interfaces: set[str] = set()
         self.needs_abc_import = False
+        self.needs_array_import = False
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
         # block_context holds tuples like ("class", "ClassName"), ("interface", "Name"), or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
@@ -263,6 +264,8 @@ class Parser:
         python_text = self._rewrite_overloaded_methods(python_text)
         if self.needs_abc_import:
             python_text = "from abc import ABC, abstractmethod\n" + python_text
+        if self.needs_array_import:
+            python_text = "from array import array\n" + python_text
         try:
             ast.parse(python_text)
         except SyntaxError as exc:
@@ -475,6 +478,149 @@ class Parser:
 
     def _at_module_level(self) -> bool:
         return len(self.block_context) == 1
+
+    def _split_list_elements(self, literal: str) -> list[str]:
+        text = literal.strip()
+        if not (text.startswith("[") and text.endswith("]")):
+            return []
+        inner = text[1:-1].strip()
+        if not inner:
+            return []
+        parts: list[str] = []
+        current: list[str] = []
+        depth = 0
+        in_string = False
+        quote = ""
+        i = 0
+        while i < len(inner):
+            ch = inner[i]
+            if in_string:
+                current.append(ch)
+                if ch == "\\" and i + 1 < len(inner):
+                    current.append(inner[i + 1])
+                    i += 2
+                    continue
+                if ch == quote:
+                    in_string = False
+                i += 1
+                continue
+            if ch in {'"', "'"}:
+                in_string = True
+                quote = ch
+                current.append(ch)
+                i += 1
+                continue
+            if ch in "([{":
+                depth += 1
+                current.append(ch)
+                i += 1
+                continue
+            if ch in ")]}":
+                depth = max(depth - 1, 0)
+                current.append(ch)
+                i += 1
+                continue
+            if ch == "," and depth == 0:
+                parts.append("".join(current).strip())
+                current = []
+                i += 1
+                continue
+            current.append(ch)
+            i += 1
+        tail = "".join(current).strip()
+        if tail:
+            parts.append(tail)
+        return parts
+
+    def _translate_array_element(self, element_type: str, element: str) -> str:
+        value = element.strip()
+        if element_type == "bool":
+            if value in {"true", "True"}:
+                return "1"
+            if value in {"false", "False"}:
+                return "0"
+            raise TranspileError(f"Bool array elements must be true or false, got '{value}'.")
+        if element_type == "string":
+            if (value.startswith('"') and value.endswith('"')) or (
+                value.startswith("'") and value.endswith("'")
+            ):
+                return value
+            raise TranspileError(f"String array elements must be string literals, got '{value}'.")
+        if element_type == "char":
+            if value.startswith("'") and value.endswith("'") and len(value) >= 3:
+                return value
+            if value.startswith('"') and value.endswith('"') and len(value) == 3:
+                return f"'{value[1]}'"
+            raise TranspileError(f"Char array elements must be single characters, got '{value}'.")
+        if element_type == "int":
+            if re.fullmatch(r"-?\d+", value):
+                return value
+            raise TranspileError(f"Int array elements must be integers, got '{value}'.")
+        if element_type == "float":
+            if re.fullmatch(r"-?\d+(?:\.\d+)?", value):
+                return value
+            raise TranspileError(f"Float array elements must be numbers, got '{value}'.")
+        raise TranspileError(f"Unsupported array element type '{element_type}'.")
+
+    def _translate_array_declaration(
+        self, line: str, line_number: int, raw_line: str
+    ) -> str | None:
+        match = re.fullmatch(
+            r"(?P<type>int|float|char|string|bool)\[(?P<size>\d*)\]\s+"
+            r"(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+            line,
+        )
+        if not match:
+            return None
+
+        element_type = match.group("type")
+        size_text = match.group("size")
+        name = match.group("name")
+        expr = match.group("expr").strip()
+        if not expr.startswith("[") or not expr.endswith("]"):
+            self._error(
+                f"Array '{name}' must be initialized with a list literal like `[{element_type} values...]`.",
+                line_number,
+                raw_line.rstrip(),
+            )
+        elements = self._split_list_elements(expr)
+
+        if size_text:
+            expected = int(size_text)
+            if len(elements) > expected:
+                self._error(
+                    "Array index out of bounds, trying to place a value outside the array "
+                    f"(capacity {expected}, got {len(elements)} values).",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+            if len(elements) != expected:
+                self._error(
+                    f"Array '{name}' expects exactly {expected} elements, got {len(elements)}.",
+                    line_number,
+                    raw_line.rstrip(),
+                )
+
+        translated_elements: list[str] = []
+        for element in elements:
+            try:
+                translated_elements.append(self._translate_array_element(element_type, element))
+            except TranspileError as exc:
+                self._error(exc.args[0] if exc.args else str(exc), line_number, raw_line.rstrip())
+
+        self.declared_variables.add(name)
+        self.variable_types[name] = f"{element_type}[]"
+
+        # string[] cannot use array.array (elements are objects); numeric/bool/char use stdlib array.
+        if element_type == "string":
+            return f"{name} = [{', '.join(translated_elements)}]"
+
+        typecodes = {"int": "i", "float": "d", "bool": "b", "char": "u"}
+        typecode = typecodes[element_type]
+        self.needs_array_import = True
+        if translated_elements:
+            return f"{name} = array('{typecode}', [{', '.join(translated_elements)}])"
+        return f"{name} = array('{typecode}')"
 
     def _strip_top_level_visibility(self, line: str) -> tuple[str | None, str]:
         match = re.match(
@@ -1372,6 +1518,10 @@ class Parser:
         imported = self._translate_import_statement(line, line_number, raw_line)
         if imported is not None:
             return imported
+
+        array_decl = self._translate_array_declaration(line, line_number, raw_line)
+        if array_decl is not None:
+            return array_decl
 
         self._record_top_level_export(line)
         self._set_pending_block_context(line)

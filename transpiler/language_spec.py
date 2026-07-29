@@ -402,8 +402,13 @@ LANGUAGE.add_regex(
     lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
 )
 LANGUAGE.add_regex(
+    "typed_array_unsized",
+    r"(?P<type>int|float|char|string|bool)\[\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
+)
+LANGUAGE.add_regex(
     "typed_array",
-    r"(?P<type>int|float|char|string)\[(?P<size>\d+)\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
+    r"(?P<type>int|float|char|string|bool)\[(?P<size>\d+)\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
     lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
 )
 LANGUAGE.add_regex(

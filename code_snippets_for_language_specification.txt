@@ -24,11 +24,17 @@ char ch = 'a';
 string str = "Hello, World!";
 
 # array definition, no type mixing in arrays
-# the array should be the memory efficient version, so not a object 
+# the array should be the memory efficient version, so not a object
 # https://realpython.com/ref/stdlib/array/
-# array that can hold 4 integers
-int[4] = [2,3,5,8];
-int[4] = [2,3,5,8,9]; # gives an error 'array index out of bounds, trying to place a value outside the array'  
+# unsized (length from initializer) and sized forms:
+int[] numbers = [1, 2, 3, 4, 5]
+float[] floats = [1.1, 2.2, 3.3]
+bool[] flags = [true, false, true]
+# fixed capacity: length must match
+int[4] primes = [2, 3, 5, 8]
+int[4] bad = [2, 3, 5, 8, 9] # error: array index out of bounds
+# note: string[] cannot use array.array (strings are objects) and becomes a Python list
+string[] names = ["John", "Jane"]
 
 # CONTROL FLOW
 # iteration, with general for loop, explicit language rule; loop counter is an invariable, so it may NOT be altered during iteration by code in de loop itself. Keyword loop

@@ -127,6 +127,21 @@
     "declarations": {
       "patterns": [
         {
+          "name": "meta.array.declaration.pys",
+          "match": "\\b(int|float|char|string|bool)\\[(\\d*)\\]\\s+([A-Za-z_]\\w*)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.type.pys"
+            },
+            "2": {
+              "name": "constant.numeric.integer.pys"
+            },
+            "3": {
+              "name": "variable.other.pys"
+            }
+          }
+        },
+        {
           "name": "meta.const.declaration.pys",
           "match": "\\b(?:(global|package|module)\\s+)?(const)\\s+(int|float|char|string|bool)\\s+([A-Za-z_]\\w*)\\b",
           "captures": {

@@ -320,6 +320,37 @@ def test_global_const_is_importable(tmp_path: Path) -> None:
         transpile("import mathy\nPI = 1\n", source_path=main)
 
 
+def test_typed_arrays_use_stdlib_array() -> None:
+    source = """int[] numbers = [1, 2, 3, 4, 5]
+float[] floats = [1.1, 2.2, 3.3]
+bool[] bools = [true, false, true]
+string[] names = ["John", "Jane"]
+"""
+    py = transpile(source)
+    assert "from array import array" in py
+    assert "numbers = array('i', [1, 2, 3, 4, 5])" in py
+    assert "floats = array('d', [1.1, 2.2, 3.3])" in py
+    assert "bools = array('b', [1, 0, 1])" in py
+    assert 'names = ["John", "Jane"]' in py
+
+
+def test_sized_array_rejects_overflow() -> None:
+    source = "int[4] nums = [2, 3, 5, 8, 9]\n"
+    with pytest.raises(TranspileError, match="Array index out of bounds"):
+        transpile(source)
+
+
+def test_sized_array_exact_length() -> None:
+    assert transpile("int[4] nums = [2, 3, 5, 8]\n") == (
+        "from array import array\nnums = array('i', [2, 3, 5, 8])\n"
+    )
+
+
+def test_array_rejects_mixed_types() -> None:
+    with pytest.raises(TranspileError, match="Int array elements must be integers"):
+        transpile("int[] nums = [1, 2.5, 3]\n")
+
+
 def test_transpile_class_method() -> None:
     source = """class Car {
     public drive() {
