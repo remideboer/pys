@@ -352,15 +352,116 @@ def locate_type_definition(
             cls = _find_class_in_package(mod_name.split(".")[0], type_name, site_paths)
         if not isinstance(cls, type):
             continue
-        try:
-            file = inspect_file = Path(inspect_getfile(cls))
-        except Exception:
-            continue
-        line = getattr(cls, "__lineno__", None) or _class_lineno_from_source(file, type_name)
-        if line is None:
-            line = 1
-        return file, int(line), 1
+        located = locate_python_object(cls)
+        if located:
+            path, line, col, _kind = located
+            return path, line, col
     return None
+
+
+def locate_python_object(obj: Any) -> tuple[Path, int, int, str] | None:
+    """Return (file, line, column, kind) for a module, class, function, or callable."""
+    import inspect
+
+    if obj is None:
+        return None
+    if inspect.ismodule(obj):
+        file = getattr(obj, "__file__", None)
+        if not file:
+            return None
+        return Path(file), 1, 1, "module"
+    try:
+        target = inspect.unwrap(obj) if callable(obj) else obj
+    except Exception:
+        target = obj
+    try:
+        file = Path(inspect.getfile(target))
+    except Exception:
+        func = getattr(obj, "__func__", None)
+        if func is not None:
+            return locate_python_object(func)
+        return None
+    line: int | None = None
+    try:
+        _src, start = inspect.getsourcelines(target)
+        line = int(start)
+    except Exception:
+        if inspect.isclass(target):
+            line = _class_lineno_from_source(file, target.__name__)
+        elif hasattr(target, "__name__"):
+            line = _def_lineno_from_source(file, target.__name__)
+    if line is None:
+        line = 1
+    if inspect.isclass(target):
+        kind = "type"
+    else:
+        kind = "function"
+    return file, int(line), 1, kind
+
+
+def locate_attr_path(
+    dotted: str,
+    *,
+    imported_modules: dict[str, str],
+    site_paths: list[Path],
+    variable_types: dict[str, str] | None = None,
+    type_modules: dict[str, str] | None = None,
+) -> tuple[Path, int, int, str] | None:
+    """Locate a dotted path such as ``mysql.connector`` or ``mysql.connector.connect``.
+
+    Also supports ``instance.method`` when ``variable_types`` / ``type_modules`` are known.
+    Returns (file, line, column, kind) or None.
+    """
+    dotted = dotted.strip()
+    if not dotted or not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*", dotted):
+        return None
+    parts = dotted.split(".")
+    head = parts[0]
+    rest = parts[1:]
+    variable_types = variable_types or {}
+    type_modules = type_modules or {}
+
+    if head in imported_modules:
+        # Prefer longest importable module prefix, then attribute chain
+        # (submodules are often not yet attributes of the parent package).
+        for i in range(len(parts), 0, -1):
+            mod_name = ".".join(parts[:i])
+            if i == 1:
+                mod_name = imported_modules.get(head, head)
+            module = import_module_from_sites(mod_name, site_paths)
+            if module is None:
+                continue
+            if i == len(parts):
+                return locate_python_object(module)
+            target = resolve_attr_chain(module, parts[i:])
+            located = locate_python_object(target)
+            if located:
+                return located
+        return None
+
+    # instance.method / instance.attr…
+    if not rest or head not in variable_types:
+        return None
+    recv_type = variable_types[head]
+    if recv_type.startswith("module:"):
+        mod_name = recv_type.split(":", 1)[1]
+        module = import_module_from_sites(mod_name, site_paths)
+        if module is None:
+            return None
+        return locate_python_object(resolve_attr_chain(module, rest) if rest else module)
+
+    origin = type_modules.get(recv_type)
+    if not origin:
+        return None
+    module = import_module_from_sites(origin, site_paths)
+    if module is None:
+        return None
+    cls = getattr(module, recv_type, None)
+    if cls is None:
+        cls = _find_class_in_package(origin.split(".")[0], recv_type, site_paths)
+    if cls is None:
+        return None
+    return locate_python_object(resolve_attr_chain(cls, rest))
 
 
 def inspect_getfile(obj: Any) -> str:
@@ -378,4 +479,20 @@ def _class_lineno_from_source(path: Path, class_name: str) -> int | None:
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
             return node.lineno
+    return None
+
+
+def _def_lineno_from_source(path: Path, name: str) -> int | None:
+    try:
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+    except Exception:
+        return None
+    for node in tree.body:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+            return node.lineno
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == name:
+                    return node.lineno
     return None

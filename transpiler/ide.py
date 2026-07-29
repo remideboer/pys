@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from .pytypes import locate_type_definition
+from .pytypes import locate_attr_path, locate_type_definition
 from .transpiler import Parser, TranspileError
 
 
@@ -63,8 +63,33 @@ def analyze_file(source_path: Path) -> dict:
         "symbols": symbols,
         "variable_types": dict(parser.variable_types),
         "type_modules": dict(parser.type_modules),
+        "imported_modules": dict(parser.imported_modules),
         "validated_types": sorted(parser.validated_types),
+        "_site_paths": [str(p) for p in site_paths],
     }
+
+
+def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
+    """Resolve a bare name or dotted path to a location dict."""
+    symbol = (symbol or "").strip()
+    if not symbol:
+        return None
+    loc = analysis.get("symbols", {}).get(symbol)
+    if loc:
+        return loc
+
+    site_paths = [Path(p) for p in analysis.get("_site_paths") or []]
+    located = locate_attr_path(
+        symbol,
+        imported_modules=analysis.get("imported_modules") or {},
+        site_paths=site_paths,
+        variable_types=analysis.get("variable_types") or {},
+        type_modules=analysis.get("type_modules") or {},
+    )
+    if not located:
+        return None
+    path, line, col, kind = located
+    return {"file": str(path), "line": line, "column": col, "kind": kind}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,7 +101,8 @@ def main(argv: list[str] | None = None) -> int:
     result = analyze_file(path)
     if len(argv) >= 2:
         symbol = argv[1]
-        loc = result.get("symbols", {}).get(symbol)
+        loc = lookup_symbol(result, symbol)
+        # Do not leak internal keys to the IDE
         print(
             json.dumps(
                 {
@@ -89,7 +115,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
     else:
-        print(json.dumps(result))
+        public = {k: v for k, v in result.items() if not k.startswith("_")}
+        print(json.dumps(public))
     return 0 if result.get("ok") or len(argv) >= 2 else 1
 
 

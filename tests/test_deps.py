@@ -194,3 +194,66 @@ def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytes
     assert loc["kind"] == "type"
     assert loc["file"].endswith("__init__.py")
     assert "Widget" in result["validated_types"]
+
+
+def test_navigate_to_module_and_function(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.ide import analyze_file, lookup_symbol
+
+    site = tmp_path / "site"
+    pkg = site / "mysql" / "connector"
+    pkg.mkdir(parents=True)
+    (site / "mysql" / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "__init__.py").write_text(
+        "def connect(host, user, password, database):\n"
+        "    return None\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text(
+        'import mysql.connector\n'
+        'int x = 1\n',
+        encoding="utf-8",
+    )
+    analysis = analyze_file(main)
+    assert analysis["ok"]
+
+    connector = lookup_symbol(analysis, "mysql.connector")
+    assert connector is not None
+    assert connector["kind"] == "module"
+    assert connector["file"].replace("\\", "/").endswith("mysql/connector/__init__.py")
+
+    connect = lookup_symbol(analysis, "mysql.connector.connect")
+    assert connect is not None
+    assert connect["kind"] == "function"
+    assert connect["file"].replace("\\", "/").endswith("mysql/connector/__init__.py")
+    assert connect["line"] == 1
+
+
+def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.ide import analyze_file, lookup_symbol
+
+    site = tmp_path / "site"
+    mod = site / "demo"
+    mod.mkdir(parents=True)
+    (mod / "__init__.py").write_text(
+        "class Conn:\n"
+        "    def cursor(self):\n"
+        "        return None\n"
+        "def connect() -> Conn:\n"
+        "    return Conn()\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import demo\n"
+        "Conn db = demo.connect()\n",
+        encoding="utf-8",
+    )
+    analysis = analyze_file(main)
+    assert analysis["ok"]
+    loc = lookup_symbol(analysis, "db.cursor")
+    assert loc is not None
+    assert loc["file"].replace("\\", "/").endswith("demo/__init__.py")
+    assert loc["line"] == 2

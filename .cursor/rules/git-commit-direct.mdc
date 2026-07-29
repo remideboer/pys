@@ -1,0 +1,38 @@
+---
+description: Always invoke git commit directly (bypass Cursor trailer wrapper)
+alwaysApply: true
+---
+
+# Git commits: call git directly
+
+When creating commits, do **not** run `git commit` through the Cursor shell as a plain shell command. The environment may inject `--trailer`, which fails on older Git (e.g. 2.24: `error: unknown option 'trailer'`).
+
+## Do this instead
+
+Invoke git via a subprocess so no wrapper can rewrite the argv:
+
+```python
+# PowerShell / any OS
+python -c "
+from pathlib import Path
+import subprocess
+msg = Path('.git/COMMIT_EDITMSG_TMP')
+msg.write_text('commit subject\n\nbody\n', encoding='utf-8')
+r = subprocess.run(['git', 'commit', '-F', str(msg)])
+msg.unlink(missing_ok=True)
+raise SystemExit(r.returncode)
+"
+```
+
+Or call the real binary with an explicit argv that you control from Python/`subprocess` (same idea).
+
+## Still follow normal commit protocol
+
+- Only commit when the user asks
+- Stage intentional files only (no secrets, no `.vsix` junk unless requested)
+- Prefer a message file (`-F`) over fragile multiline `-m` on PowerShell
+- Verify with `git status` / `git log -1` after commit
+
+## Still OK as shell commands
+
+`git status`, `git diff`, `git log`, `git add` — these are fine in the shell. Only **`git commit`** must go through a direct subprocess.

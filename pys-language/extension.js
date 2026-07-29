@@ -263,9 +263,46 @@ except Exception as exc:
     }
   }));
 
-  function locateSymbol(document, word) {
+  /** Dotted path through the segment under the cursor, e.g. `mysql.connector.connect`. */
+  function getDottedPathAt(document, position) {
+    const line = document.lineAt(position.line).text;
+    const pos = position.character;
+    const isPart = (i) => i >= 0 && i < line.length && /[A-Za-z0-9_]/.test(line[i]);
+    const isDot = (i) => i >= 0 && i < line.length && line[i] === '.';
+
+    let left = pos;
+    let right = pos;
+    while (left > 0 && (isPart(left - 1) || isDot(left - 1))) {
+      left -= 1;
+    }
+    while (right < line.length && (isPart(right) || isDot(right))) {
+      right += 1;
+    }
+    while (left < right && line[left] === '.') {
+      left += 1;
+    }
+    while (right > left && line[right - 1] === '.') {
+      right -= 1;
+    }
+    const full = line.slice(left, right);
+    if (!full || !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(full)) {
+      return null;
+    }
+    const cursor = Math.min(Math.max(pos - left, 0), Math.max(full.length - 1, 0));
+    let segEnd = cursor;
+    while (segEnd < full.length && full[segEnd] !== '.') {
+      segEnd += 1;
+    }
+    // If the cursor is on a dot, use the segment before it.
+    if (full[cursor] === '.' && cursor > 0) {
+      segEnd = cursor;
+    }
+    return full.slice(0, segEnd);
+  }
+
+  function locateSymbol(document, symbol) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
-    if (!workspace) {
+    if (!workspace || !symbol) {
       return Promise.resolve(null);
     }
     const workspacePath = workspace.uri.fsPath;
@@ -273,7 +310,7 @@ except Exception as exc:
     return new Promise((resolve) => {
       const child = cp.spawn(
         pythonExecutable,
-        ['-m', 'transpiler.ide', document.uri.fsPath, word],
+        ['-m', 'transpiler.ide', document.uri.fsPath, symbol],
         {
           cwd: workspacePath,
           env: {
@@ -298,40 +335,27 @@ except Exception as exc:
     });
   }
 
-  context.subscriptions.push(vscode.languages.registerDefinitionProvider({ language: 'pys' }, {
-    async provideDefinition(document, position) {
-      const range = document.getWordRangeAtPosition(position);
-      if (!range) {
-        return null;
-      }
-      const word = document.getText(range);
-      const location = await locateSymbol(document, word);
-      if (!location || !location.file) {
-        return null;
-      }
-      const uri = vscode.Uri.file(location.file);
-      const line = Math.max((location.line || 1) - 1, 0);
-      const column = Math.max((location.column || 1) - 1, 0);
-      return new vscode.Location(uri, new vscode.Position(line, column));
+  async function provideSymbolLocation(document, position) {
+    const symbol = getDottedPathAt(document, position);
+    if (!symbol) {
+      return null;
     }
+    const location = await locateSymbol(document, symbol);
+    if (!location || !location.file) {
+      return null;
+    }
+    const uri = vscode.Uri.file(location.file);
+    const line = Math.max((location.line || 1) - 1, 0);
+    const column = Math.max((location.column || 1) - 1, 0);
+    return new vscode.Location(uri, new vscode.Position(line, column));
+  }
+
+  context.subscriptions.push(vscode.languages.registerDefinitionProvider({ language: 'pys' }, {
+    provideDefinition: provideSymbolLocation,
   }));
 
   context.subscriptions.push(vscode.languages.registerDeclarationProvider({ language: 'pys' }, {
-    async provideDeclaration(document, position) {
-      const range = document.getWordRangeAtPosition(position);
-      if (!range) {
-        return null;
-      }
-      const word = document.getText(range);
-      const location = await locateSymbol(document, word);
-      if (!location || !location.file) {
-        return null;
-      }
-      const uri = vscode.Uri.file(location.file);
-      const line = Math.max((location.line || 1) - 1, 0);
-      const column = Math.max((location.column || 1) - 1, 0);
-      return new vscode.Location(uri, new vscode.Position(line, column));
-    }
+    provideDeclaration: provideSymbolLocation,
   }));
 
   const typeTokenCache = new Map(); // uri -> { types: Set, version: number }
