@@ -30,6 +30,8 @@ class ModuleInfo:
     class_members: dict[str, dict[str, str]]
     class_methods: dict[str, dict[str, int]]
     sealed_classes: set[str]
+    class_decl_lines: dict[str, int]  # line numbers within path
+
 
 
 class TranspileError(ValueError):
@@ -42,12 +44,16 @@ class TranspileError(ValueError):
         column: int | None = None,
         code_line: str | None = None,
         source_file: Path | None = None,
+        code: str | None = None,
+        suggested_fix: str | None = None,
     ) -> None:
         super().__init__(message)
         self.line_number = line_number
         self.column = column
         self.code_line = code_line
         self.source_file = source_file
+        self.code = code
+        self.suggested_fix = suggested_fix
 
     def __str__(self) -> str:
         base = super().__str__()
@@ -102,6 +108,26 @@ class Parser:
         self.needs_array_import = False
         self._deps_site_paths: list[Path] | None = None
         self._deps_site_paths_loaded = False
+        # External Python imports: local name -> python module root (e.g. mysql -> mysql)
+        self.imported_modules: dict[str, str] = {}
+        # PYS type name -> python module that defines it (for method lookup / navigation)
+        self.type_modules: dict[str, str] = {}
+        # Symbol declarations for IDE navigation: name -> (file, line, column)
+        self.symbol_locations: dict[str, tuple[Path, int, int]] = {}
+        # Type definitions (library or user class) for go-to-definition on type names
+        self.type_definitions: dict[str, tuple[Path, int, int]] = {}
+        # Validated type names (primitives + user + library) for highlighting
+        self.validated_types: set[str] = {
+            "int",
+            "float",
+            "char",
+            "string",
+            "bool",
+            "list",
+            "dict",
+            "tuple",
+            "set",
+        }
         self.brace_mode = any(line.strip() in {"{", "}"} for line, _ in self.source_lines)
         # block_context holds tuples like ("class", "ClassName"), ("interface", "Name"), or ("function", "name")
         self.block_context: List[tuple[str, str] | None] = [None]
@@ -281,6 +307,8 @@ class Parser:
                     exc.column,
                     exc.code_line or raw_line.rstrip(),
                     source_file=exc.source_file or self.source_path,
+                    code=getattr(exc, "code", None),
+                    suggested_fix=getattr(exc, "suggested_fix", None),
                 ) from exc
             except ValueError as exc:
                 column = raw_line.find(stripped) + 1 if raw_line and stripped else 1
@@ -472,9 +500,26 @@ class Parser:
         if len(self.block_context) > 1:
             self.block_context.pop()
 
-    def _error(self, message: str, line_number: int, line: str, column: int | None = None) -> NoReturn:
+    def _error(
+        self,
+        message: str,
+        line_number: int,
+        line: str,
+        column: int | None = None,
+        *,
+        code: str | None = None,
+        suggested_fix: str | None = None,
+    ) -> NoReturn:
         snippet = line.rstrip()
-        raise TranspileError(message, line_number, column, snippet, source_file=self.source_path)
+        raise TranspileError(
+            message,
+            line_number,
+            column,
+            snippet,
+            source_file=self.source_path,
+            code=code,
+            suggested_fix=suggested_fix,
+        )
 
     def _enforce_formatting(self) -> None:
         """Raise a Formatting Error if source contains tabs, trailing whitespace,
@@ -805,6 +850,8 @@ class Parser:
         top = ref.split(".", 1)[0]
         self.imported_names.add(top)
         self.declared_variables.add(top)
+        self.imported_modules[top] = top
+        self.variable_types[top] = f"module:{top}"
 
         if names is None:
             # `import mysql.connector` or `import all from mysql.connector`
@@ -815,6 +862,9 @@ class Parser:
         for name in names:
             self.imported_names.add(name)
             self.declared_variables.add(name)
+            # from mysql.connector import MySQLCursor style
+            self.type_modules.setdefault(name, ref)
+            self.variable_types[name] = "type"
         return f"from {ref} import {', '.join(names)}"
 
     def _same_package(self, other: Path) -> bool:
@@ -855,6 +905,7 @@ class Parser:
                 class_members=dict(child.class_members),
                 class_methods=dict(child.class_methods),
                 sealed_classes=set(child.sealed_classes),
+                class_decl_lines=dict(child.class_decl_lines),
             )
             self.module_cache[path] = info
             return info
@@ -924,6 +975,9 @@ class Parser:
                 self.class_methods[name] = info.class_methods[name]
             if name in info.sealed_classes:
                 self.sealed_classes.add(name)
+            if name in info.class_decl_lines:
+                # Remember imported type definitions for navigation (module path + line).
+                self.type_definitions[name] = (info.path, info.class_decl_lines[name], 1)
 
     def _enforce_seen_name_access(self, line: str, line_number: int, raw_line: str) -> None:
         builtins = {
@@ -1091,7 +1145,19 @@ class Parser:
             if m:
                 self.pending_block_context = ("loop", m.group("var"))
             else:
-                self.pending_block_context = None
+                foreach = re.match(
+                    r"loop\s*\(\s*(?:(?P<type>[A-Za-z_]\w*)\s+)?(?P<var>[A-Za-z_]\w*)\s+in\s+(?P<expr>.+)\s*\)",
+                    rest,
+                )
+                if foreach:
+                    var = foreach.group("var")
+                    type_name = foreach.group("type")
+                    self.declared_variables.add(var)
+                    if type_name:
+                        self.variable_types[var] = type_name
+                    self.pending_block_context = ("loop", var)
+                else:
+                    self.pending_block_context = None
         else:
             self.pending_block_context = None
 
@@ -1349,6 +1415,10 @@ class Parser:
             self.interfaces.add(name)
             self.interface_methods.setdefault(name, {})
             self.class_members.setdefault(name, {})
+            self.validated_types.add(name)
+            if line_number and self.source_path is not None:
+                self.class_decl_lines[name] = line_number
+                self.type_definitions[name] = (self.source_path, line_number, 1)
             self.needs_abc_import = True
             return
 
@@ -1358,6 +1428,9 @@ class Parser:
         )
         def _register(name: str) -> None:
             self.class_decl_lines[name] = line_number
+            self.validated_types.add(name)
+            if line_number and self.source_path is not None:
+                self.type_definitions[name] = (self.source_path, line_number, 1)
             if is_sealed:
                 self.sealed_classes.add(name)
 
@@ -1652,15 +1725,94 @@ class Parser:
                 column,
             )
 
-    def _record_declared_variables(self, line: str) -> None:
-        primitives = {"int", "float", "char", "string", "bool"}
+    def _register_external_type(self, type_name: str) -> bool:
+        """Resolve type_name to a known class/interface/library type. Returns True if valid."""
+        primitives = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
+        if type_name in primitives:
+            self.validated_types.add(type_name)
+            return True
+        if type_name.startswith("module:"):
+            return True
+        if self._is_type_param(type_name):
+            self.validated_types.add(type_name)
+            return True
+        if type_name in self.class_members or type_name in self.interfaces:
+            self.validated_types.add(type_name)
+            if type_name in self.class_decl_lines and self.source_path is not None:
+                self.type_definitions.setdefault(
+                    type_name,
+                    (self.source_path, self.class_decl_lines[type_name], 1),
+                )
+            return True
+        if type_name in self.type_modules:
+            self.validated_types.add(type_name)
+            self._ensure_library_type_location(type_name)
+            return True
 
+        from .pytypes import _find_class_in_package, locate_type_definition
+
+        for mod in sorted(set(self.imported_modules.values())):
+            cls = _find_class_in_package(mod, type_name, self._deps_paths())
+            if isinstance(cls, type):
+                self.type_modules[type_name] = cls.__module__
+                self.validated_types.add(type_name)
+                located = locate_type_definition(
+                    type_name,
+                    type_modules=self.type_modules,
+                    site_paths=self._deps_paths(),
+                )
+                if located:
+                    self.type_definitions[type_name] = located
+                return True
+        return False
+
+    def _ensure_library_type_location(self, type_name: str) -> None:
+        if type_name in self.type_definitions:
+            return
+        from .pytypes import locate_type_definition
+
+        located = locate_type_definition(
+            type_name,
+            type_modules=self.type_modules,
+            site_paths=self._deps_paths(),
+        )
+        if located:
+            self.type_definitions[type_name] = located
+
+    def _enforce_known_type(
+        self,
+        type_name: str,
+        line_number: int,
+        raw_line: str,
+    ) -> None:
+        if self._register_external_type(type_name):
+            return
+        column = raw_line.find(type_name) + 1 if raw_line and type_name in raw_line else 1
+        self._error(
+            f"Unknown type '{type_name}'. Declare a class/interface, or import a library "
+            f"that defines it (via pys.deps).",
+            line_number,
+            raw_line.rstrip(),
+            column,
+            code="pys.unknown-type",
+        )
+
+    def _record_symbol(self, name: str, line_number: int, raw_hint: str | None = None) -> None:
+        if self.source_path is None or not line_number:
+            return
+        column = 1
+        if raw_hint and name in raw_hint:
+            column = raw_hint.find(name) + 1
+        self.symbol_locations[name] = (self.source_path, line_number, column)
+
+    def _record_declared_variables(self, line: str, line_number: int = 0) -> None:
         const_match = self._match_const_decl(line)
         if const_match:
             name = const_match.group("name")
             self.declared_variables.add(name)
             self.variable_types[name] = const_match.group("type")
             self.constants.add(name)
+            self._record_symbol(name, line_number, line)
             return
 
         fix_match = self._match_fix_decl(line)
@@ -1669,6 +1821,7 @@ class Parser:
             self.declared_variables.add(name)
             self.variable_types[name] = fix_match.group("type")
             self.fixed_vars.add(name)
+            self._record_symbol(name, line_number, line)
             return
 
         var_match = re.fullmatch(r"var\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)", line)
@@ -1679,6 +1832,9 @@ class Parser:
             self.declared_variables.add(name)
             if inferred:
                 self.variable_types[name] = inferred
+                if not inferred.startswith("module:"):
+                    self._register_external_type(inferred)
+            self._record_symbol(name, line_number, line)
             return
 
         for pattern in [
@@ -1691,10 +1847,46 @@ class Parser:
             if match:
                 name = match.group("name")
                 type_name = match.group("type")
-                if type_name in {"const", "fix", "global", "package", "module", "var", "function", "func", "class", "interface", "sealed"}:
+                if type_name in {
+                    "const",
+                    "fix",
+                    "global",
+                    "package",
+                    "module",
+                    "var",
+                    "function",
+                    "func",
+                    "class",
+                    "interface",
+                    "sealed",
+                    "let",
+                    "print",
+                    "return",
+                    "import",
+                    "from",
+                    "loop",
+                    "if",
+                    "else",
+                    "unless",
+                    "pass",
+                    "break",
+                    "continue",
+                }:
                     return
+                # Bare `Type name` without `=` is only a declaration inside classes;
+                # at module level require assignment to avoid eating `print hello`.
+                if "=" not in line and not self._directly_inside_class():
+                    return
+                if line_number:
+                    self._enforce_known_type(type_name, line_number, line)
+                else:
+                    self._register_external_type(type_name)
                 self.declared_variables.add(name)
                 self.variable_types[name] = type_name
+                if "=" in line:
+                    expr = line.split("=", 1)[1].strip()
+                    self._infer_expr_type(expr)
+                self._record_symbol(name, line_number, line)
                 break
 
     def _infer_expr_type(self, expr: str) -> str | None:
@@ -1722,9 +1914,33 @@ class Parser:
         if cast:
             return cast.group("type")
 
+        # Method / function call: recv.method(...) or dotted.module.func(...)
+        call = re.fullmatch(
+            r"(?P<recv>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\.(?P<method>[A-Za-z_]\w*)\s*\(.*\)",
+            expr,
+        )
+        if call:
+            from .pytypes import infer_call_return_type
+
+            inferred = infer_call_return_type(
+                call.group("recv"),
+                call.group("method"),
+                variable_types=self.variable_types,
+                imported_modules=self.imported_modules,
+                site_paths=self._deps_paths(),
+                type_modules=self.type_modules,
+            )
+            if inferred:
+                self._register_external_type(inferred)
+                return inferred
+
+        # Module-level call without trailing method split already handled above;
+        # also: TypeName(...) constructors for known classes / external types
         ctor = re.fullmatch(r"(?P<type>[A-Za-z_]\w*)\s*\(.*\)", expr)
         if ctor and (
-            ctor.group("type") in self.class_members or ctor.group("type") in self.interfaces
+            ctor.group("type") in self.class_members
+            or ctor.group("type") in self.interfaces
+            or ctor.group("type") in self.type_modules
         ):
             return ctor.group("type")
 
@@ -1940,7 +2156,7 @@ class Parser:
         self._set_pending_block_context(line)
         self._record_class_declaration(line, line_number)
         self._record_class_member(line)
-        self._record_declared_variables(line)
+        self._record_declared_variables(line, line_number)
         self._enforce_const_declaration(line, line_number, raw_line)
         self._enforce_fix_declaration(line, line_number, raw_line)
         self._enforce_const_assignment(line, line_number, raw_line)
@@ -2060,6 +2276,17 @@ class Parser:
         if assignment_match:
             name = assignment_match.group("name")
             if name not in self.declared_variables and name not in {"self", "True", "False", "None"}:
+                expr = assignment_match.group("expr").strip()
+                inferred = self._infer_expr_type(expr)
+                if inferred and not inferred.startswith("module:"):
+                    suggestion = f"{inferred} {name} = {expr}"
+                    self._error(
+                        f"Undeclared variable '{name}'. Suggested declaration: `{suggestion}`",
+                        line_number,
+                        raw_line.rstrip(),
+                        code="pys.missing-type",
+                        suggested_fix=suggestion,
+                    )
                 self._error(
                     f"Undeclared variable '{name}'. Variables must be declared with a type before assignment.",
                     line_number,

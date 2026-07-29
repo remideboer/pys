@@ -65,6 +65,12 @@ function activate(context) {
       vscode.DiagnosticSeverity.Error,
     );
     diagnostic.source = 'PYS';
+    if (parsed.code) {
+      diagnostic.code = parsed.code;
+    }
+    if (parsed.suggested_fix) {
+      diagnostic.code = diagnostic.code || 'pys.missing-type';
+    }
     if (String(parsed.message || '').includes('Class methods must not use `function`')) {
       diagnostic.code = 'pys.invalid-class-function';
       diagnostic.message = 'Remove `function`. Class methods use an access modifier: `public name(args)`.';
@@ -109,6 +115,8 @@ except TranspileError as exc:
         "column": getattr(exc, "column", None),
         "code_line": getattr(exc, "code_line", None),
         "source_file": str(sf) if sf else None,
+        "code": getattr(exc, "code", None),
+        "suggested_fix": getattr(exc, "suggested_fix", None),
     }))
 except Exception as exc:
     print(json.dumps({"ok": False, "message": f"{type(exc).__name__}: {exc}"}))
@@ -254,6 +262,148 @@ except Exception as exc:
       return new vscode.Hover(new vscode.MarkdownString(`**${word}**\n\n${hints[word]}`));
     }
   }));
+
+  function locateSymbol(document, word) {
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      return Promise.resolve(null);
+    }
+    const workspacePath = workspace.uri.fsPath;
+    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    return new Promise((resolve) => {
+      const child = cp.spawn(
+        pythonExecutable,
+        ['-m', 'transpiler.ide', document.uri.fsPath, word],
+        {
+          cwd: workspacePath,
+          env: {
+            ...process.env,
+            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
+          },
+        },
+      );
+      let output = '';
+      child.stdout.on('data', (chunk) => {
+        output += chunk.toString();
+      });
+      child.on('close', () => {
+        try {
+          const parsed = JSON.parse(output.trim() || '{}');
+          resolve(parsed.location || null);
+        } catch (error) {
+          resolve(null);
+        }
+      });
+      child.on('error', () => resolve(null));
+    });
+  }
+
+  context.subscriptions.push(vscode.languages.registerDefinitionProvider({ language: 'pys' }, {
+    async provideDefinition(document, position) {
+      const range = document.getWordRangeAtPosition(position);
+      if (!range) {
+        return null;
+      }
+      const word = document.getText(range);
+      const location = await locateSymbol(document, word);
+      if (!location || !location.file) {
+        return null;
+      }
+      const uri = vscode.Uri.file(location.file);
+      const line = Math.max((location.line || 1) - 1, 0);
+      const column = Math.max((location.column || 1) - 1, 0);
+      return new vscode.Location(uri, new vscode.Position(line, column));
+    }
+  }));
+
+  context.subscriptions.push(vscode.languages.registerDeclarationProvider({ language: 'pys' }, {
+    async provideDeclaration(document, position) {
+      const range = document.getWordRangeAtPosition(position);
+      if (!range) {
+        return null;
+      }
+      const word = document.getText(range);
+      const location = await locateSymbol(document, word);
+      if (!location || !location.file) {
+        return null;
+      }
+      const uri = vscode.Uri.file(location.file);
+      const line = Math.max((location.line || 1) - 1, 0);
+      const column = Math.max((location.column || 1) - 1, 0);
+      return new vscode.Location(uri, new vscode.Position(line, column));
+    }
+  }));
+
+  const typeTokenCache = new Map(); // uri -> { types: Set, version: number }
+  const semanticLegend = new vscode.SemanticTokensLegend(['pysType'], []);
+
+  function fetchValidatedTypes(document) {
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      return Promise.resolve([]);
+    }
+    const workspacePath = workspace.uri.fsPath;
+    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    return new Promise((resolve) => {
+      const child = cp.spawn(
+        pythonExecutable,
+        ['-m', 'transpiler.ide', document.uri.fsPath],
+        {
+          cwd: workspacePath,
+          env: {
+            ...process.env,
+            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
+          },
+        },
+      );
+      let output = '';
+      child.stdout.on('data', (chunk) => {
+        output += chunk.toString();
+      });
+      child.on('close', () => {
+        try {
+          const parsed = JSON.parse(output.trim() || '{}');
+          resolve(parsed.validated_types || []);
+        } catch (error) {
+          resolve([]);
+        }
+      });
+      child.on('error', () => resolve([]));
+    });
+  }
+
+  context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider(
+    { language: 'pys' },
+    {
+      async provideDocumentSemanticTokens(document) {
+        const key = document.uri.toString();
+        let types = typeTokenCache.get(key);
+        if (!types || types.version !== document.version) {
+          const validated = await fetchValidatedTypes(document);
+          types = { types: new Set(validated), version: document.version };
+          typeTokenCache.set(key, types);
+        }
+        const builder = new vscode.SemanticTokensBuilder(semanticLegend);
+        const skip = new Set(['int', 'float', 'char', 'string', 'bool']); // already grammar-highlighted
+        for (let line = 0; line < document.lineCount; line++) {
+          const text = document.lineAt(line).text;
+          for (const typeName of types.types) {
+            if (skip.has(typeName) || typeName.length < 2) {
+              continue;
+            }
+            const re = new RegExp(`\\b${typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+            let match;
+            while ((match = re.exec(text)) !== null) {
+              builder.push(line, match.index, match[0].length, 0, 0);
+            }
+          }
+        }
+        return builder.build();
+      }
+    },
+    semanticLegend,
+  ));
+
   context.subscriptions.push(vscode.languages.registerCodeActionsProvider({ language: 'pys' }, {
     provideCodeActions(document, range, context) {
       const diagnostics = context.diagnostics || [];
@@ -287,6 +437,20 @@ except Exception as exc:
           const start = new vscode.Position(methodDiag.range.start.line, match.index);
           const end = new vscode.Position(methodDiag.range.start.line, match.index + match[0].length);
           fix.edit.replace(document.uri, new vscode.Range(start, end), '');
+          actions.push(fix);
+        }
+      }
+
+      const missingType = diagnostics.find((diagnostic) => diagnostic.code === 'pys.missing-type');
+      if (missingType) {
+        const suggested = (missingType.message.match(/Suggested declaration: `([^`]+)`/) || [])[1];
+        if (suggested) {
+          const fix = new vscode.CodeAction(`Declare as: ${suggested.split('=')[0].trim()}`, vscode.CodeActionKind.QuickFix);
+          fix.diagnostics = [missingType];
+          fix.isPreferred = true;
+          fix.edit = new vscode.WorkspaceEdit();
+          const line = document.lineAt(missingType.range.start.line);
+          fix.edit.replace(document.uri, line.range, suggested);
           actions.push(fix);
         }
       }

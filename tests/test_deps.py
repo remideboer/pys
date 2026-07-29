@@ -124,3 +124,73 @@ def test_external_dep_import_from_site_path(tmp_path: Path, monkeypatch: pytest.
     main.write_text("import mysql.connector\n", encoding="utf-8")
     python = Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
     assert "import mysql.connector" in python
+
+
+def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.transpiler import Parser, TranspileError
+
+    site = tmp_path / "site"
+    # minimal fake package with annotated method
+    mod = site / "demo"
+    mod.mkdir(parents=True)
+    (mod / "__init__.py").write_text(
+        "class Cursor:\n"
+        "    def fetchall(self) -> list:\n"
+        "        return []\n"
+        "class Conn:\n"
+        "    def cursor(self) -> Cursor:\n"
+        "        return Cursor()\n"
+        "def connect() -> Conn:\n"
+        "    return Conn()\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import demo\n"
+        "Conn db = demo.connect()\n"
+        "Cursor cur = db.cursor()\n"
+        "rows = cur.fetchall()\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TranspileError) as caught:
+        Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+    assert caught.value.code == "pys.missing-type"
+    assert caught.value.suggested_fix == "list rows = cur.fetchall()"
+
+
+def test_unknown_library_type_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.transpiler import Parser, TranspileError
+
+    site = tmp_path / "site"
+    (site / "demo").mkdir(parents=True)
+    (site / "demo" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text("import demo\nNoSuchType x = 1\n", encoding="utf-8")
+    with pytest.raises(TranspileError, match="Unknown type 'NoSuchType'"):
+        Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+
+
+def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.ide import analyze_file
+
+    site = tmp_path / "site"
+    mod = site / "demo"
+    mod.mkdir(parents=True)
+    (mod / "__init__.py").write_text(
+        "class Widget:\n"
+        "    pass\n"
+        "def make() -> Widget:\n"
+        "    return Widget()\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text("import demo\nWidget w = demo.make()\n", encoding="utf-8")
+    result = analyze_file(main)
+    assert result["ok"]
+    loc = result["symbols"]["Widget"]
+    assert loc["kind"] == "type"
+    assert loc["file"].endswith("__init__.py")
+    assert "Widget" in result["validated_types"]

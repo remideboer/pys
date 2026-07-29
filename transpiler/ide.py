@@ -1,0 +1,97 @@
+"""IDE helpers: symbol location for go-to-definition / highlighting."""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+from .pytypes import locate_type_definition
+from .transpiler import Parser, TranspileError
+
+
+def analyze_file(source_path: Path) -> dict:
+    source_path = source_path.resolve()
+    source = source_path.read_text(encoding="utf-8")
+    parser = Parser(source, source_path=source_path)
+    error = None
+    try:
+        parser.parse()
+    except TranspileError as exc:
+        error = {
+            "message": exc.args[0] if exc.args else str(exc),
+            "line": exc.line_number,
+            "column": exc.column,
+            "code_line": exc.code_line,
+            "code": getattr(exc, "code", None),
+            "suggested_fix": getattr(exc, "suggested_fix", None),
+            "source_file": str(exc.source_file) if exc.source_file else None,
+        }
+
+    # Variable / local symbol declarations (in the .pys file)
+    symbols = {
+        name: {"file": str(path), "line": line, "column": col, "kind": "variable"}
+        for name, (path, line, col) in parser.symbol_locations.items()
+    }
+
+    # Type definitions win for type names (library class or user class)
+    site_paths = parser._deps_paths()
+    for type_name in set(parser.type_modules) | set(parser.type_definitions) | set(parser.validated_types):
+        if type_name in {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}:
+            continue
+        located = parser.type_definitions.get(type_name)
+        if located is None and type_name in parser.type_modules:
+            located = locate_type_definition(
+                type_name,
+                type_modules=parser.type_modules,
+                site_paths=site_paths,
+            )
+            if located:
+                parser.type_definitions[type_name] = located
+        if located:
+            path, line, col = located
+            symbols[type_name] = {
+                "file": str(path),
+                "line": line,
+                "column": col,
+                "kind": "type",
+            }
+
+    return {
+        "ok": error is None,
+        "error": error,
+        "symbols": symbols,
+        "variable_types": dict(parser.variable_types),
+        "type_modules": dict(parser.type_modules),
+        "validated_types": sorted(parser.validated_types),
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) < 1:
+        print(json.dumps({"ok": False, "message": "Usage: python -m transpiler.ide <file.pys> [symbol]"}))
+        return 2
+    path = Path(argv[0])
+    result = analyze_file(path)
+    if len(argv) >= 2:
+        symbol = argv[1]
+        loc = result.get("symbols", {}).get(symbol)
+        print(
+            json.dumps(
+                {
+                    "ok": loc is not None,
+                    "symbol": symbol,
+                    "location": loc,
+                    "types": result.get("variable_types"),
+                    "validated_types": result.get("validated_types"),
+                }
+            )
+        )
+    else:
+        print(json.dumps(result))
+    return 0 if result.get("ok") or len(argv) >= 2 else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

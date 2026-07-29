@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.15",
+  "version": "0.0.17",
   "publisher": "local",
   "engines": {
     "vscode": "^1.80.0"
@@ -25,6 +25,20 @@
         "language": "pys",
         "scopeName": "source.pys",
         "path": "./syntaxes/pys.tmLanguage.json"
+      }
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "pysType",
+        "description": "Validated PYS user or library type"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "pys",
+        "scopes": {
+          "pysType": ["entity.name.type.class.pys"]
+        }
       }
     ],
     "snippets": [

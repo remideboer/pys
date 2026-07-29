@@ -665,6 +665,11 @@ LANGUAGE.add_regex(
     lambda match: _translate_loop(match.group("init"), match.group("cond"), match.group("step")),
 )
 LANGUAGE.add_regex(
+    "loop_foreach",
+    r"loop\s*\(\s*(?:(?P<type>[A-Za-z_]\w*)\s+)?(?P<var>[A-Za-z_]\w*)\s+in\s+(?P<expr>.+?)\s*\)",
+    lambda match: f"for {match.group('var')} in {_rewrite_plus_expr(match.group('expr').strip())}:",
+)
+LANGUAGE.add_regex(
     "loop_condition",
     r"loop\s*\(\s*(?P<cond>.+?)\s*\)",
     _translate_while,
