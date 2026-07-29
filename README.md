@@ -1,12 +1,21 @@
-# Python Transpiler for Students
+# PYS — teaching language that transpiles to Python
 
-This project is a starter transpiler for a simple Python-like teaching language. It lets you write student-friendly code in `.pys` files and run it through an on-demand transpile step to standard Python.
+Write `.pys` programs with explicit types and brace blocks; run them through an
+on-demand transpile step to standard Python. Designed for classroom use with an
+IDE run/debug path and a **didactic tutorial track** (not a keyword tour).
+
+## Learn PYS (students)
+
+Start here: **[`tutorials/00-start-here.md`](tutorials/00-start-here.md)**
+
+The track uses **4C/ID**, **faded scaffolding** (worked → completion → conventional),
+and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md).
 
 ## Goals
-- Teach a new, simpler syntax that compiles into Python
-- Enable VS Code "Run" / debug configurations via a wrapper
-- Minimize the need for a separate build step for students
-- Show how to integrate with IDE run/play tools
+- Teach a simpler typed syntax that compiles into Python
+- Enable VS Code / Cursor “Run” / debug via the PYS extension and wrappers
+- Minimize a separate build step for students
+- Ship a curriculum path separate from the dense `examples/` showcase
 
 ## Getting Started
 
@@ -17,13 +26,24 @@ Use a normal system (or user) Python — **no project venv**:
 python -m pip install -e .
 ```
 
+### PYS extension (editor)
+
+```powershell
+cd pys-language
+npx --yes @vscode/vsce package --allow-missing-repository
+cursor --install-extension .\pys-language-0.0.25.vsix --force
+```
+
+Then reload the window. Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
+
 Dependencies for `.pys` programs are declared in `pys.deps` and cached in a central
 repository (`~/.pys/repository`), similar to Maven's `.m2`. The runner downloads
 missing packages with pip on first use and reuses them afterwards (flyweight).
 
-### Run a sample file
+### Run a tutorial or sample
 
 ```bash
+python -m transpiler run tutorials/tasks/T1-sensor-log/1-worked.pys
 python -m transpiler run examples/main.pys
 ```
 
@@ -63,6 +83,9 @@ This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.
 ## Language Features
 
 Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) - overview in [`docs/LANGUAGE.md`](docs/LANGUAGE.md), visuals in [`docs/language-railroad.html`](docs/language-railroad.html).
+
+**Curriculum:** [`tutorials/`](tutorials/) — whole-task classes with scaffolding and JIT cards.  
+**Showcase:** `examples/main.pys` (dense reference, not lesson 1).
 
 Supported `.pys` syntax (see also `examples/main.pys`):
 

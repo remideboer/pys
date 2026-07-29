@@ -1,0 +1,9 @@
+# T1 level A — worked example
+# Authentic story: one probe reading for the lab notebook
+
+const string PROBE_ID = "probe-A"
+fix float celsius = 21.5
+bool stable = true
+int sampleIndex = 1
+
+print("Sample #i{sampleIndex} on #s{PROBE_ID}: #f{celsius} C, stable=#b{stable}")

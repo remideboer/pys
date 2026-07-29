@@ -1,0 +1,18 @@
+# T1 level B — completion
+# Story: probe-B, colder reading, not yet stable
+# Replace each TODO. The file must run and satisfy T1 success criteria.
+
+# TODO: PROBE_ID should be a compile-time constant string "probe-B"
+string PROBE_ID = "probe-B"
+
+# TODO: lock celsius after this calibration expression (use fix)
+float celsius = 18.0 + 0.25
+
+# TODO: declare stable as bool false
+var stable = false
+
+# TODO: sampleIndex as int 2
+var sampleIndex = 2
+
+# TODO: print one technician line with typed markers (#i #s #f #b)
+print("todo")

@@ -1,0 +1,7 @@
+# app.pys — uses the toolbox (worked)
+
+import shout from toolbox
+import MAX_LABEL_LEN from toolbox
+
+shout("max label length is checked against toolbox")
+print("limit=#i{MAX_LABEL_LEN}")

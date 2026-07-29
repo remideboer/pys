@@ -1,0 +1,13 @@
+# toolbox.pys — completion
+# TODO: MAX_ITEMS must be usable from app.pys in this folder
+const int MAX_ITEMS = 50
+
+# TODO: banner must be importable by app
+function banner(string title) {
+    print("=== #s{title} ===")
+}
+
+# Keep this private (no modifier) — app must not import it
+function debugDump() {
+    print("debug")
+}

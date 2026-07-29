@@ -1,0 +1,12 @@
+# board.pys — dock board (worked)
+
+import Tug from fleet
+import Van from fleet
+
+Tug t = Tug("T-9")
+Van v = Van("V-2")
+
+t.start()
+t.move()
+v.start()
+v.move()

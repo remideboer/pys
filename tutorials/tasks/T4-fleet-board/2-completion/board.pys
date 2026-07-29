@@ -1,0 +1,4 @@
+# board.pys — completion
+# TODO: import Bike and Truck, construct one of each, start and move both
+
+print("board offline")

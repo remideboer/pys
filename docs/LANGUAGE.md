@@ -43,6 +43,7 @@ package class Car inherits Vehicle implements Drivable {
 |------|------|
 | `docs/language.ebnf` | Formal EBNF |
 | `docs/language-railroad.html` | Railroad diagram visuals |
-| `examples/main.pys` | Feature showcase |
+| `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
+| `examples/main.pys` | Dense feature showcase (not the curriculum path) |
 | `transpiler/language_spec.py` | Line translation rules |
 | `pys.deps` | External Python dependencies (not language syntax) |

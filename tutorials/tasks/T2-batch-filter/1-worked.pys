@@ -1,0 +1,13 @@
+# T2 level A — worked example
+# Shipment batch as parallel columns; heavy lane = weight >= 10
+
+int[] ids = [101, 102, 103]
+string[] labels = ["bolts", "ribbons", "plates"]
+int[] weights = [12, 3, 25]
+const int THRESHOLD = 10
+
+loop (int i = 0, i < 3, i++) {
+    if (weights[i] >= THRESHOLD) {
+        print("HEAVY #i{ids[i]} #s{labels[i]} w=#i{weights[i]}")
+    }
+}

@@ -1,0 +1,12 @@
+# toolbox.pys — shared lab utilities (worked)
+
+global const int MAX_LABEL_LEN = 24
+
+global function shout(string text) {
+    print("NOTE: #s{text}")
+}
+
+# Private: formatting experiment — must NOT be imported by app
+function scratchpad() {
+    print("scratch")
+}

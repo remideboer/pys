@@ -1,0 +1,13 @@
+# T2 level B — completion
+# Same shape as level A. Threshold for THIS dock is 15.
+# TODO items must be resolved; program must print only heavy rows.
+
+int[] ids = [201, 202, 203, 204]
+string[] labels = ["cable", "tape", "motor", "foam"]
+int[] weights = [4, 16, 20, 9]
+
+# TODO: declare THRESHOLD as const int 15
+
+# TODO: loop i from 0 while i < 4
+# TODO: inside, if weight >= THRESHOLD print HEAVY line with #i/#s/#i
+print("replace-me")

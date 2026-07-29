@@ -1,0 +1,32 @@
+# fleet.pys — contracts and machines (worked)
+
+package interface Drivable {
+    public start()
+    public move()
+}
+
+package class Tug implements Drivable {
+    private string name
+    public Tug(string name) {
+        this.name = name
+    }
+    public start() {
+        print("tug #s{this.name} ignition")
+    }
+    public move() {
+        print("tug #s{this.name} pulling")
+    }
+}
+
+package class Van implements Drivable {
+    private string name
+    public Van(string name) {
+        this.name = name
+    }
+    public start() {
+        print("van #s{this.name} ignition")
+    }
+    public move() {
+        print("van #s{this.name} delivering")
+    }
+}
