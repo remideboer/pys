@@ -22,4 +22,8 @@ def main() -> None:
         transpile_path(args.source, args.target)
         print(f"Transpiled {args.source} -> {args.target}")
     elif args.command == "run":
-        run_source(args.source)
+        raise SystemExit(run_source(args.source))
+
+
+if __name__ == "__main__":
+    main()

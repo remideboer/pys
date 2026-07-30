@@ -294,8 +294,8 @@ def _pip_install(
             i = 0
             while not stop.wait(0.12):
                 frame = frames[i % len(frames)]
-                sys.stderr.write(f"\r  {progress_label} {frame}")
-                sys.stderr.flush()
+                sys.stdout.write(f"\r  {progress_label} {frame}")
+                sys.stdout.flush()
                 i += 1
 
         spinner_thread = threading.Thread(target=_spin, daemon=True)
@@ -306,8 +306,8 @@ def _pip_install(
     if spinner_thread is not None:
         spinner_thread.join(timeout=1.0)
         # Clear the spinner line before the final status is printed by the caller.
-        sys.stderr.write("\r" + " " * (len(progress_label) + 8) + "\r")
-        sys.stderr.flush()
+        sys.stdout.write("\r" + " " * (len(progress_label) + 8) + "\r")
+        sys.stdout.flush()
 
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
@@ -337,7 +337,7 @@ def ensure_dependency(
 
     def _status(message: str) -> None:
         if not quiet:
-            print(f"  {message}", file=sys.stderr)
+            print(f"  {message}", flush=True)
 
     if dep.version:
         target = package_root / dep.version
@@ -399,7 +399,8 @@ def resolve_site_paths(
     total = len(deps)
     if total and not quiet:
         noun = "dependency" if total == 1 else "dependencies"
-        print(f"Resolving {total} {noun}...", file=sys.stderr)
+        src = f" from {config.source_path}" if config.source_path else ""
+        print(f"Resolving {total} {noun}{src}...", flush=True)
     paths: list[Path] = []
     for index, dep in enumerate(deps, start=1):
         paths.append(
@@ -413,7 +414,7 @@ def resolve_site_paths(
             )
         )
     if total and not quiet:
-        print("Dependencies ready.", file=sys.stderr)
+        print("Dependencies ready.", flush=True)
     return paths
 
 
