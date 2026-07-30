@@ -80,6 +80,25 @@ def test_translate_array_loop() -> None:
     assert LANGUAGE.translate_line("numbers.loop(print)") == "list(map(print, numbers))"
 
 
+def test_translate_if_not() -> None:
+    assert LANGUAGE.translate_line("if not (x > 100)") == "if not (x > 100):"
+    assert LANGUAGE.translate_line("unless (x > 100)") == "if not (x > 100):"
+    assert LANGUAGE.translate_line("else if not (x > 100)") == "elif not (x > 100):"
+
+
+def test_if_not_brace_block() -> None:
+    out = transpile(
+        """
+int x = 10
+if not (x > 100) {
+    print("ok")
+}
+"""
+    )
+    assert "if not (x > 100):" in out
+    assert 'print("ok")' in out
+
+
 def test_multiline_comment_stripped() -> None:
     source = "int x = 10\n## this is\na multiline\ncomment /#\nprint(x)\n"
     result = transpile(source)

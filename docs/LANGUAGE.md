@@ -181,15 +181,21 @@ else {
 }
 ```
 
-### `unless`
+### `unless` / `if not`
 
-Negated `if` — transpiles to `if not (…)`:
+Negated `if`. Both forms transpile to `if not (…)`:
 
 ```pys
 unless (x > 100) {
     print("x is not greater than 100")
 }
+# same as unless
+if not (x > 100) {
+    print("x is not greater than 100")
+}
 ```
+
+`else if not (…)` is also valid (transpiles to `elif not (…)`).
 
 ### `loop` — three shapes
 

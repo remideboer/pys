@@ -279,6 +279,10 @@ else {
 unless (x > 100) {
     print("x is not greater than 100")
 }
+# same as unless
+if not (x > 100) {
+    print("x is not greater than 100")
+}
 ```
 
 ### Functions and visibility

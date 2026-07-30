@@ -533,6 +533,14 @@ def _translate_unless(match: Match[str]) -> str:
     return f"if not ({_normalize_bool_expr(match.group('cond').strip())}):"
 
 
+def _translate_if_not(match: Match[str]) -> str:
+    return f"if not ({_normalize_bool_expr(match.group('cond').strip())}):"
+
+
+def _translate_elif_not(match: Match[str]) -> str:
+    return f"elif not ({_normalize_bool_expr(match.group('cond').strip())}):"
+
+
 def _translate_return(match: Match[str]) -> str:
     return f"return {match.group('expr').strip()}"
 
@@ -688,9 +696,19 @@ LANGUAGE.add_regex(
     _translate_unless,
 )
 LANGUAGE.add_regex(
+    "else_if_not",
+    r"else\s+if\s+not\s*\(\s*(?P<cond>.+?)\s*\)",
+    _translate_elif_not,
+)
+LANGUAGE.add_regex(
     "else_if",
     r"else\s+if\s*\(\s*(?P<cond>.+?)\s*\)",
     _translate_elif,
+)
+LANGUAGE.add_regex(
+    "if_not",
+    r"if\s+not\s*\(\s*(?P<cond>.+?)\s*\)",
+    _translate_if_not,
 )
 LANGUAGE.add_regex(
     "if",

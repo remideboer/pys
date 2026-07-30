@@ -14,10 +14,14 @@ if (n > 0) {
 unless (ok) {
     print("not ok")
 }
+# same as unless
+if not (ok) {
+    print("not ok")
+}
 ```
 
 ## Rules
 
 1. Condition in `(…)`  
 2. Body in `{ … }`  
-3. `unless (cond)` ≡ `if (!cond)` — use when the negative case is the story you want to name
+3. `unless (cond)` ≡ `if not (cond)` — use when the negative case is the story you want to name

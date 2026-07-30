@@ -207,9 +207,10 @@ print_stmt       = "print" , expression
 
 (* ------------------------- Control flow ------------------------- *)
 
-if_stmt          = "if" , "(" , expression , ")" , block ,
-                   { "else" , "if" , "(" , expression , ")" , block } ,
+if_stmt          = "if" , [ "not" ] , "(" , expression , ")" , block ,
+                   { "else" , "if" , [ "not" ] , "(" , expression , ")" , block } ,
                    [ "else" , block ] ;
+(* "if not (…)" is the same as unless; "else if not (…)" → elif not (…) *)
 
 unless_stmt      = "unless" , "(" , expression , ")" , block ;
 (* Transpiles to: if not (expression) *)
