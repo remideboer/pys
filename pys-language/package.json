@@ -1,12 +1,34 @@
 {
   "name": "pys-language",
   "displayName": "PYS Language Support",
-  "description": "Syntax highlighting, snippets, diagnostics, and run/debug for the PYS teaching language.",
-  "version": "0.0.29",
-  "publisher": "local",
-  "private": true,
+  "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
+  "version": "0.0.30",
+  "publisher": "remideboer",
+  "license": "LGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/remideboer/pys.git"
+  },
+  "bugs": {
+    "url": "https://github.com/remideboer/pys/issues"
+  },
+  "homepage": "https://github.com/remideboer/pys#readme",
   "icon": "icons/pys-icon.png",
-  "scripts": {},
+  "keywords": [
+    "pys",
+    "teaching",
+    "education",
+    "transpiler",
+    "python"
+  ],
+  "scripts": {
+    "prepare-bundle": "node scripts/prepare-bundle.js",
+    "prepare": "npm run prepare-bundle",
+    "vscode:prepublish": "npm run prepare-bundle",
+    "package": "npm run prepare-bundle && npx --yes @vscode/vsce package",
+    "package:elo": "npm run package && python scripts/prepare_elo_zip.py",
+    "publish:marketplace": "npm run prepare-bundle && npx --yes @vscode/vsce publish"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },

@@ -19,24 +19,33 @@ and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md)
 
 ## Getting Started
 
-### Install
-Use a normal system (or user) Python — **no project venv**:
+### Students — install the extension
+
+1. Install **Python 3.10+** and ensure `python` / `python3` is on your PATH.
+2. Prefer the Marketplace (auto-update):
+   - VS Code **Extensions** → **PYS Language Support**, or `ext install remideboer.pys-language`
+3. **ELO / offline:** download `pys-student-<version>.zip` from your course site,
+   unzip, run `install.cmd` (Windows) or `./install.sh`, then reload VS Code.
+4. Open a folder with `.pys` files and use **PYS: Run File**.
+
+Third-party libraries use **`pys.deps`** (no project venv) — see below. First Run may
+download packages into `~/.pys/repository`.
+
+Maintainers: [`pys-language/PUBLISH.md`](pys-language/PUBLISH.md) (Marketplace + ELO zip).
+
+### Contributors — develop the language / extension
 
 ```bash
 python -m pip install -e .
-```
-
-### PYS extension (editor)
-
-```powershell
 cd pys-language
-npx --yes @vscode/vsce package --allow-missing-repository
-code --install-extension .\pys-language-0.0.29.vsix --force
+npm run prepare          # copies transpiler into bundled/
+npm run package          # builds pys-language-*.vsix
 ```
 
-Then reload the window. Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
+F5 from `pys-language` after `npm run prepare`. Diagnostics still use a workspace
+`PYTHONPATH` / editable install until a later phase.
 
-### Run a tutorial or sample
+### Run a tutorial or sample (CLI)
 
 ```bash
 python -m transpiler run tutorials/tasks/T1-sensor-log/1-worked.pys
@@ -108,10 +117,12 @@ before you `import` them from `.pys`.
 
 ## VS Code Integration
 
-This repository includes `.vscode/launch.json` and `.vscode/tasks.json`.
+Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
+editor Run controls — no workspace `.vscode/run_pys.py` required.
 
-- Use the `Run .pys file` debug configuration to execute the active `.pys` file in the debugger.
-- The wrapper transpiles the current file and executes the generated Python code.
+- Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
+- Debug uses the Python debugger on the run path (not PYS source stepping yet).
+- Third-party imports resolve through `pys.deps` / `~/.pys/repository` on Run.
 
 ## Language Features
 

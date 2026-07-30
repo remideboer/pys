@@ -54,3 +54,8 @@ htmlcov/
 
 # Misc
 *.swp
+
+# PYS VS Code extension build output
+pys-language/bundled/
+pys-language/*.vsix
+pys-language/LICENSE

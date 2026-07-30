@@ -2,4 +2,10 @@ node_modules
 .vscode
 .git
 .github
-README.md
+PUBLISH.md
+scripts
+*.vsix
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+**/.pytest_cache

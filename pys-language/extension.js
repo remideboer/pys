@@ -716,9 +716,39 @@ function activate(context) {
     }
   }
 
-  function getRunnerPath() {
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
-    return workspace ? path.join(workspace.uri.fsPath, '.vscode', 'run_pys.py') : null;
+  function getPythonExecutable() {
+    return process.platform === 'win32' ? 'python' : 'python3';
+  }
+
+  function getBundledRoot() {
+    return path.join(context.extensionPath, 'bundled');
+  }
+
+  function ensureBundledTranspiler() {
+    const bundled = getBundledRoot();
+    const marker = path.join(bundled, 'transpiler', '__main__.py');
+    if (!fs.existsSync(marker)) {
+      vscode.window.showErrorMessage(
+        'Bundled PYS transpiler not found. Contributors: run `npm run prepare` in pys-language, then reload.'
+      );
+      return null;
+    }
+    return bundled;
+  }
+
+  function envWithBundledTranspiler(bundled) {
+    const existing = process.env.PYTHONPATH || '';
+    return {
+      ...process.env,
+      PYTHONPATH: existing ? `${bundled}${path.delimiter}${existing}` : bundled,
+    };
+  }
+
+  function shellQuote(value) {
+    if (process.platform === 'win32') {
+      return `"${String(value).replace(/"/g, '\\"')}"`;
+    }
+    return `'${String(value).replace(/'/g, `'\\''`)}'`;
   }
 
   function resolveTargetPysFile(file) {
@@ -740,9 +770,8 @@ function activate(context) {
       vscode.window.showErrorMessage('No PYS file to run. Set pys.mainFile or open a .pys file.');
       return;
     }
-    const runner = getRunnerPath();
-    if (!runner || !fs.existsSync(runner)) {
-      vscode.window.showErrorMessage('Workspace runner not found (.vscode/run_pys.py).');
+    const bundled = ensureBundledTranspiler();
+    if (!bundled) {
       return;
     }
     if (!fs.existsSync(filePath)) {
@@ -754,9 +783,18 @@ function activate(context) {
       vscode.window.showErrorMessage('Unable to save files before running.');
       return;
     }
-    const term = vscode.window.createTerminal({ name: 'Run PYS' });
+    const pythonExecutable = getPythonExecutable();
+    const workDir = path.dirname(filePath);
+    const term = vscode.window.createTerminal({
+      name: 'Run PYS',
+      cwd: workDir,
+      env: envWithBundledTranspiler(bundled),
+    });
     term.show();
-    term.sendText(`python "${runner}" "${filePath}"`, true);
+    term.sendText(
+      `${pythonExecutable} -m transpiler run ${shellQuote(filePath)}`,
+      true
+    );
   }
 
   async function debugPysFile(filePath) {
@@ -764,9 +802,8 @@ function activate(context) {
       vscode.window.showErrorMessage('No PYS file to debug. Set pys.mainFile or open a .pys file.');
       return;
     }
-    const runner = getRunnerPath();
-    if (!runner || !fs.existsSync(runner)) {
-      vscode.window.showErrorMessage('Workspace runner not found (.vscode/run_pys.py).');
+    const bundled = ensureBundledTranspiler();
+    if (!bundled) {
       return;
     }
     if (!fs.existsSync(filePath)) {
@@ -778,12 +815,16 @@ function activate(context) {
       vscode.window.showErrorMessage('Unable to save files before debugging.');
       return;
     }
+    // Runs via the Python debugger on generated code — not PYS source stepping.
     vscode.debug.startDebugging(undefined, {
       name: 'Run .pys file',
       type: 'python',
       request: 'launch',
-      program: runner,
-      args: [filePath],
+      module: 'transpiler',
+      args: ['run', filePath],
+      cwd: path.dirname(filePath),
+      env: envWithBundledTranspiler(bundled),
+      console: 'integratedTerminal',
     });
   }
 

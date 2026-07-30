@@ -1,0 +1,133 @@
+name: Publish extension
+
+# Publishes to the Visual Studio Marketplace when you push a tag like:
+#   extension-v0.0.31
+# Also builds the ELO student zip and attaches both to a GitHub Release.
+# The tag version must match pys-language/package.json "version".
+
+on:
+  push:
+    tags:
+      - "extension-v*"
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type publish to release package.json version to Marketplace"
+        required: true
+        default: ""
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Require Marketplace token
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "Missing GitHub Actions secret VSCE_PAT."
+            echo "Create a Personal Access Token at https://dev.azure.com with"
+            echo "Marketplace (Publish) scope, then add it as repo secret VSCE_PAT."
+            echo "See pys-language/PUBLISH.md"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and pytest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pytest
+
+      - name: Test transpiler
+        run: python -m pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Read extension version
+        id: ver
+        working-directory: pys-language
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Extension version: $VERSION"
+
+      - name: Check tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          EXPECTED="extension-v${VERSION}"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "Tag '$TAG' must be '$EXPECTED' (matches package.json version)."
+            exit 1
+          fi
+
+      - name: Confirm manual publish
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [ "${{ inputs.confirm }}" != "publish" ]; then
+            echo "Aborted: set confirm input to exactly 'publish'."
+            exit 1
+          fi
+
+      - name: Package VSIX and ELO zip
+        working-directory: pys-language
+        run: npm run package:elo
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pys-language-vsix-${{ steps.ver.outputs.version }}
+          path: pys-language/*.vsix
+          if-no-files-found: error
+
+      - name: Upload ELO zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pys-student-elo-${{ steps.ver.outputs.version }}
+          path: dist/pys-student-*.zip
+          if-no-files-found: error
+
+      - name: Publish to Visual Studio Marketplace
+        working-directory: pys-language
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx --yes @vscode/vsce publish --pat "$VSCE_PAT"
+
+      - name: Optional Open VSX publish
+        working-directory: pys-language
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then
+            echo "OVSX_PAT not set; skipping Open VSX (optional for Cursor/VSCodium)."
+            exit 0
+          fi
+          VSIX=$(ls -1 *.vsix | head -n 1)
+          npx --yes ovsx publish "$VSIX" --pat "$OVSX_PAT"
+
+      - name: GitHub Release (VSIX + ELO zip for ELO upload)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pys-language/*.vsix
+            dist/pys-student-*.zip
+          fail_on_unmatched_files: true
+          body: |
+            ## Install
+            - **Marketplace:** `ext install remideboer.pys-language`
+            - **ELO / offline:** download `pys-student-${{ steps.ver.outputs.version }}.zip`, unzip, run `install.cmd`
+
+            Requires Python 3.10+ on PATH. Extension includes the bundled transpiler.

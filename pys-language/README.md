@@ -1,35 +1,47 @@
 # PYS Language Extension
 
-Local Cursor / VS Code extension for the PYS teaching language.
+VS Code / Cursor extension for the PYS teaching language. The **transpiler is
+bundled** in the VSIX — students do not `pip install` this repo.
 
 ## Features
 
 - `*.pys` language association and TextMate syntax highlighting
 - Brace-based indentation and `##` … `/#` block comments
 - Snippets for functions, classes, loops, `inherits`, and interpolation
-- Live diagnostics via the workspace transpiler
 - Keyword / type completions and hover hints
-- Language / file icons for `.pys` (braces + run triangle)
-- Markdown ` ```pys ` fences: editor + preview highlighting (grammar injection)
-- Run / Debug editor title controls for `.pys` files (same Run slot as Python/Java)
+- Language / file icons for `.pys`
+- Markdown ` ```pys ` fences: editor + preview highlighting
+- **Run** (and Debug via Python on generated code) using the bundled transpiler
   - `Ctrl+Shift+R` / `Ctrl+Shift+D` — run/debug current `.pys` file
   - `Ctrl+Alt+R` / `Ctrl+Alt+D` — run/debug configured main file
   - Setting `pys.mainFile` (or right-click **Set as Main File**)
-  - Status bar shows the current main entry and runs it on click
+- Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
 
-## Install into Cursor
+## Install (students)
+
+**Marketplace (preferred):** Extensions → **PYS Language Support**  
+(`ext install remideboer.pys-language`). Leave auto-update on.
+
+**ELO / offline:** unzip `pys-student-<version>.zip` → `install.cmd` / `install.sh` → reload.
+
+Requires **system Python 3.10+** on PATH. The extension bundles the transpiler.
+
+## Publish (maintainers)
+
+See [`PUBLISH.md`](PUBLISH.md): Marketplace tag publish + ELO zip on the GitHub Release.
+
+## Develop (contributors)
+
+From the repo root:
 
 ```powershell
 cd pys-language
-npx --yes @vscode/vsce package --allow-missing-repository
-cursor --install-extension .\pys-language-0.0.28.vsix --force
+npm run prepare
+npm run package
 ```
 
-Then reload the window (`Developer: Reload Window`).
+`prepare` copies `../transpiler` into `bundled/transpiler` (gitignored). Then F5
+in the extension host, or install the built `.vsix`.
 
-## Develop
-
-1. Open this workspace in Cursor.
-2. Open the `pys-language` folder.
-3. Press `F5` to launch an Extension Development Host.
-4. Open a `.pys` file in the host window.
+Live diagnostics still resolve `transpiler.ide` via workspace `PYTHONPATH` until
+a later phase; **Run always uses the bundled copy**.
