@@ -31,7 +31,7 @@ python -m pip install -e .
 ```powershell
 cd pys-language
 npx --yes @vscode/vsce package --allow-missing-repository
-cursor --install-extension .\pys-language-0.0.25.vsix --force
+code --install-extension .\pys-language-0.0.29.vsix --force
 ```
 
 Then reload the window. Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
