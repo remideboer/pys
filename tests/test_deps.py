@@ -271,6 +271,37 @@ def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert loc["line"] == 2
 
 
+def test_navigate_to_imported_pys_function(tmp_path: Path) -> None:
+    from transpiler.ide import analyze_file, lookup_symbol
+
+    (tmp_path / "store.pys").write_text(
+        "package class AppStore {\n"
+        "    private int ready\n"
+        "\n"
+        "    public AppStore() {\n"
+        "        this.ready = 1\n"
+        "    }\n"
+        "}\n"
+        "\n"
+        "global function AppStore openStore() {\n"
+        "    return AppStore()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import store\n"
+        "AppStore appStore = openStore()\n",
+        encoding="utf-8",
+    )
+    analysis = analyze_file(main)
+    assert analysis["ok"], analysis.get("error")
+    loc = lookup_symbol(analysis, "openStore")
+    assert loc is not None
+    assert loc["file"].replace("\\", "/").endswith("store.pys")
+    assert loc["line"] == 9
+
+
 def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from transpiler.ide import analyze_file
     from transpiler.transpiler import Parser, TranspileError

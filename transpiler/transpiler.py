@@ -118,6 +118,8 @@ class ModuleInfo:
     class_methods: dict[str, dict[str, int]]
     sealed_classes: set[str]
     class_decl_lines: dict[str, int]  # line numbers within path
+    # Exported / declared names -> (file, line, column) for go-to-definition
+    symbol_locations: dict[str, tuple[Path, int, int]]
 
 
 
@@ -946,7 +948,12 @@ class Parser:
             return None, line
         return match.group("vis"), line[match.end() :].lstrip()
 
-    def _record_top_level_export(self, line: str) -> None:
+    def _record_top_level_export(
+        self,
+        line: str,
+        line_number: int = 0,
+        raw_line: str | None = None,
+    ) -> None:
         if not self._at_module_level():
             return
         visibility, rest = self._strip_top_level_visibility(line)
@@ -970,7 +977,9 @@ class Parser:
                 rest,
             )
         if match:
-            self.exports[match.group("name")] = visibility
+            name = match.group("name")
+            self.exports[name] = visibility
+            self._record_symbol(name, line_number, raw_line or line)
 
     def _deps_paths(self) -> list[Path]:
         if self._deps_site_paths_loaded:
@@ -1097,6 +1106,7 @@ class Parser:
                 class_methods=dict(child.class_methods),
                 sealed_classes=set(child.sealed_classes),
                 class_decl_lines=dict(child.class_decl_lines),
+                symbol_locations=dict(child.symbol_locations),
             )
             self.module_cache[path] = info
             return info
@@ -1130,6 +1140,8 @@ class Parser:
                 self.constants.add(name)
             if name in info.fixed_vars:
                 self.fixed_vars.add(name)
+            if name in info.symbol_locations:
+                self.symbol_locations[name] = info.symbol_locations[name]
             self.seen_module_names.pop(name, None)
         for name, visibility in info.exports.items():
             accessible = name in visible
@@ -2857,7 +2869,7 @@ class Parser:
 
         line = self._strip_generic_params(line)
         line = self._rewrite_generic_type_args(line)
-        self._record_top_level_export(line)
+        self._record_top_level_export(line, line_number, raw_line)
         self._set_pending_block_context(line, line_number, raw_line)
         self._record_class_declaration(line, line_number)
         self._record_class_member(line)

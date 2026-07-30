@@ -39,9 +39,9 @@ def analyze_file(source_path: Path) -> dict:
         if error is None:
             error = _error_dict(exc)
 
-    # Variable / local symbol declarations (in the .pys file)
+    # Variable / local / function symbol declarations
     symbols = {
-        name: {"file": str(path), "line": line, "column": col, "kind": "variable"}
+        name: {"file": str(path), "line": line, "column": col, "kind": "symbol"}
         for name, (path, line, col) in parser.symbol_locations.items()
     }
 
