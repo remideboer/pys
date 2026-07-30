@@ -120,6 +120,8 @@ class ModuleInfo:
     class_decl_lines: dict[str, int]  # line numbers within path
     # Exported / declared names -> (file, line, column) for go-to-definition
     symbol_locations: dict[str, tuple[Path, int, int]]
+    # class_name -> method_name -> (file, line, column)
+    method_locations: dict[str, dict[str, tuple[Path, int, int]]]
 
 
 
@@ -216,6 +218,8 @@ class Parser:
         self.class_decl_lines: dict[str, int] = {}
         self.sealed_classes: set[str] = set()
         self.generic_type_params: dict[str, list[str]] = {}
+        # class_name -> method_name -> (file, line, column)
+        self.method_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
         self.needs_abc_import = False
         self.needs_array_import = False
         self._deps_site_paths: list[Path] | None = None
@@ -1107,6 +1111,9 @@ class Parser:
                 sealed_classes=set(child.sealed_classes),
                 class_decl_lines=dict(child.class_decl_lines),
                 symbol_locations=dict(child.symbol_locations),
+                method_locations={
+                    cls: dict(methods) for cls, methods in child.method_locations.items()
+                },
             )
             self.module_cache[path] = info
             return info
@@ -1176,6 +1183,8 @@ class Parser:
                 self.class_members[name] = info.class_members[name]
             if name in info.class_methods:
                 self.class_methods[name] = info.class_methods[name]
+            if name in info.method_locations:
+                self.method_locations[name] = dict(info.method_locations[name])
             if name in info.sealed_classes:
                 self.sealed_classes.add(name)
             if name in info.class_decl_lines:
@@ -1923,7 +1932,25 @@ class Parser:
             self.class_members.setdefault(name, {})
             self.class_methods.setdefault(name, {})
 
-    def _record_class_member(self, line: str) -> None:
+    def _record_class_member(
+        self,
+        line: str,
+        line_number: int = 0,
+        raw_line: str | None = None,
+    ) -> None:
+        def _store_method_location(owner: str, mname: str) -> None:
+            if not line_number or self.source_path is None:
+                return
+            column = 1
+            hint = raw_line or line
+            if mname in hint:
+                column = hint.find(mname) + 1
+            self.method_locations.setdefault(owner, {})[mname] = (
+                self.source_path,
+                line_number,
+                column,
+            )
+
         if self._directly_inside_interface():
             iface_name = self._current_class_name()
             if not iface_name:
@@ -1950,6 +1977,7 @@ class Parser:
                 arity = self._param_arity(method.group("args"))
                 self.interface_methods.setdefault(iface_name, {})[method.group("name")] = arity
                 self.class_members.setdefault(iface_name, {})[method.group("name")] = "public"
+                _store_method_location(iface_name, method.group("name"))
             return
 
         if not self._directly_inside_class():
@@ -1971,10 +1999,12 @@ class Parser:
             line,
         )
         if method and method.group("name") != cls_name:
-            self.class_members.setdefault(cls_name, {})[method.group("name")] = method.group("access")
-            self.class_methods.setdefault(cls_name, {})[method.group("name")] = self._param_arity(
+            mname = method.group("name")
+            self.class_members.setdefault(cls_name, {})[mname] = method.group("access")
+            self.class_methods.setdefault(cls_name, {})[mname] = self._param_arity(
                 method.group("args")
             )
+            _store_method_location(cls_name, mname)
 
     def _enforce_class_member_access(self, line: str, line_number: int, raw_line: str) -> None:
         if not (self._directly_inside_class() or self._directly_inside_interface()):
@@ -2872,7 +2902,7 @@ class Parser:
         self._record_top_level_export(line, line_number, raw_line)
         self._set_pending_block_context(line, line_number, raw_line)
         self._record_class_declaration(line, line_number)
-        self._record_class_member(line)
+        self._record_class_member(line, line_number, raw_line)
         self._record_declared_variables(line, line_number, raw_line)
         self._enforce_const_declaration(line, line_number, raw_line)
         self._enforce_fix_declaration(line, line_number, raw_line)

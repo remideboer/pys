@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -78,8 +79,31 @@ def analyze_file(source_path: Path) -> dict:
         "imported_modules": dict(parser.imported_modules),
         "collection_element_types": dict(parser.collection_element_types),
         "validated_types": sorted(parser.validated_types),
+        "class_parents": dict(parser.class_parents),
+        "method_locations": {
+            cls: {
+                method: {"file": str(path), "line": line, "column": col, "kind": "method"}
+                for method, (path, line, col) in methods.items()
+            }
+            for cls, methods in parser.method_locations.items()
+        },
         "_site_paths": [str(p) for p in site_paths],
     }
+
+
+def _lookup_pys_method(analysis: dict, type_name: str, method: str) -> dict | None:
+    """Find method location on a PYS class, walking parents."""
+    parents = analysis.get("class_parents") or {}
+    method_locations = analysis.get("method_locations") or {}
+    seen: set[str] = set()
+    current: str | None = type_name
+    while current and current not in seen:
+        seen.add(current)
+        methods = method_locations.get(current) or {}
+        if method in methods:
+            return methods[method]
+        current = parents.get(current)
+    return None
 
 
 def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
@@ -90,6 +114,21 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     loc = analysis.get("symbols", {}).get(symbol)
     if loc:
         return loc
+
+    # Class.method or instance.method (PYS types)
+    if "." in symbol and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+", symbol):
+        parts = symbol.split(".")
+        if len(parts) == 2:
+            head, method = parts
+            variable_types = analysis.get("variable_types") or {}
+            type_name = variable_types.get(head, head)
+            if type_name.startswith("list<"):
+                type_name = "list"
+            elif type_name.startswith("dict<"):
+                type_name = "dict"
+            pys_loc = _lookup_pys_method(analysis, type_name, method)
+            if pys_loc:
+                return pys_loc
 
     site_paths = [Path(p) for p in analysis.get("_site_paths") or []]
     located = locate_attr_path(
