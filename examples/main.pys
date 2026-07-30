@@ -7,7 +7,7 @@ import tkinter as tk
 # also valid: import hello from funcs.pys
 # log() in vehicles.pys is module-private and NOT importable
 
-MySQLConnection mydb = mysql.connector.connect(host="localhost", user="root", password="kitnipper", database="combiteelt")
+MySQLConnection mydb = mysql.connector.connect(host="localhost", user="pys", password="123456789", database="combiteelt")
 
 MySQLCursor mycursor = mydb.cursor()
 
