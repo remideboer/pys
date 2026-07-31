@@ -203,3 +203,30 @@ def test_sem_array_rejects_overflow() -> None:
 
 def test_sem_array_accepts_exact_size() -> None:
     _analyze("int[4] nums = [2, 3, 5, 8]\n")
+
+
+def test_sem_class_requires_access_modifier() -> None:
+    with pytest.raises(TranspileError, match="access modifier"):
+        _analyze("class Car {\n    int year\n}\n")
+
+
+def test_sem_class_rejects_function_keyword() -> None:
+    source = """class Car {
+    public function drive() {
+        print("driving")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Class methods must not use `function`"):
+        parse_program(source)
+
+
+def test_sem_class_rejects_method_keyword() -> None:
+    source = """class Car {
+    public method drive() {
+        print("driving")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="Remove `method`"):
+        parse_program(source)

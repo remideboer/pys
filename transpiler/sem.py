@@ -74,6 +74,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
+    _check_class_member_modifiers(module.body)
     _check_await_cycles(module.body)
     return module
 
@@ -1204,3 +1205,29 @@ def _check_arrays(body: list[Any]) -> None:
                     walk(stmt.body.statements)
 
     walk(body)
+
+
+def _check_class_member_modifiers(body: list[Any]) -> None:
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        for f in stmt.fields:
+            if f.access:
+                continue
+            line = f.span.line if f.span else (stmt.span.line if stmt.span else 1)
+            _transpile_error(
+                "Class member declarations require an access modifier. Use public/private/protected/module.",
+                line,
+                1,
+                f"{f.type_name} {f.name}".strip(),
+            )
+        for m in stmt.methods:
+            if m.access:
+                continue
+            line = m.span.line if m.span else (stmt.span.line if stmt.span else 1)
+            _transpile_error(
+                "Class member declarations require an access modifier. Use public/private/protected/module.",
+                line,
+                1,
+                m.name,
+            )

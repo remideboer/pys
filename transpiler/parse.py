@@ -515,9 +515,22 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         if p.at(TokenKind.COMMENT):
             p.eat(TokenKind.COMMENT)
             continue
-        access = "public"
+        access = ""
         if p.at_kw("public", "private", "protected", "module"):
             access = p.eat(TokenKind.KEYWORD).text
+        if p.at_kw("function"):
+            raise FatalParseError(
+                "Class methods must not use `function`. Use an access modifier: `public name(args)`.",
+                p.cur().line,
+                p.cur().column,
+            )
+        if p.at_kw("method") or (p.at(TokenKind.IDENT) and p.cur().text == "method"):
+            raise FatalParseError(
+                "Remove `method`; use an access modifier and optional return type: "
+                "`public name(args)` or `public string name(args)`.",
+                p.cur().line,
+                p.cur().column,
+            )
         # constructor
         if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
