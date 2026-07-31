@@ -189,3 +189,17 @@ tasks {
 }
 """
     _analyze(source)
+
+
+def test_sem_array_rejects_mixed_types() -> None:
+    with pytest.raises(TranspileError, match="Int array elements must be integers"):
+        _analyze("int[] nums = [1, 2.5, 3]\n")
+
+
+def test_sem_array_rejects_overflow() -> None:
+    with pytest.raises(TranspileError, match="Array index out of bounds"):
+        _analyze("int[4] nums = [2, 3, 5, 8, 9]\n")
+
+
+def test_sem_array_accepts_exact_size() -> None:
+    _analyze("int[4] nums = [2, 3, 5, 8]\n")

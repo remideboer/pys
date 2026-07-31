@@ -11,6 +11,7 @@ from typing import Any
 
 from .ast_nodes import (
     ArrayDecl,
+    ArrayLiteral,
     AssignStmt,
     AugAssignStmt,
     AwaitExpr,
@@ -72,6 +73,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     _check_oop(module.body, types=types)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
+    _check_arrays(module.body)
     _check_await_cycles(module.body)
     return module
 
@@ -1106,3 +1108,99 @@ def _check_shared_capture(body: list[Any]) -> None:
                     )
 
     walk(body, declared=set(), shared=set(), in_task=False, task_locals=set())
+
+
+def _array_element_ok(elem_type: str, expr: Expr) -> bool:
+    if not isinstance(expr, Literal):
+        return True  # non-literals: leave to runtime / legacy
+    if elem_type == "bool":
+        return expr.kind == "bool" or expr.text in {"true", "false", "True", "False"}
+    if elem_type == "string":
+        return expr.kind == "string"
+    if elem_type == "char":
+        return expr.kind == "char"
+    if elem_type == "int":
+        return expr.kind == "int"
+    if elem_type == "float":
+        return expr.kind in {"int", "float"}
+    return True
+
+
+def _array_element_error(elem_type: str, expr: Expr) -> str:
+    value = getattr(expr, "text", "?")
+    if elem_type == "bool":
+        return f"Bool array elements must be true or false, got '{value}'."
+    if elem_type == "string":
+        return f"String array elements must be string literals, got '{value}'."
+    if elem_type == "char":
+        return f"Char array elements must be single characters, got '{value}'."
+    if elem_type == "int":
+        return f"Int array elements must be integers, got '{value}'."
+    if elem_type == "float":
+        return f"Float array elements must be numbers, got '{value}'."
+    return f"Unsupported array element type '{elem_type}'."
+
+
+def _check_arrays(body: list[Any]) -> None:
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, ArrayDecl):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                elems: list[Expr] = []
+                if isinstance(stmt.value, ArrayLiteral):
+                    elems = list(stmt.value.elements)
+                elif stmt.value is not None:
+                    _transpile_error(
+                        f"Array '{stmt.name}' must be initialized with a list literal like "
+                        f"`[{stmt.elem_type} values...]`.",
+                        line,
+                        col,
+                        f"{stmt.elem_type}[] {stmt.name}",
+                    )
+                if stmt.size is not None:
+                    if len(elems) > stmt.size:
+                        _transpile_error(
+                            "Array index out of bounds, trying to place a value outside the array "
+                            f"(capacity {stmt.size}, got {len(elems)} values).",
+                            line,
+                            col,
+                            f"{stmt.elem_type}[{stmt.size}] {stmt.name}",
+                        )
+                    if len(elems) != stmt.size:
+                        _transpile_error(
+                            f"Array '{stmt.name}' expects exactly {stmt.size} elements, got {len(elems)}.",
+                            line,
+                            col,
+                            f"{stmt.elem_type}[{stmt.size}] {stmt.name}",
+                        )
+                for el in elems:
+                    if not _array_element_ok(stmt.elem_type, el):
+                        _transpile_error(
+                            _array_element_error(stmt.elem_type, el),
+                            line,
+                            col,
+                            f"{stmt.elem_type}[] {stmt.name}",
+                        )
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+
+    walk(body)
