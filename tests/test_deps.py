@@ -100,41 +100,43 @@ def test_prepend_pythonpath(tmp_path: Path) -> None:
 
 
 def test_external_python_import_passes_through(tmp_path: Path) -> None:
-    from transpiler.transpiler import Parser
+    from transpiler.transpiler import transpile
 
-    # Fake a site package: pkgutil is stdlib; use math which is always available.
     main = tmp_path / "main.pys"
     main.write_text("import math\nprint(math.pi)\n", encoding="utf-8")
-    python = Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
     assert "import math" in python
 
 
 def test_stdlib_import_as_alias(tmp_path: Path) -> None:
-    from transpiler.transpiler import Parser
+    from transpiler.imports import ImportResolver
+    from transpiler.transpiler import transpile
 
     main = tmp_path / "main.pys"
     main.write_text("import tkinter as tk\nprint(tk)\n", encoding="utf-8")
-    parser = Parser(main.read_text(encoding="utf-8"), source_path=main)
-    python = parser.parse()
+    source = main.read_text(encoding="utf-8")
+    python = transpile(source, source_path=main)
     assert "import tkinter as tk" in python
-    assert parser.imported_modules.get("tk") == "tkinter"
-    assert parser.variable_types.get("tk") == "module:tkinter"
+    resolver = ImportResolver(source, source_path=main)
+    resolver.translate_import_statement("import tkinter as tk", 1, "import tkinter as tk")
+    assert resolver.imported_modules.get("tk") == "tkinter"
+    assert resolver.variable_types.get("tk") == "module:tkinter"
 
 
 def test_external_dep_import_from_site_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from transpiler.transpiler import Parser
+    from transpiler.transpiler import transpile
 
     site = tmp_path / "site"
     pkg = site / "mysql" / "connector"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("x = 1\n", encoding="utf-8")
     monkeypatch.setattr(
-        "transpiler.transpiler.Parser._deps_paths",
+        "transpiler.imports.ImportResolver._deps_paths",
         lambda self: [site],
     )
     main = tmp_path / "main.pys"
     main.write_text("import mysql.connector\n", encoding="utf-8")
-    python = Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
     assert "import mysql.connector" in python
 
 

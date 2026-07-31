@@ -72,10 +72,6 @@ _BINOP_PREC = {
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
-    # Semantic validation lives in sem. Legacy Parser is only for sources the
-    # AST parser could not represent (`use_legacy`).
-    if module.use_legacy:
-        return _legacy_emit(module.source, source_path=source_path)
     ast_out = _Emitter(
         source=module.source,
         source_path=source_path,
@@ -83,12 +79,6 @@ def emit(module: Module, *, source_path: Path | None = None) -> str:
     from .overloads import rewrite_overloaded_methods
 
     return rewrite_overloaded_methods(ast_out)
-
-
-def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
-    from ..transpiler import Parser
-
-    return Parser(source, source_path=source_path).parse()
 
 
 def _pys_import_line(stmt: ImportStmt) -> str:
@@ -290,13 +280,13 @@ class _Emitter:
                 self._emit(indent, resolved)
                 return
         if stmt.kind == "module":
-            self._emit(indent, f"from {stmt.module} import *")
+            self._emit(indent, f"from {Path(stmt.module).stem} import *")
         elif stmt.kind == "as":
             self._emit(indent, f"import {stmt.module} as {stmt.alias}")
         elif stmt.kind == "all_from":
-            self._emit(indent, f"from {stmt.module} import *")
+            self._emit(indent, f"from {Path(stmt.module).stem} import *")
         elif stmt.kind == "name_from":
-            self._emit(indent, f"from {stmt.module} import {stmt.name}")
+            self._emit(indent, f"from {Path(stmt.module).stem} import {stmt.name}")
         else:
             raise TypeError(stmt.kind)
 

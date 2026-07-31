@@ -7,10 +7,10 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from dataclasses import dataclass
 from typing import List, NoReturn
 
 from .concurrency import CONCURRENCY_PREAMBLE
+from .imports import ModuleInfo
 from .language_spec import LANGUAGE, _strip_type_annotation, _default_value_for_type, _rewrite_inclusive_slices
 
 INDENT_SIZE = 4
@@ -19,28 +19,6 @@ _NOT_IN_FUNCTION = object()
 
 # Back-compat alias for callers that still import the private name.
 _CONCURRENCY_PREAMBLE = CONCURRENCY_PREAMBLE
-
-
-@dataclass
-class ModuleInfo:
-    path: Path
-    python: str
-    exports: dict[str, str]
-    constants: set[str]
-    fixed_vars: set[str]
-    types: dict[str, str]
-    class_parents: dict[str, str | None]
-    class_implements: dict[str, list[str]]
-    interfaces: set[str]
-    class_members: dict[str, dict[str, str]]
-    class_methods: dict[str, dict[str, int]]
-    sealed_classes: set[str]
-    class_decl_lines: dict[str, int]  # line numbers within path
-    # Exported / declared names -> (file, line, column) for go-to-definition
-    symbol_locations: dict[str, tuple[Path, int, int]]
-    # class_name -> method_name -> (file, line, column)
-    method_locations: dict[str, dict[str, tuple[Path, int, int]]]
-
 
 
 class TranspileError(ValueError):
@@ -3036,22 +3014,16 @@ def transpile_with_modules(source_path: Path) -> dict[str, str]:
 
     Returns a mapping of module stem -> Python source text.
     """
+    from .imports import discover_imported_modules
     from .pipeline import compile_pys
 
     source_path = source_path.resolve()
-    module_cache: dict[Path, ModuleInfo] = {}
     text = source_path.read_text(encoding="utf-8")
-    parser = Parser(
-        text,
-        source_path=source_path,
-        module_cache=module_cache,
-    )
-    # Discover and transpile imported modules (fills module_cache).
-    parser.parse()
+    module_cache = discover_imported_modules(source_path)
     modules = {
         source_path.stem: compile_pys(text, target="python", source_path=source_path),
     }
-    for path, info in module_cache.items():
+    for path in module_cache:
         modules[path.stem] = compile_pys(
             path.read_text(encoding="utf-8"),
             target="python",

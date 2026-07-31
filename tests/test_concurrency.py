@@ -5,8 +5,6 @@ from __future__ import annotations
 import pytest
 
 from transpiler.transpiler import TranspileError, transpile, run_source
-from pathlib import Path
-import tempfile
 
 
 def test_tasks_task_transpiles_and_joins() -> None:
@@ -105,14 +103,8 @@ tasks {
     # Smoke: transpile valid + execute
     py = transpile(source)
     assert "add_template" in py
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "t.pys"
-        path.write_text(source, encoding="utf-8")
-        # run via generated module execution
-        from transpiler.transpiler import Parser
-        code = Parser(source).parse()
-        ns: dict = {}
-        exec(code, ns)
+    ns: dict = {}
+    exec(py, ns)
 
 
 def test_await_outside_task_rejected() -> None:

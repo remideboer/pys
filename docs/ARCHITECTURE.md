@@ -68,21 +68,21 @@ flowchart TB
 
   subgraph support [Support]
     Deps["deps.py"]
-    Legacy["transpiler.Parser<br/>use_legacy + module load"]
-    Spec["language_spec<br/>line helpers / legacy"]
+    IdeLegacy["transpiler.Parser<br/>ide.py only (C3/C4)"]
+    Spec["language_spec<br/>line helpers"]
   end
 
   Main --> Public
   Main --> Deps
   Ide --> Public
+  Ide -.-> IdeLegacy
   Public --> Pipe["pipeline.compile_pys"]
   Pipe --> Lex --> Parse --> AST --> Sem --> Emit
   Emit --> Over
   Emit --> Conc
   Emit --> Imp
-  Imp --> Legacy
-  Emit -.->|only if use_legacy| Legacy
-  Legacy --> Spec
+  Imp --> Parse
+  IdeLegacy --> Spec
 ```
 
 | Module | Role |
@@ -95,9 +95,9 @@ flowchart TB
 | `emit/python.py` | Python text from AST |
 | `emit/overloads.py` | Post-pass arity dispatch for overloaded methods |
 | `concurrency.py` | Shared tasks/await/shared preamble |
-| `imports.py` | Facade for `.pys` import resolution / visibility |
+| `imports.py` | AST-based `.pys` import resolution / visibility |
 | `deps.py` | `pys.deps` → `~/.pys/repository` |
-| `transpiler.py` | Public `transpile` / `run_source`; legacy `Parser` for quarantine paths and loading imported `.pys` metadata |
+| `transpiler.py` | Public `transpile` / `run_source`; legacy `Parser` kept for `ide.py` until C3/C4 |
 
 ---
 
@@ -108,27 +108,24 @@ flowchart TD
   Src[".pys source string<br/>+ optional source_path"] --> Lex["1. Lex<br/>tokenize"]
   Lex -->|LexError| Err["TranspileError"]
   Lex --> Parse["2. Parse<br/>parse_program"]
-  Parse -->|unrepresentable| LegacyFlag["Module.use_legacy = true<br/>empty body"]
+  Parse -->|ParseError| Err
   Parse --> Tree["Module AST"]
-  LegacyFlag --> Sem
   Tree --> Sem["3. Sem<br/>analyze"]
   Sem -->|fault| Err
   Sem --> Emit["4. Emit Python"]
-  Emit -->|use_legacy| LegacyEmit["Parser.parse<br/>legacy line path"]
-  Emit -->|AST path| Walk["Emitter.emit_module"]
+  Emit --> Walk["Emitter.emit_module"]
   Walk --> Over["rewrite_overloaded_methods"]
   Walk --> ImpRes["imports.resolve<br/>when source_path set"]
   Over --> Out["Python source string"]
-  LegacyEmit --> Out
   ImpRes --> Out
 ```
 
 ### Stage details
 
 1. **Lex** — Reject illegal tokens early (e.g. tabs).
-2. **Parse** — Prefer brace mode when `{`/`}` are present. Indent-mode (`then` / `func` / `repeat`) only when there are no braces. On hard parse failure, set `use_legacy` so emit can fall back for rare unparsed forms.
-3. **Sem** — Owns most language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set.
-4. **Emit** — Walk AST to Python; inject concurrency preamble and ABC/array imports as needed; resolve `.pys` imports; rewrite method overloads. Legacy `Parser.parse()` runs **only** when `use_legacy` is true.
+2. **Parse** — Prefer brace mode when `{`/`}` are present. Indent-mode (`then` / `func` / `repeat`) only when there are no braces. Failures raise `TranspileError` (no legacy fallback).
+3. **Sem** — Owns language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set.
+4. **Emit** — Walk AST to Python; inject concurrency preamble and ABC/array imports as needed; resolve `.pys` imports via `ImportResolver`; rewrite method overloads.
 
 ---
 
@@ -168,7 +165,6 @@ classDiagram
     +str source
     +list~Node~ body
     +bool brace_mode
-    +bool use_legacy
   }
 
   class Node {
@@ -249,7 +245,7 @@ classDiagram
 
 ## Import resolution
 
-When `source_path` is set, emit and sem share the imports facade:
+When `source_path` is set, emit and sem share the AST-based imports facade:
 
 ```mermaid
 flowchart LR
@@ -260,7 +256,7 @@ flowchart LR
   Vis -->|denied| Err["TranspileError"]
 ```
 
-Loading sibling `.pys` metadata still uses the legacy module loader under that facade. Call sites in emit/sem do not construct `Parser` directly except through `imports` / `_legacy_emit`.
+Sibling `.pys` metadata is loaded with `parse_program` + `module_info_from_ast` (exports, sealed, class graph). No legacy `Parser` on this path.
 
 ---
 

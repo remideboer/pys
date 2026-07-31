@@ -23,7 +23,6 @@ class Module(Node):
     source: str = ""
     body: list[Any] = field(default_factory=list)
     brace_mode: bool = False
-    use_legacy: bool = False
 
 
 @dataclass
@@ -139,6 +138,7 @@ class AssignStmt(Node):
     declare_type: str | None = None  # int/float/... or "var"/"const"/"fix"
     is_const: bool = False
     is_fix: bool = False
+    visibility: str = ""  # global|package|module for top-level const/fix exports
 
 
 @dataclass

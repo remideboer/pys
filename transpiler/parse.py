@@ -120,7 +120,9 @@ def parse_program(source: str) -> Module:
     try:
         tokens = tokenize(source)
     except LexError as exc:
-        raise ParseError(str(exc.message), exc.line, exc.column) from exc
+        from .transpiler import TranspileError
+
+        raise TranspileError(str(exc.message), exc.line, exc.column, "") from exc
 
     brace_mode = any(t.kind in {TokenKind.LBRACE, TokenKind.RBRACE} for t in tokens)
 
@@ -132,9 +134,11 @@ def parse_program(source: str) -> Module:
     ):
         try:
             body = _parse_indent_program(source)
-            return Module(span=Span(1, 1), source=source, body=body, brace_mode=False, use_legacy=False)
-        except ParseError:
-            return Module(span=Span(1, 1), source=source, body=[], brace_mode=False, use_legacy=True)
+            return Module(span=Span(1, 1), source=source, body=body, brace_mode=False)
+        except ParseError as exc:
+            from .transpiler import TranspileError
+
+            raise TranspileError(str(exc), exc.line, exc.column, "") from exc
 
     p = _Tok(tokens)
     body: list = []
@@ -145,10 +149,12 @@ def parse_program(source: str) -> Module:
         from .transpiler import TranspileError
 
         raise TranspileError(exc.message, exc.line, exc.column, "") from exc
-    except ParseError:
-        return Module(span=Span(1, 1), source=source, body=[], brace_mode=brace_mode, use_legacy=True)
+    except ParseError as exc:
+        from .transpiler import TranspileError
 
-    return Module(span=Span(1, 1), source=source, body=body, brace_mode=brace_mode, use_legacy=False)
+        raise TranspileError(str(exc), exc.line, exc.column, "") from exc
+
+    return Module(span=Span(1, 1), source=source, body=body, brace_mode=brace_mode)
 
 
 def _expr_from_text(text: str) -> Expr:
@@ -289,6 +295,12 @@ def _parse_toplevel(p: _Tok):
         return _parse_shared(p)
     if p.at_kw("tasks"):
         return _parse_tasks(p)
+    if p.at_kw("task"):
+        raise ParseError(
+            "`task` must appear inside a `tasks` block.",
+            p.cur().line,
+            p.cur().column,
+        )
     return _parse_statement(p)
 
 
@@ -395,14 +407,47 @@ def _parse_from_import(p: _Tok) -> ImportStmt:
 
 
 def _parse_dotted_name(p: _Tok) -> str:
-    parts = [p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text]
-    while p.at(TokenKind.DOT):
-        p.eat(TokenKind.DOT)
-        nxt = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
-        if nxt == "pys":
-            break
-        parts.append(nxt)
-    return ".".join(parts)
+    """Parse a module ref: ``math``, ``a.b``, ``funcs.pys``, ``../pkg/funcs.pys``."""
+    parts: list[str] = []
+    # Leading ``../`` or ``./`` path prefixes.
+    while True:
+        if p.at(TokenKind.DOT) and p.peek(1).kind == TokenKind.DOT:
+            p.eat(TokenKind.DOT)
+            p.eat(TokenKind.DOT)
+            parts.append("..")
+            if p.at(TokenKind.OP, text="/"):
+                p.eat(TokenKind.OP, text="/")
+                parts.append("/")
+            continue
+        if (
+            p.at(TokenKind.DOT)
+            and p.peek(1).kind == TokenKind.OP
+            and p.peek(1).text == "/"
+        ):
+            p.eat(TokenKind.DOT)
+            p.eat(TokenKind.OP, text="/")
+            parts.append("./")
+            continue
+        break
+
+    parts.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+    while True:
+        if p.at(TokenKind.OP, text="/"):
+            p.eat(TokenKind.OP, text="/")
+            parts.append("/")
+            parts.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+            continue
+        if p.at(TokenKind.DOT):
+            p.eat(TokenKind.DOT)
+            nxt = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            if nxt == "pys":
+                parts.append(".pys")
+                break
+            parts.append(".")
+            parts.append(nxt)
+            continue
+        break
+    return "".join(parts)
 
 
 def _looks_like_typed_name(p: _Tok) -> bool:
@@ -740,7 +785,13 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
     p.eat(TokenKind.OP, text="=")
     value = _parse_expression(p)
     return AssignStmt(
-        span=sp, name=name, value=value, declare_type=dtype, is_const=is_const, is_fix=is_fix
+        span=sp,
+        name=name,
+        value=value,
+        declare_type=dtype,
+        is_const=is_const,
+        is_fix=is_fix,
+        visibility=visibility,
     )
 
 
@@ -781,6 +832,12 @@ def _parse_statement(p: _Tok):
         return _parse_loop(p)
     if p.at_kw("tasks"):
         return _parse_tasks(p)
+    if p.at_kw("task"):
+        raise ParseError(
+            "`task` must appear inside a `tasks` block.",
+            p.cur().line,
+            p.cur().column,
+        )
     if p.at_kw("shared"):
         return _parse_shared(p)
     if p.at_kw("var", "const", "fix", *_TYPES):

@@ -1,7 +1,7 @@
 import pytest
 
 from transpiler.language_spec import LANGUAGE
-from transpiler.transpiler import Parser, TranspileError, transpile
+from transpiler.transpiler import TranspileError, transpile
 
 
 def test_translate_loop_general() -> None:
@@ -309,7 +309,7 @@ def test_sealed_class_transpiles() -> None:
 def test_sealed_class_rejects_inheritance() -> None:
     source = "sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n"
     with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
-        Parser(source).parse()
+        transpile(source)
 
 
 def test_inclusive_slice_rewrite() -> None:

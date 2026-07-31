@@ -236,26 +236,19 @@ def test_fixture_pys_files_parse_on_ast() -> None:
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[1] / "tests"
-    legacy = []
     for path in root.rglob("*.pys"):
-        module = parse_program(path.read_text(encoding="utf-8"))
-        if module.use_legacy:
-            legacy.append(str(path.relative_to(root)))
-    assert legacy == [], f"fixtures still on use_legacy: {legacy}"
+        # Must parse on the AST pipeline (no legacy fallback).
+        parse_program(path.read_text(encoding="utf-8"))
 
 
-def test_emit_python_parser_only_in_legacy_helper() -> None:
+def test_emit_python_has_no_legacy_parser() -> None:
     from pathlib import Path
 
     text = (Path(__file__).resolve().parents[1] / "transpiler" / "emit" / "python.py").read_text(
         encoding="utf-8"
     )
-    # Guard: production AST emit must not construct Parser outside _legacy_emit.
-    assert "from ..transpiler import Parser" in text
-    assert text.count("from ..transpiler import Parser") == 1
-    legacy_idx = text.index("def _legacy_emit")
-    import_idx = text.index("from ..transpiler import Parser")
-    assert import_idx > legacy_idx
+    assert "from ..transpiler import Parser" not in text
+    assert "_legacy_emit" not in text
 
 
 def test_examples_main_pys_compiles_on_ast() -> None:
@@ -265,6 +258,6 @@ def test_examples_main_pys_compiles_on_ast() -> None:
 
     path = Path(__file__).resolve().parents[1] / "examples" / "main.pys"
     source = path.read_text(encoding="utf-8")
-    assert parse_program(source).use_legacy is False
+    parse_program(source)
     out = compile_pys(source, source_path=path)
     assert "def " in out or "class " in out
