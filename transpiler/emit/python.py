@@ -53,26 +53,22 @@ _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
-    # Legacy Parser still owns semantic errors (types, visibility, imports).
+    # Legacy Parser still owns semantic errors (types, visibility, capture rules).
     legacy = _legacy_emit(module.source, source_path=source_path)
     if module.use_legacy:
         return legacy
     try:
-        ast_out = _Emitter(source_path=source_path).emit_module(module)
+        ast_out = _Emitter(
+            source=module.source,
+            source_path=source_path,
+        ).emit_module(module)
         # Text-level overload dispatch is shared with the legacy emitter.
         from ..transpiler import Parser
 
         ast_out = Parser._rewrite_overloaded_methods(object.__new__(Parser), ast_out)
     except Exception:
         return legacy
-    if ast_out == legacy:
-        return ast_out
-    # AST is the emit path for path-free compiles (goldens, snippets).
-    # With source_path, legacy still owns .pys import resolution until that
-    # lands in the AST emitter.
-    if source_path is None:
-        return ast_out
-    return legacy
+    return ast_out
 
 
 def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
@@ -81,8 +77,20 @@ def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
     return Parser(source, source_path=source_path).parse()
 
 
+def _pys_import_line(stmt: ImportStmt) -> str:
+    if stmt.kind == "module":
+        return f"import {stmt.module}"
+    if stmt.kind == "as":
+        return f"import {stmt.module} as {stmt.alias}"
+    if stmt.kind == "all_from":
+        return f"import all from {stmt.module}"
+    if stmt.kind == "name_from":
+        return f"import {stmt.name} from {stmt.module}"
+    raise TypeError(stmt.kind)
+
+
 class _Emitter:
-    def __init__(self, *, source_path: Path | None = None) -> None:
+    def __init__(self, *, source: str = "", source_path: Path | None = None) -> None:
         self.source_path = source_path
         self.lines: list[str] = []
         self.needs_array = False
@@ -91,6 +99,16 @@ class _Emitter:
         self.shared_vars: set[str] = set()
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
+        self._import_resolver = None
+        if source_path is not None:
+            from ..transpiler import Parser
+
+            # Reuse legacy module-resolution / visibility for `.pys` imports.
+            self._import_resolver = Parser(
+                source,
+                source_path=source_path,
+                enforce_formatting=False,
+            )
 
     def emit_module(self, module: Module) -> str:
         for stmt in module.body:
@@ -254,6 +272,12 @@ class _Emitter:
             self._emit(indent, f"{stmt.name} = {self._expr(stmt.value)}")
 
     def _import(self, stmt: ImportStmt, indent: int) -> None:
+        if self._import_resolver is not None:
+            line = _pys_import_line(stmt)
+            resolved = self._import_resolver._translate_import_statement(line, 1, line)
+            if resolved is not None:
+                self._emit(indent, resolved)
+                return
         if stmt.kind == "module":
             self._emit(indent, f"from {stmt.module} import *")
         elif stmt.kind == "as":

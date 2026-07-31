@@ -407,8 +407,8 @@ The compiler pipeline is:
 3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) is the seam for type/scope checks
    (semantic errors still come from the legacy Python path while migration completes).
 4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
-   produce Python (goldens and path-free `transpile` use this path). A legacy
-   pass still validates semantics and resolves `.pys` imports when a
+   produce Python. A legacy pass still validates semantics (types, visibility,
+   capture rules). `.pys` import resolution is reused from that pass when a
    `source_path` is set. Other backends (Java, C#) can plug in at this layer
    later; only Python is implemented today.
 
