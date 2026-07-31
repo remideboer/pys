@@ -62,19 +62,32 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     constants: set[str] = set()
     types: dict[str, str] = {}
     fixed: set[str] = set()
-    _seed_imports(module, source_path, declared, constants, types, fixed)
+    import_resolver = _seed_imports(module, source_path, declared, constants, types, fixed)
+    class_parents = _class_parents_map(module.body)
+    class_names = set(class_parents) | {
+        s.name for s in module.body if isinstance(s, ClassDef)
+    }
+    interfaces = {s.name for s in module.body if isinstance(s, InterfaceDef)}
+    class_implements = _class_implements_map(module.body, interfaces)
     _check_bindings(
         module.body,
         types=types,
         declared=declared,
         constants=constants,
         fixed=fixed,
+        class_parents=class_parents,
+        class_names=class_names,
+        class_implements=class_implements,
+        interfaces=interfaces,
     )
     _check_oop(module.body, types=types)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
     _check_class_member_modifiers(module.body)
+    _check_await_placement(module.body)
+    if import_resolver is not None:
+        _check_seen_name_calls(module.body, import_resolver)
     _check_await_cycles(module.body)
     return module
 
@@ -104,11 +117,11 @@ def _seed_imports(
     constants: set[str],
     types: dict[str, str],
     fixed: set[str],
-) -> None:
+) -> Any | None:
     """Pull imported names (and const/fix) into scope when source_path is known."""
     if source_path is None:
-        return
-    from .transpiler import Parser
+        return None
+    from .transpiler import Parser, TranspileError
 
     resolver = Parser(module.source, source_path=source_path, enforce_formatting=False)
     for stmt in module.body:
@@ -119,8 +132,9 @@ def _seed_imports(
             continue
         try:
             resolver._translate_import_statement(line, stmt.span.line if stmt.span else 1, line)
+        except TranspileError:
+            raise
         except Exception:
-            # Legacy emit still reports import errors.
             continue
     declared |= set(resolver.imported_names)
     constants |= set(resolver.constants)
@@ -128,6 +142,59 @@ def _seed_imports(
     for name, t in resolver.variable_types.items():
         if name in resolver.imported_names:
             types[name] = t
+    return resolver
+
+
+def _class_parents_map(body: list[Any]) -> dict[str, str | None]:
+    interfaces = {s.name for s in body if isinstance(s, InterfaceDef)}
+    parents: dict[str, str | None] = {}
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        parent: str | None = None
+        for b in stmt.bases:
+            if b not in interfaces:
+                parent = b
+                break
+        parents[stmt.name] = parent
+    return parents
+
+
+def _class_implements_map(body: list[Any], interfaces: set[str]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        out[stmt.name] = [b for b in stmt.bases if b in interfaces]
+    return out
+
+
+def _is_assignable_type(
+    actual: str,
+    declared: str,
+    class_parents: dict[str, str | None],
+    *,
+    class_implements: dict[str, list[str]] | None = None,
+    interfaces: set[str] | None = None,
+) -> bool:
+    if actual == declared:
+        return True
+    if declared in _PRIMITIVES or actual in _PRIMITIVES:
+        return declared in {"int", "float"} and actual in {"int", "float"}
+    current: str | None = actual
+    seen: set[str] = set()
+    implements = class_implements or {}
+    iface_set = interfaces or set()
+    while current:
+        if current == declared:
+            return True
+        if declared in iface_set and declared in implements.get(current, []):
+            return True
+        if current in seen:
+            break
+        seen.add(current)
+        current = class_parents.get(current)
+    return False
 
 
 def _reject_let(module: Module) -> None:
@@ -202,7 +269,7 @@ def _check_fn_returns(return_type: str, body: Block | None, line: int) -> None:
     walk(body.statements)
 
 
-def _infer_type(expr: Expr | None) -> str | None:
+def _infer_type(expr: Expr | None, class_names: set[str] | None = None) -> str | None:
     if expr is None:
         return None
     if isinstance(expr, Literal):
@@ -211,16 +278,20 @@ def _infer_type(expr: Expr | None) -> str | None:
         return None
     if isinstance(expr, InterpolatedString):
         return "string"
+    if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+        if class_names and expr.callee.name in class_names:
+            return expr.callee.name
+        return None
     if isinstance(expr, BinaryOp) and expr.op == "+":
-        left = _infer_type(expr.left)
-        right = _infer_type(expr.right)
+        left = _infer_type(expr.left, class_names)
+        right = _infer_type(expr.right, class_names)
         if left == "string" or right == "string":
             return "string"
         if left == right:
             return left
         return None
     if isinstance(expr, UnaryOp):
-        return _infer_type(expr.operand)
+        return _infer_type(expr.operand, class_names)
     return None
 
 
@@ -349,12 +420,20 @@ def _check_bindings(
     constants: set[str] | None = None,
     fixed: set[str] | None = None,
     loop_counters: set[str] | None = None,
+    class_parents: dict[str, str | None] | None = None,
+    class_names: set[str] | None = None,
+    class_implements: dict[str, list[str]] | None = None,
+    interfaces: set[str] | None = None,
 ) -> None:
     types = types if types is not None else {}
     declared = declared if declared is not None else set()
     constants = constants if constants is not None else set()
     fixed = fixed if fixed is not None else set()
     loop_counters = loop_counters if loop_counters is not None else set()
+    class_parents = class_parents if class_parents is not None else {}
+    class_names = class_names if class_names is not None else set()
+    class_implements = class_implements if class_implements is not None else {}
+    interfaces = interfaces if interfaces is not None else set()
 
     for stmt in body:
         if isinstance(stmt, AssignStmt):
@@ -374,9 +453,23 @@ def _check_bindings(
                 if stmt.is_fix:
                     fixed.add(stmt.name)
                 if stmt.declare_type == "var":
-                    types[stmt.name] = _infer_type(stmt.value) or "int"
+                    types[stmt.name] = _infer_type(stmt.value, class_names) or "int"
                 elif stmt.declare_type:
                     types[stmt.name] = stmt.declare_type
+                    inferred = _infer_type(stmt.value, class_names)
+                    if inferred and not _is_assignable_type(
+                        inferred,
+                        stmt.declare_type,
+                        class_parents,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    ):
+                        _transpile_error(
+                            f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {stmt.declare_type}.",
+                            line,
+                            col,
+                            f"{stmt.declare_type} {stmt.name} = ...",
+                        )
                 declared.add(stmt.name)
             else:
                 if "." not in stmt.name and stmt.name in loop_counters:
@@ -408,16 +501,21 @@ def _check_bindings(
                         f"{stmt.name} = ...",
                     )
                 if "." not in stmt.name and stmt.name in types:
-                    inferred = _infer_type(stmt.value)
+                    inferred = _infer_type(stmt.value, class_names)
                     declared_t = types[stmt.name]
-                    if inferred and inferred != declared_t:
-                        if not (declared_t in {"int", "float"} and inferred in {"int", "float"}):
-                            _transpile_error(
-                                f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {declared_t}.",
-                                line,
-                                col,
-                                f"{stmt.name} = ...",
-                            )
+                    if inferred and not _is_assignable_type(
+                        inferred,
+                        declared_t,
+                        class_parents,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    ):
+                        _transpile_error(
+                            f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {declared_t}.",
+                            line,
+                            col,
+                            f"{stmt.name} = ...",
+                        )
         elif isinstance(stmt, AugAssignStmt):
             line = stmt.span.line if stmt.span else 1
             col = stmt.span.column if stmt.span else 1
@@ -488,6 +586,10 @@ def _check_bindings(
                     constants=set(constants),
                     fixed=set(fixed),
                     loop_counters=set(),
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
         elif isinstance(stmt, ClassDef):
             declared.add(stmt.name)
@@ -501,6 +603,10 @@ def _check_bindings(
                         constants=set(constants),
                         fixed=set(fixed),
                         loop_counters=set(),
+                        class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                     )
         elif isinstance(stmt, TasksBlock):
             for t in stmt.tasks:
@@ -513,6 +619,10 @@ def _check_bindings(
                         constants=set(constants),
                         fixed=set(fixed),
                         loop_counters=set(),
+                        class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                     )
         elif isinstance(stmt, IfStmt):
             if stmt.then_body:
@@ -523,6 +633,10 @@ def _check_bindings(
                     constants=constants,
                     fixed=fixed,
                     loop_counters=loop_counters,
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
             if stmt.else_body:
                 _check_bindings(
@@ -532,6 +646,10 @@ def _check_bindings(
                     constants=constants,
                     fixed=fixed,
                     loop_counters=loop_counters,
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
         elif isinstance(stmt, Block):
             _check_bindings(
@@ -541,6 +659,10 @@ def _check_bindings(
                 constants=constants,
                 fixed=fixed,
                 loop_counters=loop_counters,
+                class_parents=class_parents,
+            class_names=class_names,
+            class_implements=class_implements,
+            interfaces=interfaces,
             )
         elif isinstance(stmt, ForRangeStmt):
             declared.add(stmt.var)
@@ -553,6 +675,10 @@ def _check_bindings(
                     constants=constants,
                     fixed=fixed,
                     loop_counters=nested,
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
         elif isinstance(stmt, ForEachStmt):
             declared.add(stmt.var)
@@ -565,6 +691,10 @@ def _check_bindings(
                     constants=constants,
                     fixed=fixed,
                     loop_counters=loop_counters,
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
         elif isinstance(stmt, (WhileStmt, RepeatStmt)):
             if stmt.body:
@@ -575,6 +705,10 @@ def _check_bindings(
                     constants=constants,
                     fixed=fixed,
                     loop_counters=loop_counters,
+                    class_parents=class_parents,
+                    class_names=class_names,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
                 )
 
 
@@ -1109,6 +1243,153 @@ def _check_shared_capture(body: list[Any]) -> None:
                     )
 
     walk(body, declared=set(), shared=set(), in_task=False, task_locals=set())
+
+
+def _check_await_placement(body: list[Any]) -> None:
+    def has_await(expr: Expr | None) -> bool:
+        if expr is None:
+            return False
+        if isinstance(expr, AwaitExpr):
+            return True
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index", "target"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr) and has_await(child):
+                return True
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, Expr) and has_await(a):
+                    return True
+        return False
+
+    def walk(stmts: list[Any], *, in_task: bool) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements, in_task=True)
+                continue
+            exprs: list[Expr | None] = []
+            if isinstance(stmt, AssignStmt):
+                exprs.append(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt)):
+                exprs.append(stmt.value)
+            elif isinstance(stmt, ExprStmt):
+                exprs.append(stmt.expr)
+            for e in exprs:
+                if has_await(e) and not in_task:
+                    line = stmt.span.line if stmt.span else 1
+                    _transpile_error(
+                        "`await` is only allowed inside a `task` body.",
+                        line,
+                        1,
+                        "await",
+                    )
+            if isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements, in_task=False)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements, in_task=False)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(stmt.then_body.statements, in_task=in_task)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements, in_task=in_task)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements, in_task=in_task)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements, in_task=in_task)
+
+    walk(body, in_task=False)
+
+
+def _check_seen_name_calls(body: list[Any], resolver: Any) -> None:
+    builtins = {
+        "print", "str", "int", "float", "bool", "len", "range", "super", "ABC", "abstractmethod",
+    }
+    imported = set(resolver.imported_names)
+    exports = set(getattr(resolver, "exports", set()))
+    declared = set(resolver.declared_variables)
+    class_names = set(resolver.class_parents) | set(resolver.interfaces)
+    seen = getattr(resolver, "seen_module_names", {})
+
+    def check_name(name: str, line: int, column: int) -> None:
+        if name in builtins or name in imported or name in exports or name in declared or name in class_names:
+            return
+        if name not in seen:
+            return
+        module_file, visibility, accessible = seen[name]
+        if accessible:
+            _transpile_error(
+                f"'{name}' is defined in {module_file} but was not imported. "
+                f"Import it with `import {name} from {module_file}` or `import all from {module_file}`.",
+                line,
+                column,
+                f"{name}()",
+            )
+        where = {
+            "module": "only within its own module",
+            "package": "only within its package (same folder)",
+            "global": "across the whole project",
+        }.get(visibility, f"as {visibility}")
+        _transpile_error(
+            f"Access denied: '{name}' is defined in {module_file} but is not accessible here "
+            f"({visibility}-scoped, visible {where}).",
+            line,
+            column,
+            f"{name}()",
+        )
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            line = expr.span.line if expr.span else 1
+            col = expr.span.column if expr.span else 1
+            check_name(expr.callee.name, line, col)
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt)):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, ExprStmt):
+                walk_expr(stmt.expr)
+            elif isinstance(stmt, FunctionDef):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+
+    walk(body)
 
 
 def _array_element_ok(elem_type: str, expr: Expr) -> bool:

@@ -53,10 +53,10 @@ _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
-    # Legacy Parser still owns semantic errors (types, visibility, capture rules).
-    legacy = _legacy_emit(module.source, source_path=source_path)
+    # Semantic validation lives in sem; only fall back to legacy Parser for emit
+    # when the AST path is unavailable (use_legacy) or emitter fails.
     if module.use_legacy:
-        return legacy
+        return _legacy_emit(module.source, source_path=source_path)
     try:
         ast_out = _Emitter(
             source=module.source,
@@ -67,7 +67,7 @@ def emit(module: Module, *, source_path: Path | None = None) -> str:
 
         ast_out = Parser._rewrite_overloaded_methods(object.__new__(Parser), ast_out)
     except Exception:
-        return legacy
+        return _legacy_emit(module.source, source_path=source_path)
     return ast_out
 
 

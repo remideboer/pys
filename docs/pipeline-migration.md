@@ -15,7 +15,7 @@ Check items off as they land; keep the suite green after each step.
   - [x] A1g. shared capture rules (Policy B)
   - [x] A1h. array bounds / element-type checks
   - [x] A1i. class `function` / `method` / missing access-modifier errors
-- [ ] **A2.** Stop double work in emit (no full legacy `Parser.parse()` for validation)
+- [x] **A2.** Stop double work in emit (no full legacy `Parser.parse()` for validation)
 - [ ] **A3.** Own without calling into `Parser`
   - [ ] A3a. `.pys` import resolution / visibility
   - [ ] A3b. overload rewriting
