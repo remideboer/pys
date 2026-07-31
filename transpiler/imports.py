@@ -57,7 +57,8 @@ def pys_import_line(stmt: ImportStmt) -> str:
     if stmt.kind == "all_from":
         return f"import all from {stmt.module}"
     if stmt.kind == "name_from":
-        return f"import {stmt.name} from {stmt.module}"
+        names = stmt.names or ([stmt.name] if stmt.name else [])
+        return f"import {', '.join(names)} from {stmt.module}"
     return ""
 
 
@@ -404,7 +405,10 @@ class ImportResolver:
     ) -> str | None:
         raw_line = raw_line if raw_line is not None else line
         import_all = re.fullmatch(r"import\s+all\s+from\s+(?P<module>.+)", line)
-        import_name = re.fullmatch(r"import\s+(?P<name>[A-Za-z_]\w*)\s+from\s+(?P<module>.+)", line)
+        import_name = re.fullmatch(
+            r"import\s+(?P<names>[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s+from\s+(?P<module>.+)",
+            line,
+        )
         import_as = re.fullmatch(
             r"import\s+(?P<module>[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s+as\s+(?P<alias>[A-Za-z_]\w*)",
             line,
@@ -421,9 +425,13 @@ class ImportResolver:
             module_ref = import_all.group("module")
             names = None
             is_import_all = True
-        elif import_name and import_name.group("name") != "all":
+        elif import_name:
+            raw_names = import_name.group("names")
+            # `import all from …` is handled above; guard if regex ever overlaps.
+            if raw_names.strip() == "all":
+                return None
             module_ref = import_name.group("module")
-            names = [import_name.group("name")]
+            names = [n.strip() for n in raw_names.split(",") if n.strip()]
             is_import_all = False
         elif import_as:
             module_ref = import_as.group("module")

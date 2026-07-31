@@ -251,7 +251,8 @@ class TasksBlock(Node):
 class ImportStmt(Node):
     kind: str = ""  # module|as|all_from|name_from
     module: str = ""
-    name: str = ""
+    name: str = ""  # first / sole name for name_from (compat)
+    names: list[str] = field(default_factory=list)  # all names for name_from
     alias: str = ""
 
 

@@ -22,6 +22,10 @@ def test_translate_loop_general_with_trailing_space() -> None:
 def test_translate_import_from() -> None:
     line = "import Car from example.pys"
     assert LANGUAGE.translate_line(line) == "from example import Car"
+    assert (
+        LANGUAGE.translate_line("import QApplication, QWidget from PyQt6.QtWidgets")
+        == "from PyQt6.QtWidgets import QApplication, QWidget"
+    )
 
 
 def test_translate_import_all_and_module() -> None:

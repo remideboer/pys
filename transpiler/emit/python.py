@@ -89,7 +89,8 @@ def _pys_import_line(stmt: ImportStmt) -> str:
     if stmt.kind == "all_from":
         return f"import all from {stmt.module}"
     if stmt.kind == "name_from":
-        return f"import {stmt.name} from {stmt.module}"
+        names = stmt.names or ([stmt.name] if stmt.name else [])
+        return f"import {', '.join(names)} from {stmt.module}"
     raise TypeError(stmt.kind)
 
 
@@ -286,7 +287,8 @@ class _Emitter:
         elif stmt.kind == "all_from":
             self._emit(indent, f"from {Path(stmt.module).stem} import *")
         elif stmt.kind == "name_from":
-            self._emit(indent, f"from {Path(stmt.module).stem} import {stmt.name}")
+            names = stmt.names or ([stmt.name] if stmt.name else [])
+            self._emit(indent, f"from {Path(stmt.module).stem} import {', '.join(names)}")
         else:
             raise TypeError(stmt.kind)
 

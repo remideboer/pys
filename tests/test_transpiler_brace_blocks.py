@@ -204,6 +204,25 @@ def test_transpile_import_from() -> None:
     assert transpile(source) == expected
 
 
+def test_transpile_multi_name_import_from(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    site = tmp_path / "site"
+    pkg = site / "PyQt6"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "QtWidgets.pyd").write_bytes(b"")
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [site],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import QApplication, QWidget from PyQt6.QtWidgets\nprint(QApplication)\n",
+        encoding="utf-8",
+    )
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "from PyQt6.QtWidgets import QApplication, QWidget" in python
+
+
 def test_import_all_resolves_visible_exports(tmp_path: Path) -> None:
     (tmp_path / "funcs.pys").write_text(
         "package function greet(name){\n"

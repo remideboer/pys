@@ -64,7 +64,7 @@ top_level        = import_stmt
 import_stmt      = "import" , module_ref
                  | "import" , module_ref , "as" , identifier
                  | "import" , "all" , "from" , module_ref
-                 | "import" , identifier , "from" , module_ref ;
+                 | "import" , identifier , { "," , identifier } , "from" , module_ref ;
 
 module_ref       = module_name , [ ".pys" ] ;
 module_name      = identifier , { ( "." | "/" ) , identifier } ;

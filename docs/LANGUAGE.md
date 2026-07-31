@@ -369,6 +369,7 @@ Applies to functions, classes, interfaces, and top-level `const` / `fix`.
 ```pys
 import vehicles                 # whole .pys module (same folder / discovery)
 import greet from toolbox       # one name
+import QApplication, QWidget from PyQt6.QtWidgets   # several names
 import all from toolbox         # all package/global exports
 import math                     # Python stdlib
 import tkinter as tk            # stdlib / pys.deps package with alias

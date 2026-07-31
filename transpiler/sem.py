@@ -132,7 +132,8 @@ def _pys_import_line(stmt: ImportStmt) -> str:
     if stmt.kind == "all_from":
         return f"import all from {stmt.module}"
     if stmt.kind == "name_from":
-        return f"import {stmt.name} from {stmt.module}"
+        names = stmt.names or ([stmt.name] if stmt.name else [])
+        return f"import {', '.join(names)} from {stmt.module}"
     return ""
 
 
@@ -732,8 +733,9 @@ def _check_bindings(
         elif isinstance(stmt, ImportStmt):
             if stmt.kind == "as" and stmt.alias:
                 declared.add(stmt.alias)
-            elif stmt.kind == "name_from" and stmt.name:
-                declared.add(stmt.name)
+            elif stmt.kind == "name_from":
+                for n in stmt.names or ([stmt.name] if stmt.name else []):
+                    declared.add(n)
         elif isinstance(stmt, FunctionDef):
             declared.add(stmt.name)
             local_decl = set(declared) | set(stmt.params)

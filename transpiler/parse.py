@@ -368,6 +368,15 @@ def _parse_import(p: _Tok) -> ImportStmt:
         mod = _parse_dotted_name(p)
         return ImportStmt(span=sp, kind="all_from", module=mod)
     first = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    # `import A, B from module`
+    if p.at(TokenKind.COMMA):
+        names = [first]
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            names.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        p.eat_kw("from")
+        mod = _parse_dotted_name(p)
+        return ImportStmt(span=sp, kind="name_from", module=mod, name=names[0], names=names)
     if p.at_kw("from"):
         # PYS `import Name from module` — but not if the next line is Python-style
         # `from module import Name` (newlines are not statement separators in the token stream).
@@ -375,7 +384,7 @@ def _parse_import(p: _Tok) -> ImportStmt:
             return ImportStmt(span=sp, kind="module", module=first)
         p.eat_kw("from")
         mod = _parse_dotted_name(p)
-        return ImportStmt(span=sp, kind="name_from", module=mod, name=first)
+        return ImportStmt(span=sp, kind="name_from", module=mod, name=first, names=[first])
     mod = first
     while p.at(TokenKind.DOT):
         p.eat(TokenKind.DOT)
@@ -391,7 +400,7 @@ def _parse_import(p: _Tok) -> ImportStmt:
 
 
 def _parse_from_import(p: _Tok) -> ImportStmt:
-    """Python-style `from module import name` (used by some examples)."""
+    """Python-style `from module import name[, name…]` (used by some examples)."""
     sp = p.span()
     p.eat_kw("from")
     mod = _parse_dotted_name(p)
@@ -402,8 +411,11 @@ def _parse_from_import(p: _Tok) -> ImportStmt:
         else:
             p.eat_kw("all")
         return ImportStmt(span=sp, kind="all_from", module=mod)
-    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
-    return ImportStmt(span=sp, kind="name_from", module=mod, name=name)
+    names = [p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text]
+    while p.at(TokenKind.COMMA):
+        p.eat(TokenKind.COMMA)
+        names.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+    return ImportStmt(span=sp, kind="name_from", module=mod, name=names[0], names=names)
 
 
 def _parse_dotted_name(p: _Tok) -> str:

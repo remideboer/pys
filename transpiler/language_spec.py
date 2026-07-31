@@ -466,7 +466,8 @@ def _normalize_module_ref(module: str) -> str:
 
 
 def _translate_import_from(match: Match[str]) -> str:
-    return f"from {_normalize_module_ref(match.group('module'))} import {match.group('name')}"
+    names = re.sub(r"\s*,\s*", ", ", match.group("names").strip())
+    return f"from {_normalize_module_ref(match.group('module'))} import {names}"
 
 
 def _translate_import_all_from(match: Match[str]) -> str:
@@ -628,7 +629,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "import_from",
-    r"import\s+(?P<name>[A-Za-z_]\w*)\s+from\s+(?P<module>.+)",
+    r"import\s+(?P<names>[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s+from\s+(?P<module>.+)",
     _translate_import_from,
 )
 LANGUAGE.add_regex(
