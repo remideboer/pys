@@ -405,10 +405,12 @@ The compiler pipeline is:
 2. **Parse** — [`transpiler/parse.py`](transpiler/parse.py) builds a target-neutral AST
    ([`ast_nodes.py`](transpiler/ast_nodes.py)).
 3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) is the seam for type/scope checks
-   (more checks still run during Python emit while migration completes).
-4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) produces Python.
-   Other backends (Java, C#) can plug in at this layer later; only Python is
-   implemented today.
+   (semantic errors still come from the legacy Python path while migration completes).
+4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
+   produce Python (goldens and path-free `transpile` use this path). A legacy
+   pass still validates semantics and resolves `.pys` imports when a
+   `source_path` is set. Other backends (Java, C#) can plug in at this layer
+   later; only Python is implemented today.
 
 Public entry points (`transpile`, `run_source`) go through
 [`transpiler/pipeline.py`](transpiler/pipeline.py) (`compile_pys(..., target="python")`).

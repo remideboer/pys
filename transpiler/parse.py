@@ -882,12 +882,33 @@ def _parse_unary(p: _Tok) -> Expr:
 
 
 def _parse_cast_postfix(p: _Tok) -> Expr:
-    if p.at(TokenKind.LPAREN) and p.peek(1).text in _TYPES and p.peek(2).kind == TokenKind.RPAREN:
-        sp = p.span()
-        p.eat(TokenKind.LPAREN)
-        tn = p.eat(TokenKind.KEYWORD).text
-        p.eat(TokenKind.RPAREN)
-        return Cast(span=sp, type_name=tn, expr=_parse_cast_postfix(p))
+    # (int) x  or  (Truck) c  — type name then ')' then operand
+    if (
+        p.at(TokenKind.LPAREN)
+        and p.peek(1).kind in {TokenKind.KEYWORD, TokenKind.IDENT}
+        and p.peek(2).kind == TokenKind.RPAREN
+    ):
+        type_tok = p.peek(1)
+        # Avoid treating `(name)` grouping of a bare name as a cast when not followed
+        # by a cast operand — still OK: `(Truck) c` has operand; `(x)` alone is primary.
+        # Heuristic: keyword types always cast; IDENT cast if next after ')' looks like expr start.
+        after = p.peek(3)
+        looks_like_operand = after.kind in {
+            TokenKind.IDENT,
+            TokenKind.KEYWORD,
+            TokenKind.INT,
+            TokenKind.FLOAT,
+            TokenKind.STRING,
+            TokenKind.CHAR,
+            TokenKind.LPAREN,
+            TokenKind.LBRACK,
+        } or (after.kind == TokenKind.OP and after.text in {"+", "-", "!"})
+        if type_tok.text in _TYPES or (type_tok.kind == TokenKind.IDENT and looks_like_operand):
+            sp = p.span()
+            p.eat(TokenKind.LPAREN)
+            tn = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+            p.eat(TokenKind.RPAREN)
+            return Cast(span=sp, type_name=tn, expr=_parse_cast_postfix(p))
     return _parse_postfix(p)
 
 

@@ -54,15 +54,25 @@ _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
     # Legacy Parser still owns semantic errors (types, visibility, imports).
-    # Prefer AST text only when it matches legacy exactly (parity gate).
     legacy = _legacy_emit(module.source, source_path=source_path)
     if module.use_legacy:
         return legacy
     try:
-        ast_out = _Emitter().emit_module(module)
+        ast_out = _Emitter(source_path=source_path).emit_module(module)
+        # Text-level overload dispatch is shared with the legacy emitter.
+        from ..transpiler import Parser
+
+        ast_out = Parser._rewrite_overloaded_methods(object.__new__(Parser), ast_out)
     except Exception:
         return legacy
-    return ast_out if ast_out == legacy else legacy
+    if ast_out == legacy:
+        return ast_out
+    # AST is the emit path for path-free compiles (goldens, snippets).
+    # With source_path, legacy still owns .pys import resolution until that
+    # lands in the AST emitter.
+    if source_path is None:
+        return ast_out
+    return legacy
 
 
 def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
@@ -72,7 +82,8 @@ def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
 
 
 class _Emitter:
-    def __init__(self) -> None:
+    def __init__(self, *, source_path: Path | None = None) -> None:
+        self.source_path = source_path
         self.lines: list[str] = []
         self.needs_array = False
         self.needs_abc = False
