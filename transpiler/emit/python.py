@@ -10,6 +10,7 @@ from ..ast_nodes import (
     ArrayLiteral,
     AssignStmt,
     AugAssignStmt,
+    AwaitExpr,
     BinaryOp,
     BlankStmt,
     Block,
@@ -38,7 +39,10 @@ from ..ast_nodes import (
     PrintStmt,
     RepeatStmt,
     ReturnStmt,
+    SharedDecl,
     Slice,
+    TaskDef,
+    TasksBlock,
     UnaryOp,
     WhileStmt,
 )
@@ -72,12 +76,19 @@ class _Emitter:
         self.lines: list[str] = []
         self.needs_array = False
         self.needs_abc = False
+        self.needs_concurrency = False
+        self.shared_vars: set[str] = set()
+        self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
 
     def emit_module(self, module: Module) -> str:
         for stmt in module.body:
             self._stmt(stmt, 0)
         preamble: list[str] = []
+        if self.needs_concurrency:
+            from ..transpiler import _CONCURRENCY_PREAMBLE
+
+            preamble.extend(_CONCURRENCY_PREAMBLE.splitlines())
         if self.needs_abc:
             preamble.append("from abc import ABC, abstractmethod")
         if self.needs_array:
@@ -101,12 +112,32 @@ class _Emitter:
         elif isinstance(stmt, ArrayDecl):
             self._array_decl(stmt, indent)
         elif isinstance(stmt, AugAssignStmt):
-            if stmt.op == "++":
+            if stmt.name in self.shared_vars:
+                if stmt.op == "++":
+                    self._emit(indent, f"{stmt.name}.iadd(1)")
+                elif stmt.op == "--":
+                    self._emit(indent, f"{stmt.name}.isub(1)")
+                elif stmt.op == "+=":
+                    self._emit(indent, f"{stmt.name}.iadd({self._expr(stmt.value)})")
+                elif stmt.op == "-=":
+                    self._emit(indent, f"{stmt.name}.isub({self._expr(stmt.value)})")
+                else:
+                    self._emit(
+                        indent,
+                        f"{stmt.name}.set({stmt.name}.value {stmt.op[0]} {self._expr(stmt.value)})",
+                    )
+            elif stmt.op == "++":
                 self._emit(indent, f"{stmt.name} += 1")
             elif stmt.op == "--":
                 self._emit(indent, f"{stmt.name} -= 1")
             else:
                 self._emit(indent, f"{stmt.name} {stmt.op} {self._expr(stmt.value)}")
+        elif isinstance(stmt, SharedDecl):
+            self.needs_concurrency = True
+            self.shared_vars.add(stmt.name)
+            self._emit(indent, f"{stmt.name} = _PysShared({self._expr(stmt.value)})")
+        elif isinstance(stmt, TasksBlock):
+            self._tasks(stmt, indent)
         elif isinstance(stmt, ReturnStmt):
             if stmt.value is None:
                 self._emit(indent, "return")
@@ -156,15 +187,39 @@ class _Emitter:
         else:
             raise TypeError(f"unsupported stmt {type(stmt).__name__}")
 
+    def _tasks(self, stmt: TasksBlock, indent: int) -> None:
+        self.needs_concurrency = True
+        tg = f"_pys_tg_{stmt.group_id}"
+        prev = self.tg_name
+        self.tg_name = tg
+        self._emit(indent, "if True:")
+        inner = indent + 1
+        self._emit(inner, f"{tg} = _PysTaskGroup()")
+        for task in stmt.tasks:
+            self._task_def(task, inner, tg)
+        self._emit(inner, f"{tg}.run()")
+        self.tg_name = prev
+
+    def _task_def(self, task: TaskDef, indent: int, tg: str) -> None:
+        params = ", ".join(task.params)
+        self._emit(indent, f"def __pys_task_{task.name}({params}):")
+        self._block(task.body, indent + 1)
+        if task.is_template:
+            self._emit(indent, f"{tg}.add_template({task.name!r}, __pys_task_{task.name})")
+        else:
+            self._emit(indent, f"{tg}.add_auto({task.name!r}, __pys_task_{task.name})")
+
     def _assign(self, stmt: AssignStmt, indent: int) -> None:
         kind = self._infer_kind(stmt.value)
         if stmt.declare_type == "string":
             kind = "string"
         elif stmt.declare_type in {"int", "float", "bool", "char"}:
             kind = "number" if stmt.declare_type != "bool" else "number"
-        self.var_kinds[stmt.name.split(".")[-1]] = kind
-        if stmt.name.startswith("self."):
-            self.var_kinds[stmt.name] = kind
+        base = stmt.name.split(".")[-1]
+        self.var_kinds[base] = kind
+        if "." not in stmt.name and stmt.name in self.shared_vars:
+            self._emit(indent, f"{stmt.name}.set({self._expr(stmt.value)})")
+            return
         self._emit(indent, f"{stmt.name} = {self._expr(stmt.value)}")
 
     def _array_decl(self, stmt: ArrayDecl, indent: int) -> None:
@@ -283,7 +338,11 @@ class _Emitter:
             text = _translate_string_literal(expr.raw)
             return re.sub(r"\bthis\b", "self", text)
         if isinstance(expr, Identifier):
+            if expr.name in self.shared_vars:
+                return f"{expr.name}.value"
             return expr.name
+        if isinstance(expr, AwaitExpr):
+            return self._await(expr)
         if isinstance(expr, UnaryOp):
             if expr.op == "not":
                 inner = self._expr(expr.operand)
@@ -313,6 +372,19 @@ class _Emitter:
         if isinstance(expr, ArrayLiteral):
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
         raise TypeError(f"unsupported expr {type(expr).__name__}")
+
+    def _await(self, expr: AwaitExpr) -> str:
+        tg = self.tg_name or "_pys_tg_0"
+        target = expr.target
+        if isinstance(target, Call) and isinstance(target.callee, Identifier):
+            args = ", ".join(self._expr(a) for a in target.args)
+            if args:
+                return f"_pys_await({tg}.call({target.callee.name!r}, {args}))"
+            return f"_pys_await({tg}.call({target.callee.name!r}))"
+        if isinstance(target, Identifier):
+            # Zero-arg named task → futures; template without call unlikely here.
+            return f"_pys_await({tg}.futures[{target.name!r}])"
+        return f"_pys_await({self._expr(target)})"
 
     def _literal(self, lit: Literal) -> str:
         if lit.kind == "bool":

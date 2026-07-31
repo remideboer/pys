@@ -6,6 +6,7 @@ from .ast_nodes import (
     ArrayLiteral,
     AssignStmt,
     AugAssignStmt,
+    AwaitExpr,
     BinaryOp,
     BlankStmt,
     Block,
@@ -35,8 +36,11 @@ from .ast_nodes import (
     PrintStmt,
     RepeatStmt,
     ReturnStmt,
+    SharedDecl,
     Slice,
     Span,
+    TaskDef,
+    TasksBlock,
     UnaryOp,
     WhileStmt,
 )
@@ -57,6 +61,7 @@ class _Tok:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
         self.i = 0
+        self.task_serial = 0
 
     def cur(self) -> Token:
         return self.tokens[self.i]
@@ -112,10 +117,6 @@ def parse_program(source: str) -> Module:
         raise ParseError(str(exc.message), exc.line, exc.column) from exc
 
     brace_mode = any(t.kind in {TokenKind.LBRACE, TokenKind.RBRACE} for t in tokens)
-
-    legacy_markers = ("tasks", "task", "await", "shared")
-    if any(t.kind == TokenKind.KEYWORD and t.text in legacy_markers for t in tokens):
-        return Module(span=Span(1, 1), source=source, body=[], brace_mode=brace_mode, use_legacy=True)
 
     # Indent-style forms (then/func/repeat/…) — try line-based parse before legacy.
     if any(
@@ -271,7 +272,66 @@ def _parse_toplevel(p: _Tok):
         return _parse_class(p)
     if p.at_kw("interface"):
         return _parse_interface(p)
+    if p.at_kw("shared"):
+        return _parse_shared(p)
+    if p.at_kw("tasks"):
+        return _parse_tasks(p)
     return _parse_statement(p)
+
+
+def _parse_shared(p: _Tok) -> SharedDecl:
+    sp = p.span()
+    p.eat_kw("shared")
+    dtype = ""
+    if p.at_kw(*_TYPES) or p.at(TokenKind.IDENT):
+        dtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    p.eat(TokenKind.OP, text="=")
+    value = _parse_expression(p)
+    return SharedDecl(span=sp, name=name, value=value, declare_type=dtype)
+
+
+def _parse_tasks(p: _Tok) -> TasksBlock:
+    sp = p.span()
+    p.eat_kw("tasks")
+    group_id = p.task_serial
+    p.task_serial += 1
+    p.eat(TokenKind.LBRACE)
+    tasks: list[TaskDef] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        tasks.append(_parse_task(p))
+    p.eat(TokenKind.RBRACE)
+    return TasksBlock(span=sp, group_id=group_id, tasks=tasks)
+
+
+def _parse_task(p: _Tok) -> TaskDef:
+    sp = p.span()
+    p.eat_kw("task")
+    name = ""
+    params: list[str] = []
+    is_template = False
+    if not p.at(TokenKind.LBRACE):
+        name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        if p.at(TokenKind.LPAREN):
+            is_template = True
+            p.eat(TokenKind.LPAREN)
+            if not p.at(TokenKind.RPAREN):
+                params.append(_parse_param(p)[1])
+                while p.at(TokenKind.COMMA):
+                    p.eat(TokenKind.COMMA)
+                    params.append(_parse_param(p)[1])
+            p.eat(TokenKind.RPAREN)
+    if not name:
+        name = f"_anon_{p.task_serial}"
+        p.task_serial += 1
+    body = _parse_block(p)
+    return TaskDef(span=sp, name=name, params=params, is_template=is_template, body=body)
 
 
 def _parse_import(p: _Tok) -> ImportStmt:
@@ -810,6 +870,10 @@ def _parse_mul(p: _Tok) -> Expr:
 
 
 def _parse_unary(p: _Tok) -> Expr:
+    if p.at_kw("await"):
+        sp = p.span()
+        p.eat_kw("await")
+        return AwaitExpr(span=sp, target=_parse_cast_postfix(p))
     if p.at(TokenKind.OP) and p.cur().text in {"+", "-"}:
         sp = p.span()
         op = p.eat(TokenKind.OP).text

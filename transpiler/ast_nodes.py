@@ -211,6 +211,34 @@ class RepeatStmt(Node):
 
 
 @dataclass
+class SharedDecl(Node):
+    name: str = ""
+    value: Expr | None = None
+    declare_type: str = ""
+
+
+@dataclass
+class AwaitExpr(Expr):
+    """`await name` or `await name(args)`."""
+
+    target: Expr | None = None
+
+
+@dataclass
+class TaskDef(Node):
+    name: str = ""  # handle, including `_anon_N`
+    params: list[str] = field(default_factory=list)
+    is_template: bool = False
+    body: Block | None = None
+
+
+@dataclass
+class TasksBlock(Node):
+    group_id: int = 0
+    tasks: list[TaskDef] = field(default_factory=list)
+
+
+@dataclass
 class ImportStmt(Node):
     kind: str = ""  # module|as|all_from|name_from
     module: str = ""
