@@ -368,11 +368,17 @@ def _parse_import(p: _Tok) -> ImportStmt:
         mod = _parse_dotted_name(p)
         return ImportStmt(span=sp, kind="all_from", module=mod)
     first = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
-    # `import A, B from module`
+    # `import A, B from module` — `from` is the keyword introducing the module.
     if p.at(TokenKind.COMMA):
         names = [first]
         while p.at(TokenKind.COMMA):
             p.eat(TokenKind.COMMA)
+            if p.at_kw("from"):
+                raise ParseError(
+                    "Expected imported name after `,` (hint: `from` is a keyword).",
+                    p.cur().line,
+                    p.cur().column,
+                )
             names.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
         p.eat_kw("from")
         mod = _parse_dotted_name(p)

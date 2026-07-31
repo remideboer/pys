@@ -156,9 +156,9 @@
   "Import from": {
     "prefix": "importfrom",
     "body": [
-      "import ${1:Name} from ${2:module}.pys"
+      "import ${1:Name}${2:, Other} from ${3:module}"
     ],
-    "description": "PYS import-from"
+    "description": "PYS import name(s) from module"
   },
   "Print": {
     "prefix": "print",

@@ -14,6 +14,14 @@ def test_tokenize_literals_and_keywords() -> None:
     assert any(t.text == "print" for t in toks)
 
 
+def test_from_is_keyword() -> None:
+    toks = tokenize("import A, B from mod.pys\n")
+    from_toks = [t for t in toks if t.text == "from"]
+    assert len(from_toks) == 1
+    assert from_toks[0].kind == TokenKind.KEYWORD
+    assert all(t.kind == TokenKind.IDENT for t in toks if t.text in {"A", "B"})
+
+
 def test_tokenize_rejects_tabs() -> None:
     with pytest.raises(LexError, match="tabs"):
         tokenize("\tprint(1)\n")

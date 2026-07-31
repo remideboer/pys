@@ -294,33 +294,31 @@
         },
         {
           "name": "meta.import.pys",
-          "match": "\\b(import)\\s+(?:(all)\\s+(from)\\s+(.+)|([A-Za-z_]\\w*)\\s+(from)\\s+(.+)|(.+))",
-          "captures": {
+          "begin": "\\b(import)\\b",
+          "beginCaptures": {
             "1": {
               "name": "keyword.control.pys"
-            },
-            "2": {
-              "name": "keyword.control.pys"
-            },
-            "3": {
-              "name": "keyword.control.pys"
-            },
-            "4": {
-              "name": "entity.name.namespace.pys"
-            },
-            "5": {
-              "name": "variable.other.pys"
-            },
-            "6": {
-              "name": "keyword.control.pys"
-            },
-            "7": {
-              "name": "entity.name.namespace.pys"
-            },
-            "8": {
-              "name": "entity.name.namespace.pys"
             }
-          }
+          },
+          "end": "$",
+          "patterns": [
+            {
+              "match": "\\b(all|from)\\b",
+              "name": "keyword.control.pys"
+            },
+            {
+              "match": "[A-Za-z_][\\w]*",
+              "name": "entity.name.namespace.pys"
+            },
+            {
+              "match": "\\.",
+              "name": "punctuation.accessor.pys"
+            },
+            {
+              "match": ",",
+              "name": "punctuation.separator.pys"
+            }
+          ]
         },
         {
           "name": "meta.method.declaration.pys",
