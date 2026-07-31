@@ -28,6 +28,7 @@ class TokenKind(Enum):
     GT = auto()
     NEWLINE = auto()
     COMMENT = auto()  # standalone `# ...` line (preserved in emit)
+    BLANK = auto()  # blank line preserved after `}` (legacy preprocess rule)
     EOF = auto()
 
 
@@ -141,6 +142,7 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
     col = 1
     n = len(source)
     at_line_start = True
+    after_rbrace = False
 
     def peek(k: int = 0) -> str:
         j = i + k
@@ -159,7 +161,31 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
                 at_line_start = False
 
     def add(kind: TokenKind, text: str, start_line: int, start_col: int, start_index: int) -> None:
+        nonlocal after_rbrace
         tokens.append(Token(kind, text, start_line, start_col, start_index))
+        if kind == TokenKind.RBRACE:
+            after_rbrace = True
+        elif kind not in {TokenKind.BLANK, TokenKind.COMMENT, TokenKind.NEWLINE}:
+            after_rbrace = False
+
+    def skip_collapsed_blanks() -> None:
+        """Consume empty lines; emit BLANK only when armed after `}` (legacy rule)."""
+        nonlocal after_rbrace
+        while True:
+            k = 0
+            while True:
+                ch = peek(k)
+                if not ch or ch not in " \r":
+                    break
+                k += 1
+            if peek(k) != "\n":
+                return
+            if after_rbrace:
+                add(TokenKind.BLANK, "", line, col, i)
+                after_rbrace = False
+            for _ in range(k):
+                bump(peek())
+            bump("\n")
 
     while i < n:
         ch = peek()
@@ -172,6 +198,7 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
             if emit_newlines:
                 add(TokenKind.NEWLINE, "\n", line, col, i)
             bump(ch)
+            skip_collapsed_blanks()
             continue
 
         # Comments

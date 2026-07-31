@@ -7,6 +7,7 @@ from .ast_nodes import (
     AssignStmt,
     AugAssignStmt,
     BinaryOp,
+    BlankStmt,
     Block,
     BreakStmt,
     Call,
@@ -241,6 +242,9 @@ def _parse_indent_program(source: str) -> list:
 
 
 def _parse_toplevel(p: _Tok):
+    if p.at(TokenKind.BLANK):
+        t = p.eat(TokenKind.BLANK)
+        return BlankStmt(span=Span(t.line, t.column))
     if p.at(TokenKind.COMMENT):
         t = p.eat(TokenKind.COMMENT)
         return CommentStmt(span=Span(t.line, t.column), text=t.text)
@@ -376,6 +380,12 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
     p.eat(TokenKind.LBRACE)
     methods: list[str] = []
     while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
         if p.at_kw("public", "private", "protected", "module"):
             p.eat(TokenKind.KEYWORD)
         if p.cur().text in _TYPES and p.peek(1).kind != TokenKind.LPAREN:
@@ -415,6 +425,12 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
     fields: list[FieldDecl] = []
     methods: list[MethodDef] = []
     while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
         access = "public"
         if p.at_kw("public", "private", "protected", "module"):
             access = p.eat(TokenKind.KEYWORD).text
@@ -520,6 +536,9 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
 
 def _parse_statement(p: _Tok):
     sp = p.span()
+    if p.at(TokenKind.BLANK):
+        t = p.eat(TokenKind.BLANK)
+        return BlankStmt(span=Span(t.line, t.column))
     if p.at(TokenKind.COMMENT):
         t = p.eat(TokenKind.COMMENT)
         return CommentStmt(span=Span(t.line, t.column), text=t.text)

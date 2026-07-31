@@ -11,6 +11,7 @@ from ..ast_nodes import (
     AssignStmt,
     AugAssignStmt,
     BinaryOp,
+    BlankStmt,
     Block,
     BreakStmt,
     Call,
@@ -74,12 +75,8 @@ class _Emitter:
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
 
     def emit_module(self, module: Module) -> str:
-        prev_was_type = False
         for stmt in module.body:
-            if prev_was_type and self.lines and self.lines[-1] != "":
-                self.lines.append("")
             self._stmt(stmt, 0)
-            prev_was_type = isinstance(stmt, (ClassDef, InterfaceDef))
         preamble: list[str] = []
         if self.needs_abc:
             preamble.append("from abc import ABC, abstractmethod")
@@ -92,7 +89,9 @@ class _Emitter:
         self.lines.append(("    " * indent) + text)
 
     def _stmt(self, stmt, indent: int) -> None:
-        if isinstance(stmt, CommentStmt):
+        if isinstance(stmt, BlankStmt):
+            self.lines.append("")
+        elif isinstance(stmt, CommentStmt):
             # Comments are always column-0 in legacy output (stripped lines).
             self.lines.append(stmt.text)
         elif isinstance(stmt, PrintStmt):
@@ -111,6 +110,10 @@ class _Emitter:
         elif isinstance(stmt, ReturnStmt):
             if stmt.value is None:
                 self._emit(indent, "return")
+            elif isinstance(stmt.value, InterpolatedString) and "this." in stmt.value.raw:
+                # Legacy return path skips f-string rewrite; only this.→self.
+                text = stmt.value.raw.replace("this.", "self.")
+                self._emit(indent, f"return {text}")
             else:
                 self._emit(indent, f"return {self._expr(stmt.value)}")
         elif isinstance(stmt, PassStmt):

@@ -112,6 +112,13 @@ class CommentStmt(Node):
 
 
 @dataclass
+class BlankStmt(Node):
+    """Blank line preserved after a closing `}` (legacy preprocess)."""
+
+    pass
+
+
+@dataclass
 class PrintStmt(Node):
     value: Expr | None = None
     raw: str = ""
