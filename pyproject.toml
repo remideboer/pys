@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A small educational transpiler from a Python-like student language to Python."
 requires-python = ">=3.10"
 readme = "README.md"
-license = { text = "LGPL-3.0-or-later" }
+license = { text = "MIT" }
 keywords = ["python", "transpiler", "education", "demo"]
 
 [project.scripts]

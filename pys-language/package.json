@@ -4,7 +4,7 @@
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
   "version": "0.0.31",
   "publisher": "remideboer",
-  "license": "LGPL-3.0-or-later",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/remideboer/pys.git"
