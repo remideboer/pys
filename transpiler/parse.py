@@ -661,8 +661,10 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             p.eat(TokenKind.COMMENT)
             continue
         access = ""
+        member_sp = p.span()
         if p.at_kw("public", "private", "protected", "module"):
             access = p.eat(TokenKind.KEYWORD).text
+            member_sp = Span(member_sp.line, member_sp.column)
         if p.at_kw("function"):
             raise FatalParseError(
                 "Class methods must not use `function`. Use an access modifier: `public name(args)`.",
@@ -690,7 +692,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             body = _parse_block(p)
             methods.append(
                 MethodDef(
-                    span=sp,
+                    span=member_sp,
                     access=access,
                     name="__init__",
                     params=[n for _, n in params],
@@ -735,7 +737,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             body = _parse_block(p)
             methods.append(
                 MethodDef(
-                    span=sp,
+                    span=member_sp,
                     access=access,
                     name=mname,
                     params=[n for _, n in params],
@@ -744,7 +746,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 )
             )
         else:
-            fields.append(FieldDecl(span=sp, access=access, type_name=type_name, name=mname))
+            fields.append(FieldDecl(span=member_sp, access=access, type_name=type_name, name=mname))
     p.eat(TokenKind.RBRACE)
     return ClassDef(
         span=sp, name=name, bases=bases, fields=fields, methods=methods, visibility=visibility, sealed=sealed

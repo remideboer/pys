@@ -199,7 +199,7 @@ def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytes
         "    return Widget()\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text("import demo\nWidget w = demo.make()\n", encoding="utf-8")
     result = analyze_file(main)
@@ -222,7 +222,7 @@ def test_navigate_to_module_and_function(tmp_path: Path, monkeypatch: pytest.Mon
         "    return None\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text(
         'import mysql.connector\n'
@@ -258,7 +258,7 @@ def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyP
         "    return Conn()\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text(
         "import demo\n"
@@ -350,6 +350,7 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         encoding="utf-8",
     )
     monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
 
     # Missing type → suggest list + weak-library note + tips payload
     missing = tmp_path / "missing.pys"

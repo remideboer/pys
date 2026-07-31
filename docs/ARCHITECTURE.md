@@ -75,7 +75,9 @@ flowchart TB
   Main --> Public
   Main --> Deps
   Ide --> Public
-  Ide -.-> IdeLegacy
+  Ide --> Imp
+  Ide --> Parse
+  Ide -.->|library tips tests only| IdeLegacy
   Public --> Pipe["pipeline.compile_pys"]
   Pipe --> Lex --> Parse --> AST --> Sem --> Emit
   Emit --> Over

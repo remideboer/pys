@@ -1,14 +1,38 @@
-"""IDE helpers: symbol location for go-to-definition / highlighting."""
+"""IDE helpers: symbol location for go-to-definition / highlighting.
 
+Uses the AST pipeline (parse + ImportResolver + compile_pys) instead of the
+legacy line Parser.
+"""
 from __future__ import annotations
 
 import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
-from .pytypes import locate_attr_path, locate_type_definition
-from .transpiler import Parser, TranspileError
+from .ast_nodes import (
+    AssignStmt,
+    Call,
+    ForEachStmt,
+    Identifier,
+    ImportStmt,
+    Member,
+    Module,
+)
+from .imports import ImportResolver, module_info_from_ast, pys_import_line
+from .parse import parse_program
+from .pipeline import compile_pys
+from .pytypes import (
+    _find_class_in_package,
+    _usage_tips_for,
+    infer_call_return_info,
+    locate_attr_path,
+    locate_type_definition,
+)
+from .transpiler import TranspileError
+
+_PRIMITIVES = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
 
 
 def _error_dict(exc: TranspileError) -> dict:
@@ -24,42 +48,276 @@ def _error_dict(exc: TranspileError) -> dict:
     }
 
 
+def _base_type(type_name: str) -> str:
+    name = (type_name or "").strip()
+    if "<" in name:
+        name = name.split("<", 1)[0]
+    if name.endswith("[]"):
+        name = name[:-2]
+    return name
+
+
+def _call_receiver_method(expr: Any) -> tuple[str, str | None] | None:
+    """Return (receiver_expr, method_or_None) for Call nodes used by pytypes."""
+    if not isinstance(expr, Call):
+        return None
+    callee = expr.callee
+    if isinstance(callee, Identifier):
+        return callee.name, None
+    if isinstance(callee, Member):
+        parts: list[str] = []
+        cur: Any = callee
+        method = callee.name
+        obj = callee.object
+        while isinstance(obj, Member):
+            parts.append(obj.name)
+            obj = obj.object
+        if isinstance(obj, Identifier):
+            parts.append(obj.name)
+            parts.reverse()
+            if parts:
+                # Member chain: demo.make → recv=demo, method=make
+                # or mysql.connector.connect → recv=mysql.connector, method=None style
+                if len(parts) == 1:
+                    return parts[0], method
+                return ".".join(parts + [method]), None
+        return None
+    return None
+
+
+def _seed_resolver(tree: Module, source: str, source_path: Path) -> ImportResolver:
+    resolver = ImportResolver(source, source_path=source_path)
+    for stmt in tree.body:
+        if not isinstance(stmt, ImportStmt):
+            continue
+        line = pys_import_line(stmt)
+        if not line:
+            continue
+        try:
+            resolver.translate_import_statement(
+                line, stmt.span.line if stmt.span else 1, line
+            )
+        except TranspileError:
+            raise
+        except Exception:
+            continue
+    return resolver
+
+
+def _register_type(
+    type_name: str,
+    *,
+    resolver: ImportResolver,
+    site_paths: list[Path],
+    validated_types: set[str],
+    type_definitions: dict[str, tuple[Path, int, int]],
+) -> bool:
+    base = _base_type(type_name)
+    if not base:
+        return False
+    if base in _PRIMITIVES:
+        validated_types.add(base)
+        return True
+    if base in resolver.class_parents or base in resolver.interfaces or base in resolver.exports:
+        validated_types.add(base)
+        if base in resolver.symbol_locations:
+            path, line, col = resolver.symbol_locations[base]
+            type_definitions.setdefault(base, (path, line, col))
+        return True
+    if base in resolver.type_modules:
+        validated_types.add(base)
+        located = locate_type_definition(
+            base, type_modules=resolver.type_modules, site_paths=site_paths
+        )
+        if located:
+            type_definitions[base] = located
+        return True
+    for mod in sorted(set(resolver.imported_modules.values())):
+        cls = _find_class_in_package(mod, base, site_paths)
+        if isinstance(cls, type):
+            resolver.type_modules[base] = cls.__module__
+            validated_types.add(base)
+            located = locate_type_definition(
+                base, type_modules=resolver.type_modules, site_paths=site_paths
+            )
+            if located:
+                type_definitions[base] = located
+            return True
+    return False
+
+
+def _collect_hints_and_types(
+    tree: Module,
+    resolver: ImportResolver,
+    site_paths: list[Path],
+) -> tuple[dict[str, str], dict[str, str], list[dict], set[str], dict[str, tuple[Path, int, int]]]:
+    variable_types = dict(resolver.variable_types)
+    collection_element_types: dict[str, str] = {}
+    hints: list[dict] = []
+    validated_types = set(_PRIMITIVES)
+    type_definitions = dict(resolver.type_definitions)
+
+    for name in list(resolver.class_parents) + list(resolver.interfaces):
+        _register_type(
+            name,
+            resolver=resolver,
+            site_paths=site_paths,
+            validated_types=validated_types,
+            type_definitions=type_definitions,
+        )
+
+    for stmt in tree.body:
+        if isinstance(stmt, AssignStmt):
+            line = stmt.span.line if stmt.span else 1
+            if stmt.declare_type and stmt.declare_type != "var":
+                base = _base_type(stmt.declare_type)
+                variable_types[stmt.name] = stmt.declare_type
+                _register_type(
+                    base,
+                    resolver=resolver,
+                    site_paths=site_paths,
+                    validated_types=validated_types,
+                    type_definitions=type_definitions,
+                )
+            call = _call_receiver_method(stmt.value)
+            if call is not None:
+                recv, method = call
+                info = infer_call_return_info(
+                    recv,
+                    method,
+                    variable_types=variable_types,
+                    imported_modules=resolver.imported_modules,
+                    site_paths=site_paths,
+                    type_modules=resolver.type_modules,
+                )
+                if info is not None:
+                    if info.element_type and info.pys_type in {"list", "set", "tuple", "dict"}:
+                        collection_element_types[stmt.name] = info.element_type
+                    if info.from_external and info.weak and (
+                        not stmt.declare_type or _base_type(stmt.declare_type) in {"list", "dict", "tuple", "set"}
+                    ):
+                        # Bare `list rows = …` still gets weak-library hint; generics suppress it.
+                        if not (stmt.declare_type and "<" in stmt.declare_type):
+                            tips = _usage_tips_for(info.pys_type, info.element_type, stmt.name)
+                            hints.append(
+                                {
+                                    "line": line,
+                                    "column": 1,
+                                    "code": "pys.untyped-library",
+                                    "message": (
+                                        f"'{stmt.name}' comes from a Python library with weak/untyped "
+                                        f"return information. Prefer treating it as typed in PYS."
+                                        + (
+                                            f" Best element/row type for this API: `{info.element_type}`."
+                                            if info.element_type
+                                            else ""
+                                        )
+                                    ),
+                                    "tips": tips,
+                                    "suggested_loop": (
+                                        f"loop ({info.element_type} x in {stmt.name})"
+                                        if info.pys_type == "list" and info.element_type
+                                        else None
+                                    ),
+                                    "element_type": info.element_type,
+                                    "pys_type": info.pys_type,
+                                }
+                            )
+                    if not stmt.declare_type:
+                        variable_types.setdefault(stmt.name, info.pys_type)
+            elif stmt.declare_type:
+                variable_types[stmt.name] = stmt.declare_type
+
+        elif isinstance(stmt, ForEachStmt):
+            line = stmt.span.line if stmt.span else 1
+            coll = None
+            if isinstance(stmt.iterable, Identifier):
+                coll = stmt.iterable.name
+            if coll and stmt.var and not stmt.var_type:
+                elem = collection_element_types.get(coll)
+                if elem:
+                    hints.append(
+                        {
+                            "line": line,
+                            "column": 1,
+                            "code": "pys.untyped-loop-var",
+                            "message": (
+                                f"Loop variable '{stmt.var}' has no type; "
+                                f"collection '{coll}' elements look like `{elem}`."
+                            ),
+                            "suggested_loop": f"loop ({elem} {stmt.var} in {coll})",
+                            "element_type": elem,
+                        }
+                    )
+
+    return variable_types, collection_element_types, hints, validated_types, type_definitions
+
+
 def analyze_file(source_path: Path) -> dict:
     source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
     error = None
     try:
-        parser = Parser(source, source_path=source_path)
+        compile_pys(source, source_path=source_path)
     except TranspileError as exc:
-        # Formatting errors abort __init__; retry so IDE can still resolve types/symbols.
         error = _error_dict(exc)
-        parser = Parser(source, source_path=source_path, enforce_formatting=False)
+
     try:
-        parser.parse()
+        tree = parse_program(source)
     except TranspileError as exc:
         if error is None:
             error = _error_dict(exc)
+        return {
+            "ok": False,
+            "error": error,
+            "hints": [],
+            "symbols": {},
+            "variable_types": {},
+            "type_modules": {},
+            "imported_modules": {},
+            "collection_element_types": {},
+            "validated_types": [],
+            "class_parents": {},
+            "method_locations": {},
+            "_site_paths": [],
+        }
 
-    # Variable / local / function symbol declarations
+    resolver = _seed_resolver(tree, source, source_path)
+    site_paths = resolver._deps_paths()
+    info = module_info_from_ast(source_path, tree)
+
+    (
+        variable_types,
+        collection_element_types,
+        hints,
+        validated_types,
+        type_definitions,
+    ) = _collect_hints_and_types(tree, resolver, site_paths)
+
     symbols = {
         name: {"file": str(path), "line": line, "column": col, "kind": "symbol"}
-        for name, (path, line, col) in parser.symbol_locations.items()
+        for name, (path, line, col) in {**info.symbol_locations, **resolver.symbol_locations}.items()
+    }
+    method_locations = {
+        cls: {
+            method: {"file": str(path), "line": line, "column": col, "kind": "method"}
+            for method, (path, line, col) in methods.items()
+        }
+        for cls, methods in {**info.method_locations, **resolver.method_locations}.items()
     }
 
-    # Type definitions win for type names (library class or user class)
-    site_paths = parser._deps_paths()
-    for type_name in set(parser.type_modules) | set(parser.type_definitions) | set(parser.validated_types):
-        if type_name in {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}:
+    for type_name in set(resolver.type_modules) | set(type_definitions) | set(validated_types):
+        if type_name in _PRIMITIVES:
             continue
-        located = parser.type_definitions.get(type_name)
-        if located is None and type_name in parser.type_modules:
+        located = type_definitions.get(type_name)
+        if located is None and type_name in resolver.type_modules:
             located = locate_type_definition(
                 type_name,
-                type_modules=parser.type_modules,
+                type_modules=resolver.type_modules,
                 site_paths=site_paths,
             )
             if located:
-                parser.type_definitions[type_name] = located
+                type_definitions[type_name] = located
         if located:
             path, line, col = located
             symbols[type_name] = {
@@ -69,24 +327,20 @@ def analyze_file(source_path: Path) -> dict:
                 "kind": "type",
             }
 
+    class_parents = {**info.class_parents, **resolver.class_parents}
+
     return {
         "ok": error is None,
         "error": error,
-        "hints": list(parser.typing_hints),
+        "hints": hints,
         "symbols": symbols,
-        "variable_types": dict(parser.variable_types),
-        "type_modules": dict(parser.type_modules),
-        "imported_modules": dict(parser.imported_modules),
-        "collection_element_types": dict(parser.collection_element_types),
-        "validated_types": sorted(parser.validated_types),
-        "class_parents": dict(parser.class_parents),
-        "method_locations": {
-            cls: {
-                method: {"file": str(path), "line": line, "column": col, "kind": "method"}
-                for method, (path, line, col) in methods.items()
-            }
-            for cls, methods in parser.method_locations.items()
-        },
+        "variable_types": variable_types,
+        "type_modules": dict(resolver.type_modules),
+        "imported_modules": dict(resolver.imported_modules),
+        "collection_element_types": collection_element_types,
+        "validated_types": sorted(validated_types),
+        "class_parents": class_parents,
+        "method_locations": method_locations,
         "_site_paths": [str(p) for p in site_paths],
     }
 
@@ -115,7 +369,6 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     if loc:
         return loc
 
-    # Class.method or instance.method (PYS types)
     if "." in symbol and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+", symbol):
         parts = symbol.split(".")
         if len(parts) == 2:
@@ -126,7 +379,7 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
                 type_name = "list"
             elif type_name.startswith("dict<"):
                 type_name = "dict"
-            pys_loc = _lookup_pys_method(analysis, type_name, method)
+            pys_loc = _lookup_pys_method(analysis, _base_type(type_name), method)
             if pys_loc:
                 return pys_loc
 
@@ -158,7 +411,6 @@ def main(argv: list[str] | None = None) -> int:
     if len(argv) >= 2:
         symbol = argv[1]
         loc = lookup_symbol(result, symbol)
-        # Do not leak internal keys to the IDE
         print(
             json.dumps(
                 {
