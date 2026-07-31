@@ -38,8 +38,8 @@ Check items off as they land; keep the suite green after each step.
 
 - [ ] **C1.** Java / C# emitters under `emit/`
 - [ ] **C2.** PYS step-through debug (DAP)
-- [x] **C3.** Extension diagnostics from the new pipeline (`ide.analyze_file` uses compile_pys + AST + ImportResolver; legacy `Parser` only for a few library tip tests)
-- [ ] **C4.** Delete legacy `Parser` / `language_spec` line path once remaining tip tests no longer need them
+- [x] **C3.** Extension diagnostics from the new pipeline (`ide.analyze_file` uses compile_pys + AST + ImportResolver)
+- [ ] **C4.** Delete legacy `Parser` / `language_spec` line path (no remaining test call sites; class still in `transpiler.py`)
 
 ---
 

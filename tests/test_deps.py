@@ -141,10 +141,9 @@ def test_external_dep_import_from_site_path(tmp_path: Path, monkeypatch: pytest.
 
 
 def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from transpiler.transpiler import Parser, TranspileError
+    from transpiler.transpiler import TranspileError, transpile
 
     site = tmp_path / "site"
-    # minimal fake package with annotated method
     mod = site / "demo"
     mod.mkdir(parents=True)
     (mod / "__init__.py").write_text(
@@ -158,7 +157,7 @@ def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytes
         "    return Conn()\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text(
         "import demo\n"
@@ -168,22 +167,22 @@ def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytes
         encoding="utf-8",
     )
     with pytest.raises(TranspileError) as caught:
-        Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
     assert caught.value.code == "pys.missing-type"
     assert caught.value.suggested_fix == "list rows = cur.fetchall()"
 
 
 def test_unknown_library_type_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from transpiler.transpiler import Parser, TranspileError
+    from transpiler.transpiler import TranspileError, transpile
 
     site = tmp_path / "site"
     (site / "demo").mkdir(parents=True)
     (site / "demo" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text("import demo\nNoSuchType x = 1\n", encoding="utf-8")
     with pytest.raises(TranspileError, match="Unknown type 'NoSuchType'"):
-        Parser(main.read_text(encoding="utf-8"), source_path=main).parse()
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
 
 
 def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -333,7 +332,7 @@ def test_navigate_to_imported_pys_instance_method(tmp_path: Path) -> None:
 
 def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from transpiler.ide import analyze_file
-    from transpiler.transpiler import Parser, TranspileError
+    from transpiler.transpiler import TranspileError, transpile
 
     site = tmp_path / "site"
     mod = site / "demo"
@@ -349,7 +348,6 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         "    return Conn()\n",
         encoding="utf-8",
     )
-    monkeypatch.setattr("transpiler.transpiler.Parser._deps_paths", lambda self: [site])
     monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
 
     # Missing type → suggest list + weak-library note + tips payload
@@ -362,7 +360,7 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         encoding="utf-8",
     )
     with pytest.raises(TranspileError) as caught:
-        Parser(missing.read_text(encoding="utf-8"), source_path=missing).parse()
+        transpile(missing.read_text(encoding="utf-8"), source_path=missing)
     assert caught.value.code == "pys.missing-type"
     assert "list rows" in (caught.value.suggested_fix or "")
     assert "weak/untyped" in str(caught.value)

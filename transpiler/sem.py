@@ -74,6 +74,14 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     }
     interfaces = {s.name for s in module.body if isinstance(s, InterfaceDef)}
     class_implements = _class_implements_map(module.body, interfaces)
+    if import_resolver is not None:
+        _check_library_types(
+            module.body,
+            import_resolver,
+            types=types,
+            class_names=class_names,
+            interfaces=interfaces,
+        )
     _check_bindings(
         module.body,
         types=types,
@@ -97,10 +105,27 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     return module
 
 
-def _transpile_error(message: str, line: int = 1, column: int = 1, code_line: str = "") -> None:
+def _transpile_error(
+    message: str,
+    line: int = 1,
+    column: int = 1,
+    code_line: str = "",
+    *,
+    code: str | None = None,
+    suggested_fix: str | None = None,
+    tips: list[str] | None = None,
+) -> None:
     from .transpiler import TranspileError
 
-    raise TranspileError(message, line, column, code_line)
+    raise TranspileError(
+        message,
+        line,
+        column,
+        code_line,
+        code=code,
+        suggested_fix=suggested_fix,
+        tips=tips,
+    )
 
 
 def _pys_import_line(stmt: ImportStmt) -> str:
@@ -152,6 +177,131 @@ def _seed_imports(
         if name in resolver.imported_names:
             types[name] = t
     return resolver
+
+
+def _call_receiver_method(expr: Expr | None) -> tuple[str, str | None] | None:
+    if not isinstance(expr, Call):
+        return None
+    callee = expr.callee
+    if isinstance(callee, Identifier):
+        return callee.name, None
+    if isinstance(callee, Member):
+        method = callee.name
+        obj = callee.object
+        parts: list[str] = []
+        while isinstance(obj, Member):
+            parts.append(obj.name)
+            obj = obj.object
+        if isinstance(obj, Identifier):
+            parts.append(obj.name)
+            parts.reverse()
+            if len(parts) == 1:
+                return parts[0], method
+            return ".".join(parts + [method]), None
+    return None
+
+
+def _base_type_name(type_name: str) -> str:
+    name = (type_name or "").strip()
+    if "<" in name:
+        name = name.split("<", 1)[0]
+    if name.endswith("[]"):
+        name = name[:-2]
+    return name
+
+
+def _known_library_type(type_name: str, resolver: Any) -> bool:
+    from .pytypes import _find_class_in_package
+
+    base = _base_type_name(type_name)
+    primitives = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set", "var"}
+    if not base or base in primitives:
+        return True
+    if base in resolver.class_parents or base in resolver.interfaces or base in resolver.exports:
+        return True
+    if base in getattr(resolver, "type_modules", {}):
+        return True
+    site_paths = resolver._deps_paths()
+    for mod in sorted(set(resolver.imported_modules.values())):
+        cls = _find_class_in_package(mod, base, site_paths)
+        if isinstance(cls, type):
+            resolver.type_modules[base] = cls.__module__
+            return True
+    return False
+
+
+def _check_library_types(
+    body: list[Any],
+    resolver: Any,
+    *,
+    types: dict[str, str],
+    class_names: set[str],
+    interfaces: set[str],
+) -> None:
+    """Reject unknown library types and require types on inferred library returns."""
+    from .pytypes import _usage_tips_for, infer_call_return_info
+
+    site_paths = resolver._deps_paths()
+    local_types = dict(types)
+
+    for stmt in body:
+        if not isinstance(stmt, AssignStmt):
+            continue
+        line = stmt.span.line if stmt.span else 1
+        col = stmt.span.column if stmt.span else 1
+
+        if stmt.declare_type and stmt.declare_type != "var":
+            base = _base_type_name(stmt.declare_type)
+            if (
+                base not in class_names
+                and base not in interfaces
+                and not _known_library_type(stmt.declare_type, resolver)
+            ):
+                _transpile_error(
+                    f"Unknown type '{base}'. Declare a class/interface, or import a library "
+                    f"that defines it (via pys.deps).",
+                    line,
+                    col,
+                    f"{stmt.declare_type} {stmt.name}",
+                    code="pys.unknown-type",
+                )
+            local_types[stmt.name] = stmt.declare_type
+
+        call = _call_receiver_method(stmt.value)
+        if call is None:
+            continue
+        recv, method = call
+        info = infer_call_return_info(
+            recv,
+            method,
+            variable_types=local_types,
+            imported_modules=resolver.imported_modules,
+            site_paths=site_paths,
+            type_modules=resolver.type_modules,
+        )
+        if info is None:
+            continue
+        if stmt.declare_type:
+            local_types[stmt.name] = stmt.declare_type
+            continue
+        # Untyped assignment from a library call with a known return shape.
+        if info.from_external and info.pys_type:
+            tips = _usage_tips_for(info.pys_type, info.element_type, stmt.name)
+            rhs = f"{recv}.{method}()" if method else f"{recv}()"
+            suggested = f"{info.pys_type} {stmt.name} = {rhs}"
+            msg = (
+                f"Missing type for '{stmt.name}'. Library call returns `{info.pys_type}` "
+                f"(weak/untyped boundary)."
+            )
+            _transpile_error(
+                msg,
+                line,
+                col,
+                f"{stmt.name} = ...",
+                code="pys.missing-type",
+                suggested_fix=suggested,
+                tips=tips,
+            )
 
 
 def _class_parents_map(body: list[Any]) -> dict[str, str | None]:

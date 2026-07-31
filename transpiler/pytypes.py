@@ -272,9 +272,13 @@ def _site_has_module(module_name: str, site_paths: list[Path]) -> bool:
 
 
 def _drop_module_tree(module_name: str) -> None:
-    prefix = module_name + "."
+    # Drop the whole top-level package tree so a stub site package can replace
+    # a previously imported real install (common when acceptance tests load
+    # real deps before a unit test stubs the same name).
+    root = module_name.split(".", 1)[0]
+    prefix = root + "."
     for key in list(sys.modules):
-        if key == module_name or key.startswith(prefix):
+        if key == root or key.startswith(prefix):
             del sys.modules[key]
 
 
