@@ -164,3 +164,28 @@ def test_sem_interface_method_body_rejected() -> None:
 """
     with pytest.raises(TranspileError, match=r"abstract and cannot have a body"):
         parse_program(source)
+
+
+def test_sem_shared_capture_mutation_rejected() -> None:
+    source = """
+int local = 1
+tasks {
+    task {
+        local = 2
+    }
+}
+"""
+    with pytest.raises(TranspileError, match="shared"):
+        _analyze(source)
+
+
+def test_sem_shared_mutation_allowed() -> None:
+    source = """
+shared int counter = 0
+tasks {
+    task {
+        counter = counter + 1
+    }
+}
+"""
+    _analyze(source)

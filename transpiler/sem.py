@@ -71,6 +71,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     )
     _check_oop(module.body, types=types)
     _check_interfaces(module.body)
+    _check_shared_capture(module.body)
     _check_await_cycles(module.body)
     return module
 
@@ -982,3 +983,126 @@ def _check_interfaces(body: list[Any]) -> None:
                         1,
                         f"class {stmt.name}",
                     )
+
+
+def _check_shared_capture(body: list[Any]) -> None:
+    """Policy B: outer captures are read-only inside tasks unless shared."""
+
+    def walk(
+        stmts: list[Any],
+        *,
+        declared: set[str],
+        shared: set[str],
+        in_task: bool,
+        task_locals: set[str],
+    ) -> None:
+        declared = set(declared)
+        shared = set(shared)
+        task_locals = set(task_locals)
+        for stmt in stmts:
+            if isinstance(stmt, SharedDecl):
+                declared.add(stmt.name)
+                shared.add(stmt.name)
+                continue
+            if isinstance(stmt, AssignStmt):
+                if stmt.declare_type or stmt.is_const or stmt.is_fix:
+                    declared.add(stmt.name)
+                    if in_task:
+                        task_locals.add(stmt.name)
+                elif in_task and "." not in stmt.name:
+                    name = stmt.name
+                    if name not in task_locals and name not in shared and name in declared:
+                        line = stmt.span.line if stmt.span else 1
+                        col = stmt.span.column if stmt.span else 1
+                        _transpile_error(
+                            f"Cannot assign to '{name}' inside task; captured variables are read-only. "
+                            f"Declare it `shared` to allow cross-task mutation.",
+                            line,
+                            col,
+                            f"{name} = ...",
+                        )
+            elif isinstance(stmt, AugAssignStmt):
+                if in_task and "." not in stmt.name:
+                    name = stmt.name
+                    if name not in task_locals and name not in shared and name in declared:
+                        line = stmt.span.line if stmt.span else 1
+                        col = stmt.span.column if stmt.span else 1
+                        _transpile_error(
+                            f"Cannot assign to '{name}' inside task; captured variables are read-only. "
+                            f"Declare it `shared` to allow cross-task mutation.",
+                            line,
+                            col,
+                            f"{name}{stmt.op}",
+                        )
+            elif isinstance(stmt, ArrayDecl):
+                declared.add(stmt.name)
+                if in_task:
+                    task_locals.add(stmt.name)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    locals_here = set(t.params)
+                    if t.body:
+                        walk(
+                            t.body.statements,
+                            declared=declared,
+                            shared=shared,
+                            in_task=True,
+                            task_locals=locals_here,
+                        )
+            elif isinstance(stmt, FunctionDef):
+                local_decl = set(declared) | set(stmt.params)
+                if stmt.body:
+                    walk(
+                        stmt.body.statements,
+                        declared=local_decl,
+                        shared=shared,
+                        in_task=False,
+                        task_locals=set(),
+                    )
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    local_decl = set(declared) | set(m.params)
+                    if m.body:
+                        walk(
+                            m.body.statements,
+                            declared=local_decl,
+                            shared=shared,
+                            in_task=False,
+                            task_locals=set(),
+                        )
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(
+                        stmt.then_body.statements,
+                        declared=declared,
+                        shared=shared,
+                        in_task=in_task,
+                        task_locals=task_locals,
+                    )
+                if stmt.else_body:
+                    walk(
+                        stmt.else_body.statements,
+                        declared=declared,
+                        shared=shared,
+                        in_task=in_task,
+                        task_locals=task_locals,
+                    )
+            elif isinstance(stmt, Block):
+                walk(
+                    stmt.statements,
+                    declared=declared,
+                    shared=shared,
+                    in_task=in_task,
+                    task_locals=task_locals,
+                )
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(
+                        stmt.body.statements,
+                        declared=declared,
+                        shared=shared,
+                        in_task=in_task,
+                        task_locals=task_locals,
+                    )
+
+    walk(body, declared=set(), shared=set(), in_task=False, task_locals=set())

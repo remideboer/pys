@@ -12,7 +12,7 @@ Check items off as they land; keep the suite green after each step.
   - [x] A1d. typed interpolation checks
   - [x] A1e. member / private / protected / sealed access
   - [x] A1f. interface implementation + arity
-  - [ ] A1g. shared capture rules (Policy B)
+  - [x] A1g. shared capture rules (Policy B)
   - [ ] A1h. array bounds / element-type checks
   - [ ] A1i. class `function` / `method` / missing access-modifier errors
 - [ ] **A2.** Stop double work in emit (no full legacy `Parser.parse()` for validation)
