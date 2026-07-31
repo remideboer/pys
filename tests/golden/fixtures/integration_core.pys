@@ -1,0 +1,42 @@
+# Curated OO + control sample (no MySQL / no sibling vehicle imports)
+int x = 10
+int y = 20
+print("x={x} y={y}")
+
+loop (int i = 0, i < 2, i++) {
+    print(i)
+}
+
+if (x < y) {
+    print("lt")
+}
+else {
+    print("ge")
+}
+
+global function int mul(int a, int b) {
+    return a * b
+}
+
+print(mul(3, 4))
+
+interface Named {
+    public string label()
+}
+
+class Point implements Named {
+    private int x
+    private int y
+
+    public Point(int x, int y) {
+        this.x = x
+        this.y = y
+    }
+
+    public string label() {
+        return "({this.x},{this.y})"
+    }
+}
+
+Point p = Point(1, 2)
+print(p.label())

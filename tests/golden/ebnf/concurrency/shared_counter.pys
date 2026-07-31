@@ -1,0 +1,10 @@
+shared int counter = 0
+tasks {
+    task {
+        counter = counter + 1
+    }
+    task {
+        counter = counter + 1
+    }
+}
+print(counter)

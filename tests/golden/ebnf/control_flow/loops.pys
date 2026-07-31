@@ -1,0 +1,12 @@
+loop (int i = 0, i < 3, i++) {
+    print(i)
+}
+int counter = 0
+loop (counter < 3) {
+    print(counter)
+    counter++
+}
+int[] items = [10, 20]
+loop (int n in items) {
+    print(n)
+}

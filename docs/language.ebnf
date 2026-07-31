@@ -1,7 +1,9 @@
 (*
   PYS - Extended Backus-Naur Form (EBNF)
   ========================================
-  Teaching language that transpiles to Python.
+  Teaching / production language that compiles via lex → parse → AST → emit.
+  The reference emitter is Python (`transpiler/emit/python.py`); other backends
+  may plug in at the emit layer later.
 
   Notation (ISO/IEC 14977-style, with common extensions):
     =       definition

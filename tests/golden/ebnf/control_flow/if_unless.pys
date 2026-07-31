@@ -1,0 +1,17 @@
+int x = 10
+int y = 20
+if (x < y) {
+    print("lt")
+}
+else if (x == y) {
+    print("eq")
+}
+else {
+    print("gt")
+}
+unless (x > 100) {
+    print("unless")
+}
+if not (x > 100) {
+    print("ifnot")
+}

@@ -1,0 +1,10 @@
+int x = 10
+float y = 2.5
+var z = 30
+const int MAX = 100
+fix int fixed = 1 + 2
+print(x)
+print(y)
+print(z)
+print(MAX)
+print(fixed)

@@ -3210,8 +3210,9 @@ class Parser:
 
 def transpile(source_code: str, *, source_path: Path | None = None) -> str:
     """Convert teaching language source into valid Python source."""
-    parser = Parser(source_code, source_path=source_path)
-    return parser.parse()
+    from .pipeline import compile_pys
+
+    return compile_pys(source_code, target="python", source_path=source_path)
 
 
 def transpile_with_modules(source_path: Path) -> dict[str, str]:
@@ -3219,16 +3220,27 @@ def transpile_with_modules(source_path: Path) -> dict[str, str]:
 
     Returns a mapping of module stem -> Python source text.
     """
+    from .pipeline import compile_pys
+
     source_path = source_path.resolve()
     module_cache: dict[Path, ModuleInfo] = {}
+    text = source_path.read_text(encoding="utf-8")
     parser = Parser(
-        source_path.read_text(encoding="utf-8"),
+        text,
         source_path=source_path,
         module_cache=module_cache,
     )
-    modules = {source_path.stem: parser.parse()}
+    # Discover and transpile imported modules (fills module_cache).
+    parser.parse()
+    modules = {
+        source_path.stem: compile_pys(text, target="python", source_path=source_path),
+    }
     for path, info in module_cache.items():
-        modules[path.stem] = info.python
+        modules[path.stem] = compile_pys(
+            path.read_text(encoding="utf-8"),
+            target="python",
+            source_path=path,
+        )
     return modules
 
 

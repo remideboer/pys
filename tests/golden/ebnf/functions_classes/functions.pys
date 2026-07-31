@@ -1,0 +1,13 @@
+global function int add(int a, int b) {
+    return a + b
+}
+package function greet(string name) {
+    print(name)
+}
+function secret() {
+    print("priv")
+}
+int s = add(1, 2)
+print(s)
+greet("hi")
+secret()

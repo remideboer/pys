@@ -1,0 +1,2 @@
+string msg = "café"
+print(msg)

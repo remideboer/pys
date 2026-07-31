@@ -1,0 +1,10 @@
+print(42)
+print(true)
+print(false)
+print(null)
+float f = 3.14
+char c = 'A'
+string s = "hello"
+print(f)
+print(c)
+print(s)

@@ -1,0 +1,4 @@
+int[] numbers = [1, 2, 3, 4, 5]
+int[3] primes = [2, 3, 5]
+print(numbers[0])
+print(primes[1])

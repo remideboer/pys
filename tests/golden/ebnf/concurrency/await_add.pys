@@ -1,0 +1,9 @@
+tasks {
+    task add(int a, int b) {
+        return a + b
+    }
+    task {
+        int s = await add(10, 32)
+        print(s)
+    }
+}

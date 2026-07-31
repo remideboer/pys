@@ -1,0 +1,20 @@
+package interface Startable {
+    public start()
+}
+
+package class Car implements Startable {
+    private string name
+
+    public Car(string name) {
+        this.name = name
+    }
+
+    public start() {
+        print("{this.name} start")
+    }
+}
+
+Car c = Car("Dacia")
+c.start()
+Startable s = c
+s.start()

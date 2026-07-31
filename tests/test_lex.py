@@ -1,0 +1,31 @@
+"""Lexer unit tests."""
+from __future__ import annotations
+
+import pytest
+
+from transpiler.lex import LexError, TokenKind, tokenize
+
+
+def test_tokenize_literals_and_keywords() -> None:
+    toks = tokenize('print(42)\nint x = 1\n')
+    kinds = [t.kind for t in toks if t.kind != TokenKind.EOF]
+    assert TokenKind.KEYWORD in kinds
+    assert TokenKind.INT in kinds
+    assert any(t.text == "print" for t in toks)
+
+
+def test_tokenize_rejects_tabs() -> None:
+    with pytest.raises(LexError, match="tabs"):
+        tokenize("\tprint(1)\n")
+
+
+def test_tokenize_skips_block_comment() -> None:
+    toks = tokenize("## hide /#\nprint(1)\n")
+    assert any(t.text == "print" for t in toks)
+    assert not any("hide" in t.text for t in toks)
+
+
+def test_all_golden_sources_lex() -> None:
+    root = __import__("pathlib").Path(__file__).resolve().parent / "golden"
+    for pys in sorted(root.rglob("*.pys")):
+        tokenize(pys.read_text(encoding="utf-8"))

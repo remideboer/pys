@@ -1,0 +1,6 @@
+# line comment only
+print(1)
+## block
+comment
+/#
+print(2)

@@ -399,18 +399,24 @@ tasks {
 
 ## How this transpiler works
 
-This version is parser-based, not regex-based.
+The compiler pipeline is:
 
-The transpiler parses `.pys` source line-by-line, converts teaching-language constructs into Python source, validates the generated Python with the AST parser, and then executes it with the current Python interpreter.
+1. **Lex** — [`transpiler/lex.py`](transpiler/lex.py) turns source into tokens with spans.
+2. **Parse** — [`transpiler/parse.py`](transpiler/parse.py) builds a target-neutral AST
+   ([`ast_nodes.py`](transpiler/ast_nodes.py)).
+3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) is the seam for type/scope checks
+   (more checks still run during Python emit while migration completes).
+4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) produces Python.
+   Other backends (Java, C#) can plug in at this layer later; only Python is
+   implemented today.
 
-The pipeline is:
-1. Read the `.pys` source file.
-2. Parse each line and rewrite teaching constructs to Python.
-3. Track indentation blocks using 4-space indent levels.
-4. Validate the generated Python with the AST parser.
-5. Run the generated code.
+Public entry points (`transpile`, `run_source`) go through
+[`transpiler/pipeline.py`](transpiler/pipeline.py) (`compile_pys(..., target="python")`).
 
-Errors include a line number and a short source preview to help students fix syntax quickly.
+Characterization goldens under `tests/golden/` lock emit parity. Regenerate only
+via `python tests/golden/regen.py` (never in CI).
+
+Errors include a line number and a short source preview to help fix syntax quickly.
 
 ## VS Code support
 
@@ -421,32 +427,9 @@ This project includes `.vscode/settings.json` and `.vscode/pys.code-snippets` to
 
 ## Extending the language
 
-To add a new syntax construct:
-
-1. Open `transpiler/transpiler.py`.
-2. Add a new branch in the `Parser._parse_line()` method.
-3. Add a regression test in `tests/`.
-4. Run `python -m pytest -q`.
-
-### Example: add `repeat` syntax
-
-In `transpiler/transpiler.py`, the parser already supports `repeat N times:` and rewrites it as:
-
-```python
-for _ in range(N):
-    ...
-```
-
-Then a source block like:
-
-```pys
-repeat 3 times:
-    print hello
-```
-
-produces:
-
-```python
-for _ in range(3):
-    print("hello")
-```
+1. Add/adjust grammar notes in [`docs/language.ebnf`](docs/language.ebnf).
+2. Extend the lexer / parser / AST as needed (`transpiler/lex.py`, `parse.py`,
+   `ast_nodes.py`).
+3. Emit via `transpiler/emit/python.py` (or a future backend under `emit/`).
+4. Add a golden under `tests/golden/ebnf/…` and run `python tests/golden/regen.py`.
+5. Run `python -m pytest -q`.
