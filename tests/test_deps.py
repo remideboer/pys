@@ -108,6 +108,30 @@ def test_external_python_import_passes_through(tmp_path: Path) -> None:
     assert "import math" in python
 
 
+def test_module_present_recognizes_pyd_extension(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Binary extension submodules (PyQt6.QtCore → QtCore.pyd) must count as present."""
+    from transpiler.deps import is_external_python_module, module_present_on_paths
+    from transpiler.transpiler import transpile
+
+    pkg = tmp_path / "PyQt6"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "QtCore.pyd").write_bytes(b"")
+    assert module_present_on_paths("PyQt6.QtCore", [tmp_path])
+    assert is_external_python_module("PyQt6.QtCore", [tmp_path])
+
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [tmp_path],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("import PyQt6.QtCore\nprint(PyQt6.QtCore)\n", encoding="utf-8")
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "import PyQt6.QtCore" in python
+
+
 def test_stdlib_import_as_alias(tmp_path: Path) -> None:
     from transpiler.imports import ImportResolver
     from transpiler.transpiler import transpile

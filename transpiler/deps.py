@@ -433,11 +433,24 @@ def module_present_on_paths(module_ref: str, site_paths: Iterable[Path]) -> bool
     parts = [p for p in module_ref.split(".") if p]
     if not parts:
         return False
+    # Extension suffixes used by binary modules (e.g. PyQt6/QtCore.pyd).
+    ext_suffixes = (".py", ".pyd", ".so", ".dylib")
     for site in site_paths:
         base = Path(site)
         candidate = base.joinpath(*parts)
-        if candidate.with_suffix(".py").is_file():
-            return True
+        for suffix in ext_suffixes:
+            if candidate.with_suffix(suffix).is_file():
+                return True
+        # Tagged wheels: name.cp311-win_amd64.pyd / name.cpython-311-*.so
+        parent = candidate.parent
+        stem = candidate.name
+        if parent.is_dir():
+            for child in parent.iterdir():
+                if not child.is_file():
+                    continue
+                if child.name == stem or child.name.startswith(stem + "."):
+                    if child.suffix in {".pyd", ".so", ".dylib", ".py"} or ".so." in child.name:
+                        return True
         if (candidate / "__init__.py").is_file():
             return True
         if candidate.is_dir() and any(candidate.iterdir()):
@@ -453,6 +466,20 @@ def is_external_python_module(module_ref: str, site_paths: Iterable[Path] | None
     paths = list(site_paths or [])
     if paths and module_present_on_paths(ref, paths):
         return True
+    # Also accept the top-level package when only a submodule was requested and
+    # the leaf is a binary extension we could not see (defensive). Prefer path check above.
+    if paths and "." in ref:
+        top = ref.split(".", 1)[0]
+        if module_present_on_paths(top, paths):
+            try:
+                from .pytypes import _with_sys_path
+                import importlib.util
+
+                with _with_sys_path(paths):
+                    if importlib.util.find_spec(ref) is not None:
+                        return True
+            except (ImportError, ModuleNotFoundError, ValueError):
+                pass
     try:
         import importlib.util
 

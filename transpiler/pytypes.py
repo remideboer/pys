@@ -268,6 +268,17 @@ def _site_has_module(module_name: str, site_paths: list[Path]) -> bool:
         base = Path(site).joinpath(*parts)
         if (base / "__init__.py").is_file() or base.with_suffix(".py").is_file():
             return True
+        for suffix in (".pyd", ".so", ".dylib"):
+            if base.with_suffix(suffix).is_file():
+                return True
+        parent = base.parent
+        stem = base.name
+        if parent.is_dir():
+            for child in parent.iterdir():
+                if child.is_file() and child.name.startswith(stem + ".") and (
+                    child.suffix in {".pyd", ".so", ".dylib"} or ".so." in child.name
+                ):
+                    return True
     return False
 
 
