@@ -183,21 +183,28 @@ def _is_assignable_type(
 ) -> bool:
     if actual == declared:
         return True
-    if declared in _PRIMITIVES or actual in _PRIMITIVES:
-        return declared in {"int", "float"} and actual in {"int", "float"}
-    current: str | None = actual
+    if actual == "null":
+        return True
+    a_base = _base_type_name(actual)
+    d_base = _base_type_name(declared)
+    if a_base == d_base:
+        return True
+    if d_base in _PRIMITIVES or a_base in _PRIMITIVES:
+        return d_base in {"int", "float"} and a_base in {"int", "float"}
+    current: str | None = a_base
     seen: set[str] = set()
     implements = class_implements or {}
     iface_set = interfaces or set()
     while current:
-        if current == declared:
+        if current == d_base:
             return True
-        if declared in iface_set and declared in implements.get(current, []):
+        if d_base in iface_set and d_base in implements.get(current, []):
             return True
         if current in seen:
             break
         seen.add(current)
-        current = class_parents.get(current)
+        parent = class_parents.get(current)
+        current = _base_type_name(parent) if parent else None
     return False
 
 
@@ -686,6 +693,8 @@ def _check_bindings(
                 )
         elif isinstance(stmt, ForEachStmt):
             declared.add(stmt.var)
+            if stmt.var_type:
+                types[stmt.var] = stmt.var_type
             # foreach vars are writable in PYS? Legacy only marks C-style for counters.
             if stmt.body:
                 _check_bindings(

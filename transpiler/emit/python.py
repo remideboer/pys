@@ -31,6 +31,7 @@ from ..ast_nodes import (
     Index,
     InterfaceDef,
     InterpolatedString,
+    KeywordArg,
     Literal,
     Member,
     MethodDef,
@@ -53,22 +54,17 @@ _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
-    # Semantic validation lives in sem; only fall back to legacy Parser for emit
-    # when the AST path is unavailable (use_legacy) or emitter fails.
+    # Semantic validation lives in sem. Legacy Parser is only for sources the
+    # AST parser could not represent (`use_legacy`).
     if module.use_legacy:
         return _legacy_emit(module.source, source_path=source_path)
-    try:
-        ast_out = _Emitter(
-            source=module.source,
-            source_path=source_path,
-        ).emit_module(module)
-        # Text-level overload dispatch (no Parser).
-        from .overloads import rewrite_overloaded_methods
+    ast_out = _Emitter(
+        source=module.source,
+        source_path=source_path,
+    ).emit_module(module)
+    from .overloads import rewrite_overloaded_methods
 
-        ast_out = rewrite_overloaded_methods(ast_out)
-    except Exception:
-        return _legacy_emit(module.source, source_path=source_path)
-    return ast_out
+    return rewrite_overloaded_methods(ast_out)
 
 
 def _legacy_emit(source: str, *, source_path: Path | None = None) -> str:
@@ -389,6 +385,8 @@ class _Emitter:
         if isinstance(expr, Call):
             args = ", ".join(self._expr(a) for a in expr.args)
             return f"{self._expr(expr.callee)}({args})"
+        if isinstance(expr, KeywordArg):
+            return f"{expr.name}={self._expr(expr.value)}"
         if isinstance(expr, Member):
             return f"{self._expr(expr.object)}.{expr.name}"
         if isinstance(expr, Index):

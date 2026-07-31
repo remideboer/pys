@@ -67,6 +67,14 @@ class Call(Expr):
 
 
 @dataclass
+class KeywordArg(Expr):
+    """Named argument in a call: `host="localhost"`."""
+
+    name: str = ""
+    value: Expr | None = None
+
+
+@dataclass
 class Member(Expr):
     object: Expr | None = None
     name: str = ""
@@ -198,6 +206,7 @@ class ForRangeStmt(Node):
 @dataclass
 class ForEachStmt(Node):
     var: str = ""
+    var_type: str = ""
     iterable: Expr | None = None
     body: Block | None = None
 

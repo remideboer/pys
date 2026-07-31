@@ -28,6 +28,7 @@ from .ast_nodes import (
     Index,
     InterfaceDef,
     InterpolatedString,
+    KeywordArg,
     Literal,
     Member,
     MethodDef,
@@ -395,6 +396,51 @@ def _looks_like_typed_name(p: _Tok) -> bool:
     return t2.kind == TokenKind.LPAREN
 
 
+def _parse_type_name(p: _Tok) -> str:
+    """Parse `Type` or `Type<Arg, Nested<T>>` type references."""
+    base = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    if not p.at(TokenKind.LT):
+        return base
+    p.eat(TokenKind.LT)
+    args = [_parse_type_name(p)]
+    while p.at(TokenKind.COMMA):
+        p.eat(TokenKind.COMMA)
+        args.append(_parse_type_name(p))
+    p.eat(TokenKind.GT)
+    return f"{base}<{', '.join(args)}>"
+
+
+def _at_generic_typed_decl(p: _Tok) -> bool:
+    """Type `<` … `>` name `=` — generic typed declaration."""
+    if not (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)):
+        return False
+    if p.cur().text in {
+        "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
+        "function", "class", "interface", "import", "shared", "tasks", "task",
+        "const", "fix", "var",
+    }:
+        return False
+    if p.peek(1).kind != TokenKind.LT:
+        return False
+    depth = 0
+    k = 1
+    while True:
+        t = p.peek(k)
+        if t.kind == TokenKind.EOF:
+            return False
+        if t.kind == TokenKind.LT:
+            depth += 1
+        elif t.kind == TokenKind.GT:
+            depth -= 1
+            if depth == 0:
+                return (
+                    p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                    and p.peek(k + 2).kind == TokenKind.OP
+                    and p.peek(k + 2).text == "="
+                )
+        k += 1
+
+
 def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
     sp = p.span()
     p.eat_kw("function")
@@ -495,6 +541,14 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         p.eat_kw("sealed")
     p.eat_kw("class")
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    if p.at(TokenKind.LT):
+        # Generic class params are accepted and discarded for Python emit.
+        p.eat(TokenKind.LT)
+        p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        p.eat(TokenKind.GT)
     bases: list[str] = []
     if p.at_kw("inherits", "super"):
         p.eat(TokenKind.KEYWORD)
@@ -558,15 +612,24 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         type_name = ""
         if p.cur().text in _TYPES or (
             p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-            and p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-            and p.peek(1).kind != TokenKind.LPAREN
-            and p.peek(1).text != name
+            and (
+                p.peek(1).kind == TokenKind.LBRACK
+                or (
+                    p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                    and p.peek(1).kind != TokenKind.LPAREN
+                    and p.peek(1).text != name
+                )
+            )
         ):
-            # method: [type] name (   OR field: type name
+            # method: [type] name (   OR field: type name / type[] name
             if p.peek(1).kind == TokenKind.LPAREN:
                 pass  # name is current
             else:
                 type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+                if p.at(TokenKind.LBRACK):
+                    p.eat(TokenKind.LBRACK)
+                    p.eat(TokenKind.RBRACK)
+                    type_name += "[]"
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         if p.at(TokenKind.LPAREN):
             p.eat(TokenKind.LPAREN)
@@ -621,8 +684,11 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
             p.eat(TokenKind.OP, text="=")
             value = _parse_expression(p)
             return ArrayDecl(span=sp, elem_type=dtype, name=name, size=size, value=value)
-    elif p.at(TokenKind.IDENT) and p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD} and p.peek(2).text == "=":
-        dtype = p.eat(TokenKind.IDENT).text
+    elif (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and (
+        (p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD} and p.peek(2).text == "=")
+        or _at_generic_typed_decl(p)
+    ):
+        dtype = _parse_type_name(p)
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     p.eat(TokenKind.OP, text="=")
     value = _parse_expression(p)
@@ -668,12 +734,16 @@ def _parse_statement(p: _Tok):
         return _parse_loop(p)
     if p.at_kw("var", "const", "fix", *_TYPES):
         return _parse_decl(p)
-    # Typed named decl: Type name =
+    # Typed named decl: Type name =  / Type<...> name =
     if (
-        p.at(TokenKind.IDENT)
+        (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD))
         and p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
         and p.peek(2).text == "="
-    ):
+        and not p.at_kw(
+            "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
+            "function", "class", "interface", "import", "shared", "tasks", "task",
+        )
+    ) or _at_generic_typed_decl(p):
         return _parse_decl(p)
     # this.name = expr / name.member = expr
     if (p.at_kw("this") or p.at(TokenKind.IDENT)) and p.peek(1).kind == TokenKind.DOT:
@@ -782,14 +852,23 @@ def _parse_loop(p: _Tok):
         j += 1
 
     if has_in:
-        if p.at_kw(*_TYPES):
-            p.eat(TokenKind.KEYWORD)
+        var_type = ""
+        # Optional element type: `int x in`, `tuple x in`, `list<int> x in`
+        if (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and not p.at_kw("in"):
+            if p.peek(1).kind == TokenKind.LT or (
+                p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                and p.peek(2).kind == TokenKind.KEYWORD
+                and p.peek(2).text == "in"
+            ):
+                var_type = _parse_type_name(p)
+            elif p.at_kw(*_TYPES):
+                var_type = p.eat(TokenKind.KEYWORD).text
         var = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat_kw("in")
         it = _parse_expression(p)
         p.eat(TokenKind.RPAREN)
         body = _parse_block(p)
-        return ForEachStmt(span=sp, var=var, iterable=it, body=body)
+        return ForEachStmt(span=sp, var=var, var_type=var_type, iterable=it, body=body)
 
     commas = 0
     depth = 0
@@ -946,18 +1025,45 @@ def _parse_cast_postfix(p: _Tok) -> Expr:
     return _parse_postfix(p)
 
 
+def _parse_call_arg(p: _Tok) -> Expr:
+    if (
+        p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+        and p.peek(1).kind == TokenKind.OP
+        and p.peek(1).text == "="
+    ):
+        sp = p.span()
+        name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        p.eat(TokenKind.OP, text="=")
+        return KeywordArg(span=sp, name=name, value=_parse_expression(p))
+    return _parse_expression(p)
+
+
 def _parse_postfix(p: _Tok) -> Expr:
     expr = _parse_primary(p)
+    # Generic constructor sugar: Type<Args>(...) — drop type args for Python emit.
+    if isinstance(expr, Identifier) and p.at(TokenKind.LT):
+        saved = p.i
+        try:
+            p.eat(TokenKind.LT)
+            _parse_type_name(p)
+            while p.at(TokenKind.COMMA):
+                p.eat(TokenKind.COMMA)
+                _parse_type_name(p)
+            p.eat(TokenKind.GT)
+            if not p.at(TokenKind.LPAREN):
+                raise ParseError("not a constructor", p.cur().line, p.cur().column)
+        except ParseError:
+            p.i = saved
     while True:
         if p.at(TokenKind.LPAREN):
             sp = expr.span
             p.eat(TokenKind.LPAREN)
             args: list[Expr] = []
             if not p.at(TokenKind.RPAREN):
-                args.append(_parse_expression(p))
+                args.append(_parse_call_arg(p))
                 while p.at(TokenKind.COMMA):
                     p.eat(TokenKind.COMMA)
-                    args.append(_parse_expression(p))
+                    args.append(_parse_call_arg(p))
             p.eat(TokenKind.RPAREN)
             expr = Call(span=sp, callee=expr, args=args)
         elif p.at(TokenKind.DOT):

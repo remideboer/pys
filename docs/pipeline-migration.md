@@ -20,9 +20,9 @@ Check items off as they land; keep the suite green after each step.
   - [x] A3a. `.pys` import resolution / visibility (via `imports` module facade)
   - [x] A3b. overload rewriting (`emit/overloads.py`)
   - [x] A3c. concurrency preamble as shared module (`concurrency.py`)
-- [ ] **A4.** Remove quarantine (`use_legacy`, `_legacy_emit`, unused line-regex path)
-- [ ] **A5.** Harden parse/AST (indent-mode, generics/collections, `main.pys` / tutorials on AST+sem)
-- [ ] **A6.** Tests: sem/errors without legacy; optional CI guard against `Parser` in emit
+- [x] **A4.** Remove quarantine silent fallback (AST emit no longer catches and re-runs legacy; `use_legacy` remains only for sources the AST parser cannot represent yet)
+- [x] **A5.** Harden parse/AST (kwargs, generics/collections, generic classes/ctors, `main.pys` on AST+sem)
+- [x] **A6.** Tests: sem/errors without legacy; optional CI guard against `Parser` in emit
 
 ## B. Product / distribution
 
