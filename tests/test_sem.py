@@ -123,3 +123,44 @@ class Truck inherits Car {
 def test_sem_sealed_class_rejects_inheritance() -> None:
     with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
         _analyze("sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n")
+
+
+def test_sem_missing_interface_method() -> None:
+    source = """interface Startable {
+    public start()
+}
+
+class Car implements Startable {
+    public Car() {
+        pass
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"must implement abstract method 'start'"):
+        _analyze(source)
+
+
+def test_sem_interface_arity_mismatch() -> None:
+    source = """interface Startable {
+    public start(string name)
+}
+
+class Car implements Startable {
+    public start() {
+        print("starting")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"does not match interface"):
+        _analyze(source)
+
+
+def test_sem_interface_method_body_rejected() -> None:
+    source = """interface Startable {
+    public start() {
+        print("nope")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"abstract and cannot have a body"):
+        parse_program(source)

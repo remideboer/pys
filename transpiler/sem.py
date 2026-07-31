@@ -70,6 +70,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
         fixed=fixed,
     )
     _check_oop(module.body, types=types)
+    _check_interfaces(module.body)
     _check_await_cycles(module.body)
     return module
 
@@ -910,3 +911,74 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
                         walk_stmts(t.body.statements, local_types, current_class)
 
     walk_stmts(body, types, None)
+
+
+def _check_interfaces(body: list[Any]) -> None:
+    interfaces: dict[str, dict[str, int]] = {}
+    for stmt in body:
+        if isinstance(stmt, InterfaceDef):
+            arities = dict(stmt.method_arities)
+            for m in stmt.methods:
+                arities.setdefault(m, 0)
+            interfaces[stmt.name] = arities
+
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        available: dict[str, int] = {}
+        for m in stmt.methods:
+            if m.is_constructor:
+                continue
+            available[m.name] = len(m.params)
+        # Include inherited methods (single inheritance).
+        parent = None
+        for b in stmt.bases:
+            if b not in interfaces:
+                parent = b
+                break
+        seen_parents: set[str] = set()
+        while parent and parent not in seen_parents:
+            seen_parents.add(parent)
+            parent_cls = next((c for c in body if isinstance(c, ClassDef) and c.name == parent), None)
+            if parent_cls is None:
+                break
+            for m in parent_cls.methods:
+                if not m.is_constructor:
+                    available.setdefault(m.name, len(m.params))
+            parent = None
+            for b in parent_cls.bases:
+                if b not in interfaces:
+                    parent = b
+                    break
+
+        for b in stmt.bases:
+            is_class = any(isinstance(c, ClassDef) and c.name == b for c in body)
+            if is_class:
+                continue
+            line = stmt.span.line if stmt.span else 1
+            if b not in interfaces:
+                _transpile_error(
+                    f"Unknown interface '{b}' implemented by class {stmt.name}.",
+                    line,
+                    1,
+                    f"class {stmt.name}",
+                )
+            required = interfaces[b]
+            for method_name, arity in required.items():
+                if method_name not in available:
+                    _transpile_error(
+                        f"Class {stmt.name} must implement abstract method "
+                        f"'{method_name}' from interface {b}.",
+                        line,
+                        1,
+                        f"class {stmt.name}",
+                    )
+                if available[method_name] != arity:
+                    _transpile_error(
+                        f"Class {stmt.name} method '{method_name}' does not match "
+                        f"interface {b} (expected {arity} parameter(s), "
+                        f"found {available[method_name]}).",
+                        line,
+                        1,
+                        f"class {stmt.name}",
+                    )

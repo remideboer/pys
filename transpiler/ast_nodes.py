@@ -287,6 +287,7 @@ class ClassDef(Node):
 class InterfaceDef(Node):
     name: str = ""
     methods: list[str] = field(default_factory=list)  # method names
+    method_arities: dict[str, int] = field(default_factory=dict)
     visibility: str = ""
 
 

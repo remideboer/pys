@@ -52,9 +52,14 @@ _VIS = frozenset({"global", "package", "module"})
 
 class ParseError(ValueError):
     def __init__(self, message: str, line: int = 1, column: int = 1) -> None:
+        self.message = message
         self.line = line
         self.column = column
         super().__init__(f"{message} (line {line}, column {column})")
+
+
+class FatalParseError(ParseError):
+    """Semantic fault discovered while parsing; do not fall back to legacy."""
 
 
 class _Tok:
@@ -134,6 +139,10 @@ def parse_program(source: str) -> Module:
     try:
         while not p.done():
             body.append(_parse_toplevel(p))
+    except FatalParseError as exc:
+        from .transpiler import TranspileError
+
+        raise TranspileError(exc.message, exc.line, exc.column, "") from exc
     except ParseError:
         return Module(span=Span(1, 1), source=source, body=[], brace_mode=brace_mode, use_legacy=True)
 
@@ -441,6 +450,7 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     p.eat(TokenKind.LBRACE)
     methods: list[str] = []
+    method_arities: dict[str, int] = {}
     while not p.at(TokenKind.RBRACE):
         if p.at(TokenKind.BLANK):
             p.eat(TokenKind.BLANK)
@@ -454,15 +464,27 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
             p.eat(TokenKind.KEYWORD, TokenKind.IDENT)
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat(TokenKind.LPAREN)
+        arity = 0
         if not p.at(TokenKind.RPAREN):
             _parse_param(p)
+            arity = 1
             while p.at(TokenKind.COMMA):
                 p.eat(TokenKind.COMMA)
                 _parse_param(p)
+                arity += 1
         p.eat(TokenKind.RPAREN)
+        if p.at(TokenKind.LBRACE):
+            raise FatalParseError(
+                f"Interface method '{mname}' is abstract and cannot have a body.",
+                p.cur().line,
+                p.cur().column,
+            )
         methods.append(mname)
+        method_arities[mname] = arity
     p.eat(TokenKind.RBRACE)
-    return InterfaceDef(span=sp, name=name, methods=methods, visibility=visibility)
+    return InterfaceDef(
+        span=sp, name=name, methods=methods, method_arities=method_arities, visibility=visibility
+    )
 
 
 def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
