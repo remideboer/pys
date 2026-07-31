@@ -389,8 +389,9 @@ def _looks_like_typed_name(p: _Tok) -> bool:
 def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
     sp = p.span()
     p.eat_kw("function")
+    rtype = ""
     if _looks_like_typed_name(p):
-        p.eat(TokenKind.KEYWORD, TokenKind.IDENT)  # return type
+        rtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     p.eat(TokenKind.LPAREN)
     params: list[tuple[str, str]] = []
@@ -407,6 +408,7 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
         params=[n for _, n in params],
         body=body,
         visibility=visibility,
+        return_type=rtype,
     )
 
 

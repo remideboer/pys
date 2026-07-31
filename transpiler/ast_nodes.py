@@ -252,6 +252,7 @@ class FunctionDef(Node):
     params: list[str] = field(default_factory=list)
     body: Block | None = None
     visibility: str = ""
+    return_type: str = ""
 
 
 @dataclass

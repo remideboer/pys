@@ -404,8 +404,9 @@ The compiler pipeline is:
 1. **Lex** — [`transpiler/lex.py`](transpiler/lex.py) turns source into tokens with spans.
 2. **Parse** — [`transpiler/parse.py`](transpiler/parse.py) builds a target-neutral AST
    ([`ast_nodes.py`](transpiler/ast_nodes.py)).
-3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) is the seam for type/scope checks
-   (semantic errors still come from the legacy Python path while migration completes).
+3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) checks `let`, simple type
+   mismatches, missing return types, and await cycles on the AST. Remaining
+   semantic errors still come from the legacy Python path during emit.
 4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
    produce Python. A legacy pass still validates semantics (types, visibility,
    capture rules). `.pys` import resolution is reused from that pass when a
