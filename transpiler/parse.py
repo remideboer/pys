@@ -124,8 +124,9 @@ def parse_program(source: str) -> Module:
 
     brace_mode = any(t.kind in {TokenKind.LBRACE, TokenKind.RBRACE} for t in tokens)
 
-    # Indent-style forms (then/func/repeat/…) — try line-based parse before legacy.
-    if any(
+    # Indent-style forms (then/func/repeat/…) — only when there are no braces.
+    # (`times` is also a common parameter name in brace mode.)
+    if not brace_mode and any(
         t.kind == TokenKind.KEYWORD and t.text in {"then", "do", "times", "func", "repeat"}
         for t in tokens
     ):
@@ -259,6 +260,8 @@ def _parse_toplevel(p: _Tok):
     if p.at(TokenKind.COMMENT):
         t = p.eat(TokenKind.COMMENT)
         return CommentStmt(span=Span(t.line, t.column), text=t.text)
+    if p.at_kw("from"):
+        return _parse_from_import(p)
     if p.at_kw("import"):
         return _parse_import(p)
     if p.at_kw(*_VIS):
@@ -354,6 +357,10 @@ def _parse_import(p: _Tok) -> ImportStmt:
         return ImportStmt(span=sp, kind="all_from", module=mod)
     first = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     if p.at_kw("from"):
+        # PYS `import Name from module` — but not if the next line is Python-style
+        # `from module import Name` (newlines are not statement separators in the token stream).
+        if p.peek(2).kind == TokenKind.KEYWORD and p.peek(2).text == "import":
+            return ImportStmt(span=sp, kind="module", module=first)
         p.eat_kw("from")
         mod = _parse_dotted_name(p)
         return ImportStmt(span=sp, kind="name_from", module=mod, name=first)
@@ -371,6 +378,22 @@ def _parse_import(p: _Tok) -> ImportStmt:
     return ImportStmt(span=sp, kind="module", module=mod)
 
 
+def _parse_from_import(p: _Tok) -> ImportStmt:
+    """Python-style `from module import name` (used by some examples)."""
+    sp = p.span()
+    p.eat_kw("from")
+    mod = _parse_dotted_name(p)
+    p.eat_kw("import")
+    if p.at(TokenKind.OP, text="*") or p.at_kw("all"):
+        if p.at(TokenKind.OP, text="*"):
+            p.eat(TokenKind.OP, text="*")
+        else:
+            p.eat_kw("all")
+        return ImportStmt(span=sp, kind="all_from", module=mod)
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    return ImportStmt(span=sp, kind="name_from", module=mod, name=name)
+
+
 def _parse_dotted_name(p: _Tok) -> str:
     parts = [p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text]
     while p.at(TokenKind.DOT):
@@ -385,15 +408,35 @@ def _parse_dotted_name(p: _Tok) -> str:
 def _looks_like_typed_name(p: _Tok) -> bool:
     """TYPE name (  — used for optional function return type."""
     t0 = p.cur()
-    t1 = p.peek(1)
-    t2 = p.peek(2)
     if t0.kind not in {TokenKind.KEYWORD, TokenKind.IDENT}:
         return False
-    if t0.text not in _TYPES and t0.kind != TokenKind.IDENT:
+    if t0.text in {
+        "function", "class", "interface", "import", "from", "if", "unless", "loop",
+        "return", "pass", "break", "continue", "else", "tasks", "task", "shared",
+    }:
         return False
-    if t1.kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+    if p.peek(1).kind == TokenKind.LPAREN:
         return False
-    return t2.kind == TokenKind.LPAREN
+    if p.peek(1).kind == TokenKind.LT:
+        depth = 0
+        k = 1
+        while True:
+            t = p.peek(k)
+            if t.kind == TokenKind.EOF:
+                return False
+            if t.kind == TokenKind.LT:
+                depth += 1
+            elif t.kind == TokenKind.GT:
+                depth -= 1
+                if depth == 0:
+                    return (
+                        p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                        and p.peek(k + 2).kind == TokenKind.LPAREN
+                    )
+            k += 1
+    if p.peek(1).kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+        return False
+    return p.peek(2).kind == TokenKind.LPAREN
 
 
 def _parse_type_name(p: _Tok) -> str:
@@ -446,7 +489,7 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
     p.eat_kw("function")
     rtype = ""
     if _looks_like_typed_name(p):
-        rtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+        rtype = _parse_type_name(p)
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     p.eat(TokenKind.LPAREN)
     params: list[tuple[str, str]] = []
@@ -472,20 +515,23 @@ def _parse_param(p: _Tok) -> tuple[str, str]:
     type_name = ""
     t0 = p.cur()
     t1 = p.peek(1)
-    if t0.text in _TYPES or (
-        t0.kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-        and t1.kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-        and t1.text not in {",", ")"}
-        and t1.kind != TokenKind.RPAREN
-    ):
-        # TYPE name — only consume type if next token looks like a name
-        if t1.kind in {TokenKind.IDENT, TokenKind.KEYWORD} and t1.text not in {",", ")"}:
-            # Avoid consuming the only name: if next is , or ) after one ident, it's name-only
-            t2 = p.peek(2)
-            if t2.kind in {TokenKind.COMMA, TokenKind.RPAREN} or t2.text in {",", ")"}:
-                type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
-            elif t0.text in _TYPES:
-                type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+    if t0.kind in {TokenKind.IDENT, TokenKind.KEYWORD} and t0.text not in {",", ")"}:
+        if t1.kind == TokenKind.LT:
+            type_name = _parse_type_name(p)
+        elif t1.kind == TokenKind.LBRACK:
+            type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+            p.eat(TokenKind.LBRACK)
+            p.eat(TokenKind.RBRACK)
+            type_name += "[]"
+        elif (
+            t1.kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and t1.text not in {",", ")"}
+            and p.peek(2).kind in {TokenKind.COMMA, TokenKind.RPAREN}
+        ):
+            # TYPE name ,/)  — typed param
+            type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+        elif t0.text in _TYPES and t1.kind in {TokenKind.IDENT, TokenKind.KEYWORD}:
+            type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     return type_name, name
 
@@ -614,6 +660,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
             and (
                 p.peek(1).kind == TokenKind.LBRACK
+                or p.peek(1).kind == TokenKind.LT
                 or (
                     p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
                     and p.peek(1).kind != TokenKind.LPAREN
@@ -621,11 +668,11 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 )
             )
         ):
-            # method: [type] name (   OR field: type name / type[] name
+            # method: [type] name (   OR field: type name / type[] name / type<...> name
             if p.peek(1).kind == TokenKind.LPAREN:
                 pass  # name is current
             else:
-                type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+                type_name = _parse_type_name(p)
                 if p.at(TokenKind.LBRACK):
                     p.eat(TokenKind.LBRACK)
                     p.eat(TokenKind.RBRACK)
@@ -732,6 +779,10 @@ def _parse_statement(p: _Tok):
         return _parse_unless(p)
     if p.at_kw("loop"):
         return _parse_loop(p)
+    if p.at_kw("tasks"):
+        return _parse_tasks(p)
+    if p.at_kw("shared"):
+        return _parse_shared(p)
     if p.at_kw("var", "const", "fix", *_TYPES):
         return _parse_decl(p)
     # Typed named decl: Type name =  / Type<...> name =
@@ -766,7 +817,30 @@ def _parse_statement(p: _Tok):
             if op != "=":
                 return AugAssignStmt(span=sp, name=name, op=op, value=_parse_expression(p))
             return AssignStmt(span=sp, name=name, value=_parse_expression(p))
-    return ExprStmt(span=sp, expr=_parse_expression(p))
+    left = _parse_expression(p)
+    if p.at(TokenKind.OP) and p.cur().text in {"=", "+=", "-=", "*=", "/="}:
+        op = p.eat(TokenKind.OP).text
+        right = _parse_expression(p)
+        lval = _expr_to_lvalue(left)
+        if op == "=":
+            return AssignStmt(span=sp, name=lval, value=right)
+        return AugAssignStmt(span=sp, name=lval, op=op, value=right)
+    return ExprStmt(span=sp, expr=left)
+
+
+def _expr_to_source(expr: Expr) -> str:
+    if isinstance(expr, Identifier):
+        return expr.name
+    if isinstance(expr, Literal):
+        return expr.text
+    if isinstance(expr, Member):
+        return f"{_expr_to_source(expr.object)}.{expr.name}"  # type: ignore[arg-type]
+    if isinstance(expr, Index):
+        return f"{_expr_to_source(expr.object)}[{_expr_to_source(expr.index)}]"  # type: ignore[arg-type]
+    if isinstance(expr, Call):
+        args = ", ".join(_expr_to_source(a) for a in expr.args)
+        return f"{_expr_to_source(expr.callee)}({args})"  # type: ignore[arg-type]
+    return "<?>"
 
 
 def _expr_to_lvalue(expr: Expr) -> str:
@@ -774,6 +848,8 @@ def _expr_to_lvalue(expr: Expr) -> str:
         return expr.name
     if isinstance(expr, Member):
         return f"{_expr_to_lvalue(expr.object)}.{expr.name}"  # type: ignore[arg-type]
+    if isinstance(expr, Index):
+        return f"{_expr_to_lvalue(expr.object)}[{_expr_to_source(expr.index)}]"  # type: ignore[arg-type]
     return "<?>"
 
 
@@ -953,6 +1029,10 @@ def _parse_not(p: _Tok) -> Expr:
 
 def _parse_cmp(p: _Tok) -> Expr:
     left = _parse_add(p)
+    if p.at_kw("in"):
+        p.eat_kw("in")
+        right = _parse_add(p)
+        return BinaryOp(span=left.span, op="in", left=left, right=right)
     if p.at(TokenKind.LT, TokenKind.GT) or (
         p.at(TokenKind.OP) and p.cur().text in {"==", "!=", "<>", "<=", ">="}
     ):

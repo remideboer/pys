@@ -51,6 +51,24 @@ from ..language_spec import _default_value_for_type, _translate_string_literal
 
 _CAST = {"int": "int", "float": "float", "char": "str", "string": "str", "bool": "bool"}
 _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
+_BINOP_PREC = {
+    "or": 1,
+    "||": 1,
+    "and": 2,
+    "&&": 2,
+    "in": 3,
+    "==": 3,
+    "!=": 3,
+    "<": 3,
+    ">": 3,
+    "<=": 3,
+    ">=": 3,
+    "+": 4,
+    "-": 4,
+    "*": 5,
+    "/": 5,
+    "%": 5,
+}
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
@@ -381,8 +399,26 @@ class _Emitter:
         if isinstance(expr, BinaryOp):
             if expr.op == "+":
                 return self._plus(expr)
-            return f"{self._expr(expr.left)} {expr.op} {self._expr(expr.right)}"
+            prec = _BINOP_PREC.get(expr.op, 0)
+            left = self._expr(expr.left)
+            right = self._expr(expr.right)
+            if isinstance(expr.left, BinaryOp) and _BINOP_PREC.get(expr.left.op, 0) < prec:
+                left = f"({left})"
+            if isinstance(expr.right, BinaryOp) and _BINOP_PREC.get(expr.right.op, 0) <= prec:
+                right = f"({right})"
+            return f"{left} {expr.op} {right}"
         if isinstance(expr, Call):
+            # array.loop(fn) → list(map(fn, array))
+            if (
+                isinstance(expr.callee, Member)
+                and expr.callee.name == "loop"
+                and len(expr.args) == 1
+            ):
+                return f"list(map({self._expr(expr.args[0])}, {self._expr(expr.callee.object)}))"
+            # super(args) → super().__init__(args); super.method(args) already Member+Call
+            if isinstance(expr.callee, Identifier) and expr.callee.name == "super":
+                args = ", ".join(self._expr(a) for a in expr.args)
+                return f"super().__init__({args})"
             args = ", ".join(self._expr(a) for a in expr.args)
             return f"{self._expr(expr.callee)}({args})"
         if isinstance(expr, KeywordArg):

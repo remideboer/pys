@@ -54,6 +54,11 @@ _SPEC_TYPES: dict[str, set[str]] = {
 }
 
 
+def _is_simple_name(name: str) -> bool:
+    """True for bare identifiers; false for member/index lvalues."""
+    return "." not in name and "[" not in name
+
+
 def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     """Validate module; raise TranspileError on known AST-checkable faults."""
     _reject_let(module)
@@ -483,14 +488,14 @@ def _check_bindings(
                         )
                 declared.add(stmt.name)
             else:
-                if "." not in stmt.name and stmt.name in loop_counters:
+                if _is_simple_name(stmt.name) and stmt.name in loop_counters:
                     _transpile_error(
                         f"Loop counter '{stmt.name}' is immutable and cannot be modified inside the loop.",
                         line,
                         col,
                         f"{stmt.name} = ...",
                     )
-                if "." not in stmt.name and stmt.name not in declared:
+                if _is_simple_name(stmt.name) and stmt.name not in declared:
                     _transpile_error(
                         f"Undeclared variable '{stmt.name}'. Variables must be declared with a type before assignment.",
                         line,
@@ -511,7 +516,7 @@ def _check_bindings(
                         col,
                         f"{stmt.name} = ...",
                     )
-                if "." not in stmt.name and stmt.name in types:
+                if _is_simple_name(stmt.name) and stmt.name in types:
                     inferred = _infer_type(stmt.value, class_names)
                     declared_t = types[stmt.name]
                     if inferred and not _is_assignable_type(
@@ -551,7 +556,7 @@ def _check_bindings(
                     col,
                     f"{stmt.name}{stmt.op}",
                 )
-            if "." not in stmt.name and stmt.name not in declared:
+            if _is_simple_name(stmt.name) and stmt.name not in declared:
                 _transpile_error(
                     f"Undeclared variable '{stmt.name}'. Variables must be declared with a type before assignment.",
                     line,
@@ -1159,7 +1164,7 @@ def _check_shared_capture(body: list[Any]) -> None:
                     declared.add(stmt.name)
                     if in_task:
                         task_locals.add(stmt.name)
-                elif in_task and "." not in stmt.name:
+                elif in_task and _is_simple_name(stmt.name):
                     name = stmt.name
                     if name not in task_locals and name not in shared and name in declared:
                         line = stmt.span.line if stmt.span else 1
@@ -1172,7 +1177,7 @@ def _check_shared_capture(body: list[Any]) -> None:
                             f"{name} = ...",
                         )
             elif isinstance(stmt, AugAssignStmt):
-                if in_task and "." not in stmt.name:
+                if in_task and _is_simple_name(stmt.name):
                     name = stmt.name
                     if name not in task_locals and name not in shared and name in declared:
                         line = stmt.span.line if stmt.span else 1

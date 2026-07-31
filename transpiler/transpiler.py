@@ -1258,6 +1258,9 @@ class Parser:
             return
         if not re.match(r"return\s+\S", line):
             return
+        # Task `return` feeds `await`; it is not the enclosing function's return.
+        if self._inside_task():
+            return
         declared = self._current_function_return_type()
         if declared is _NOT_IN_FUNCTION:
             return
