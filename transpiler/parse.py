@@ -640,15 +640,12 @@ def _parse_statement(p: _Tok):
         and p.peek(2).text == "="
     ):
         return _parse_decl(p)
-    # this.name = expr
-    if p.at_kw("this") and p.peek(1).kind == TokenKind.DOT:
-        # Parse as member then optional assign
+    # this.name = expr / name.member = expr
+    if (p.at_kw("this") or p.at(TokenKind.IDENT)) and p.peek(1).kind == TokenKind.DOT:
         left = _parse_expression(p)
         if p.at(TokenKind.OP, text="="):
             p.eat(TokenKind.OP, text="=")
             right = _parse_expression(p)
-            if isinstance(left, Member) and isinstance(left.object, Identifier) and left.object.name == "self":
-                return AssignStmt(span=sp, name=f"self.{left.name}", value=right)
             return AssignStmt(span=sp, name=_expr_to_lvalue(left), value=right)
         return ExprStmt(span=sp, expr=left)
     # name = / += / ++

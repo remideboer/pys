@@ -27,8 +27,10 @@ from .ast_nodes import (
     Identifier,
     IfStmt,
     ImportStmt,
+    InterfaceDef,
     InterpolatedString,
     Literal,
+    Member,
     Module,
     PrintStmt,
     RepeatStmt,
@@ -67,6 +69,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
         constants=constants,
         fixed=fixed,
     )
+    _check_oop(module.body, types=types)
     _check_await_cycles(module.body)
     return module
 
@@ -711,3 +714,199 @@ def _find_await_cycle(graph: dict[str, set[str]]) -> list[str] | None:
             if found:
                 return found
     return None
+
+
+def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
+    sealed: set[str] = set()
+    class_names: set[str] = set()
+    interfaces: set[str] = set()
+    class_members: dict[str, dict[str, str]] = {}
+    class_parents: dict[str, str | None] = {}
+    class_implements: dict[str, list[str]] = {}
+
+    for stmt in body:
+        if isinstance(stmt, InterfaceDef):
+            interfaces.add(stmt.name)
+            class_members[stmt.name] = {m: "public" for m in stmt.methods}
+        elif isinstance(stmt, ClassDef):
+            class_names.add(stmt.name)
+            if stmt.sealed:
+                sealed.add(stmt.name)
+            members: dict[str, str] = {}
+            for f in stmt.fields:
+                members[f.name] = f.access or "public"
+            for m in stmt.methods:
+                if not m.is_constructor:
+                    members[m.name] = m.access or "public"
+            class_members[stmt.name] = members
+
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        parent: str | None = None
+        impls: list[str] = []
+        for b in stmt.bases:
+            if b in interfaces:
+                impls.append(b)
+            elif parent is None:
+                parent = b
+        class_parents[stmt.name] = parent
+        class_implements[stmt.name] = impls
+        for b in stmt.bases:
+            if b in sealed:
+                line = stmt.span.line if stmt.span else 1
+                _transpile_error(
+                    f"Class {stmt.name} cannot inherit from sealed class {b}.",
+                    line,
+                    1,
+                    f"class {stmt.name}",
+                )
+
+    def is_subtype(child: str | None, parent: str) -> bool:
+        current = child
+        seen: set[str] = set()
+        while current:
+            if current == parent:
+                return True
+            if current in seen:
+                break
+            seen.add(current)
+            current = class_parents.get(current)
+        return False
+
+    def lookup_member(type_name: str, member: str) -> tuple[str | None, str | None]:
+        current: str | None = type_name
+        seen: set[str] = set()
+        while current:
+            members = class_members.get(current, {})
+            if member in members:
+                return current, members[member]
+            for iface in class_implements.get(current, []):
+                iface_members = class_members.get(iface, {})
+                if member in iface_members:
+                    return iface, iface_members[member]
+            if current in seen:
+                break
+            seen.add(current)
+            current = class_parents.get(current)
+        if type_name in interfaces:
+            members = class_members.get(type_name, {})
+            if member in members:
+                return type_name, members[member]
+        return None, None
+
+    def receiver_type(recv: str, local_types: dict[str, str], current_class: str | None) -> str | None:
+        if recv in {"this", "self"}:
+            return current_class
+        return local_types.get(recv)
+
+    def check_member(
+        recv: str,
+        member: str,
+        local_types: dict[str, str],
+        current_class: str | None,
+        line: int,
+        column: int,
+        code: str = "",
+    ) -> None:
+        recv_t = receiver_type(recv, local_types, current_class)
+        if not recv_t:
+            return
+        defining_cls, access = lookup_member(recv_t, member)
+        if defining_cls is None or access is None:
+            known = recv_t in class_members or recv_t in interfaces or recv_t in class_parents
+            if known:
+                _transpile_error(
+                    f"'{member}' is not a member of declared type {recv_t}.",
+                    line,
+                    column,
+                    code or f"{recv}.{member}",
+                )
+            return
+        allowed = False
+        if access == "public":
+            allowed = True
+        elif access == "module":
+            allowed = True
+        elif access == "private":
+            allowed = current_class == defining_cls
+        elif access == "protected":
+            allowed = current_class is not None and is_subtype(current_class, defining_cls)
+        if allowed:
+            return
+        _transpile_error(
+            f"Access denied: '{member}' is {access} in class {defining_cls}.",
+            line,
+            column,
+            code or f"{recv}.{member}",
+        )
+
+    def walk_expr(expr: Expr | None, local_types: dict[str, str], current_class: str | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+            line = expr.span.line if expr.span else 1
+            col = expr.span.column if expr.span else 1
+            check_member(expr.object.name, expr.name, local_types, current_class, line, col)
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child, local_types, current_class)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, Expr):
+                    walk_expr(a, local_types, current_class)
+
+    def walk_stmts(
+        stmts: list[Any],
+        local_types: dict[str, str],
+        current_class: str | None,
+    ) -> None:
+        local_types = dict(local_types)
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                if "." in stmt.name:
+                    recv, _, member = stmt.name.rpartition(".")
+                    if "." not in recv:
+                        check_member(recv, member, local_types, current_class, line, col, stmt.name)
+                elif stmt.declare_type and stmt.declare_type != "var":
+                    local_types[stmt.name] = stmt.declare_type
+                elif stmt.declare_type == "var":
+                    inferred = _infer_type(stmt.value)
+                    if inferred:
+                        local_types[stmt.name] = inferred
+                walk_expr(stmt.value, local_types, current_class)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt)):
+                walk_expr(stmt.value, local_types, current_class)
+            elif isinstance(stmt, ExprStmt):
+                walk_expr(stmt.expr, local_types, current_class)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    method_types = dict(local_types)
+                    for i, pname in enumerate(m.params):
+                        ptype = m.param_types[i] if i < len(m.param_types) else ""
+                        method_types[pname] = ptype or "int"
+                    if m.body:
+                        walk_stmts(m.body.statements, method_types, stmt.name)
+            elif isinstance(stmt, FunctionDef):
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, local_types, None)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk_stmts(stmt.then_body.statements, local_types, current_class)
+                if stmt.else_body:
+                    walk_stmts(stmt.else_body.statements, local_types, current_class)
+            elif isinstance(stmt, Block):
+                walk_stmts(stmt.statements, local_types, current_class)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, local_types, current_class)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk_stmts(t.body.statements, local_types, current_class)
+
+    walk_stmts(body, types, None)

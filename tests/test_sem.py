@@ -49,3 +49,77 @@ def test_sem_typed_interpolation_indexed_array_element() -> None:
 def test_pipeline_typed_interpolation_still_errors() -> None:
     with pytest.raises(TranspileError, match="requires int.*is float"):
         transpile('float f = 3.14\nprint("#i{f} wrong")\n')
+
+
+def test_sem_private_field_access_denied_outside_class() -> None:
+    source = """class Car {
+    private string make
+
+    public Car(string make) {
+        this.make = make
+    }
+}
+
+Car car = Car("Toyota")
+car.make = "Honda"
+"""
+    with pytest.raises(TranspileError, match=r"Access denied: 'make' is private"):
+        _analyze(source)
+
+
+def test_sem_private_field_allowed_inside_defining_class() -> None:
+    source = """class Car {
+    private string make
+
+    public Car(string make) {
+        this.make = make
+    }
+
+    public string getMake() {
+        return this.make
+    }
+}
+"""
+    _analyze(source)
+
+
+def test_sem_private_field_denied_in_subclass() -> None:
+    source = """class Car {
+    private string make
+
+    public Car(string make) {
+        this.make = make
+    }
+}
+
+class Truck inherits Car {
+    public string read() {
+        return this.make
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"Access denied: 'make' is private"):
+        _analyze(source)
+
+
+def test_sem_protected_field_allowed_in_subclass() -> None:
+    source = """class Car {
+    protected string make
+
+    public Car(string make) {
+        this.make = make
+    }
+}
+
+class Truck inherits Car {
+    public string read() {
+        return this.make
+    }
+}
+"""
+    _analyze(source)
+
+
+def test_sem_sealed_class_rejects_inheritance() -> None:
+    with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
+        _analyze("sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n")

@@ -10,7 +10,7 @@ Check items off as they land; keep the suite green after each step.
   - [x] A1b. undeclared variables
   - [x] A1c. loop-counter immutability
   - [x] A1d. typed interpolation checks
-  - [ ] A1e. member / private / protected / sealed access
+  - [x] A1e. member / private / protected / sealed access
   - [ ] A1f. interface implementation + arity
   - [ ] A1g. shared capture rules (Policy B)
   - [ ] A1h. array bounds / element-type checks
