@@ -411,8 +411,7 @@ The compiler pipeline is:
    interfaces, shared capture, arrays, await rules, …).
 4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
    Python (overloads, concurrency preamble, `.pys` imports via
-   [`imports.py`](transpiler/imports.py)). The compile path is AST-only; legacy
-   `Parser` remains only for IDE helpers until C3/C4
+   [`imports.py`](transpiler/imports.py)). The compile path is AST-only
    ([`docs/pipeline-migration.md`](docs/pipeline-migration.md)).
 
 Public entry points (`transpile`, `run_source`) go through

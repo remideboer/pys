@@ -68,8 +68,7 @@ flowchart TB
 
   subgraph support [Support]
     Deps["deps.py"]
-    IdeLegacy["transpiler.Parser<br/>ide.py only (C3/C4)"]
-    Spec["language_spec<br/>line helpers"]
+    Spec["language_spec<br/>emit helpers / line tests"]
   end
 
   Main --> Public
@@ -77,14 +76,13 @@ flowchart TB
   Ide --> Public
   Ide --> Imp
   Ide --> Parse
-  Ide -.->|library tips tests only| IdeLegacy
   Public --> Pipe["pipeline.compile_pys"]
   Pipe --> Lex --> Parse --> AST --> Sem --> Emit
   Emit --> Over
   Emit --> Conc
   Emit --> Imp
+  Emit --> Spec
   Imp --> Parse
-  IdeLegacy --> Spec
 ```
 
 | Module | Role |
@@ -99,7 +97,9 @@ flowchart TB
 | `concurrency.py` | Shared tasks/await/shared preamble |
 | `imports.py` | AST-based `.pys` import resolution / visibility |
 | `deps.py` | `pys.deps` → `~/.pys/repository` |
-| `transpiler.py` | Public `transpile` / `run_source`; legacy `Parser` kept for `ide.py` until C3/C4 |
+| `transpiler.py` | Public `transpile` / `run_source` / `TranspileError` |
+| `language_spec.py` | Shared string helpers for emit; `LANGUAGE.translate_line` tests |
+| `ide.py` | Go-to-definition / diagnostics via AST pipeline |
 
 ---
 

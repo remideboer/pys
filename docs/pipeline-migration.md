@@ -34,16 +34,16 @@ Check items off as they land; keep the suite green after each step.
 - [ ] **B2.** Repo cleanup (old tracked `.vsix`, scratch `tools/` scripts)
 - [ ] **B3.** Push local commits to `origin/main` when ready
 
-## C. Later backends / IDE (deferred)
+## C. Later backends / IDE
 
 - [ ] **C1.** Java / C# emitters under `emit/`
 - [ ] **C2.** PYS step-through debug (DAP)
 - [x] **C3.** Extension diagnostics from the new pipeline (`ide.analyze_file` uses compile_pys + AST + ImportResolver)
-- [ ] **C4.** Delete legacy `Parser` / `language_spec` line path (no remaining test call sites; class still in `transpiler.py`)
+- [x] **C4.** Delete legacy `Parser` class from `transpiler.py` (public API is transpile/run only). `language_spec.py` remains for emit helpers + `translate_line` tests — not on the compile path.
 
 ---
 
-**Done when:** A1–A7 complete; compile/run/transpile never construct `Parser`.
+**Done when:** A1–A7 + C3–C4 complete; no `Parser` in the package.
 Architecture diagrams: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 **Already done (context):** lex/parse/sem/emit for goldens and main examples; AST import resolver;

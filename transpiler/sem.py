@@ -1,8 +1,4 @@
-"""Semantic checks on AST (types, scopes, await DAG).
-
-Deep checks still also run in the legacy Python path during emit. This module
-owns checks that are ready to run on the structured AST first.
-"""
+"""Semantic checks on AST (types, scopes, await DAG, library boundary)."""
 from __future__ import annotations
 
 import re

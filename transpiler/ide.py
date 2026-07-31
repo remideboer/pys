@@ -1,7 +1,6 @@
 """IDE helpers: symbol location for go-to-definition / highlighting.
 
-Uses the AST pipeline (parse + ImportResolver + compile_pys) instead of the
-legacy line Parser.
+Uses the AST pipeline (parse + ImportResolver + compile_pys).
 """
 from __future__ import annotations
 
