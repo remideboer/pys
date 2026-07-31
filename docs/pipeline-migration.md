@@ -5,7 +5,7 @@ Check items off as they land; keep the suite green after each step.
 
 ## A. Finish retiring legacy `Parser` (core completeness)
 
-- [ ] **A1.** Move remaining semantics into `sem.py`
+- [x] **A1.** Move remaining semantics into `sem.py`
   - [x] A1a. const / fix immutability
   - [x] A1b. undeclared variables
   - [x] A1c. loop-counter immutability
