@@ -16,6 +16,7 @@ from ..ast_nodes import (
     Call,
     Cast,
     ClassDef,
+    CommentStmt,
     ContinueStmt,
     Expr,
     ExprStmt,
@@ -34,6 +35,7 @@ from ..ast_nodes import (
     Module,
     PassStmt,
     PrintStmt,
+    RepeatStmt,
     ReturnStmt,
     Slice,
     UnaryOp,
@@ -90,7 +92,10 @@ class _Emitter:
         self.lines.append(("    " * indent) + text)
 
     def _stmt(self, stmt, indent: int) -> None:
-        if isinstance(stmt, PrintStmt):
+        if isinstance(stmt, CommentStmt):
+            # Comments are always column-0 in legacy output (stripped lines).
+            self.lines.append(stmt.text)
+        elif isinstance(stmt, PrintStmt):
             self._emit(indent, f"print({self._expr(stmt.value)})")
         elif isinstance(stmt, AssignStmt):
             self._assign(stmt, indent)
@@ -127,6 +132,9 @@ class _Emitter:
             self._block(stmt.body, indent + 1)
         elif isinstance(stmt, ForEachStmt):
             self._emit(indent, f"for {stmt.var} in {self._expr(stmt.iterable)}:")
+            self._block(stmt.body, indent + 1)
+        elif isinstance(stmt, RepeatStmt):
+            self._emit(indent, f"for _ in range({self._expr(stmt.count)}):")
             self._block(stmt.body, indent + 1)
         elif isinstance(stmt, ImportStmt):
             self._import(stmt, indent)

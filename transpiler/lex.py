@@ -27,6 +27,7 @@ class TokenKind(Enum):
     LT = auto()
     GT = auto()
     NEWLINE = auto()
+    COMMENT = auto()  # standalone `# ...` line (preserved in emit)
     EOF = auto()
 
 
@@ -133,25 +134,29 @@ class LexError(ValueError):
 
 
 def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
-    """Tokenize PYS source. Comments are skipped. Tabs raise LexError."""
+    """Tokenize PYS source. Block comments are skipped; standalone `#` lines become COMMENT tokens."""
     tokens: list[Token] = []
     i = 0
     line = 1
     col = 1
     n = len(source)
+    at_line_start = True
 
     def peek(k: int = 0) -> str:
         j = i + k
         return source[j] if j < n else ""
 
     def bump(ch: str) -> None:
-        nonlocal i, line, col
+        nonlocal i, line, col, at_line_start
         i += 1
         if ch == "\n":
             line += 1
             col = 1
+            at_line_start = True
         else:
             col += 1
+            if ch not in " \r":
+                at_line_start = False
 
     def add(kind: TokenKind, text: str, start_line: int, start_col: int, start_index: int) -> None:
         tokens.append(Token(kind, text, start_line, start_col, start_index))
@@ -186,8 +191,15 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
                 raise LexError("Unterminated multiline comment. Close with /#.", start_line, start_col)
             continue
         if ch == "#":
+            # Standalone `# ...` lines are preserved for emit; trailing `#` is skipped.
+            standalone = at_line_start
+            start_line, start_col, start_i = line, col, i
+            chars: list[str] = []
             while i < n and peek() != "\n":
+                chars.append(peek())
                 bump(peek())
+            if standalone:
+                add(TokenKind.COMMENT, "".join(chars).strip(), start_line, start_col, start_i)
             continue
 
         start_line, start_col, start_i = line, col, i

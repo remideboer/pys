@@ -12,6 +12,7 @@ from .ast_nodes import (
     Call,
     Cast,
     ClassDef,
+    CommentStmt,
     ContinueStmt,
     Expr,
     ExprStmt,
@@ -31,6 +32,7 @@ from .ast_nodes import (
     Module,
     PassStmt,
     PrintStmt,
+    RepeatStmt,
     ReturnStmt,
     Slice,
     Span,
@@ -114,16 +116,16 @@ def parse_program(source: str) -> Module:
     if any(t.kind == TokenKind.KEYWORD and t.text in legacy_markers for t in tokens):
         return Module(span=Span(1, 1), source=source, body=[], brace_mode=brace_mode, use_legacy=True)
 
-    # Legacy indent forms (then/do/times/func/repeat)
+    # Indent-style forms (then/func/repeat/…) — try line-based parse before legacy.
     if any(
         t.kind == TokenKind.KEYWORD and t.text in {"then", "do", "times", "func", "repeat"}
         for t in tokens
     ):
-        return Module(span=Span(1, 1), source=source, body=[], brace_mode=False, use_legacy=True)
-
-    # Preserve standalone line comments via legacy (lexer drops them)
-    if _has_preserved_line_comment(source):
-        return Module(span=Span(1, 1), source=source, body=[], brace_mode=brace_mode, use_legacy=True)
+        try:
+            body = _parse_indent_program(source)
+            return Module(span=Span(1, 1), source=source, body=body, brace_mode=False, use_legacy=False)
+        except ParseError:
+            return Module(span=Span(1, 1), source=source, body=[], brace_mode=False, use_legacy=True)
 
     p = _Tok(tokens)
     body: list = []
@@ -136,16 +138,112 @@ def parse_program(source: str) -> Module:
     return Module(span=Span(1, 1), source=source, body=body, brace_mode=brace_mode, use_legacy=False)
 
 
-def _has_preserved_line_comment(source: str) -> bool:
-    """Legacy keeps `# ...` lines that are not `##` block openers."""
-    for line in source.splitlines():
-        stripped = line.lstrip()
-        if stripped.startswith("#") and not stripped.startswith("##"):
-            return True
-    return False
+def _expr_from_text(text: str) -> Expr:
+    p = _Tok(tokenize(text))
+    expr = _parse_expression(p)
+    if not p.done():
+        raise ParseError(f"Unexpected token {p.cur().text!r}", p.cur().line, p.cur().column)
+    return expr
+
+
+def _parse_indent_program(source: str) -> list:
+    """Minimal indent-mode parser for then/func/repeat goldens."""
+    entries: list[tuple[int, str, int]] = []
+    for line_no, raw in enumerate(source.splitlines(), start=1):
+        if not raw.strip():
+            continue
+        stripped = raw.lstrip(" ")
+        if stripped.startswith("##") or stripped.startswith("#"):
+            continue
+        indent = len(raw) - len(stripped)
+        entries.append((indent, stripped.rstrip(), line_no))
+
+    class IP:
+        def __init__(self) -> None:
+            self.i = 0
+
+        def cur(self) -> tuple[int, str, int]:
+            return entries[self.i]
+
+        def done(self) -> bool:
+            return self.i >= len(entries)
+
+        def parse_block(self, parent_indent: int) -> Block:
+            stmts: list = []
+            while not self.done():
+                ind, _, _ = self.cur()
+                if ind <= parent_indent:
+                    break
+                stmts.append(self.parse_stmt())
+            return Block(statements=stmts)
+
+        def parse_stmt(self):
+            ind, text, line_no = self.cur()
+            sp = Span(line_no, ind + 1)
+            self.i += 1
+
+            if text.startswith("func ") and text.endswith(":"):
+                header = text[len("func ") : -1].strip()
+                name, _, rest = header.partition("(")
+                if not rest.endswith(")"):
+                    raise ParseError("Malformed func header", line_no, ind + 1)
+                args = rest[:-1].strip()
+                params = [p.strip() for p in args.split(",") if p.strip()] if args else []
+                # strip types from params if present
+                clean: list[str] = []
+                for p in params:
+                    parts = p.split()
+                    clean.append(parts[-1])
+                body = self.parse_block(ind)
+                return FunctionDef(span=sp, name=name.strip(), params=clean, body=body)
+
+            if text.startswith("repeat ") and text.endswith("times:"):
+                mid = text[len("repeat ") : -len("times:")].strip()
+                if mid.endswith(" "):
+                    mid = mid.strip()
+                # `repeat 3 times:` → mid is `3`
+                count = _expr_from_text(mid)
+                body = self.parse_block(ind)
+                return RepeatStmt(span=sp, count=count, body=body)
+
+            if text.startswith("if ") and " then:" in text:
+                cond_text = text[len("if ") : text.rindex(" then:")].strip()
+                cond = _expr_from_text(cond_text)
+                then_body = self.parse_block(ind)
+                else_body = None
+                if not self.done():
+                    eind, etext, _ = self.cur()
+                    if eind == ind and etext in {"else:", "else"}:
+                        self.i += 1
+                        else_body = self.parse_block(ind)
+                return IfStmt(span=sp, cond=cond, then_body=then_body, else_body=else_body)
+
+            if text == "else:" or text == "else":
+                raise ParseError("Unexpected else", line_no, ind + 1)
+
+            if text.startswith("print(") or text.startswith("print "):
+                # Reuse token statement parse
+                p = _Tok(tokenize(text))
+                return _parse_print(p)
+
+            # typed decl or assignment or call
+            p = _Tok(tokenize(text))
+            try:
+                return _parse_statement(p)
+            except ParseError as exc:
+                raise ParseError(str(exc), line_no, ind + 1) from exc
+
+    ip = IP()
+    body: list = []
+    while not ip.done():
+        body.append(ip.parse_stmt())
+    return body
 
 
 def _parse_toplevel(p: _Tok):
+    if p.at(TokenKind.COMMENT):
+        t = p.eat(TokenKind.COMMENT)
+        return CommentStmt(span=Span(t.line, t.column), text=t.text)
     if p.at_kw("import"):
         return _parse_import(p)
     if p.at_kw(*_VIS):
@@ -422,6 +520,9 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
 
 def _parse_statement(p: _Tok):
     sp = p.span()
+    if p.at(TokenKind.COMMENT):
+        t = p.eat(TokenKind.COMMENT)
+        return CommentStmt(span=Span(t.line, t.column), text=t.text)
     if p.at_kw("print"):
         return _parse_print(p)
     if p.at_kw("return"):

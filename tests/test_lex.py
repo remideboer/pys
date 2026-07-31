@@ -25,6 +25,19 @@ def test_tokenize_skips_block_comment() -> None:
     assert not any("hide" in t.text for t in toks)
 
 
+def test_tokenize_preserves_standalone_line_comment() -> None:
+    toks = tokenize("# keep me\nprint(1)\n")
+    comments = [t for t in toks if t.kind == TokenKind.COMMENT]
+    assert len(comments) == 1
+    assert comments[0].text == "# keep me"
+
+
+def test_tokenize_skips_trailing_comment() -> None:
+    toks = tokenize("print(1) # trail\n")
+    assert not any(t.kind == TokenKind.COMMENT for t in toks)
+    assert any(t.text == "print" for t in toks)
+
+
 def test_all_golden_sources_lex() -> None:
     root = __import__("pathlib").Path(__file__).resolve().parent / "golden"
     for pys in sorted(root.rglob("*.pys")):

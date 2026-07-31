@@ -105,6 +105,13 @@ class ArrayLiteral(Expr):
 
 
 @dataclass
+class CommentStmt(Node):
+    """Standalone `# ...` line preserved in Python output."""
+
+    text: str = ""
+
+
+@dataclass
 class PrintStmt(Node):
     value: Expr | None = None
     raw: str = ""
@@ -185,6 +192,14 @@ class ForRangeStmt(Node):
 class ForEachStmt(Node):
     var: str = ""
     iterable: Expr | None = None
+    body: Block | None = None
+
+
+@dataclass
+class RepeatStmt(Node):
+    """Legacy `repeat N times:` → `for _ in range(N):`."""
+
+    count: Expr | None = None
     body: Block | None = None
 
 
