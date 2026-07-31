@@ -121,9 +121,13 @@ def _seed_imports(
     """Pull imported names (and const/fix) into scope when source_path is known."""
     if source_path is None:
         return None
-    from .transpiler import Parser, TranspileError
+    from .transpiler import TranspileError
 
-    resolver = Parser(module.source, source_path=source_path, enforce_formatting=False)
+    if source_path is None:
+        return None
+    from . import imports as imports_mod
+
+    resolver = imports_mod.make_resolver(module.source, source_path)
     for stmt in module.body:
         if not isinstance(stmt, ImportStmt):
             continue
@@ -131,7 +135,7 @@ def _seed_imports(
         if not line:
             continue
         try:
-            resolver._translate_import_statement(line, stmt.span.line if stmt.span else 1, line)
+            imports_mod.translate_import(resolver, line, stmt.span.line if stmt.span else 1)
         except TranspileError:
             raise
         except Exception:

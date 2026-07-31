@@ -62,10 +62,10 @@ def emit(module: Module, *, source_path: Path | None = None) -> str:
             source=module.source,
             source_path=source_path,
         ).emit_module(module)
-        # Text-level overload dispatch is shared with the legacy emitter.
-        from ..transpiler import Parser
+        # Text-level overload dispatch (no Parser).
+        from .overloads import rewrite_overloaded_methods
 
-        ast_out = Parser._rewrite_overloaded_methods(object.__new__(Parser), ast_out)
+        ast_out = rewrite_overloaded_methods(ast_out)
     except Exception:
         return _legacy_emit(module.source, source_path=source_path)
     return ast_out
@@ -101,23 +101,18 @@ class _Emitter:
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
         self._import_resolver = None
         if source_path is not None:
-            from ..transpiler import Parser
+            from .. import imports as imports_mod
 
-            # Reuse legacy module-resolution / visibility for `.pys` imports.
-            self._import_resolver = Parser(
-                source,
-                source_path=source_path,
-                enforce_formatting=False,
-            )
+            self._import_resolver = imports_mod.make_resolver(source, source_path)
 
     def emit_module(self, module: Module) -> str:
         for stmt in module.body:
             self._stmt(stmt, 0)
         preamble: list[str] = []
         if self.needs_concurrency:
-            from ..transpiler import _CONCURRENCY_PREAMBLE
+            from ..concurrency import CONCURRENCY_PREAMBLE
 
-            preamble.extend(_CONCURRENCY_PREAMBLE.splitlines())
+            preamble.extend(CONCURRENCY_PREAMBLE.splitlines())
         if self.needs_abc:
             preamble.append("from abc import ABC, abstractmethod")
         if self.needs_array:
@@ -273,8 +268,10 @@ class _Emitter:
 
     def _import(self, stmt: ImportStmt, indent: int) -> None:
         if self._import_resolver is not None:
+            from .. import imports as imports_mod
+
             line = _pys_import_line(stmt)
-            resolved = self._import_resolver._translate_import_statement(line, 1, line)
+            resolved = imports_mod.translate_import(self._import_resolver, line, 1)
             if resolved is not None:
                 self._emit(indent, resolved)
                 return

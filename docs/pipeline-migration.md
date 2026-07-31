@@ -16,10 +16,10 @@ Check items off as they land; keep the suite green after each step.
   - [x] A1h. array bounds / element-type checks
   - [x] A1i. class `function` / `method` / missing access-modifier errors
 - [x] **A2.** Stop double work in emit (no full legacy `Parser.parse()` for validation)
-- [ ] **A3.** Own without calling into `Parser`
-  - [ ] A3a. `.pys` import resolution / visibility
-  - [ ] A3b. overload rewriting
-  - [ ] A3c. concurrency preamble as shared module (optional cleanup)
+- [x] **A3.** Own without calling into `Parser`
+  - [x] A3a. `.pys` import resolution / visibility (via `imports` module facade)
+  - [x] A3b. overload rewriting (`emit/overloads.py`)
+  - [x] A3c. concurrency preamble as shared module (`concurrency.py`)
 - [ ] **A4.** Remove quarantine (`use_legacy`, `_legacy_emit`, unused line-regex path)
 - [ ] **A5.** Harden parse/AST (indent-mode, generics/collections, `main.pys` / tutorials on AST+sem)
 - [ ] **A6.** Tests: sem/errors without legacy; optional CI guard against `Parser` in emit
