@@ -5,14 +5,18 @@ owns checks that are ready to run on the structured AST first.
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from .ast_nodes import (
+    ArrayDecl,
     AssignStmt,
+    AugAssignStmt,
     AwaitExpr,
     BinaryOp,
     Block,
     Call,
+    Cast,
     ClassDef,
     Expr,
     ForEachStmt,
@@ -20,22 +24,35 @@ from .ast_nodes import (
     FunctionDef,
     Identifier,
     IfStmt,
+    ImportStmt,
     InterpolatedString,
     Literal,
     Module,
     RepeatStmt,
     ReturnStmt,
+    SharedDecl,
     TasksBlock,
     UnaryOp,
     WhileStmt,
 )
 
 
-def analyze(module: Module) -> Module:
+def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     """Validate module; raise TranspileError on known AST-checkable faults."""
     _reject_let(module)
     _check_return_types(module.body)
-    _check_simple_assignments(module.body)
+    declared: set[str] = set()
+    constants: set[str] = set()
+    types: dict[str, str] = {}
+    fixed: set[str] = set()
+    _seed_imports(module, source_path, declared, constants, types, fixed)
+    _check_bindings(
+        module.body,
+        types=types,
+        declared=declared,
+        constants=constants,
+        fixed=fixed,
+    )
     _check_await_cycles(module.body)
     return module
 
@@ -44,6 +61,51 @@ def _transpile_error(message: str, line: int = 1, column: int = 1, code_line: st
     from .transpiler import TranspileError
 
     raise TranspileError(message, line, column, code_line)
+
+
+def _pys_import_line(stmt: ImportStmt) -> str:
+    if stmt.kind == "module":
+        return f"import {stmt.module}"
+    if stmt.kind == "as":
+        return f"import {stmt.module} as {stmt.alias}"
+    if stmt.kind == "all_from":
+        return f"import all from {stmt.module}"
+    if stmt.kind == "name_from":
+        return f"import {stmt.name} from {stmt.module}"
+    return ""
+
+
+def _seed_imports(
+    module: Module,
+    source_path: Path | None,
+    declared: set[str],
+    constants: set[str],
+    types: dict[str, str],
+    fixed: set[str],
+) -> None:
+    """Pull imported names (and const/fix) into scope when source_path is known."""
+    if source_path is None:
+        return
+    from .transpiler import Parser
+
+    resolver = Parser(module.source, source_path=source_path, enforce_formatting=False)
+    for stmt in module.body:
+        if not isinstance(stmt, ImportStmt):
+            continue
+        line = _pys_import_line(stmt)
+        if not line:
+            continue
+        try:
+            resolver._translate_import_statement(line, stmt.span.line if stmt.span else 1, line)
+        except Exception:
+            # Legacy emit still reports import errors.
+            continue
+    declared |= set(resolver.imported_names)
+    constants |= set(resolver.constants)
+    fixed |= set(resolver.fixed_vars)
+    for name, t in resolver.variable_types.items():
+        if name in resolver.imported_names:
+            types[name] = t
 
 
 def _reject_let(module: Module) -> None:
@@ -140,49 +202,242 @@ def _infer_type(expr: Expr | None) -> str | None:
     return None
 
 
-def _check_simple_assignments(body: list[Any], types: dict[str, str] | None = None) -> None:
+def _is_compile_time_const_expr(expr: Expr | None) -> bool:
+    if expr is None:
+        return False
+    if isinstance(expr, Literal):
+        return expr.kind in {"int", "float", "string", "char", "bool", "null"}
+    if isinstance(expr, UnaryOp) and expr.op in {"+", "-"}:
+        return _is_compile_time_const_expr(expr.operand)
+    if isinstance(expr, BinaryOp) and expr.op in {"+", "-", "*", "/", "%"}:
+        return _is_compile_time_const_expr(expr.left) and _is_compile_time_const_expr(expr.right)
+    if isinstance(expr, Cast):
+        return _is_compile_time_const_expr(expr.expr)
+    return False
+
+
+def _check_bindings(
+    body: list[Any],
+    *,
+    types: dict[str, str] | None = None,
+    declared: set[str] | None = None,
+    constants: set[str] | None = None,
+    fixed: set[str] | None = None,
+    loop_counters: set[str] | None = None,
+) -> None:
     types = types if types is not None else {}
+    declared = declared if declared is not None else set()
+    constants = constants if constants is not None else set()
+    fixed = fixed if fixed is not None else set()
+    loop_counters = loop_counters if loop_counters is not None else set()
+
     for stmt in body:
         if isinstance(stmt, AssignStmt):
-            if stmt.declare_type:
-                if stmt.declare_type == "var":
-                    types[stmt.name] = _infer_type(stmt.value) or "int"
-                else:
-                    types[stmt.name] = stmt.declare_type
-            elif "." not in stmt.name and stmt.name in types:
-                inferred = _infer_type(stmt.value)
-                declared = types[stmt.name]
-                if inferred and inferred != declared:
-                    if not (declared in {"int", "float"} and inferred in {"int", "float"}):
-                        line = stmt.span.line if stmt.span else 1
-                        col = stmt.span.column if stmt.span else 1
+            line = stmt.span.line if stmt.span else 1
+            col = stmt.span.column if stmt.span else 1
+            if stmt.declare_type or stmt.is_const or stmt.is_fix:
+                if stmt.is_const:
+                    if not _is_compile_time_const_expr(stmt.value):
                         _transpile_error(
-                            f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {declared}.",
+                            f"Const '{stmt.name}' must be initialized with a compile-time constant expression.",
                             line,
                             col,
-                            f"{stmt.name} = ...",
+                            f"const … {stmt.name}",
                         )
+                    constants.add(stmt.name)
+                if stmt.is_fix:
+                    fixed.add(stmt.name)
+                if stmt.declare_type == "var":
+                    types[stmt.name] = _infer_type(stmt.value) or "int"
+                elif stmt.declare_type:
+                    types[stmt.name] = stmt.declare_type
+                declared.add(stmt.name)
+            else:
+                if "." not in stmt.name and stmt.name in loop_counters:
+                    _transpile_error(
+                        f"Loop counter '{stmt.name}' is immutable and cannot be modified inside the loop.",
+                        line,
+                        col,
+                        f"{stmt.name} = ...",
+                    )
+                if "." not in stmt.name and stmt.name not in declared:
+                    _transpile_error(
+                        f"Undeclared variable '{stmt.name}'. Variables must be declared with a type before assignment.",
+                        line,
+                        col,
+                        f"{stmt.name} = ...",
+                    )
+                if stmt.name in constants:
+                    _transpile_error(
+                        f"Cannot assign to const '{stmt.name}'. Constants are fixed at compile time.",
+                        line,
+                        col,
+                        f"{stmt.name} = ...",
+                    )
+                if stmt.name in fixed:
+                    _transpile_error(
+                        f"Cannot assign to fix '{stmt.name}'. Fixed variables are immutable after assignment.",
+                        line,
+                        col,
+                        f"{stmt.name} = ...",
+                    )
+                if "." not in stmt.name and stmt.name in types:
+                    inferred = _infer_type(stmt.value)
+                    declared_t = types[stmt.name]
+                    if inferred and inferred != declared_t:
+                        if not (declared_t in {"int", "float"} and inferred in {"int", "float"}):
+                            _transpile_error(
+                                f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {declared_t}.",
+                                line,
+                                col,
+                                f"{stmt.name} = ...",
+                            )
+        elif isinstance(stmt, AugAssignStmt):
+            line = stmt.span.line if stmt.span else 1
+            col = stmt.span.column if stmt.span else 1
+            if stmt.name in loop_counters:
+                _transpile_error(
+                    f"Loop counter '{stmt.name}' is immutable and cannot be modified inside the loop.",
+                    line,
+                    col,
+                    f"{stmt.name}{stmt.op}",
+                )
+            if stmt.name in constants:
+                _transpile_error(
+                    f"Cannot modify const '{stmt.name}'. Constants are fixed at compile time.",
+                    line,
+                    col,
+                    f"{stmt.name}{stmt.op}",
+                )
+            if stmt.name in fixed:
+                _transpile_error(
+                    f"Cannot modify fix '{stmt.name}'. Fixed variables are immutable after assignment.",
+                    line,
+                    col,
+                    f"{stmt.name}{stmt.op}",
+                )
+            if "." not in stmt.name and stmt.name not in declared:
+                _transpile_error(
+                    f"Undeclared variable '{stmt.name}'. Variables must be declared with a type before assignment.",
+                    line,
+                    col,
+                    f"{stmt.name}{stmt.op}",
+                )
+        elif isinstance(stmt, ArrayDecl):
+            declared.add(stmt.name)
+            if stmt.elem_type:
+                types[stmt.name] = f"{stmt.elem_type}[]"
+        elif isinstance(stmt, SharedDecl):
+            declared.add(stmt.name)
+            if stmt.declare_type:
+                types[stmt.name] = stmt.declare_type
+        elif isinstance(stmt, ImportStmt):
+            if stmt.kind == "as" and stmt.alias:
+                declared.add(stmt.alias)
+            elif stmt.kind == "name_from" and stmt.name:
+                declared.add(stmt.name)
         elif isinstance(stmt, FunctionDef):
+            declared.add(stmt.name)
+            local_decl = set(declared) | set(stmt.params)
+            local_types = dict(types)
+            for p in stmt.params:
+                local_types.setdefault(p, "int")
             if stmt.body:
-                _check_simple_assignments(stmt.body.statements, dict(types))
+                _check_bindings(
+                    stmt.body.statements,
+                    types=local_types,
+                    declared=local_decl,
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=set(),
+                )
         elif isinstance(stmt, ClassDef):
+            declared.add(stmt.name)
             for m in stmt.methods:
+                local_decl = set(declared) | set(m.params) | {"self"}
                 if m.body:
-                    _check_simple_assignments(m.body.statements, dict(types))
+                    _check_bindings(
+                        m.body.statements,
+                        types=dict(types),
+                        declared=local_decl,
+                        constants=set(constants),
+                        fixed=set(fixed),
+                        loop_counters=set(),
+                    )
         elif isinstance(stmt, TasksBlock):
             for t in stmt.tasks:
+                local_decl = set(declared) | set(t.params)
                 if t.body:
-                    _check_simple_assignments(t.body.statements, dict(types))
+                    _check_bindings(
+                        t.body.statements,
+                        types=dict(types),
+                        declared=local_decl,
+                        constants=set(constants),
+                        fixed=set(fixed),
+                        loop_counters=set(),
+                    )
         elif isinstance(stmt, IfStmt):
             if stmt.then_body:
-                _check_simple_assignments(stmt.then_body.statements, types)
+                _check_bindings(
+                    stmt.then_body.statements,
+                    types=types,
+                    declared=declared,
+                    constants=constants,
+                    fixed=fixed,
+                    loop_counters=loop_counters,
+                )
             if stmt.else_body:
-                _check_simple_assignments(stmt.else_body.statements, types)
+                _check_bindings(
+                    stmt.else_body.statements,
+                    types=types,
+                    declared=declared,
+                    constants=constants,
+                    fixed=fixed,
+                    loop_counters=loop_counters,
+                )
         elif isinstance(stmt, Block):
-            _check_simple_assignments(stmt.statements, types)
-        elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+            _check_bindings(
+                stmt.statements,
+                types=types,
+                declared=declared,
+                constants=constants,
+                fixed=fixed,
+                loop_counters=loop_counters,
+            )
+        elif isinstance(stmt, ForRangeStmt):
+            declared.add(stmt.var)
+            nested = set(loop_counters) | {stmt.var}
             if stmt.body:
-                _check_simple_assignments(stmt.body.statements, types)
+                _check_bindings(
+                    stmt.body.statements,
+                    types=types,
+                    declared=declared,
+                    constants=constants,
+                    fixed=fixed,
+                    loop_counters=nested,
+                )
+        elif isinstance(stmt, ForEachStmt):
+            declared.add(stmt.var)
+            # foreach vars are writable in PYS? Legacy only marks C-style for counters.
+            if stmt.body:
+                _check_bindings(
+                    stmt.body.statements,
+                    types=types,
+                    declared=declared,
+                    constants=constants,
+                    fixed=fixed,
+                    loop_counters=loop_counters,
+                )
+        elif isinstance(stmt, (WhileStmt, RepeatStmt)):
+            if stmt.body:
+                _check_bindings(
+                    stmt.body.statements,
+                    types=types,
+                    declared=declared,
+                    constants=constants,
+                    fixed=fixed,
+                    loop_counters=loop_counters,
+                )
 
 
 def _await_targets(expr: Expr | None) -> list[str]:

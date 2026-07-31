@@ -30,5 +30,5 @@ def compile_pys(
         raise TranspileError(str(exc.message), exc.line, exc.column, "") from exc
 
     tree = parse_mod.parse_program(source)
-    tree = sem_mod.analyze(tree)
+    tree = sem_mod.analyze(tree, source_path=source_path)
     return emit_python.emit(tree, source_path=source_path)
