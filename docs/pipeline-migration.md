@@ -31,6 +31,7 @@ Check items off as they land; keep the suite green after each step.
 ## B. Product / distribution
 
 - [ ] **B1.** Marketplace publish (`VSCE_PAT` / publisher setup)
+  - [x] **B1.a.** Build ELO student zip locally (`npm run package:elo` → `dist/pys-student-<version>.zip`)
 - [ ] **B2.** Repo cleanup (old tracked `.vsix`, scratch `tools/` scripts)
 - [ ] **B3.** Push local commits to `origin/main` when ready
 
