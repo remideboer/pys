@@ -128,7 +128,8 @@ editor Run controls — no workspace `.vscode/run_pys.py` required.
 
 Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) · overview
 [`docs/LANGUAGE.md`](docs/LANGUAGE.md) · visuals
-[`docs/language-railroad.html`](docs/language-railroad.html).
+[`docs/language-railroad.html`](docs/language-railroad.html) · architecture
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 **Curriculum:** [`tutorials/`](tutorials/) — whole-task classes with scaffolding and JIT cards.  
 **Showcase:** [`examples/main.pys`](examples/main.pys) (dense reference, not lesson 1).  
@@ -399,20 +400,20 @@ tasks {
 
 ## How this transpiler works
 
+Full diagrams (architecture + process flow): **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**.
+
 The compiler pipeline is:
 
 1. **Lex** — [`transpiler/lex.py`](transpiler/lex.py) turns source into tokens with spans.
 2. **Parse** — [`transpiler/parse.py`](transpiler/parse.py) builds a target-neutral AST
    ([`ast_nodes.py`](transpiler/ast_nodes.py)).
-3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) checks `let`, bindings
-   (types, undeclared, const/fix, loop counters), missing return types, and
-   await cycles on the AST. Remaining semantic errors still come from the
-   legacy Python path during emit. See [`docs/pipeline-migration.md`](docs/pipeline-migration.md).
+3. **Sem** — [`transpiler/sem.py`](transpiler/sem.py) validates the AST (bindings, access,
+   interfaces, shared capture, arrays, await rules, …).
 4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
-   produce Python. A legacy pass still validates semantics (types, visibility,
-   capture rules). `.pys` import resolution is reused from that pass when a
-   `source_path` is set. Other backends (Java, C#) can plug in at this layer
-   later; only Python is implemented today.
+   Python (overloads, concurrency preamble, `.pys` imports via [`imports.py`](transpiler/imports.py)).
+   Legacy `Parser.parse()` is used only when parse sets `use_legacy`, and under the
+   imports facade when loading sibling modules. Migration status:
+   [`docs/pipeline-migration.md`](docs/pipeline-migration.md).
 
 Public entry points (`transpile`, `run_source`) go through
 [`transpiler/pipeline.py`](transpiler/pipeline.py) (`compile_pys(..., target="python")`).

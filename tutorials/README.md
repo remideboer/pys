@@ -44,4 +44,5 @@ Or open the file in Cursor/VS Code with the PYS extension and use **Run**.
 
 - Grammar: [`../docs/language.ebnf`](../docs/language.ebnf)
 - Overview: [`../docs/LANGUAGE.md`](../docs/LANGUAGE.md)
+- Architecture: [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)
 - Showcase (dense): [`../examples/main.pys`](../examples/main.pys)

@@ -38,6 +38,8 @@ Check items off as they land; keep the suite green after each step.
 
 ---
 
-**Done when:** A1–A4 complete and no production path needs `Parser.parse()`.
+**Done when:** A1–A6 complete for the AST pipeline; remaining `use_legacy` only for
+unparsed edge cases. Architecture diagrams: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-**Already done (context):** lex/parse/AST emit for goldens; concurrency AST; `.pys` import helper; prefer AST emit; first sem checks (`let`, simple types, return types, await cycles).
+**Already done (context):** lex/parse/AST emit for goldens and main examples; concurrency AST;
+`.pys` import helper; sem owns language checks; emit skips legacy validation on the AST path.

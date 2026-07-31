@@ -3,8 +3,10 @@
 ## The pipeline
 
 ```
-.pys source  →  PYS checks  →  Python text  →  Python AST check  →  run
+.pys source  →  lex → parse → sem → emit  →  Python text  →  run
 ```
+
+Diagrams of the same flow: [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
 
 You edit **`.pys`**. The runner/transpiler produces Python. IDE diagnostics usually
 come from the same front-end checks as the transpile step.

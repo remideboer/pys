@@ -1,7 +1,8 @@
 # PYS language documentation
 
 Formal grammar: [`language.ebnf`](language.ebnf) (EBNF).  
-Visual railroad diagrams: [`language-railroad.html`](language-railroad.html) (open in a browser).
+Visual railroad diagrams: [`language-railroad.html`](language-railroad.html) (open in a browser).  
+Toolchain architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 PYS is a typed teaching language that transpiles to Python. Prefer **brace style**
 (`{` … `}`), as in `examples/main.pys`. Indentation style and legacy `then:` / `do:`
