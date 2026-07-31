@@ -5,6 +5,7 @@ owns checks that are ready to run on the structured AST first.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ from .ast_nodes import (
     Cast,
     ClassDef,
     Expr,
+    ExprStmt,
     ForEachStmt,
     ForRangeStmt,
     FunctionDef,
@@ -28,6 +30,7 @@ from .ast_nodes import (
     InterpolatedString,
     Literal,
     Module,
+    PrintStmt,
     RepeatStmt,
     ReturnStmt,
     SharedDecl,
@@ -35,6 +38,17 @@ from .ast_nodes import (
     UnaryOp,
     WhileStmt,
 )
+
+_TYPED_INTERP = re.compile(r"#([sficbo])\{([^}]+)\}")
+_PRIMITIVES = frozenset({"int", "float", "char", "string", "bool"})
+_SPEC_TYPES: dict[str, set[str]] = {
+    "s": {"string"},
+    "i": {"int"},
+    "f": {"float"},
+    "c": {"char"},
+    "b": {"bool"},
+    "o": set(),
+}
 
 
 def analyze(module: Module, *, source_path: Path | None = None) -> Module:
@@ -216,6 +230,109 @@ def _is_compile_time_const_expr(expr: Expr | None) -> bool:
     return False
 
 
+def _base_type_name(type_name: str) -> str:
+    t = type_name.strip()
+    if "<" in t:
+        return t.split("<", 1)[0].strip()
+    return t
+
+
+def _split_angled_commas(text: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for ch in text:
+        if ch == "<":
+            depth += 1
+        elif ch == ">":
+            depth = max(depth - 1, 0)
+        if ch == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(ch)
+    tail = "".join(current).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _extract_type_args(type_name: str) -> list[str]:
+    t = type_name.strip()
+    lt = t.find("<")
+    if lt < 0 or not t.endswith(">"):
+        return []
+    return _split_angled_commas(t[lt + 1 : -1])
+
+
+def _lookup_name_type(expr: str, types: dict[str, str]) -> str | None:
+    expr = expr.strip()
+    if not expr:
+        return None
+    if re.fullmatch(r"[A-Za-z_]\w*", expr):
+        return types.get(expr)
+    indexed = re.fullmatch(r"(?P<recv>[A-Za-z_]\w*)\[(?P<idx>[^\]]+)\]", expr)
+    if not indexed:
+        return None
+    recv_t = types.get(indexed.group("recv"))
+    if not recv_t:
+        return None
+    if recv_t.endswith("[]"):
+        return recv_t[:-2]
+    args = _extract_type_args(recv_t)
+    idx = indexed.group("idx").strip()
+    if args and re.fullmatch(r"\d+", idx):
+        i = int(idx)
+        if 0 <= i < len(args):
+            return args[i]
+    return None
+
+
+def _check_typed_interpolation(
+    expr: Expr | None,
+    types: dict[str, str],
+    *,
+    line: int,
+    column: int,
+    code_line: str = "",
+) -> None:
+    if expr is None:
+        return
+    if isinstance(expr, InterpolatedString):
+        for m in _TYPED_INTERP.finditer(expr.raw):
+            spec = m.group(1)
+            inner = m.group(2).strip()
+            var_type = _lookup_name_type(inner, types)
+            if var_type is None:
+                continue
+            check_type = _base_type_name(var_type)
+            if spec == "o":
+                if check_type in _PRIMITIVES:
+                    _transpile_error(
+                        f"Typed interpolation #o{{}} requires an object type, but '{inner}' is {check_type}.",
+                        line,
+                        column,
+                        code_line or expr.raw,
+                    )
+            elif check_type not in _SPEC_TYPES[spec]:
+                spec_label = {"s": "string", "i": "int", "f": "float", "c": "char", "b": "bool"}[spec]
+                _transpile_error(
+                    f"Typed interpolation #{spec}{{}} requires {spec_label}, but '{inner}' is {check_type}.",
+                    line,
+                    column,
+                    code_line or expr.raw,
+                )
+    for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+        child = getattr(expr, attr, None)
+        if isinstance(child, Expr):
+            _check_typed_interpolation(child, types, line=line, column=column, code_line=code_line)
+    args = getattr(expr, "args", None)
+    if isinstance(args, list):
+        for a in args:
+            if isinstance(a, Expr):
+                _check_typed_interpolation(a, types, line=line, column=column, code_line=code_line)
+
+
 def _check_bindings(
     body: list[Any],
     *,
@@ -235,6 +352,7 @@ def _check_bindings(
         if isinstance(stmt, AssignStmt):
             line = stmt.span.line if stmt.span else 1
             col = stmt.span.column if stmt.span else 1
+            _check_typed_interpolation(stmt.value, types, line=line, column=col)
             if stmt.declare_type or stmt.is_const or stmt.is_fix:
                 if stmt.is_const:
                     if not _is_compile_time_const_expr(stmt.value):
@@ -323,6 +441,18 @@ def _check_bindings(
                     col,
                     f"{stmt.name}{stmt.op}",
                 )
+        elif isinstance(stmt, PrintStmt):
+            line = stmt.span.line if stmt.span else 1
+            col = stmt.span.column if stmt.span else 1
+            _check_typed_interpolation(stmt.value, types, line=line, column=col)
+        elif isinstance(stmt, ReturnStmt):
+            line = stmt.span.line if stmt.span else 1
+            col = stmt.span.column if stmt.span else 1
+            _check_typed_interpolation(stmt.value, types, line=line, column=col)
+        elif isinstance(stmt, ExprStmt):
+            line = stmt.span.line if stmt.span else 1
+            col = stmt.span.column if stmt.span else 1
+            _check_typed_interpolation(stmt.expr, types, line=line, column=col)
         elif isinstance(stmt, ArrayDecl):
             declared.add(stmt.name)
             if stmt.elem_type:
