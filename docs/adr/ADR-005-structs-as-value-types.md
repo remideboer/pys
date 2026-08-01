@@ -32,6 +32,9 @@ identity) and from `dict` (open keys, reference sharing). Requirements live in
 
 - Sem enforces SA mutability / ctor rules; emit uses `@dataclass`.
 - Pedagogy: JIT J-struct + supportive S6 contrast dict/class.
+- IDE maturity: declaration grammar, go-to on types and fields, semantic
+  tokens, hover/snippets (extension ≥ 0.0.37) — required before calling the
+  feature “implemented” (feature-maturity DoD).
 - Security boundaries (ADR-001) unchanged.
 
 ## Rejected alternatives

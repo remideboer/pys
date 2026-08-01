@@ -358,6 +358,16 @@ def analyze_file(
         }
         for cls, methods in {**info.method_locations, **resolver.method_locations}.items()
     }
+    struct_field_locations = {
+        typ: {
+            field: {"file": str(path), "line": line, "column": col, "kind": "field"}
+            for field, (path, line, col) in fields.items()
+        }
+        for typ, fields in {
+            **info.struct_field_locations,
+            **getattr(resolver, "struct_field_locations", {}),
+        }.items()
+    }
 
     for type_name in set(resolver.type_modules) | set(type_definitions) | set(validated_types):
         if type_name in _PRIMITIVES:
@@ -395,6 +405,7 @@ def analyze_file(
         "validated_types": sorted(validated_types),
         "class_parents": class_parents,
         "method_locations": method_locations,
+        "struct_field_locations": struct_field_locations,
         "_site_paths": [str(p) for p in site_paths],
         "_allow_runtime_introspection": allow_runtime_introspection,
     }
@@ -415,6 +426,12 @@ def _lookup_pys_method(analysis: dict, type_name: str, method: str) -> dict | No
     return None
 
 
+def _lookup_struct_field(analysis: dict, type_name: str, field: str) -> dict | None:
+    """Find a struct field declaration for ``Type.field`` or binding.field."""
+    fields = (analysis.get("struct_field_locations") or {}).get(type_name) or {}
+    return fields.get(field)
+
+
 def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     """Resolve a bare name or dotted path to a location dict."""
     symbol = (symbol or "").strip()
@@ -427,16 +444,20 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     if "." in symbol and re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+", symbol):
         parts = symbol.split(".")
         if len(parts) == 2:
-            head, method = parts
+            head, member = parts
             variable_types = analysis.get("variable_types") or {}
             type_name = variable_types.get(head, head)
             if type_name.startswith("list<"):
                 type_name = "list"
             elif type_name.startswith("dict<"):
                 type_name = "dict"
-            pys_loc = _lookup_pys_method(analysis, _base_type(type_name), method)
+            base = _base_type(type_name)
+            pys_loc = _lookup_pys_method(analysis, base, member)
             if pys_loc:
                 return pys_loc
+            field_loc = _lookup_struct_field(analysis, base, member)
+            if field_loc:
+                return field_loc
 
     site_paths = [Path(p) for p in analysis.get("_site_paths") or []]
     located = locate_attr_path(

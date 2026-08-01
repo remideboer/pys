@@ -308,7 +308,7 @@ def test_struct_maturity_rejections(source: str, match: str) -> None:
 
 
 def test_package_struct_import_and_ide_types(tmp_path: Path) -> None:
-    from transpiler.ide import analyze_file
+    from transpiler.ide import analyze_file, lookup_symbol
 
     lib = tmp_path / "damage_lib.pys"
     lib.write_text(
@@ -325,3 +325,24 @@ def test_package_struct_import_and_ide_types(tmp_path: Path) -> None:
     assert analysis["ok"]
     assert "Damage" in analysis["validated_types"]
     assert "Damage" in analysis["symbols"]
+
+
+def test_ide_goto_struct_type_and_field(tmp_path: Path) -> None:
+    from transpiler.ide import analyze_file, lookup_symbol
+
+    path = tmp_path / "s.pys"
+    path.write_text(
+        "struct Damage {\n    int amount\n    string type\n}\n"
+        'Damage d = Damage(1, "a")\nprint(d.amount)\n',
+        encoding="utf-8",
+    )
+    analysis = analyze_file(path)
+    assert analysis["ok"]
+    typ = lookup_symbol(analysis, "Damage")
+    assert typ is not None
+    assert typ["line"] == 1
+    field = lookup_symbol(analysis, "d.amount")
+    assert field is not None
+    assert field["kind"] == "field"
+    assert field["line"] == 2
+    assert "amount" in (analysis.get("struct_field_locations") or {}).get("Damage", {})

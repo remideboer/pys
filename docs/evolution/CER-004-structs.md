@@ -116,11 +116,14 @@ None` when mutable; `_pys_copy` + wrapper copies at assign/call/return.
   “assign through fix field”).
 - Declares reject duplicate names and required fields after defaults; parse rejects
   methods/nested types inside structs.
-- Extension: `struct` keyword, hover, snippets; `ide` registers struct types.
+- Extension: `struct` keyword, hover, snippets; TextMate named-type / `fix Type`
+  bindings; `ide` registers struct types and **field** locations for go-to
+  (`d.amount` → field decl).
 
 ### Evidence
 
-`tests/test_structs.py` maturity rejections, defaults, nested copy, package import + IDE.
+`tests/test_structs.py` maturity rejections, defaults, nested copy, package import +
+IDE, `test_ide_goto_struct_type_and_field`.
 
 ## Trade-offs
 

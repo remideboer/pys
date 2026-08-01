@@ -381,7 +381,9 @@ Rules:
    (nested struct fields are deep-copied)
 4. `==` is field-wise (not reference identity)
 5. No `shared <Struct>`; struct fields and struct bindings reject `null`
-6. Mutability matrix (also applies to nested paths like `o.inner.x`):
+6. IDE: type and field go-to, keyword highlighting, semantic type coloring,
+   hover/snippets for `struct`
+7. Mutability matrix (also applies to nested paths like `o.inner.x`):
 
 | Declaration | Binding | Field `fix` | Field writes |
 |-------------|---------|--------------|--------------|
@@ -390,8 +392,8 @@ Rules:
 | `struct S` | `fix` | (any) | rejected |
 | `fix struct S` | (any) | (any) | rejected |
 
-7. Hashable only when the type is `fix struct` or every field is `fix`
-8. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
+8. Hashable only when the type is `fix struct` or every field is `fix`
+9. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
 
 **Struct vs `dict`:** same idea as a schema-fixed data bag (value equality, no
 methods), but nominal typing, fixed fields, no `null` fields, and optional

@@ -46,6 +46,10 @@ class ModuleInfo:
     struct_field_types: dict[str, dict[str, str]] = field(default_factory=dict)
     struct_field_fix: dict[str, set[str]] = field(default_factory=dict)
     struct_field_defaults: dict[str, set[str]] = field(default_factory=dict)
+    # type_name -> field_name -> (path, line, col)
+    struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = field(
+        default_factory=dict
+    )
 
 
 def _error(
@@ -135,6 +139,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
     struct_field_types: dict[str, dict[str, str]] = {}
     struct_field_fix: dict[str, set[str]] = {}
     struct_field_defaults: dict[str, set[str]] = {}
+    struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
 
     iface_names = {s.name for s in tree.body if isinstance(s, InterfaceDef)}
 
@@ -164,6 +169,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             ftypes: dict[str, str] = {}
             ffix: set[str] = set()
             fdefaults: set[str] = set()
+            flocs: dict[str, tuple[Path, int, int]] = {}
             for f in stmt.fields:
                 order.append(f.name)
                 access[f.name] = "public"
@@ -172,11 +178,15 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
                     ffix.add(f.name)
                 if f.default is not None:
                     fdefaults.add(f.name)
+                fl = f.span.line if f.span else line
+                fc = f.span.column if f.span else col
+                flocs[f.name] = (path, fl, fc)
             struct_fields[stmt.name] = order
             struct_field_access[stmt.name] = access
             struct_field_types[stmt.name] = ftypes
             struct_field_fix[stmt.name] = ffix
             struct_field_defaults[stmt.name] = fdefaults
+            struct_field_locations[stmt.name] = flocs
         elif isinstance(stmt, ClassDef):
             vis = stmt.visibility or "module"
             exports[stmt.name] = vis
@@ -243,6 +253,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
         struct_field_types=struct_field_types,
         struct_field_fix=struct_field_fix,
         struct_field_defaults=struct_field_defaults,
+        struct_field_locations=struct_field_locations,
     )
 
 
@@ -298,6 +309,7 @@ class ImportResolver:
         self.struct_field_types: dict[str, dict[str, str]] = {}
         self.struct_field_fix: dict[str, set[str]] = {}
         self.struct_field_defaults: dict[str, set[str]] = {}
+        self.struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
         self._deps_site_paths: list[Path] | None = None
         self._deps_site_paths_loaded = False
 
@@ -321,6 +333,9 @@ class ImportResolver:
             self.struct_field_types = {k: dict(v) for k, v in info.struct_field_types.items()}
             self.struct_field_fix = {k: set(v) for k, v in info.struct_field_fix.items()}
             self.struct_field_defaults = {k: set(v) for k, v in info.struct_field_defaults.items()}
+            self.struct_field_locations = {
+                k: dict(v) for k, v in info.struct_field_locations.items()
+            }
             for name, t in info.types.items():
                 self.variable_types[name] = t
             self.declared_variables |= set(info.exports)
@@ -479,6 +494,9 @@ class ImportResolver:
                 self.struct_field_fix[name] = set(info.struct_field_fix.get(name, set()))
                 self.struct_field_defaults[name] = set(
                     info.struct_field_defaults.get(name, set())
+                )
+                self.struct_field_locations[name] = dict(
+                    info.struct_field_locations.get(name, {})
                 )
             if name in info.class_decl_lines:
                 self.type_definitions[name] = (info.path, info.class_decl_lines[name], 1)
