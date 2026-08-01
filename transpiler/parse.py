@@ -670,6 +670,7 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
         span=sp,
         name=name,
         params=[n for _, n in params],
+        param_types=[t for t, _ in params],
         body=body,
         visibility=visibility,
         return_type=rtype,

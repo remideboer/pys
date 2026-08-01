@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-01 |
-| Commits | (structs increment) |
+| Commits | `8af7db8` (initial), hardening follow-up |
 | Scope | `lex.py`, `ast_nodes.py`, `parse.py`, `sem.py`, `imports.py`, `emit/python.py`; `docs/language.ebnf`; `examples/structs.pys`; `tests/test_structs.py` |
 | ADRs | [ADR-005](../adr/ADR-005-structs-as-value-types.md) |
 
@@ -75,7 +75,30 @@ None` when mutable; `_pys_copy` + wrapper copies at assign/call/return.
 
 `examples/structs.pys` run; copy-on-call test (`before.amount` stays 10).
 
+---
+
+## 4. Hardening (access, precise copies, runtime fix fields)
+
+### Pre-behavior (after initial land)
+
+- Struct field access modifiers were parsed but not checked via `_check_oop`.
+- Emit wrapped nearly every call arg/assign/return with `_pys_struct_copy` when
+  any struct existed in the module.
+- Mixed fix/mutable structs relied on static rejection only.
+
+### Post-behavior
+
+- Struct fields register in the OOP member map; private/unknown fields error.
+- Emit tracks binding / function return types and copies only struct-typed values.
+- Partial-fix structs emit `__setattr__` guards for fix fields.
+- Grammar keyword `struct` highlighted in `pys.tmLanguage.json`.
+
+### Evidence
+
+`tests/test_structs.py` access, precise-copy, and runtime-guard cases.
+
 ## Trade-offs
 
-- Copies wrap all call args when any struct exists in the module (safe, not typed).
-- Per-field `fix` on mutable structs is static-only (dataclass stays unfrozen).
+- Method return types used as `fn_return_types[name]` can collide across classes
+  with the same method name (pre-existing overload naming limits).
+- Fully frozen structs still rely on dataclass `frozen=True` (no custom setattr).

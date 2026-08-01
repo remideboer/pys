@@ -156,3 +156,69 @@ def test_struct_keyword_lexed() -> None:
     toks = tokenize("struct Damage { }")
     kinds = [(t.kind, t.text) for t in toks if t.kind != TokenKind.BLANK]
     assert (TokenKind.KEYWORD, "struct") in kinds
+
+
+def test_struct_private_field_access_denied() -> None:
+    source = """
+struct Secret {
+    private int code
+}
+Secret s = Secret(42)
+print(s.code)
+"""
+    with pytest.raises(TranspileError, match=r"Access denied: 'code' is private in struct"):
+        transpile(source)
+
+
+def test_struct_unknown_field_member_denied() -> None:
+    source = """
+struct S {
+    public int x
+}
+S s = S(1)
+print(s.y)
+"""
+    with pytest.raises(TranspileError, match=r"'y' is not a member of declared type S"):
+        transpile(source)
+
+
+def test_emit_copies_only_struct_values() -> None:
+    source = """
+struct Damage {
+    public int amount
+    public string type
+}
+class Unit {
+    private int health
+    public Unit(int health) {
+        this.health = health
+    }
+}
+Damage d = Damage(1, "a")
+Unit u = Unit(10)
+print(d.amount)
+print(u)
+"""
+    py = transpile(source)
+    assert "d = _pys_struct_copy(Damage(" in py or "d = _pys_struct_copy(Damage" in py
+    assert "u = _pys_struct_copy(Unit" not in py
+    assert 'Unit(_pys_struct_copy(10))' not in py
+    assert "Unit(10)" in py or "Unit(health=10)" in py or "Unit(10" in py
+
+
+def test_partial_fix_field_runtime_guard() -> None:
+    source = """
+struct Mixed {
+    public int amount
+    public fix string type
+}
+"""
+    py = transpile(source)
+    assert "_pys_fix_fields" in py
+    assert "__setattr__" in py
+    ns: dict = {}
+    exec(py, ns)
+    m = ns["Mixed"](1, "fire")
+    m.amount = 2
+    with pytest.raises(AttributeError, match="fix field"):
+        m.type = "ice"

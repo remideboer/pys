@@ -260,6 +260,7 @@ class ImportStmt(Node):
 class FunctionDef(Node):
     name: str = ""
     params: list[str] = field(default_factory=list)
+    param_types: list[str] = field(default_factory=list)
     body: Block | None = None
     visibility: str = ""
     return_type: str = ""

@@ -1094,6 +1094,15 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 if not m.is_constructor:
                     members[m.name] = m.access or "public"
             class_members[stmt.name] = members
+        elif isinstance(stmt, StructDef):
+            # Structs participate in member access checks (no methods/MRO).
+            class_members[stmt.name] = {
+                f.name: f.access or "module" for f in stmt.fields
+            }
+
+    if resolver is not None:
+        for name, access in getattr(resolver, "struct_field_access", {}).items():
+            class_members.setdefault(name, dict(access))
 
     for stmt in body:
         if not isinstance(stmt, ClassDef):
@@ -1216,6 +1225,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         recv_t = receiver_type(recv, local_types, current_class)
         if not recv_t:
             return
+        recv_t = _base_type_name(recv_t)
         defining_cls, access = lookup_member(recv_t, member)
         if access == "unverified":
             # Environment cannot introspect the library; do not invent an error.
@@ -1257,8 +1267,11 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             allowed = current_class is not None and is_subtype(current_class, defining_cls)
         if allowed:
             return
+        kind = "struct" if defining_cls in getattr(resolver, "structs", set()) or any(
+            isinstance(s, StructDef) and s.name == defining_cls for s in body
+        ) else "class"
         _transpile_error(
-            f"Access denied: '{member}' is {access} in class {defining_cls}.",
+            f"Access denied: '{member}' is {access} in {kind} {defining_cls}.",
             line,
             column,
             code or f"{recv}.{member}",

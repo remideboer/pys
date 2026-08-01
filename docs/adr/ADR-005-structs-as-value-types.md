@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-01 |
-| Commits | (structs increment) |
+| Commits | `8af7db8` + hardening follow-up |
 | Code detail | [CER-004](../evolution/CER-004-structs.md) |
 
 ## Context

@@ -125,7 +125,10 @@ class _Emitter:
         self.shared_vars: set[str] = set()
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
+        self.var_types: dict[str, str] = {}  # name -> PYS type (for struct copy)
+        self.fn_return_types: dict[str, str] = {}
         self.struct_names: set[str] = set()
+        self.struct_field_types: dict[str, dict[str, str]] = {}
         self._import_resolver = None
         if source_path is not None:
             from .. import imports as imports_mod
@@ -136,8 +139,20 @@ class _Emitter:
         self.struct_names = {
             s.name for s in module.body if isinstance(s, StructDef)
         }
+        self.struct_field_types = {
+            s.name: {f.name: f.type_name for f in s.fields}
+            for s in module.body
+            if isinstance(s, StructDef)
+        }
+        self.fn_return_types = {
+            s.name: s.return_type
+            for s in module.body
+            if isinstance(s, FunctionDef) and s.return_type
+        }
         if self._import_resolver is not None:
             self.struct_names |= set(getattr(self._import_resolver, "structs", set()))
+            for name, ftypes in getattr(self._import_resolver, "struct_field_types", {}).items():
+                self.struct_field_types.setdefault(name, dict(ftypes))
         for stmt in module.body:
             self._stmt(stmt, 0)
         preamble: list[str] = []
@@ -206,7 +221,7 @@ class _Emitter:
                 text = stmt.value.raw.replace("this.", "self.")
                 self._emit(indent, f"return {text}")
             else:
-                self._emit(indent, f"return {self._copy_if_struct(self._expr(stmt.value))}")
+                self._emit(indent, f"return {self._maybe_copy_struct(stmt.value)}")
         elif isinstance(stmt, PassStmt):
             self._emit(indent, "pass")
         elif isinstance(stmt, BreakStmt):
@@ -234,8 +249,15 @@ class _Emitter:
             self._import(stmt, indent)
         elif isinstance(stmt, FunctionDef):
             params = ", ".join(stmt.params)
+            if stmt.return_type:
+                self.fn_return_types[stmt.name] = stmt.return_type
             self._emit(indent, f"def {stmt.name}({params}):")
+            prev_types = dict(self.var_types)
+            for i, pname in enumerate(stmt.params):
+                if i < len(stmt.param_types) and stmt.param_types[i]:
+                    self.var_types[pname] = stmt.param_types[i]
             self._block(stmt.body, indent + 1)
+            self.var_types = prev_types
         elif isinstance(stmt, InterfaceDef):
             self._interface(stmt, indent)
         elif isinstance(stmt, ClassDef):
@@ -279,20 +301,74 @@ class _Emitter:
             kind = "number" if stmt.declare_type != "bool" else "number"
         base = stmt.name.split(".")[-1]
         self.var_kinds[base] = kind
-        value = self._expr(stmt.value)
-        # Pass-by-value: copy on store into a binding (not field writes).
         if "." not in stmt.name:
-            value = self._copy_if_struct(value)
+            self._track_binding_type(stmt.name, stmt.declare_type, stmt.value)
+            value = self._maybe_copy_struct(stmt.value)
+        else:
+            value = self._expr(stmt.value)
         if "." not in stmt.name and stmt.name in self.shared_vars:
             self._emit(indent, f"{stmt.name}.set({value})")
             return
         self._emit(indent, f"{stmt.name} = {value}")
 
-    def _copy_if_struct(self, code: str) -> str:
-        if not self.struct_names:
-            return code
-        self.needs_struct_copy = True
-        return f"_pys_struct_copy({code})"
+    @staticmethod
+    def _base_type(type_name: str) -> str:
+        return type_name.split("<", 1)[0] if type_name else ""
+
+    def _is_struct_type(self, type_name: str) -> bool:
+        return self._base_type(type_name) in self.struct_names
+
+    def _track_binding_type(
+        self, name: str, declare_type: str | None, value: Expr | None
+    ) -> None:
+        if declare_type and declare_type != "var":
+            self.var_types[name] = declare_type
+            return
+        inferred = self._infer_structish_type(value)
+        if inferred:
+            self.var_types[name] = inferred
+
+    def _infer_structish_type(self, expr: Expr | None) -> str | None:
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            if expr.callee.name in self.struct_names:
+                return expr.callee.name
+        if isinstance(expr, Identifier):
+            return self.var_types.get(expr.name)
+        if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+            ot = self._base_type(self.var_types.get(expr.object.name, ""))
+            ft = self.struct_field_types.get(ot, {}).get(expr.name, "")
+            return ft or None
+        return None
+
+    def _expr_is_struct_value(self, expr: Expr | None) -> bool:
+        if expr is None:
+            return False
+        if isinstance(expr, KeywordArg):
+            return self._expr_is_struct_value(expr.value)
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            if expr.callee.name in self.struct_names:
+                return True
+            return self._is_struct_type(self.fn_return_types.get(expr.callee.name, ""))
+        if isinstance(expr, Identifier):
+            return self._is_struct_type(self.var_types.get(expr.name, ""))
+        if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+            ot = self._base_type(self.var_types.get(expr.object.name, ""))
+            ft = self.struct_field_types.get(ot, {}).get(expr.name, "")
+            return self._is_struct_type(ft)
+        return False
+
+    def _maybe_copy_struct(self, expr: Expr | None) -> str:
+        if expr is None:
+            return ""
+        if isinstance(expr, KeywordArg):
+            return (
+                f"{expr.name}={self._maybe_copy_struct(expr.value)}"
+            )
+        code = self._expr(expr)
+        if self._expr_is_struct_value(expr):
+            self.needs_struct_copy = True
+            return f"_pys_struct_copy({code})"
+        return code
 
     def _array_decl(self, stmt: ArrayDecl, indent: int) -> None:
         self.needs_array = True
@@ -350,10 +426,13 @@ class _Emitter:
         self.needs_dataclass = True
         self.needs_struct_copy = True
         self.struct_names.add(stmt.name)
+        self.struct_field_types[stmt.name] = {f.name: f.type_name for f in stmt.fields}
         all_fix = stmt.type_fix or (bool(stmt.fields) and all(f.is_fix for f in stmt.fields))
         # Empty struct: treat as immutable/hashable (vacuous all-fields-fix).
         if not stmt.fields:
             all_fix = True
+        fix_fields = {f.name for f in stmt.fields if f.is_fix or stmt.type_fix}
+        partial_fix = (not all_fix) and bool(fix_fields)
         if all_fix:
             self._emit(indent, "@dataclass(frozen=True)")
         else:
@@ -371,6 +450,19 @@ class _Emitter:
                 self._emit(indent + 1, f"{f.name}: object")
         if not all_fix:
             self._emit(indent + 1, "__hash__ = None")
+        if partial_fix:
+            names = ", ".join(repr(n) for n in sorted(fix_fields))
+            self._emit(indent + 1, f"_pys_fix_fields = frozenset({{{names}}})")
+            self._emit(indent + 1, "def __setattr__(self, name, value):")
+            self._emit(
+                indent + 2,
+                "if name in type(self)._pys_fix_fields and name in self.__dict__:",
+            )
+            self._emit(
+                indent + 3,
+                "raise AttributeError(f\"Cannot assign to fix field {name!r}\")",
+            )
+            self._emit(indent + 2, "object.__setattr__(self, name, value)")
         self._emit(indent + 1, "def _pys_copy(self):")
         copy_args = ", ".join(
             f"{f.name}=_pys_struct_copy(self.{f.name})" for f in stmt.fields
@@ -412,12 +504,20 @@ class _Emitter:
         else:
             params = ", ".join(["self", *m.params])
             self._emit(indent, f"def {m.name}({params}):")
+            if m.return_type:
+                self.fn_return_types[m.name] = m.return_type
         need_super = inject_super and not _ctor_chains_to_parent(m.body)
+        prev_types = dict(self.var_types)
+        for i, pname in enumerate(m.params):
+            if i < len(m.param_types) and m.param_types[i]:
+                self.var_types[pname] = m.param_types[i]
         if need_super:
             self._emit(indent + 1, "super().__init__()")
             if m.body is None or not m.body.statements:
+                self.var_types = prev_types
                 return
         self._block(m.body, indent + 1)
+        self.var_types = prev_types
 
     def _if(self, stmt: IfStmt, indent: int, *, first: bool) -> None:
         cond = self._expr(stmt.cond)
@@ -496,7 +596,7 @@ class _Emitter:
             args = ", ".join(self._call_arg(a) for a in expr.args)
             return f"{self._expr(expr.callee)}({args})"
         if isinstance(expr, KeywordArg):
-            return f"{expr.name}={self._copy_if_struct(self._expr(expr.value))}"
+            return f"{expr.name}={self._expr(expr.value)}"
         if isinstance(expr, Member):
             return f"{self._expr(expr.object)}.{expr.name}"
         if isinstance(expr, Index):
@@ -514,9 +614,7 @@ class _Emitter:
         raise TypeError(f"unsupported expr {type(expr).__name__}")
 
     def _call_arg(self, arg: Expr) -> str:
-        if isinstance(arg, KeywordArg):
-            return f"{arg.name}={self._copy_if_struct(self._expr(arg.value))}"
-        return self._copy_if_struct(self._expr(arg))
+        return self._maybe_copy_struct(arg)
 
     def _await(self, expr: AwaitExpr) -> str:
         tg = self.tg_name or "_pys_tg_0"
