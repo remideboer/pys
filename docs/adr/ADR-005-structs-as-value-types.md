@@ -16,15 +16,17 @@ identity) and from `dict` (open keys, reference sharing). Requirements live in
 ## Decision
 
 1. **`struct` / `fix struct`** are first-class declarations (sibling to `class`).
-2. **No identity features:** no methods, no `inherits` / `super` / `sealed` /
+2. **Fields always public;** import access is `top_visibility` on the struct
+   (`global` / `package` / `module`), not per-field modifiers.
+3. **No identity features:** no methods, no `inherits` / `super` / `sealed` /
    `implements`; no `shared <Struct>`; no `null` for struct-typed fields/bindings.
-3. **Construction:** existing `Type(...)` call form only (positional + named);
+4. **Construction:** existing `Type(...)` call form only (positional + named);
    reject `new`; no brace field literals.
-4. **Pass-by-value:** emit copies on assign / call / return (`_pys_struct_copy` /
+5. **Pass-by-value:** emit copies on assign / call / return (`_pys_struct_copy` /
    `_pys_copy`).
-5. **Equality / hash:** field-wise `==`; hashable only when type-fix or every
+6. **Equality / hash:** field-wise `==`; hashable only when type-fix or every
    field is `fix` (emit frozen dataclass when hashable).
-6. **Type params** allowed (`struct Pair<T, U>`), erased like class generics.
+7. **Type params** allowed (`struct Pair<T, U>`), erased like class generics.
 
 ## Consequences
 
@@ -37,3 +39,5 @@ identity) and from `dict` (open keys, reference sharing). Requirements live in
 - Brace field literals / `new` constructors
 - Reference semantics with optional clone
 - Methods or inheritance on structs
+- Per-field `public` / `private` / `protected` / `module` (redundant with value
+  semantics; use struct `top_visibility` instead)

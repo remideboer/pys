@@ -1095,10 +1095,8 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                     members[m.name] = m.access or "public"
             class_members[stmt.name] = members
         elif isinstance(stmt, StructDef):
-            # Structs participate in member access checks (no methods/MRO).
-            class_members[stmt.name] = {
-                f.name: f.access or "module" for f in stmt.fields
-            }
+            # Struct fields are always public; type export uses top_visibility.
+            class_members[stmt.name] = {f.name: "public" for f in stmt.fields}
 
     if resolver is not None:
         for name, access in getattr(resolver, "struct_field_access", {}).items():
@@ -1428,7 +1426,7 @@ def _struct_info_map(body: list[Any]) -> dict[str, dict[str, Any]]:
         if not isinstance(stmt, StructDef):
             continue
         order = [f.name for f in stmt.fields]
-        access = {f.name: f.access or "module" for f in stmt.fields}
+        access = {f.name: "public" for f in stmt.fields}
         ftypes = {f.name: f.type_name for f in stmt.fields}
         ffix = {f.name for f in stmt.fields if f.is_fix or stmt.type_fix}
         defaults = {f.name for f in stmt.fields if f.default is not None}

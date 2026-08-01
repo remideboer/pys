@@ -53,4 +53,4 @@ touching the matching CER/ADR is incomplete.
 - Keep parse memoization; do not re-`resolve()` already-resolved package parents without measurement + CER
 - Do not force PEG (`_BRACE_ENGINE = "peg"`) without a CER showing packrat ≤ RD on the gate corpus
 - Keep `parse_program_from_tokens` / single-lex compile path; do not restore double-counted phase benches
-- Structs stay identity-free value types (ADR-005 / CER-004): no methods/inherits/`new`; copy on assign/call/return; hash only when all fields fix / `fix struct`
+- Structs stay identity-free value types (ADR-005 / CER-004): no methods/inherits/`new`; fields always public (visibility on the struct); copy on assign/call/return; hash only when all fields fix / `fix struct`

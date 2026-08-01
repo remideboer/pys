@@ -173,7 +173,8 @@ struct_decl      = [ top_visibility ] , [ "fix" ] , "struct" , identifier ,
 
 struct_body      = "{" , { struct_field_decl } , "}" ;
 
-struct_field_decl = member_access , [ "fix" ] , type_name , identifier ,
+(* Fields are always public; top_visibility on struct_decl controls import access. *)
+struct_field_decl = [ "fix" ] , type_name , identifier ,
                     [ "=" , expression ] ;
 
 (* ------------------------- Interfaces ------------------------- *)

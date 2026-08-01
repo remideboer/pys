@@ -31,8 +31,8 @@ def test_example_structs_emit_is_valid_python() -> None:
 def test_struct_equality_and_copy_on_call(capsys: pytest.CaptureFixture[str]) -> None:
     source = """
 struct Damage {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 function Damage bump(Damage d) {
@@ -59,13 +59,13 @@ print(after.amount)
 def test_fix_struct_is_hashable_mutable_is_not() -> None:
     source = """
 struct Mut {
-    public int x
+    int x
 }
 fix struct Imm {
-    public int x
+    int x
 }
 struct AllFix {
-    public fix int x
+    fix int x
 }
 """
     py = transpile(source)
@@ -82,40 +82,48 @@ struct AllFix {
     "source, match",
     [
         (
-            "struct S { public int x }\nshared S s = S(1)\n",
+            "struct S { int x }\nshared S s = S(1)\n",
             r"shared.*struct",
         ),
         (
-            "struct S { public int x }\nS s = null\n",
+            "struct S { int x }\nS s = null\n",
             r"cannot be null",
         ),
         (
-            "struct S inherits Foo { public int x }\n",
+            "struct S inherits Foo { int x }\n",
             r"Structs cannot use",
         ),
         (
-            "struct S { public int x }\nfix S s = S(1)\ns.x = 2\n",
+            "struct S { int x }\nfix S s = S(1)\ns.x = 2\n",
             r"fix-bound struct",
         ),
         (
-            "fix struct S { public int x }\nS s = S(1)\ns.x = 2\n",
+            "fix struct S { int x }\nS s = S(1)\ns.x = 2\n",
             r"fix struct type",
         ),
         (
-            "struct S { public fix int x }\nS s = S(1)\ns.x = 2\n",
+            "struct S { fix int x }\nS s = S(1)\ns.x = 2\n",
             r"fix field",
         ),
         (
-            "struct S { public int x }\nS s = S(1, 2)\n",
+            "struct S { int x }\nS s = S(1, 2)\n",
             r"expects at most 1",
         ),
         (
-            "struct S { public int x }\nS s = S(y=1)\n",
+            "struct S { int x }\nS s = S(y=1)\n",
             r"Unknown field",
         ),
         (
-            "struct S { public int x }\nS s = new S(1)\n",
+            "struct S { int x }\nS s = new S(1)\n",
             r"Unexpected `new`",
+        ),
+        (
+            "struct S { public int x }\n",
+            r"Struct fields are always public",
+        ),
+        (
+            "struct S { private int x }\n",
+            r"Struct fields are always public",
         ),
     ],
 )
@@ -158,22 +166,10 @@ def test_struct_keyword_lexed() -> None:
     assert (TokenKind.KEYWORD, "struct") in kinds
 
 
-def test_struct_private_field_access_denied() -> None:
-    source = """
-struct Secret {
-    private int code
-}
-Secret s = Secret(42)
-print(s.code)
-"""
-    with pytest.raises(TranspileError, match=r"Access denied: 'code' is private in struct"):
-        transpile(source)
-
-
 def test_struct_unknown_field_member_denied() -> None:
     source = """
 struct S {
-    public int x
+    int x
 }
 S s = S(1)
 print(s.y)
@@ -185,8 +181,8 @@ print(s.y)
 def test_emit_copies_only_struct_values() -> None:
     source = """
 struct Damage {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 class Unit {
     private int health
@@ -209,8 +205,8 @@ print(u)
 def test_partial_fix_field_runtime_guard() -> None:
     source = """
 struct Mixed {
-    public int amount
-    public fix string type
+    int amount
+    fix string type
 }
 """
     py = transpile(source)

@@ -30,8 +30,10 @@ mutability matrix from the requirements.
 
 ### Post-behavior
 
-`[top_visibility] [fix] struct Name [<T,…>] { member_access [fix] type name [= expr] }`.
-Parser rejects `inherits` / `super` / `sealed` / `implements` and `new`.
+`[top_visibility] [fix] struct Name [<T,…>] { [fix] type name [= expr] }`.
+Fields are always public (no per-field access modifiers); `top_visibility`
+controls who may import the type. Parser rejects field `public`/`private`/…,
+`inherits` / `super` / `sealed` / `implements`, and `new`.
 
 ### Evidence
 
@@ -88,7 +90,8 @@ None` when mutable; `_pys_copy` + wrapper copies at assign/call/return.
 
 ### Post-behavior
 
-- Struct fields register in the OOP member map; private/unknown fields error.
+- Struct fields register as public in the OOP member map; unknown fields error.
+  Per-field access modifiers are a parse error (type-level visibility only).
 - Emit tracks binding / function return types and copies only struct-typed values.
 - Partial-fix structs emit `__setattr__` guards for fix fields.
 - Grammar keyword `struct` highlighted in `pys.tmLanguage.json`.

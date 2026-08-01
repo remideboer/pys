@@ -166,7 +166,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             fdefaults: set[str] = set()
             for f in stmt.fields:
                 order.append(f.name)
-                access[f.name] = f.access or "module"
+                access[f.name] = "public"
                 ftypes[f.name] = f.type_name
                 if f.is_fix or stmt.type_fix:
                     ffix.add(f.name)

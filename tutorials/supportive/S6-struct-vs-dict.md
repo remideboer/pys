@@ -11,9 +11,9 @@
 ## Side by side
 
 ```pys
-struct Damage {
-    public int amount
-    public string type
+package struct Damage {
+    int amount
+    string type
 }
 
 Damage d = Damage(20, "physical")
@@ -44,7 +44,7 @@ class Unit {
 - **Schema:** struct fields are declared; dict keys are open.  
 - **Null:** struct fields reject `null`; dict values may be `None`.  
 - **Hash:** only all-`fix` / `fix struct` types are hashable.  
-- **Access:** struct fields carry `public` / `private` / …; dict keys do not.
+- **Access:** struct **fields** are always public; control who can import the type with `global` / `package` / `module` on the struct. Dict keys have no access control; class fields use per-member modifiers.
 
 ## Tie-in
 

@@ -1,18 +1,19 @@
 # Identity-free structs: construction, equality, mutability, copy-on-call.
+# Fields are always public; use top_visibility on the struct for import access.
 
 struct Damage {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 fix struct DamageFix {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 struct Pair<T, U> {
-    public T first
-    public U second
+    T first
+    U second
 }
 
 class Unit {

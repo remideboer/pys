@@ -349,19 +349,19 @@ Structs are **identity-free value types**: fields only, no methods, no
 `inherits` / `super` / `sealed` / `implements`. They compare and copy by value.
 
 ```pys
-struct Damage {
-    public int amount
-    public string type
+package struct Damage {
+    int amount
+    string type
 }
 
 fix struct DamageFix {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 struct Pair<T, U> {
-    public T first
-    public U second
+    T first
+    U second
 }
 
 Damage d1 = Damage(20, "physical")
@@ -372,12 +372,15 @@ var d4 = Damage(20, "electric")
 
 Rules:
 
-1. Canonical constructor from field order — positional and/or named args
+1. Fields are always public — no per-field `public` / `private` / …; use
+   `global` / `package` / `module` on the **struct** to control who can import
+   the type
+2. Canonical constructor from field order — positional and/or named args
    (`Type(...)`, never `new`)
-2. Pass-by-value: assignment, call arguments, and returns copy the instance
-3. `==` is field-wise (not reference identity)
-4. No `shared <Struct>`; struct fields and struct bindings reject `null`
-5. Mutability matrix:
+3. Pass-by-value: assignment, call arguments, and returns copy the instance
+4. `==` is field-wise (not reference identity)
+5. No `shared <Struct>`; struct fields and struct bindings reject `null`
+6. Mutability matrix:
 
 | Declaration | Binding | Field `fix` | Field writes |
 |-------------|---------|--------------|--------------|
@@ -386,13 +389,15 @@ Rules:
 | `struct S` | `fix` | (any) | rejected |
 | `fix struct S` | (any) | (any) | rejected |
 
-6. Hashable only when the type is `fix struct` or every field is `fix`
-7. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
+7. Hashable only when the type is `fix struct` or every field is `fix`
+8. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
 
 **Struct vs `dict`:** same idea as a schema-fixed data bag (value equality, no
-methods), but nominal typing, fixed fields, access modifiers, no `null` fields,
-and optional per-field / type-level `fix`. Construct with `Damage(...)`, not
-brace literals. Prefer a **class** when the type has behavior or inheritance.
+methods), but nominal typing, fixed fields, no `null` fields, and optional
+per-field / type-level `fix`. Who may use the type is controlled by the
+struct’s top-level visibility — not per-field modifiers. Construct with
+`Damage(...)`, not brace literals. Prefer a **class** when the type has
+behavior or inheritance.
 
 ---
 

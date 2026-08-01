@@ -275,7 +275,7 @@ class FieldDecl(Node):
 
 @dataclass
 class StructField(Node):
-    access: str = ""
+    access: str = "public"  # fields are always public; kept for metadata symmetry
     type_name: str = ""
     name: str = ""
     is_fix: bool = False

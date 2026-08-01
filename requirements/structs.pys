@@ -43,16 +43,17 @@ Insert as a new section under Classes, before Interfaces:
 ```ebnf
 (* ------------------------- Structs ------------------------- *)
 
-struct_decl      = [ top_visibility ] , "struct" , identifier ,
+struct_decl      = [ top_visibility ] , [ "fix" ] , "struct" , identifier ,
                    [ type_params ] , struct_body ;
 
 (* No "sealed", no "inherits"/"super" — structs are identity-free and
    participate in no inheritance chain. No "implements" — structs carry
-   no behavior, so interface conformance does not apply. *)
+   no behavior, so interface conformance does not apply.
+   top_visibility controls who may import the type; fields are always public. *)
 
 struct_body      = "{" , { struct_field_decl } , "}" ;
 
-struct_field_decl = member_access , [ "fix" ] , type_name , identifier ,
+struct_field_decl = [ "fix" ] , type_name , identifier ,
                     [ "=" , expression ] ;
 ```
 
@@ -132,7 +133,7 @@ tasks task await shared
 | Schema | Fixed at declaration; no runtime add/remove of fields | Open; keys freely added/removed at runtime |
 | Nominal type identity | Two structs with identical fields but different declared type are *not* interchangeable (compiler tracks the distinction) | Two dicts with identical key/value pairs are unconditionally equal — no "type" concept |
 | Per-field immutability | `fix` per field possible (REQ-STRUCT-01.4) | No native per-key immutability; requires a wrapper (e.g. `MappingProxyType`) |
-| Access control | `member_access` (`public`/`private`/...) enforced at compile time | No access control; all keys visible at runtime |
+| Access control | Fields always public; `top_visibility` on the struct controls import of the type | No access control; all keys visible at runtime |
 | Null values | Fields reject `null_lit` (REQ-STRUCT-01.5) | Values may freely be `None` |
 | Hashability | If all fields are `fix`, potentially hashable (usable as set member/dict key) | Unhashable due to mutability — a dict cannot itself be a dict key |
 | Memory representation | Fixed field slots (comparable to `dataclass`/`namedtuple`), predictable layout | Hashmap-based, per-instance overhead for key storage |
@@ -142,26 +143,26 @@ In short: a struct in this design is the schema-fixed, nominally-typed counterpa
 /#
 
 struct Damage {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 # fix struct is immutable for all instances of that type, irrespective of per-field fix qualifiers or binding form (var/fix). All fields SHALL be treated as assign-once at construction.
 fix struct DamageFix {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 # fix struct is immutable for all instances of that type, irrespective of per-field fix qualifiers or binding form (var/fix). All fields SHALL be treated as assign-once at construction.
 struct DamageFix2 {
-    public fix int amount 
-    public fix string type
+    fix int amount 
+    fix string type
 }
 
 #
 struct DamageFix3 {
-    public int amount 
-    public fix string type
+    int amount 
+    fix string type
 }
 
 class Unit {

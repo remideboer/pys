@@ -16,15 +16,24 @@ This should fail to transpile — repair it so `d` stays immutable and construct
 
 ```pys
 struct Damage {
-    public int amount
-    public string type
+    int amount
+    string type
 }
 
 fix Damage d = Damage(20, "physical")
 d.amount = 21
 ```
 
+Also illegal (fields have no access modifiers):
+
+```pys
+struct Damage {
+    public int amount
+}
+```
+
 ## Check
 
 1 → struct · 2 → dict · 3 → class  
-Repair: remove the field write (or drop `fix` on the binding if mutation is intentional).
+Repair: remove the field write (or drop `fix` on the binding if mutation is intentional).  
+Drop `public` on struct fields; use `package struct` / `global struct` when exporting the type.

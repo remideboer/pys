@@ -789,14 +789,15 @@ def _parse_struct(
             p.eat(TokenKind.COMMENT)
             continue
         field_sp = p.span()
-        if not p.at_kw("public", "private", "protected", "module"):
-            raise ParseError(
-                "Struct fields require an access modifier "
-                "(`public` / `private` / `protected` / `module`).",
+        # Fields are always public; type visibility is on the struct_decl.
+        if p.at_kw("public", "private", "protected", "module"):
+            raise FatalParseError(
+                "Struct fields are always public — omit field access modifiers. "
+                "Use `global` / `package` / `module` on the struct declaration "
+                "to control who can import the type.",
                 p.cur().line,
                 p.cur().column,
             )
-        access = p.eat(TokenKind.KEYWORD).text
         is_fix = False
         if p.at_kw("fix"):
             is_fix = True
@@ -810,7 +811,7 @@ def _parse_struct(
         fields.append(
             StructField(
                 span=field_sp,
-                access=access,
+                access="public",
                 type_name=type_name,
                 name=fname,
                 is_fix=is_fix,
