@@ -67,8 +67,8 @@
         ],
         "configuration": "./language-configuration.json",
         "icon": {
-          "light": "./icons/pys-light.svg",
-          "dark": "./icons/pys-dark.svg"
+          "light": "./icons/pys-logo.svg",
+          "dark": "./icons/pys-logo.svg"
         }
       }
     ],
