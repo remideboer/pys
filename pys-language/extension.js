@@ -509,6 +509,32 @@ function activate(context) {
   const typeTokenCache = new Map(); // uri -> { types: Set, version: number }
   const semanticLegend = new vscode.SemanticTokensLegend(['pysType'], []);
 
+  /** Index of a `#` line-comment start, or -1. Ignores `#s{…}` string interpolations. */
+  function lineCommentStart(text) {
+    let inString = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inString) {
+        if (ch === '\\') {
+          i += 1;
+          continue;
+        }
+        if (ch === '"') {
+          inString = false;
+        }
+        continue;
+      }
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+      if (ch === '#' && !/^#[sficbo]\{/.test(text.slice(i))) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
   function fetchValidatedTypes(document) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
@@ -557,15 +583,31 @@ function activate(context) {
         }
         const builder = new vscode.SemanticTokensBuilder(semanticLegend);
         const skip = new Set(['int', 'float', 'char', 'string', 'bool']); // already grammar-highlighted
+        let inBlockComment = false;
         for (let line = 0; line < document.lineCount; line++) {
           const text = document.lineAt(line).text;
+          if (inBlockComment) {
+            if (text.includes('/#')) {
+              inBlockComment = false;
+            }
+            continue;
+          }
+          if (text.includes('##')) {
+            inBlockComment = !text.includes('/#');
+            // Fall through only for code before `##` on the same line (rare).
+          }
+          const commentAt = lineCommentStart(text);
+          const codePart = commentAt >= 0 ? text.slice(0, commentAt) : text;
+          if (!codePart.trim()) {
+            continue;
+          }
           for (const typeName of types.types) {
             if (skip.has(typeName) || typeName.length < 2) {
               continue;
             }
             const re = new RegExp(`\\b${typeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
             let match;
-            while ((match = re.exec(text)) !== null) {
+            while ((match = re.exec(codePart)) !== null) {
               builder.push(line, match.index, match[0].length, 0, 0);
             }
           }

@@ -51,7 +51,8 @@
         },
         {
           "name": "comment.line.number-sign.pys",
-          "match": "#(?![sficbo]\\{).*?$"
+          "begin": "#(?![sficbo]\\{)",
+          "end": "$"
         }
       ]
     },
