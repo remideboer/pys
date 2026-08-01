@@ -48,6 +48,7 @@ def test_acceptance_pokemontcg_pyqt_compiles_gui_entry() -> None:
     modules = transpile_with_modules(path)
     ui = modules.get("ui", "")
     assert "PokemonQtApp" in ui or "class PokemonQtApp" in ui
+    assert "QMainWindow" in ui
     assert "from PyQt6.QtWidgets import" in ui
     assert "currentRowChanged" in ui
     assert "openStore" in "\n".join(modules.values()) or "def openStore" in modules.get("store", "")

@@ -7,6 +7,9 @@ collection with per-type stats, and build decks from owned cards.
 Self-contained folder (`domain` / `store` / `data` / `pys.deps`).
 Tkinter twin: `examples/gui/pokemontcg/`.
 
+`PokemonQtApp inherits QMainWindow` — create `QApplication` in `main.pys` first,
+then construct the window (Qt requires an app before any `QMainWindow`).
+
 Clicking a master-list row updates the detail pane immediately
 (`QListWidget.currentRowChanged`). The first catalog card is selected on startup.
 

@@ -1,0 +1,18 @@
+# hello_mainwindow.pys — minimal inherits QMainWindow (library parent members)
+# Run: python -m transpiler run examples/gui/PyQt/hello_mainwindow.pys
+
+import QApplication, QPushButton, QMainWindow from PyQt6.QtWidgets
+import sys
+
+package class MainWindow inherits QMainWindow {
+    public MainWindow() {
+        this.setWindowTitle("My App")
+        QPushButton button = QPushButton("Press Me!")
+        this.setCentralWidget(button)
+    }
+}
+
+QApplication app = QApplication(sys.argv)
+MainWindow window = MainWindow()
+window.show()
+app.exec()

@@ -1,16 +1,14 @@
 # ui.pys — PyQt6 notebook: Catalog | Collection | Decks (master–detail)
 # Selecting a list row updates the detail pane immediately (currentRowChanged).
 # Isolated silo under examples/gui/PyQt (Tk twin: examples/gui/pokemontcg).
+# PokemonQtApp inherits QMainWindow so library parent methods are used on `this`.
 
-import QApplication, QWidget, QListWidget, QTextEdit, QLabel, QPushButton, QTabWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QMessageBox from PyQt6.QtWidgets
-import sys
+import QWidget, QListWidget, QTextEdit, QLabel, QPushButton, QTabWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QMessageBox, QMainWindow from PyQt6.QtWidgets
 import store
 import domain
 
-package class PokemonQtApp {
+package class PokemonQtApp inherits QMainWindow {
     private AppStore appStore
-    private QApplication qtApp
-    private QWidget window
     private QTabWidget tabs
 
     private QListWidget catalogList
@@ -97,14 +95,14 @@ package class PokemonQtApp {
     public addSelectedToCollection() {
         int row = this.catalogList.currentRow()
         if (row < 0) {
-            QMessageBox.information(this.window, "Collection", "Select a card in the catalog first.")
+            QMessageBox.information(this, "Collection", "Select a card in the catalog first.")
             return
         }
         string cid = this.catalogIds[row]
         this.appStore.getCollection().addCard(cid, 1)
         this.appStore.saveCollection()
         this.refreshCollection()
-        QMessageBox.information(this.window, "Collection", "Added 1 copy to your collection.")
+        QMessageBox.information(this, "Collection", "Added 1 copy to your collection.")
     }
 
     public showCollectionDetail(int row) {
@@ -134,7 +132,7 @@ package class PokemonQtApp {
     public bumpOwned(int delta) {
         int row = this.collectionList.currentRow()
         if (row < 0) {
-            QMessageBox.information(this.window, "Collection", "Select an owned card first.")
+            QMessageBox.information(this, "Collection", "Select an owned card first.")
             return
         }
         string cid = this.collectionIds[row]
@@ -207,12 +205,12 @@ package class PokemonQtApp {
     public createDeck() {
         string name = this.newDeckEntry.text().strip()
         if (name == "") {
-            QMessageBox.information(this.window, "Decks", "Enter a deck name.")
+            QMessageBox.information(this, "Decks", "Enter a deck name.")
             return
         }
         bool ok = this.appStore.getDecks().createDeck(name)
         if (ok == false) {
-            QMessageBox.critical(this.window, "Decks", "A deck with that name already exists.")
+            QMessageBox.critical(this, "Decks", "A deck with that name already exists.")
             return
         }
         this.appStore.saveDecks()
@@ -236,7 +234,7 @@ package class PokemonQtApp {
     public addOwnedToDeck() {
         int drow = this.deckList.currentRow()
         if (drow < 0) {
-            QMessageBox.information(this.window, "Decks", "Select a deck first.")
+            QMessageBox.information(this, "Decks", "Select a deck first.")
             return
         }
         string cardId = ""
@@ -247,14 +245,14 @@ package class PokemonQtApp {
         else {
             int catrow = this.catalogList.currentRow()
             if (catrow < 0) {
-                QMessageBox.information(this.window, "Decks", "Select a card in Collection (or Catalog).")
+                QMessageBox.information(this, "Decks", "Select a card in Collection (or Catalog).")
                 return
             }
             cardId = this.catalogIds[catrow]
         }
         int owned = this.appStore.getCollection().quantityOf(cardId)
         if (owned <= 0) {
-            QMessageBox.critical(this.window, "Decks", "You can only add cards you own. Add it to your collection first.")
+            QMessageBox.critical(this, "Decks", "You can only add cards you own. Add it to your collection first.")
             return
         }
         string name = this.deckNames[drow]
@@ -266,7 +264,7 @@ package class PokemonQtApp {
         int nextQty = current + 1
         bool ok = this.appStore.getDecks().setDeckCard(name, cardId, nextQty, this.appStore.getCollection())
         if (ok == false) {
-            QMessageBox.critical(this.window, "Decks", "Not enough owned copies for this deck.")
+            QMessageBox.critical(this, "Decks", "Not enough owned copies for this deck.")
             return
         }
         this.appStore.saveDecks()
@@ -303,8 +301,7 @@ package class PokemonQtApp {
     }
 
     public run() {
-        this.window.show()
-        this.qtApp.exec()
+        this.show()
     }
 
     public PokemonQtApp(AppStore appStore) {
@@ -313,12 +310,12 @@ package class PokemonQtApp {
         this.collectionIds = []
         this.deckNames = []
 
-        this.qtApp = QApplication(sys.argv)
-        this.window = QWidget()
-        this.window.setWindowTitle("PYS Pokemon TCG Demo (PyQt6)")
-        this.window.resize(900, 560)
+        this.setWindowTitle("PYS Pokemon TCG Demo (PyQt6)")
+        this.resize(900, 560)
 
-        QVBoxLayout rootLayout = QVBoxLayout(this.window)
+        QWidget central = QWidget()
+        this.setCentralWidget(central)
+        QVBoxLayout rootLayout = QVBoxLayout(central)
         this.tabs = QTabWidget()
         rootLayout.addWidget(this.tabs, 1)
 

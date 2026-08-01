@@ -1,9 +1,14 @@
 # main.pys — Pokemon TCG PyQt6 demo (isolated silo)
 # Run: python -m transpiler run examples/gui/PyQt/main.pys
+# QApplication must exist before constructing a QMainWindow subclass.
 
+import QApplication from PyQt6.QtWidgets
+import sys
 import store
 import ui
 
+QApplication qtApp = QApplication(sys.argv)
 AppStore appStore = openStore()
-PokemonQtApp app = PokemonQtApp(appStore)
-app.run()
+PokemonQtApp window = PokemonQtApp(appStore)
+window.run()
+qtApp.exec()
