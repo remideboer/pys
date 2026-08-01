@@ -1076,28 +1076,21 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     )
     site_paths: list[Path] = list(resolver._deps_paths()) if resolver is not None else []
 
-    def library_member(type_name: str, member: str) -> bool:
-        # PYS-declared types: only use class_members / interfaces (never scan libs).
+    def library_member_status(type_name: str, member: str) -> str:
+        """See ``library_type_member_status`` — PYS types are never introspected here."""
         if type_name in class_members or type_name in interfaces:
-            return False
+            return "not_library"
         if resolver is None:
-            return False
+            return "not_library"
         from .pytypes import library_type_member_status
 
-        status = library_type_member_status(
+        return library_type_member_status(
             type_name,
             member,
             type_modules=type_modules,
             imported_modules=imported_modules,
             site_paths=site_paths,
         )
-        if status == "found":
-            return True
-        # Imported library type present in pys.deps / imports, but the binary
-        # module cannot be loaded here (e.g. Qt on headless CI): allow calls.
-        if status == "unresolved" and type_name in type_modules:
-            return True
-        return False
 
     def is_subtype(child: str | None, parent: str) -> bool:
         current = child
@@ -1112,6 +1105,11 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         return False
 
     def lookup_member(type_name: str, member: str) -> tuple[str | None, str | None]:
+        """Return ``(defining_type, access)``.
+
+        Access ``\"unverified\"`` means a library parent is in scope but could not
+        be loaded for introspection — callers must not treat that as an error.
+        """
         current: str | None = type_name
         seen: set[str] = set()
         while current:
@@ -1122,20 +1120,32 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 iface_members = class_members.get(iface, {})
                 if member in iface_members:
                     return iface, iface_members[member]
-            # Library base (e.g. QMainWindow) or intermediate library type.
-            if library_member(current, member):
+
+            status = library_member_status(current, member)
+            if status == "found":
                 return current, "public"
+            if status == "unavailable":
+                # Known import (e.g. QMainWindow) but binary module won't load.
+                return current, "unverified"
+            if status == "absent":
+                # Library class loaded; member is not on that type/MRO.
+                return None, None
+
             if current in seen:
                 break
             seen.add(current)
             current = class_parents.get(current)
+
         if type_name in interfaces:
             members = class_members.get(type_name, {})
             if member in members:
                 return type_name, members[member]
-        # Declared type is itself a library class (composition path with known type).
-        if library_member(type_name, member):
+
+        status = library_member_status(type_name, member)
+        if status == "found":
             return type_name, "public"
+        if status == "unavailable":
+            return type_name, "unverified"
         return None, None
 
     def receiver_type(recv: str, local_types: dict[str, str], current_class: str | None) -> str | None:
@@ -1156,6 +1166,9 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         if not recv_t:
             return
         defining_cls, access = lookup_member(recv_t, member)
+        if access == "unverified":
+            # Environment cannot introspect the library; do not invent an error.
+            return
         if defining_cls is None or access is None:
             known = recv_t in class_members or recv_t in interfaces or recv_t in class_parents
             if not known and resolver is not None:
