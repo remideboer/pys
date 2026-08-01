@@ -16,8 +16,11 @@ import awaiting
 import shared_state
 import pipeline
 import more
+import interleaving
 
 print("========== PYS concurrency examples ==========")
+
+demo_interleaving()
 
 demo_join()
 demo_task_params()

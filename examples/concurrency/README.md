@@ -15,6 +15,7 @@ python -m transpiler run examples/concurrency/main.pys
 | File | Demos |
 |------|--------|
 | `main.pys` | Entry — runs every demo below |
+| `interleaving.pys` | Two tasks print in a loop so output **mixes** (time slicing) |
 | `basics.pys` | Join, **task parameters**, task-local vars |
 | `awaiting.pys` | Named `await`, parameterized fan-in / chain / args |
 | `shared_state.pys` | `shared` plus parameterized updates |

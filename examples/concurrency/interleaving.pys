@@ -1,0 +1,32 @@
+# Show two tasks progressing at the same time: their prints mix
+# because the runtime schedules threads (time slicing), not "A finishes
+# then B starts".
+#
+# Re-run a few times — the exact Alpha/Beta order can change.
+# What should stay true: lines from both names appear before either finishes.
+
+import time
+
+global function demo_interleaving() {
+    print("--- demo_interleaving ---")
+    print("Watch Alpha and Beta lines mix (not all of one, then the other):")
+    tasks {
+        task {
+            int i = 0
+            loop (i < 8) {
+                print("Alpha  step #i{i}")
+                time.sleep(0.01)
+                i = i + 1
+            }
+        }
+        task {
+            int i = 0
+            loop (i < 8) {
+                print("Beta   step #i{i}")
+                time.sleep(0.01)
+                i = i + 1
+            }
+        }
+    }
+    print("both finished - concurrency was the overlapping steps above")
+}
