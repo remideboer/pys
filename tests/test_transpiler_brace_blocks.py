@@ -1,5 +1,7 @@
-import pytest
+import sys
 from pathlib import Path
+
+import pytest
 
 from transpiler.transpiler import TranspileError, transpile, transpile_with_modules
 
@@ -236,11 +238,17 @@ def test_subclass_can_call_library_parent_methods(
         "        pass\n"
         "    def setCentralWidget(self, widget):\n"
         "        pass\n"
+        "    def show(self):\n"
+        "        pass\n"
         "class QPushButton:\n"
         "    def __init__(self, text=''):\n"
         "        self.text = text\n",
         encoding="utf-8",
     )
+    # Drop any real/partial PyQt6 cached by earlier tests (acceptance on CI).
+    for key in list(sys.modules):
+        if key == "PyQt6" or key.startswith("PyQt6."):
+            del sys.modules[key]
     monkeypatch.setattr(
         "transpiler.imports.ImportResolver._deps_paths",
         lambda self: [site],
@@ -277,6 +285,9 @@ def test_subclass_rejects_unknown_library_parent_method(
         "        pass\n",
         encoding="utf-8",
     )
+    for key in list(sys.modules):
+        if key == "PyQt6" or key.startswith("PyQt6."):
+            del sys.modules[key]
     monkeypatch.setattr(
         "transpiler.imports.ImportResolver._deps_paths",
         lambda self: [site],
@@ -293,6 +304,38 @@ def test_subclass_rejects_unknown_library_parent_method(
     )
     with pytest.raises(TranspileError, match=r"not a member of declared type MainWindow"):
         transpile(main.read_text(encoding="utf-8"), source_path=main)
+
+
+def test_subclass_allows_library_parent_when_module_unloadable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI often has PyQt wheel files present but QtWidgets fails to import."""
+    site = tmp_path / "site"
+    pkg = site / "PyQt6"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "QtWidgets.py").write_text("raise ImportError('qt libs missing')\n", encoding="utf-8")
+    for key in list(sys.modules):
+        if key == "PyQt6" or key.startswith("PyQt6."):
+            del sys.modules[key]
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [site],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import QMainWindow from PyQt6.QtWidgets\n"
+        "package class MainWindow inherits QMainWindow {\n"
+        "    public MainWindow() {\n"
+        "        this.setWindowTitle(\"My App\")\n"
+        "        this.show()\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "self.setWindowTitle" in python
+    assert "self.show()" in python
 
 
 def test_import_all_resolves_visible_exports(tmp_path: Path) -> None:

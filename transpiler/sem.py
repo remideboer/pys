@@ -1082,15 +1082,22 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             return False
         if resolver is None:
             return False
-        from .pytypes import library_type_has_member
+        from .pytypes import library_type_member_status
 
-        return library_type_has_member(
+        status = library_type_member_status(
             type_name,
             member,
             type_modules=type_modules,
             imported_modules=imported_modules,
             site_paths=site_paths,
         )
+        if status == "found":
+            return True
+        # Imported library type present in pys.deps / imports, but the binary
+        # module cannot be loaded here (e.g. Qt on headless CI): allow calls.
+        if status == "unresolved" and type_name in type_modules:
+            return True
+        return False
 
     def is_subtype(child: str | None, parent: str) -> bool:
         current = child

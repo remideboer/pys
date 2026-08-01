@@ -299,15 +299,13 @@ def import_module_from_sites(module_name: str, site_paths: list[Path]) -> Module
             if module_name in sys.modules:
                 existing = sys.modules[module_name]
                 file = getattr(existing, "__file__", None)
-                # Reload when a deps site provides this module but the cached
-                # copy came from a different path (common in tests / flyweight swaps).
-                if (
-                    file
-                    and site_paths
-                    and _site_has_module(module_name, site_paths)
-                    and not _path_under_sites(Path(file), site_paths)
-                ):
-                    _drop_module_tree(module_name)
+                # Prefer a deps/stub site over a previously cached import from elsewhere
+                # (CI often caches a broken/partial PyQt6 before unit tests stub it).
+                if site_paths and _site_has_module(module_name, site_paths):
+                    if not file or not _path_under_sites(Path(file), site_paths):
+                        _drop_module_tree(module_name)
+                    else:
+                        return existing
                 else:
                     return existing
             return importlib.import_module(module_name)
@@ -542,6 +540,34 @@ def resolve_library_class(
     return None
 
 
+def library_type_member_status(
+    type_name: str,
+    member: str,
+    *,
+    type_modules: dict[str, str],
+    imported_modules: dict[str, str],
+    site_paths: list[Path],
+) -> str:
+    """Return ``found``, ``absent``, or ``unresolved`` for a library member check.
+
+    ``unresolved`` means the name is a known imported library type but the class
+    could not be imported in this environment (common on headless CI), OR the
+    name is not known as a library type at all.
+    """
+    if not member or member.startswith("_"):
+        return "absent"
+    known_library = type_name in type_modules
+    cls = resolve_library_class(
+        type_name,
+        type_modules=type_modules,
+        imported_modules=imported_modules,
+        site_paths=site_paths,
+    )
+    if cls is None:
+        return "unresolved" if known_library else "unresolved"
+    return "found" if hasattr(cls, member) else "absent"
+
+
 def library_type_has_member(
     type_name: str,
     member: str,
@@ -551,17 +577,16 @@ def library_type_has_member(
     site_paths: list[Path],
 ) -> bool:
     """True if ``member`` is a public attribute on a library class (MRO-aware)."""
-    if not member or member.startswith("_"):
-        return False
-    cls = resolve_library_class(
-        type_name,
-        type_modules=type_modules,
-        imported_modules=imported_modules,
-        site_paths=site_paths,
+    return (
+        library_type_member_status(
+            type_name,
+            member,
+            type_modules=type_modules,
+            imported_modules=imported_modules,
+            site_paths=site_paths,
+        )
+        == "found"
     )
-    if cls is None:
-        return False
-    return hasattr(cls, member)
 
 
 def locate_type_definition(
