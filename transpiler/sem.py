@@ -1452,6 +1452,79 @@ def _is_null_lit(expr: Expr | None) -> bool:
     return isinstance(expr, Literal) and expr.kind == "null"
 
 
+def _check_struct_field_assign(
+    lvalue: str,
+    value: Expr | None,
+    *,
+    types: dict[str, str],
+    fixed: set[str],
+    struct_info: dict[str, dict[str, Any]],
+    line: int,
+    col: int,
+) -> None:
+    """Reject illegal writes to struct fields, including nested paths (``a.b.c``)."""
+    parts = lvalue.split(".")
+    if len(parts) < 2:
+        return
+    root = parts[0]
+    root_t = _base_type_name(types.get(root, ""))
+    if root_t not in struct_info:
+        return
+    if struct_info[root_t]["type_fix"]:
+        _transpile_error(
+            f"Cannot assign to field path '{lvalue}' of fix struct type {root_t}.",
+            line,
+            col,
+            lvalue,
+        )
+    if root in fixed:
+        _transpile_error(
+            f"Cannot assign to field path '{lvalue}' of fix-bound struct '{root}'.",
+            line,
+            col,
+            lvalue,
+        )
+    cur_t = root_t
+    for i, member in enumerate(parts[1:]):
+        meta = struct_info[cur_t]
+        if member not in meta["fields"]:
+            _transpile_error(
+                f"'{member}' is not a field of struct {cur_t}.",
+                line,
+                col,
+                lvalue,
+            )
+        is_last = i == len(parts) - 2
+        if member in meta["fix_fields"]:
+            if is_last:
+                _transpile_error(
+                    f"Cannot assign to fix field '{member}' of struct {cur_t}.",
+                    line,
+                    col,
+                    lvalue,
+                )
+            else:
+                _transpile_error(
+                    f"Cannot assign through fix field '{member}' of struct {cur_t}.",
+                    line,
+                    col,
+                    lvalue,
+                )
+        if is_last:
+            if _is_null_lit(value):
+                _transpile_error(
+                    f"Struct field '{member}' cannot be null.",
+                    line,
+                    col,
+                    "null",
+                )
+            return
+        next_t = _base_type_name(meta["types"].get(member, ""))
+        if next_t not in struct_info:
+            return
+        cur_t = next_t
+
+
 def _check_structs(
     body: list[Any],
     *,
@@ -1581,61 +1654,41 @@ def _check_structs(
                             "null",
                         )
                 if "." in stmt.name:
-                    recv, _, member = stmt.name.rpartition(".")
-                    if "." in recv:
-                        continue
-                    recv_t = _base_type_name(types.get(recv, ""))
-                    if recv_t in struct_info:
-                        meta = struct_info[recv_t]
-                        if member not in meta["fields"]:
-                            _transpile_error(
-                                f"'{member}' is not a field of struct {recv_t}.",
-                                line,
-                                col,
-                                stmt.name,
-                            )
-                        if meta["type_fix"]:
-                            _transpile_error(
-                                f"Cannot assign to field '{member}' of fix struct type {recv_t}.",
-                                line,
-                                col,
-                                stmt.name,
-                            )
-                        if recv in fixed:
-                            _transpile_error(
-                                f"Cannot assign to field '{member}' of fix-bound struct '{recv}'.",
-                                line,
-                                col,
-                                stmt.name,
-                            )
-                        if member in meta["fix_fields"]:
-                            _transpile_error(
-                                f"Cannot assign to fix field '{member}' of struct {recv_t}.",
-                                line,
-                                col,
-                                stmt.name,
-                            )
-                        if _is_null_lit(stmt.value):
-                            _transpile_error(
-                                f"Struct field '{member}' cannot be null.",
-                                line,
-                                col,
-                                "null",
-                            )
+                    _check_struct_field_assign(
+                        stmt.name,
+                        stmt.value,
+                        types=types,
+                        fixed=fixed,
+                        struct_info=struct_info,
+                        line=line,
+                        col=col,
+                    )
                 continue
             if isinstance(stmt, StructDef):
+                seen_fields: set[str] = set()
+                seen_default = False
                 for f in stmt.fields:
+                    if f.name in seen_fields:
+                        _transpile_error(
+                            f"Duplicate field '{f.name}' in struct {stmt.name}.",
+                            f.span.line if f.span else 1,
+                            f.span.column if f.span else 1,
+                            f.name,
+                        )
+                    seen_fields.add(f.name)
+                    if f.default is not None:
+                        seen_default = True
+                    elif seen_default:
+                        _transpile_error(
+                            f"Struct field '{f.name}' without a default cannot follow "
+                            f"a field with a default in struct {stmt.name}.",
+                            f.span.line if f.span else 1,
+                            f.span.column if f.span else 1,
+                            f.name,
+                        )
                     if f.default is not None and _is_null_lit(f.default):
                         _transpile_error(
                             f"Struct field '{f.name}' cannot default to null.",
-                            f.span.line if f.span else 1,
-                            f.span.column if f.span else 1,
-                            "null",
-                        )
-                    fbase = _base_type_name(f.type_name)
-                    if fbase in struct_info and f.default is not None and _is_null_lit(f.default):
-                        _transpile_error(
-                            f"Struct field '{f.name}' cannot be null.",
                             f.span.line if f.span else 1,
                             f.span.column if f.span else 1,
                             "null",

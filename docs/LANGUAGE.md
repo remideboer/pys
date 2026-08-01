@@ -376,11 +376,12 @@ Rules:
    `global` / `package` / `module` on the **struct** to control who can import
    the type
 2. Canonical constructor from field order — positional and/or named args
-   (`Type(...)`, never `new`)
+   (`Type(...)`, never `new`); fields with defaults must be trailing
 3. Pass-by-value: assignment, call arguments, and returns copy the instance
+   (nested struct fields are deep-copied)
 4. `==` is field-wise (not reference identity)
 5. No `shared <Struct>`; struct fields and struct bindings reject `null`
-6. Mutability matrix:
+6. Mutability matrix (also applies to nested paths like `o.inner.x`):
 
 | Declaration | Binding | Field `fix` | Field writes |
 |-------------|---------|--------------|--------------|

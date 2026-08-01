@@ -100,8 +100,31 @@ None` when mutable; `_pys_copy` + wrapper copies at assign/call/return.
 
 `tests/test_structs.py` access, precise-copy, and runtime-guard cases.
 
+---
+
+## 5. Maturity (nested paths, decl hygiene, IDE)
+
+### Pre-behavior
+
+- Nested assigns like `o.inner.x = …` skipped mutability checks when `recv` had dots.
+- Duplicate fields / non-trailing defaults were not diagnosed until Python emit failed.
+- IDE keyword completion / hover / validated_types omitted `struct`.
+
+### Post-behavior
+
+- Nested field paths enforce fix-bound / fix-struct / fix-field (including
+  “assign through fix field”).
+- Declares reject duplicate names and required fields after defaults; parse rejects
+  methods/nested types inside structs.
+- Extension: `struct` keyword, hover, snippets; `ide` registers struct types.
+
+### Evidence
+
+`tests/test_structs.py` maturity rejections, defaults, nested copy, package import + IDE.
+
 ## Trade-offs
 
 - Method return types used as `fn_return_types[name]` can collide across classes
   with the same method name (pre-existing overload naming limits).
 - Fully frozen structs still rely on dataclass `frozen=True` (no custom setattr).
+- Nested paths that leave struct types (e.g. into a `dict` field) stop checking.

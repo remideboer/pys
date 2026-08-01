@@ -9,7 +9,7 @@ const {
 } = require('./ide-process');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
@@ -19,7 +19,7 @@ const PYS_KEYWORDS = [
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
 
 const PYS_MD_KEYWORDS = new Set([
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'print', 'all', 'sealed',
@@ -376,6 +376,7 @@ function activate(context) {
         interface: 'Abstract type: `interface Name { public action() }`\nMethods have no body and must be implemented by classes.',
         implements: 'Class implements interface(s): `class Car implements Startable { ... }`',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
+        struct: 'Value type (fields only): `package struct Damage { int amount }`\nConstruct with `Damage(20)` / `Damage(amount=20)`. Fields are always public; use `global`/`package`/`module` on the struct. Copied on assign/call.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         this: 'Current instance reference (becomes `self` in Python)',

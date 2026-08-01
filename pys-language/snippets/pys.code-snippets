@@ -96,6 +96,26 @@
     ],
     "description": "PYS class with constructor and method"
   },
+  "Struct": {
+    "prefix": "struct",
+    "body": [
+      "${1|package,global,module|} struct ${2:Name} {",
+      "\t${3|int,string,float,bool|} ${4:field}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS struct value type (fields always public)"
+  },
+  "Fix struct": {
+    "prefix": "fixstruct",
+    "body": [
+      "fix struct ${1:Name} {",
+      "\t${2|int,string,float,bool|} ${3:field}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Immutable PYS struct (all fields assign-once)"
+  },
   "Subclass": {
     "prefix": "inherits",
     "body": [

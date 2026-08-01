@@ -798,6 +798,14 @@ def _parse_struct(
                 p.cur().line,
                 p.cur().column,
             )
+        if p.at_kw("function", "func", "class", "interface", "struct", "tasks"):
+            bad = p.cur().text
+            raise FatalParseError(
+                f"Structs cannot contain `{bad}` — only fields are allowed "
+                f"(identity-free value types have no methods or nested types).",
+                p.cur().line,
+                p.cur().column,
+            )
         is_fix = False
         if p.at_kw("fix"):
             is_fix = True

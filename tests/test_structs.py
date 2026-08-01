@@ -218,3 +218,107 @@ struct Mixed {
     m.amount = 2
     with pytest.raises(AttributeError, match="fix field"):
         m.type = "ice"
+
+
+def test_struct_field_defaults_and_trailing_omit() -> None:
+    source = """
+struct Hit {
+    int amount
+    string type = "physical"
+}
+Hit a = Hit(10)
+Hit b = Hit(10, "fire")
+print(a.type)
+print(b.type)
+"""
+    py = transpile(source)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run([sys.executable, str(path)], capture_output=True, text=True, check=True)
+    assert proc.stdout.strip().splitlines() == ["physical", "fire"]
+
+
+def test_nested_struct_copy_on_call() -> None:
+    source = """
+struct Inner {
+    int x
+}
+struct Outer {
+    Inner inner
+}
+function Outer touch(Outer o) {
+    o.inner.x = 99
+    return o
+}
+Outer before = Outer(Inner(1))
+Outer after = touch(before)
+print(before.inner.x)
+print(after.inner.x)
+"""
+    py = transpile(source)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run([sys.executable, str(path)], capture_output=True, text=True, check=True)
+    assert proc.stdout.strip().splitlines() == ["1", "99"]
+
+
+@pytest.mark.parametrize(
+    "source, match",
+    [
+        (
+            "struct S { int x\n int x }\n",
+            r"Duplicate field",
+        ),
+        (
+            "struct S { int x = 1\n int y }\n",
+            r"without a default cannot follow",
+        ),
+        (
+            "struct S {\n  function int f() { return 1 }\n}\n",
+            r"Structs cannot contain `function`",
+        ),
+        (
+            """
+struct Inner { int x }
+struct Outer { Inner inner }
+fix Outer o = Outer(Inner(1))
+o.inner.x = 2
+""",
+            r"fix-bound struct",
+        ),
+        (
+            """
+struct Inner { int x }
+struct Outer { fix Inner inner }
+Outer o = Outer(Inner(1))
+o.inner.x = 2
+""",
+            r"through fix field",
+        ),
+    ],
+)
+def test_struct_maturity_rejections(source: str, match: str) -> None:
+    with pytest.raises(TranspileError, match=match):
+        transpile(source)
+
+
+def test_package_struct_import_and_ide_types(tmp_path: Path) -> None:
+    from transpiler.ide import analyze_file
+
+    lib = tmp_path / "damage_lib.pys"
+    lib.write_text(
+        "package struct Damage {\n    int amount\n    string type\n}\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        'import Damage from damage_lib.pys\nDamage d = Damage(3, "a")\nprint(d.amount)\n',
+        encoding="utf-8",
+    )
+    assert run_source(main) == 0
+    analysis = analyze_file(main)
+    assert analysis["ok"]
+    assert "Damage" in analysis["validated_types"]
+    assert "Damage" in analysis["symbols"]

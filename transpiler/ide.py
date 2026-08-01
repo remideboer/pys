@@ -128,7 +128,12 @@ def _register_type(
     if base in _PRIMITIVES:
         validated_types.add(base)
         return True
-    if base in resolver.class_parents or base in resolver.interfaces or base in resolver.exports:
+    if (
+        base in resolver.class_parents
+        or base in resolver.interfaces
+        or base in getattr(resolver, "structs", set())
+        or base in resolver.exports
+    ):
         validated_types.add(base)
         if base in resolver.symbol_locations:
             path, line, col = resolver.symbol_locations[base]
@@ -178,7 +183,11 @@ def _collect_hints_and_types(
     validated_types = set(_PRIMITIVES)
     type_definitions = dict(resolver.type_definitions)
 
-    for name in list(resolver.class_parents) + list(resolver.interfaces):
+    for name in (
+        list(resolver.class_parents)
+        + list(resolver.interfaces)
+        + list(getattr(resolver, "structs", set()))
+    ):
         _register_type(
             name,
             resolver=resolver,
