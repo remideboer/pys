@@ -68,24 +68,23 @@ through a **Maven-style central repository** shared across projects.
 
 1. On run/transpile, the tool walks upward from the `.pys` file until it finds
    `pys.deps`.
-2. It checks the optional `[interpreter]` constraint (and optional `path`).
-3. For each entry under `[dependencies]`, it looks in the central repo:
-   `~/.pys/repository/packages/<name>/<version>/`.
-4. Missing packages are installed once with `pip install --target` into that
-   folder (flyweight cache). Later projects reuse the same install.
-5. Those package folders are prepended to `PYTHONPATH` for the generated
+2. It checks the optional `[interpreter]` version constraint against the
+   Python executable that launched the transpiler.
+3. It verifies the committed `pys.lock` matches `pys.deps`, Python, and platform.
+4. Every direct and transitive package is installed from the exact URL and
+   SHA-256 in the lock, using pip `--require-hashes --no-deps`.
+5. The locked environment is cached once by lock digest and prepended to `PYTHONPATH` for the generated
    Python process — imports like `import matplotlib` then resolve normally.
 
 **Layout**
 
 ```
 ~/.pys/repository/
-  packages/
-    matplotlib/
-      3.8.0/          # pinned or resolved "latest"
-      LATEST          # pointer file when version was omitted
-    mysql_connector_python/
-      8.0.33/
+  environments/
+    <lock-sha256>/
+      .pys-lock.json
+      matplotlib/
+      ...
 ```
 
 Override the repo root with env `PYS_REPO` if needed.
@@ -97,10 +96,10 @@ Place `pys.deps` in the project root (or any parent of the `.pys` file):
 ```
 [interpreter]
 	version: >=3.10
-	# path: C:\Python311\python.exe
 
 [dependencies]
 	matplotlib
+		version: 3.10.5
 	mysql-connector-python
 		version: 8.0.33
 		build: run
@@ -109,8 +108,22 @@ Place `pys.deps` in the project root (or any parent of the `.pys` file):
 | Field | Meaning |
 | --- | --- |
 | package name (indented line) | PyPI name; required |
-| `version` | Pin (e.g. `8.0.33`). Omit = resolve once as latest and cache |
+| `version` | Exact version (e.g. `8.0.33`); required for Run dependencies |
 | `build` | `run`, `test`, or omit (= available for both) |
+
+`interpreter.path` is intentionally not supported in project-controlled
+`pys.deps`. To use another interpreter, invoke the transpiler with that Python:
+`C:\Python311\python.exe -m transpiler run main.pys`.
+
+After changing dependencies, regenerate and commit the lock for the current
+Python/platform:
+
+```bash
+python -m transpiler deps lock pys.deps
+```
+
+Run fails closed if the lock is missing, stale, has the wrong platform/Python,
+or contains an invalid hash.
 
 Stdlib modules need no entry. Non-stdlib packages must be listed in `pys.deps`
 before you `import` them from `.pys`.

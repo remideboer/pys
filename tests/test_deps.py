@@ -1,23 +1,41 @@
 from __future__ import annotations
 
+import hashlib
+import os
+import sys
+import sysconfig
+import zipfile
 from pathlib import Path
 
 import pytest
 
 from transpiler.deps import (
+    DEFAULT_INDEX_URL,
+    DepsLock,
     DepsError,
     Dependency,
+    LockedPackage,
+    deps_fingerprint,
     ensure_dependency,
+    ensure_site_paths_for,
+    find_deps_file,
+    generate_lock,
+    load_deps,
+    lookup_cached_dependency,
     parse_deps_text,
     prepend_pythonpath,
+    read_lock,
     resolve_python_executable,
+    resolve_site_paths,
+    validate_lock,
+    write_lock,
+    _lock_environment_path,
 )
 
 
 SAMPLE = """
 [interpreter]
 	version: >=3.9
-	path: /usr/bin/python3
 
 [dependencies]
 	mysql-connector-python
@@ -34,7 +52,6 @@ SAMPLE = """
 def test_parse_deps_basic() -> None:
     config = parse_deps_text(SAMPLE)
     assert config.interpreter.version == ">=3.9"
-    assert config.interpreter.path == "/usr/bin/python3"
     assert len(config.dependencies) == 4
     assert config.dependencies[0] == Dependency("mysql-connector-python", "8.0.33", "run")
     assert config.dependencies[1] == Dependency("matplotlib", None, None)
@@ -63,13 +80,290 @@ def test_parse_allows_comments_and_blanks() -> None:
 
 def test_interpreter_version_check_passes() -> None:
     config = parse_deps_text("[interpreter]\n\tversion: >=3.0\n[dependencies]\n")
-    assert resolve_python_executable(config)
+    assert resolve_python_executable(config) == sys.executable
 
 
 def test_interpreter_version_check_fails() -> None:
     config = parse_deps_text("[interpreter]\n\tversion: <3.0\n[dependencies]\n")
     with pytest.raises(DepsError, match="does not satisfy"):
         resolve_python_executable(config)
+
+
+@pytest.mark.parametrize(
+    "interpreter_path",
+    [
+        "./tools/evil.exe",
+        "/tmp/external-python",
+        r"C:\Python311\python.exe",
+        r"\\attacker\share\python.exe",
+    ],
+)
+def test_interpreter_path_is_rejected(interpreter_path: str) -> None:
+    text = (
+        "[interpreter]\n"
+        "\tversion: any\n"
+        f"\tpath: {interpreter_path}\n"
+        "[dependencies]\n"
+    )
+    with pytest.raises(DepsError, match=r"interpreter\.path is not allowed"):
+        parse_deps_text(text)
+
+
+def test_parse_rejects_unsafe_dependency_version() -> None:
+    """F4: version must be a simple token — no markers, options, or paths."""
+    for bad in ("1.0; evil", "--help", "../x", "1.0 evil"):
+        text = f"[dependencies]\n\tpkg\n\t\tversion: {bad}\n"
+        with pytest.raises(DepsError, match="invalid dependency version"):
+            parse_deps_text(text)
+
+
+def test_parse_allows_simple_dependency_versions() -> None:
+    for good in ("8.0.33", "1.2.3rc1", "2.0.0a1", "1.0.post1"):
+        config = parse_deps_text(f"[dependencies]\n\tpkg\n\t\tversion: {good}\n")
+        assert config.dependencies[0].version == good
+
+
+def test_find_deps_file_stops_at_workspace_root(tmp_path: Path) -> None:
+    """F5: do not honor pys.deps above the workspace root."""
+    above = tmp_path / "above"
+    workspace = above / "workspace"
+    nested = workspace / "src"
+    nested.mkdir(parents=True)
+    (above / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n",
+        encoding="utf-8",
+    )
+    (workspace / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tinside\n",
+        encoding="utf-8",
+    )
+    found = find_deps_file(nested / "main.pys", stop_at=workspace)
+    assert found == workspace / "pys.deps"
+    # Parent above workspace must be ignored when stop_at is set.
+    only_nested = workspace / "alone"
+    only_nested.mkdir()
+    (above / "pys.deps").unlink()
+    # Recreate only the above-workspace deps (no workspace deps).
+    (workspace / "pys.deps").unlink()
+    (above / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tabove\n",
+        encoding="utf-8",
+    )
+    assert find_deps_file(only_nested / "main.pys", stop_at=workspace) is None
+    assert load_deps(only_nested / "main.pys", stop_at=workspace) is None
+
+
+def test_find_deps_file_respects_env_workspace_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    above = tmp_path / "above"
+    workspace = above / "ws"
+    workspace.mkdir(parents=True)
+    (above / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PYS_WORKSPACE_ROOT", str(workspace))
+    assert find_deps_file(workspace / "main.pys") is None
+
+
+def test_run_source_ignores_deps_above_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F3: explicit Run uses the same workspace boundary as IDE analysis."""
+    from types import SimpleNamespace
+
+    from transpiler.transpiler import run_source
+
+    parent = tmp_path / "parent"
+    workspace = parent / "workspace"
+    workspace.mkdir(parents=True)
+    # This would fail parsing if Run incorrectly walked above the workspace.
+    (parent / "pys.deps").write_text(
+        "[interpreter]\n\tpath: ./evil.exe\n[dependencies]\n",
+        encoding="utf-8",
+    )
+    source = workspace / "main.pys"
+    source.write_text("print(1)\n", encoding="utf-8")
+    monkeypatch.setenv("PYS_WORKSPACE_ROOT", str(workspace))
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr("transpiler.transpiler.subprocess.run", fake_run)
+    assert run_source(source) == 0
+    assert len(calls) == 1
+
+
+def test_pys_import_cannot_escape_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from transpiler.transpiler import TranspileError, transpile_with_modules
+
+    workspace = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    workspace.mkdir()
+    outside.mkdir()
+    (outside / "evil.pys").write_text(
+        "function int value() {\n    return 7\n}\n",
+        encoding="utf-8",
+    )
+    main = workspace / "main.pys"
+    main.write_text(
+        "import all from ../outside/evil.pys\nprint(value())\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PYS_WORKSPACE_ROOT", str(workspace))
+
+    with pytest.raises(TranspileError, match="Cannot find module"):
+        transpile_with_modules(main)
+
+
+def test_pys_import_rejects_symlink_escape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from transpiler.transpiler import TranspileError, transpile_with_modules
+
+    workspace = tmp_path / "workspace"
+    outside = tmp_path / "outside"
+    workspace.mkdir()
+    outside.mkdir()
+    (outside / "evil.pys").write_text(
+        "function int value() {\n    return 7\n}\n",
+        encoding="utf-8",
+    )
+    link = workspace / "linked"
+    try:
+        os.symlink(outside, link, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+    main = workspace / "main.pys"
+    main.write_text(
+        "import all from linked/evil.pys\nprint(value())\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PYS_WORKSPACE_ROOT", str(workspace))
+
+    with pytest.raises(TranspileError, match="Cannot find module"):
+        transpile_with_modules(main)
+
+
+def test_ide_rejects_symlinked_document_escape(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from transpiler.ide import analyze_file
+    from transpiler.transpiler import TranspileError
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    outside = tmp_path / "outside.pys"
+    outside.write_text("print(1)\n", encoding="utf-8")
+    linked = workspace / "linked.pys"
+    try:
+        os.symlink(outside, linked)
+    except OSError as exc:
+        pytest.skip(f"file symlinks unavailable: {exc}")
+    monkeypatch.setenv("PYS_WORKSPACE_ROOT", str(workspace))
+
+    with pytest.raises(TranspileError, match="outside the workspace"):
+        analyze_file(linked)
+
+
+def test_import_module_from_sites_rejects_workspace_shadow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F3: workspace PYTHONPATH shadows must not be used for typing imports."""
+    from transpiler.pytypes import import_module_from_sites
+
+    site = tmp_path / "site"
+    site.mkdir()
+    workspace = tmp_path / "workspace"
+    shadow = workspace / "shadowpkg"
+    shadow.mkdir(parents=True)
+    (shadow / "__init__.py").write_text("MARKER = 'evil'\n", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(workspace))
+    sys.modules.pop("shadowpkg", None)
+
+    assert import_module_from_sites("shadowpkg", [site]) is None
+
+    # Modules present under the deps site are still loaded.
+    good = site / "goodpkg"
+    good.mkdir()
+    (good / "__init__.py").write_text("MARKER = 'good'\n", encoding="utf-8")
+    sys.modules.pop("goodpkg", None)
+    loaded = import_module_from_sites("goodpkg", [site])
+    assert loaded is not None
+    assert loaded.MARKER == "good"
+
+    # Stdlib remains available even when unrelated site_paths are present.
+    math_mod = import_module_from_sites("math", [site])
+    assert math_mod is not None
+
+
+def test_static_analysis_does_not_execute_cached_dependency(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """F4: IDE/transpile are safe; explicit runtime introspection may import."""
+    from transpiler.ide import analyze_file
+    from transpiler.transpiler import transpile
+
+    package_name = "security_side_effect_pkg"
+    repo = tmp_path / "repo"
+    monkeypatch.setattr("transpiler.deps.default_repo_root", lambda: repo)
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[interpreter]\n"
+        "\tversion: any\n"
+        "[dependencies]\n"
+        f"\t{package_name}\n"
+        "\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    lock = _demo_lock(
+        config,
+        LockedPackage(
+            package_name,
+            "1.0.0",
+            "https://example.invalid/security.whl",
+            "f" * 64,
+        ),
+    )
+    write_lock(lock, tmp_path / "pys.lock")
+    site = _lock_environment_path(lock, repo)
+    site.mkdir(parents=True)
+    (site / ".pys-lock.json").write_text("{}", encoding="utf-8")
+    package = site / package_name
+    package.mkdir(parents=True)
+    marker = tmp_path / "dependency-imported"
+    (package / "__init__.py").write_text(
+        "from pathlib import Path\n"
+        f"Path({str(marker)!r}).write_text('executed', encoding='utf-8')\n"
+        "class Widget:\n"
+        "    pass\n",
+        encoding="utf-8",
+    )
+    source_path = tmp_path / "main.pys"
+    source_path.write_text(
+        f"import {package_name}\n"
+        f"Widget widget = {package_name}.Widget()\n",
+        encoding="utf-8",
+    )
+
+    transpile(source_path.read_text(encoding="utf-8"), source_path=source_path)
+    assert analyze_file(source_path)["ok"]
+    assert not marker.exists()
+
+    transpile(
+        source_path.read_text(encoding="utf-8"),
+        source_path=source_path,
+        allow_runtime_introspection=True,
+    )
+    assert marker.read_text(encoding="utf-8") == "executed"
+    sys.modules.pop(package_name, None)
 
 
 def test_flyweight_reuses_installed_package(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -89,6 +383,268 @@ def test_flyweight_reuses_installed_package(tmp_path: Path, monkeypatch: pytest.
     second = ensure_dependency(dep, python="python", repo_root=tmp_path)
     assert first == second
     assert len(calls) == 1  # second call is a flyweight hit
+
+
+def test_resolve_site_paths_install_false_skips_pip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """IDE/validate path must never download — only return already-cached packages."""
+    calls: list[str] = []
+
+    def fake_pip(python: str, package_spec: str, target: Path, *, progress_label: str | None = None) -> None:
+        calls.append(package_spec)
+        raise AssertionError("pip must not run when install=False")
+
+    monkeypatch.setattr("transpiler.deps._pip_install", fake_pip)
+    config = parse_deps_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tevildist\n\t\tversion: 1.0.0\n"
+    )
+    paths = resolve_site_paths(config, repo_root=tmp_path, quiet=True, install=False)
+    assert paths == []
+    assert calls == []
+    assert lookup_cached_dependency(Dependency("evildist", "1.0.0"), repo_root=tmp_path) is None
+
+
+def test_resolve_site_paths_install_false_uses_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_pip(python: str, package_spec: str, target: Path, *, progress_label: str | None = None) -> None:
+        target.mkdir(parents=True, exist_ok=True)
+        dist = target / "demo-1.2.3.dist-info"
+        dist.mkdir()
+        (dist / "METADATA").write_text("Name: demo\nVersion: 1.2.3\n", encoding="utf-8")
+
+    monkeypatch.setattr("transpiler.deps._pip_install", fake_pip)
+    dep = Dependency("demo", "1.2.3")
+    cached = ensure_dependency(dep, python="python", repo_root=tmp_path)
+    config = parse_deps_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tdemo\n\t\tversion: 1.2.3\n"
+    )
+    # Reset pip to a bomb so read-only mode cannot call it.
+    monkeypatch.setattr(
+        "transpiler.deps._pip_install",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no pip")),
+    )
+    paths = resolve_site_paths(config, repo_root=tmp_path, quiet=True, install=False)
+    assert paths == [cached]
+
+
+def test_import_resolver_does_not_install_on_validate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Opening/transpiling a .pys file must not pip-install from pys.deps (F1)."""
+    from transpiler.transpiler import transpile
+
+    calls: list[str] = []
+
+    def fake_pip(python: str, package_spec: str, target: Path, *, progress_label: str | None = None) -> None:
+        calls.append(package_spec)
+
+    monkeypatch.setattr("transpiler.deps._pip_install", fake_pip)
+    monkeypatch.setattr("transpiler.deps.default_repo_root", lambda: tmp_path / "repo")
+    (tmp_path / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tevildist\n\t\tversion: 9.9.9\n",
+        encoding="utf-8",
+    )
+    main = tmp_path / "main.pys"
+    main.write_text("print(1)\n", encoding="utf-8")
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "print(1)" in python
+    assert calls == []
+
+
+def _demo_lock(config, package: LockedPackage) -> DepsLock:
+    return DepsLock(
+        deps_fingerprint=deps_fingerprint(config),
+        python=f"{sys.version_info.major}.{sys.version_info.minor}",
+        platform=sysconfig.get_platform(),
+        index_url=DEFAULT_INDEX_URL,
+        packages=(package,),
+    )
+
+
+def test_lock_serialization_is_deterministic(tmp_path: Path) -> None:
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    lock = _demo_lock(
+        config,
+        LockedPackage("demo", "1.0.0", "https://example.invalid/demo.whl", "a" * 64),
+    )
+    lock_path = tmp_path / "pys.lock"
+    write_lock(lock, lock_path)
+    first = lock_path.read_bytes()
+    write_lock(read_lock(lock_path), lock_path)
+    assert lock_path.read_bytes() == first
+    validate_lock(read_lock(lock_path), config)
+
+
+def test_generate_lock_records_resolved_transitive_packages(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from types import SimpleNamespace
+    import json
+
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+
+    def fake_run(command: list[str], **kwargs: object) -> SimpleNamespace:
+        report_path = Path(command[command.index("--report") + 1])
+        report_path.write_text(
+            json.dumps(
+                {
+                    "install": [
+                        {
+                            "metadata": {"name": "demo", "version": "1.0.0"},
+                            "download_info": {
+                                "url": "https://example.invalid/demo.whl",
+                                "archive_info": {"hashes": {"sha256": "d" * 64}},
+                            },
+                        },
+                        {
+                            "metadata": {"name": "transitive", "version": "2.0.0"},
+                            "download_info": {
+                                "url": "https://example.invalid/transitive.whl",
+                                "archive_info": {"hashes": {"sha256": "e" * 64}},
+                            },
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("transpiler.deps.subprocess.run", fake_run)
+    lock_path = generate_lock(config)
+    lock = read_lock(lock_path)
+    assert [package.name for package in lock.packages] == ["demo", "transitive"]
+    validate_lock(lock, config)
+
+
+def test_missing_and_stale_lock_fail_closed(tmp_path: Path) -> None:
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DepsError, match="Missing pys.lock"):
+        ensure_site_paths_for(tmp_path / "main.pys", install=True)
+
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    lock = _demo_lock(
+        config,
+        LockedPackage("demo", "1.0.0", "https://example.invalid/demo.whl", "b" * 64),
+    )
+    write_lock(lock, tmp_path / "pys.lock")
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 2.0.0\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DepsError, match="stale"):
+        ensure_site_paths_for(tmp_path / "main.pys", install=True)
+
+
+def test_lock_rejects_wrong_runtime_and_hash(tmp_path: Path) -> None:
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    package = LockedPackage(
+        "demo", "1.0.0", "https://example.invalid/demo.whl", "c" * 64
+    )
+    valid = _demo_lock(config, package)
+    wrong_python = DepsLock(
+        valid.deps_fingerprint,
+        "0.0",
+        valid.platform,
+        valid.index_url,
+        valid.packages,
+    )
+    with pytest.raises(DepsError, match="targets Python"):
+        validate_lock(wrong_python, config)
+    wrong_platform = DepsLock(
+        valid.deps_fingerprint,
+        valid.python,
+        "untrusted-platform",
+        valid.index_url,
+        valid.packages,
+    )
+    with pytest.raises(DepsError, match="targets platform"):
+        validate_lock(wrong_platform, config)
+
+    lock_path = tmp_path / "pys.lock"
+    write_lock(valid, lock_path)
+    text = lock_path.read_text(encoding="utf-8").replace("c" * 64, "not-a-hash")
+    lock_path.write_text(text, encoding="utf-8")
+    with pytest.raises(DepsError, match="Invalid SHA-256"):
+        read_lock(lock_path)
+
+
+def test_locked_local_wheel_installs_and_reuses_cache(tmp_path: Path) -> None:
+    wheel = tmp_path / "demo-1.0.0-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("demo/__init__.py", "VALUE = 42\n")
+        archive.writestr(
+            "demo-1.0.0.dist-info/METADATA",
+            "Metadata-Version: 2.1\nName: demo\nVersion: 1.0.0\n",
+        )
+        archive.writestr(
+            "demo-1.0.0.dist-info/WHEEL",
+            "Wheel-Version: 1.0\nGenerator: pys-test\n"
+            "Root-Is-Purelib: true\nTag: py3-none-any\n",
+        )
+        archive.writestr("demo-1.0.0.dist-info/RECORD", "")
+    digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tdemo\n\t\tversion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    lock = _demo_lock(
+        config,
+        LockedPackage("demo", "1.0.0", wheel.resolve().as_uri(), digest),
+    )
+    write_lock(lock, tmp_path / "pys.lock")
+    repo = tmp_path / "repo"
+
+    first = resolve_site_paths(config, repo_root=repo, quiet=True, install=True)
+    second = resolve_site_paths(config, repo_root=repo, quiet=True, install=True)
+    assert first == second
+    assert (first[0] / "demo" / "__init__.py").is_file()
+
+    bad_lock = _demo_lock(
+        config,
+        LockedPackage("demo", "1.0.0", wheel.resolve().as_uri(), "0" * 64),
+    )
+    write_lock(bad_lock, tmp_path / "pys.lock")
+    with pytest.raises(DepsError, match="Failed to install locked dependencies"):
+        resolve_site_paths(config, repo_root=repo, quiet=True, install=True)
+
+
+def test_unpinned_run_dependency_is_rejected(tmp_path: Path) -> None:
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text("[dependencies]\n\tdemo\n", encoding="utf-8")
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    with pytest.raises(DepsError, match="exact versions"):
+        deps_fingerprint(config)
 
 
 def test_prepend_pythonpath(tmp_path: Path) -> None:
@@ -191,7 +747,11 @@ def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytes
         encoding="utf-8",
     )
     with pytest.raises(TranspileError) as caught:
-        transpile(main.read_text(encoding="utf-8"), source_path=main)
+        transpile(
+            main.read_text(encoding="utf-8"),
+            source_path=main,
+            allow_runtime_introspection=True,
+        )
     assert caught.value.code == "pys.missing-type"
     assert caught.value.suggested_fix == "list rows = cur.fetchall()"
 
@@ -206,7 +766,11 @@ def test_unknown_library_type_is_rejected(tmp_path: Path, monkeypatch: pytest.Mo
     main = tmp_path / "main.pys"
     main.write_text("import demo\nNoSuchType x = 1\n", encoding="utf-8")
     with pytest.raises(TranspileError, match="Unknown type 'NoSuchType'"):
-        transpile(main.read_text(encoding="utf-8"), source_path=main)
+        transpile(
+            main.read_text(encoding="utf-8"),
+            source_path=main,
+            allow_runtime_introspection=True,
+        )
 
 
 def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -225,7 +789,7 @@ def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytes
     monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
     main = tmp_path / "main.pys"
     main.write_text("import demo\nWidget w = demo.make()\n", encoding="utf-8")
-    result = analyze_file(main)
+    result = analyze_file(main, allow_runtime_introspection=True)
     assert result["ok"]
     loc = result["symbols"]["Widget"]
     assert loc["kind"] == "type"
@@ -252,7 +816,7 @@ def test_navigate_to_module_and_function(tmp_path: Path, monkeypatch: pytest.Mon
         'int x = 1\n',
         encoding="utf-8",
     )
-    analysis = analyze_file(main)
+    analysis = analyze_file(main, allow_runtime_introspection=True)
     assert analysis["ok"]
 
     connector = lookup_symbol(analysis, "mysql.connector")
@@ -288,7 +852,7 @@ def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyP
         "Conn db = demo.connect()\n",
         encoding="utf-8",
     )
-    analysis = analyze_file(main)
+    analysis = analyze_file(main, allow_runtime_introspection=True)
     assert analysis["ok"]
     loc = lookup_symbol(analysis, "db.cursor")
     assert loc is not None
@@ -384,7 +948,11 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         encoding="utf-8",
     )
     with pytest.raises(TranspileError) as caught:
-        transpile(missing.read_text(encoding="utf-8"), source_path=missing)
+        transpile(
+            missing.read_text(encoding="utf-8"),
+            source_path=missing,
+            allow_runtime_introspection=True,
+        )
     assert caught.value.code == "pys.missing-type"
     assert "list rows" in (caught.value.suggested_fix or "")
     assert "weak/untyped" in str(caught.value)
@@ -401,7 +969,7 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         "}\n",
         encoding="utf-8",
     )
-    analysis = analyze_file(typed)
+    analysis = analyze_file(typed, allow_runtime_introspection=True)
     assert analysis["ok"]
     codes = {h["code"] for h in analysis["hints"]}
     assert "pys.untyped-library" in codes
@@ -422,6 +990,6 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         "}\n",
         encoding="utf-8",
     )
-    precise_analysis = analyze_file(precise)
+    precise_analysis = analyze_file(precise, allow_runtime_introspection=True)
     assert precise_analysis["ok"]
     assert precise_analysis["hints"] == []

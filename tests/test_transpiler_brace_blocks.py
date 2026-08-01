@@ -303,7 +303,11 @@ def test_subclass_rejects_unknown_library_parent_method(
         encoding="utf-8",
     )
     with pytest.raises(TranspileError, match=r"not a member of declared type MainWindow"):
-        transpile(main.read_text(encoding="utf-8"), source_path=main)
+        transpile(
+            main.read_text(encoding="utf-8"),
+            source_path=main,
+            allow_runtime_introspection=True,
+        )
 
 
 def test_subclass_allows_library_parent_when_module_unloadable(

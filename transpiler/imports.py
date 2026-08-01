@@ -17,6 +17,7 @@ from .ast_nodes import (
     InterfaceDef,
     Module,
 )
+from .workspace import resolve_workspace_path, workspace_root_from_env
 
 
 @dataclass
@@ -173,11 +174,23 @@ class ImportResolver:
         source_path: Path | None = None,
         module_cache: dict[Path, ModuleInfo] | None = None,
         transpiling: set[Path] | None = None,
+        allow_runtime_introspection: bool = False,
     ) -> None:
         self.source = source
         self.source_path = source_path.resolve() if source_path is not None else None
+        workspace_root = workspace_root_from_env()
+        if self.source_path is not None and workspace_root is not None:
+            contained = resolve_workspace_path(self.source_path, workspace_root)
+            if contained is None:
+                from .transpiler import TranspileError
+
+                raise TranspileError(
+                    f"Source path resolves outside the workspace: {self.source_path}"
+                )
+            self.source_path = contained
         self.module_cache = module_cache if module_cache is not None else {}
         self.transpiling = transpiling if transpiling is not None else set()
+        self.allow_runtime_introspection = allow_runtime_introspection
         self.exports: dict[str, str] = {}
         self.constants: set[str] = set()
         self.fixed_vars: set[str] = set()
@@ -228,7 +241,11 @@ class ImportResolver:
         from .deps import DepsError, ensure_site_paths_for
 
         try:
-            self._deps_site_paths = ensure_site_paths_for(self.source_path, build="run", quiet=True)
+            # Read-only: never pip-install during transpile/IDE validation.
+            # Run (transpiler.run_source) still installs via resolve_site_paths.
+            self._deps_site_paths = ensure_site_paths_for(
+                self.source_path, build="run", quiet=True, install=False
+            )
         except DepsError:
             self._deps_site_paths = []
         return self._deps_site_paths
@@ -251,10 +268,16 @@ class ImportResolver:
             path = path.with_suffix(".pys")
         if not path.is_absolute():
             base = self.source_path.parent if self.source_path is not None else Path.cwd()
-            path = (base / path).resolve()
-        else:
-            path = path.resolve()
-        return path if path.exists() else None
+            path = base / path
+
+        workspace_root = workspace_root_from_env()
+        if workspace_root is not None:
+            return resolve_workspace_path(path, workspace_root)
+        try:
+            path = path.resolve(strict=True)
+        except OSError:
+            return None
+        return path
 
     def _same_package(self, other: Path) -> bool:
         if self.source_path is None:
@@ -283,6 +306,7 @@ class ImportResolver:
                 source_path=path,
                 module_cache=self.module_cache,
                 transpiling=self.transpiling,
+                allow_runtime_introspection=self.allow_runtime_introspection,
             )
             for stmt in tree.body:
                 if not isinstance(stmt, ImportStmt):
@@ -368,12 +392,19 @@ class ImportResolver:
         raw_line: str,
         alias: str | None = None,
     ) -> str | None:
-        from .deps import is_external_python_module
+        from .deps import is_external_python_module, lock_declares_module
 
         ref = module_ref.strip().strip("\"'")
         if ref.lower().endswith(".pys"):
             return None
-        if not is_external_python_module(ref, self._deps_paths()):
+        present = is_external_python_module(ref, self._deps_paths())
+        if (
+            not present
+            and not self.allow_runtime_introspection
+            and self.source_path is not None
+        ):
+            present = lock_declares_module(self.source_path, ref)
+        if not present:
             return None
 
         top = ref.split(".", 1)[0]
@@ -509,21 +540,38 @@ class ImportResolver:
         return self.translate_import_statement(line, line_number, raw_line)
 
 
-def make_resolver(source: str, source_path: Path) -> ImportResolver:
-    return ImportResolver(source, source_path=source_path)
+def make_resolver(
+    source: str,
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> ImportResolver:
+    return ImportResolver(
+        source,
+        source_path=source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
 
 
 def translate_import(resolver: Any, line: str, line_number: int = 1) -> str | None:
     return resolver.translate_import_statement(line, line_number, line)
 
 
-def discover_imported_modules(source_path: Path) -> dict[Path, ModuleInfo]:
+def discover_imported_modules(
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> dict[Path, ModuleInfo]:
     """Parse entry file imports (recursively) and return the module cache."""
     source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
     from .parse import parse_program
 
-    resolver = ImportResolver(source, source_path=source_path)
+    resolver = ImportResolver(
+        source,
+        source_path=source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     tree = parse_program(source)
     for stmt in tree.body:
         if not isinstance(stmt, ImportStmt):

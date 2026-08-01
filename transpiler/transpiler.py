@@ -58,14 +58,28 @@ class TranspileError(ValueError):
         return base
 
 
-def transpile(source_code: str, *, source_path: Path | None = None) -> str:
+def transpile(
+    source_code: str,
+    *,
+    source_path: Path | None = None,
+    allow_runtime_introspection: bool = False,
+) -> str:
     """Convert teaching language source into valid Python source."""
     from .pipeline import compile_pys
 
-    return compile_pys(source_code, target="python", source_path=source_path)
+    return compile_pys(
+        source_code,
+        target="python",
+        source_path=source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
 
 
-def transpile_with_modules(source_path: Path) -> dict[str, str]:
+def transpile_with_modules(
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> dict[str, str]:
     """Transpile a .pys entry file and all imported .pys modules.
 
     Returns a mapping of module stem -> Python source text.
@@ -75,15 +89,24 @@ def transpile_with_modules(source_path: Path) -> dict[str, str]:
 
     source_path = source_path.resolve()
     text = source_path.read_text(encoding="utf-8")
-    module_cache = discover_imported_modules(source_path)
+    module_cache = discover_imported_modules(
+        source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     modules = {
-        source_path.stem: compile_pys(text, target="python", source_path=source_path),
+        source_path.stem: compile_pys(
+            text,
+            target="python",
+            source_path=source_path,
+            allow_runtime_introspection=allow_runtime_introspection,
+        ),
     }
     for path in module_cache:
         modules[path.stem] = compile_pys(
             path.read_text(encoding="utf-8"),
             target="python",
             source_path=path,
+            allow_runtime_introspection=allow_runtime_introspection,
         )
     return modules
 
@@ -107,13 +130,22 @@ def transpile_path(source_path: Path, target_path: Path) -> None:
 
 def run_source(source_path: Path) -> int:
     """Transpile a source file and execute it with the current Python interpreter."""
-    from .deps import DepsError, load_deps, prepend_pythonpath, resolve_python_executable, resolve_site_paths
+    from .deps import (
+        DepsError,
+        WORKSPACE_ROOT_ENV,
+        load_deps,
+        prepend_pythonpath,
+        resolve_python_executable,
+        resolve_site_paths,
+    )
 
     source_path = source_path.resolve()
     env = dict(os.environ)
     python_exe = sys.executable
+    workspace_value = os.environ.get(WORKSPACE_ROOT_ENV)
+    workspace_root = Path(workspace_value).expanduser().resolve() if workspace_value else None
     try:
-        deps_config = load_deps(source_path)
+        deps_config = load_deps(source_path, stop_at=workspace_root)
         if deps_config is not None:
             python_exe = resolve_python_executable(deps_config)
             site_paths = resolve_site_paths(deps_config, build="run", python=python_exe)
@@ -122,7 +154,10 @@ def run_source(source_path: Path) -> int:
         raise TranspileError(str(exc), source_file=source_path) from exc
 
     if source_path.suffix == ".pys":
-        modules = transpile_with_modules(source_path)
+        modules = transpile_with_modules(
+            source_path,
+            allow_runtime_introspection=True,
+        )
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_root = Path(temp_dir)
             for stem, python_text in modules.items():

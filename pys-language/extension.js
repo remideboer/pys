@@ -1,7 +1,12 @@
 const vscode = require('vscode');
-const cp = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const {
+  buildWorkspaceIdeProcessSpec,
+  buildRunEnv,
+  resolveWorkspaceFile,
+  runJsonProcess,
+} = require('./ide-process');
 
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'interface',
@@ -97,10 +102,11 @@ function resolveMainFilePath() {
   if (!workspace) {
     return null;
   }
-  if (path.isAbsolute(relative)) {
-    return relative;
-  }
-  return path.join(workspace.uri.fsPath, relative);
+  const workspacePath = workspace.uri.fsPath;
+  const candidate = path.isAbsolute(relative)
+    ? relative
+    : path.join(workspacePath, relative);
+  return resolveWorkspaceFile(workspacePath, candidate);
 }
 
 function activate(context) {
@@ -108,7 +114,12 @@ function activate(context) {
   context.subscriptions.push(diagnosticCollection);
 
   let validateTimer = null;
-  let validateChild = null;
+  let validateController = null;
+  context.subscriptions.push({
+    dispose() {
+      validateController?.abort();
+    },
+  });
 
   const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
 
@@ -239,75 +250,61 @@ function activate(context) {
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
 
-    if (validateChild) {
-      try {
-        validateChild.kill();
-      } catch (error) {
-        // ignore
-      }
-      validateChild = null;
+    validateController?.abort();
+    const controller = new AbortController();
+    validateController = controller;
+    const spec = buildWorkspaceIdeProcessSpec(
+      context.extensionPath,
+      workspacePath,
+      document.uri.fsPath,
+    );
+    if (!spec) {
+      diagnosticCollection.delete(document.uri);
+      afterDiagnosticsUpdated(document);
+      return;
     }
-
-    return new Promise((resolve) => {
-      const child = cp.spawn(
+    try {
+      const parsed = await runJsonProcess(
         pythonExecutable,
-        ['-m', 'transpiler.ide', document.uri.fsPath],
-        {
-          cwd: workspacePath,
-          env: {
-            ...process.env,
-            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
-          },
-        },
+        spec.args,
+        spec.options,
+        { signal: controller.signal },
       );
-      validateChild = child;
-      let output = '';
-      child.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-      });
-      child.stderr.on('data', () => {});
-      child.on('close', () => {
-        if (validateChild === child) {
-          validateChild = null;
+      if (validateController !== controller) {
+        return;
+      }
+      const diagnostics = [];
+      // Clear stale hint metadata for this document
+      for (const key of [...hintMeta.keys()]) {
+        if (key.startsWith(`${document.uri.toString()}:`)) {
+          hintMeta.delete(key);
         }
-        try {
-          const parsed = JSON.parse(output.trim() || '{"ok": true}');
-          const diagnostics = [];
-          // Clear stale hint metadata for this document
-          for (const key of [...hintMeta.keys()]) {
-            if (key.startsWith(`${document.uri.toString()}:`)) {
-              hintMeta.delete(key);
-            }
-          }
-          if (!parsed.ok && parsed.error) {
-            diagnostics.push(createDiagnosticFromError(parsed.error, document));
-          }
-          for (const hint of parsed.hints || []) {
-            diagnostics.push(createHintDiagnostic(hint, document));
-          }
-          diagnosticCollection.set(document.uri, diagnostics);
-          afterDiagnosticsUpdated(document);
-        } catch (error) {
-          diagnosticCollection.set(document.uri, [
-            new vscode.Diagnostic(
-              new vscode.Range(0, 0, 0, 1),
-              'Unable to parse PYS diagnostics.',
-              vscode.DiagnosticSeverity.Error,
-            ),
-          ]);
-          afterDiagnosticsUpdated(document);
-        }
-        resolve();
-      });
-      child.on('error', () => {
-        if (validateChild === child) {
-          validateChild = null;
-        }
-        diagnosticCollection.set(document.uri, []);
-        afterDiagnosticsUpdated(document);
-        resolve();
-      });
-    });
+      }
+      if (!parsed.ok && parsed.error) {
+        diagnostics.push(createDiagnosticFromError(parsed.error, document));
+      }
+      for (const hint of parsed.hints || []) {
+        diagnostics.push(createHintDiagnostic(hint, document));
+      }
+      diagnosticCollection.set(document.uri, diagnostics);
+      afterDiagnosticsUpdated(document);
+    } catch (error) {
+      if (error && error.code === 'CANCELLED') {
+        return;
+      }
+      diagnosticCollection.set(document.uri, [
+        new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 1),
+          `PYS diagnostics failed (${error.code || 'PROCESS_ERROR'}).`,
+          vscode.DiagnosticSeverity.Error,
+        ),
+      ]);
+      afterDiagnosticsUpdated(document);
+    } finally {
+      if (validateController === controller) {
+        validateController = null;
+      }
+    }
   }
 
   function scheduleValidate(document) {
@@ -448,47 +445,41 @@ function activate(context) {
     return full.slice(0, segEnd);
   }
 
-  function locateSymbol(document, symbol) {
+  async function locateSymbol(document, symbol, token) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace || !symbol) {
-      return Promise.resolve(null);
+      return null;
     }
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
-    return new Promise((resolve) => {
-      const child = cp.spawn(
+    const spec = buildWorkspaceIdeProcessSpec(
+      context.extensionPath,
+      workspacePath,
+      document.uri.fsPath,
+      [symbol],
+    );
+    if (!spec) {
+      return null;
+    }
+    try {
+      const parsed = await runJsonProcess(
         pythonExecutable,
-        ['-m', 'transpiler.ide', document.uri.fsPath, symbol],
-        {
-          cwd: workspacePath,
-          env: {
-            ...process.env,
-            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
-          },
-        },
+        spec.args,
+        spec.options,
+        { signal: token },
       );
-      let output = '';
-      child.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-      });
-      child.on('close', () => {
-        try {
-          const parsed = JSON.parse(output.trim() || '{}');
-          resolve(parsed.location || null);
-        } catch (error) {
-          resolve(null);
-        }
-      });
-      child.on('error', () => resolve(null));
-    });
+      return parsed.location || null;
+    } catch (_error) {
+      return null;
+    }
   }
 
-  async function provideSymbolLocation(document, position) {
+  async function provideSymbolLocation(document, position, token) {
     const symbol = getDottedPathAt(document, position);
     if (!symbol) {
       return null;
     }
-    const location = await locateSymbol(document, symbol);
+    const location = await locateSymbol(document, symbol, token);
     if (!location || !location.file) {
       return null;
     }
@@ -535,49 +526,42 @@ function activate(context) {
     return -1;
   }
 
-  function fetchValidatedTypes(document) {
+  async function fetchValidatedTypes(document, token) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
-      return Promise.resolve([]);
+      return [];
     }
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
-    return new Promise((resolve) => {
-      const child = cp.spawn(
+    const spec = buildWorkspaceIdeProcessSpec(
+      context.extensionPath,
+      workspacePath,
+      document.uri.fsPath,
+    );
+    if (!spec) {
+      return [];
+    }
+    try {
+      const parsed = await runJsonProcess(
         pythonExecutable,
-        ['-m', 'transpiler.ide', document.uri.fsPath],
-        {
-          cwd: workspacePath,
-          env: {
-            ...process.env,
-            PYTHONPATH: [workspacePath, process.env.PYTHONPATH].filter(Boolean).join(path.delimiter),
-          },
-        },
+        spec.args,
+        spec.options,
+        { signal: token },
       );
-      let output = '';
-      child.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-      });
-      child.on('close', () => {
-        try {
-          const parsed = JSON.parse(output.trim() || '{}');
-          resolve(parsed.validated_types || []);
-        } catch (error) {
-          resolve([]);
-        }
-      });
-      child.on('error', () => resolve([]));
-    });
+      return parsed.validated_types || [];
+    } catch (_error) {
+      return [];
+    }
   }
 
   context.subscriptions.push(vscode.languages.registerDocumentSemanticTokensProvider(
     { language: 'pys' },
     {
-      async provideDocumentSemanticTokens(document) {
+      async provideDocumentSemanticTokens(document, token) {
         const key = document.uri.toString();
         let types = typeTokenCache.get(key);
         if (!types || types.version !== document.version) {
-          const validated = await fetchValidatedTypes(document);
+          const validated = await fetchValidatedTypes(document, token);
           types = { types: new Set(validated), version: document.version };
           typeTokenCache.set(key, types);
         }
@@ -778,14 +762,6 @@ function activate(context) {
     return bundled;
   }
 
-  function envWithBundledTranspiler(bundled) {
-    const existing = process.env.PYTHONPATH || '';
-    return {
-      ...process.env,
-      PYTHONPATH: existing ? `${bundled}${path.delimiter}${existing}` : bundled,
-    };
-  }
-
   function shellQuote(value) {
     if (process.platform === 'win32') {
       return `"${String(value).replace(/"/g, '\\"')}"`;
@@ -804,12 +780,30 @@ function activate(context) {
     if (!filePath) {
       filePath = resolveMainFilePath();
     }
-    return filePath;
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!filePath || !workspace) {
+      return null;
+    }
+    return resolveWorkspaceFile(workspace.uri.fsPath, filePath);
   }
 
   async function runPysFile(filePath) {
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to run. Set pys.mainFile or open a .pys file.');
+      return;
+    }
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage('Trust this workspace before running PYS files.');
+      return;
+    }
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      vscode.window.showErrorMessage('Open a workspace before running PYS files.');
+      return;
+    }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('PYS file must resolve inside the workspace.');
       return;
     }
     const bundled = ensureBundledTranspiler();
@@ -827,10 +821,15 @@ function activate(context) {
     }
     const pythonExecutable = getPythonExecutable();
     const workDir = path.dirname(filePath);
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('PYS file left the workspace before execution.');
+      return;
+    }
     const term = vscode.window.createTerminal({
       name: 'Run PYS',
       cwd: workDir,
-      env: envWithBundledTranspiler(bundled),
+      env: buildRunEnv(bundled, workspace.uri.fsPath),
     });
     term.show();
     term.sendText(
@@ -842,6 +841,20 @@ function activate(context) {
   async function debugPysFile(filePath) {
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to debug. Set pys.mainFile or open a .pys file.');
+      return;
+    }
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage('Trust this workspace before debugging PYS files.');
+      return;
+    }
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      vscode.window.showErrorMessage('Open a workspace before debugging PYS files.');
+      return;
+    }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('PYS file must resolve inside the workspace.');
       return;
     }
     const bundled = ensureBundledTranspiler();
@@ -857,6 +870,11 @@ function activate(context) {
       vscode.window.showErrorMessage('Unable to save files before debugging.');
       return;
     }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('PYS file left the workspace before execution.');
+      return;
+    }
     // Runs via the Python debugger on generated code — not PYS source stepping.
     vscode.debug.startDebugging(undefined, {
       name: 'Run .pys file',
@@ -865,7 +883,7 @@ function activate(context) {
       module: 'transpiler',
       args: ['run', filePath],
       cwd: path.dirname(filePath),
-      env: envWithBundledTranspiler(bundled),
+      env: buildRunEnv(bundled, workspace.uri.fsPath),
       console: 'integratedTerminal',
     });
   }
@@ -908,6 +926,11 @@ function activate(context) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
       vscode.window.showErrorMessage('Open a workspace folder to set a main file.');
+      return;
+    }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('Main file must resolve inside the workspace folder.');
       return;
     }
     let relative = path.relative(workspace.uri.fsPath, filePath);

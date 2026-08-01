@@ -4,6 +4,7 @@ node_modules
 .github
 PUBLISH.md
 scripts
+test
 *.vsix
 **/.DS_Store
 **/__pycache__

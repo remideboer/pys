@@ -30,6 +30,7 @@ from .pytypes import (
     locate_type_definition,
 )
 from .transpiler import TranspileError
+from .workspace import resolve_workspace_path, workspace_root_from_env
 
 _PRIMITIVES = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
 
@@ -84,8 +85,18 @@ def _call_receiver_method(expr: Any) -> tuple[str, str | None] | None:
     return None
 
 
-def _seed_resolver(tree: Module, source: str, source_path: Path) -> ImportResolver:
-    resolver = ImportResolver(source, source_path=source_path)
+def _seed_resolver(
+    tree: Module,
+    source: str,
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> ImportResolver:
+    resolver = ImportResolver(
+        source,
+        source_path=source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     for stmt in tree.body:
         if not isinstance(stmt, ImportStmt):
             continue
@@ -126,18 +137,29 @@ def _register_type(
     if base in resolver.type_modules:
         validated_types.add(base)
         located = locate_type_definition(
-            base, type_modules=resolver.type_modules, site_paths=site_paths
+            base,
+            type_modules=resolver.type_modules,
+            site_paths=site_paths,
+            allow_runtime_imports=resolver.allow_runtime_introspection,
         )
         if located:
             type_definitions[base] = located
         return True
     for mod in sorted(set(resolver.imported_modules.values())):
-        cls = _find_class_in_package(mod, base, site_paths)
+        cls = _find_class_in_package(
+            mod,
+            base,
+            site_paths,
+            allow_runtime_imports=resolver.allow_runtime_introspection,
+        )
         if isinstance(cls, type):
             resolver.type_modules[base] = cls.__module__
             validated_types.add(base)
             located = locate_type_definition(
-                base, type_modules=resolver.type_modules, site_paths=site_paths
+                base,
+                type_modules=resolver.type_modules,
+                site_paths=site_paths,
+                allow_runtime_imports=resolver.allow_runtime_introspection,
             )
             if located:
                 type_definitions[base] = located
@@ -188,6 +210,7 @@ def _collect_hints_and_types(
                     imported_modules=resolver.imported_modules,
                     site_paths=site_paths,
                     type_modules=resolver.type_modules,
+                    allow_runtime_imports=resolver.allow_runtime_introspection,
                 )
                 if info is not None:
                     if info.element_type and info.pys_type in {"list", "set", "tuple", "dict"}:
@@ -252,12 +275,29 @@ def _collect_hints_and_types(
     return variable_types, collection_element_types, hints, validated_types, type_definitions
 
 
-def analyze_file(source_path: Path) -> dict:
-    source_path = source_path.resolve()
+def analyze_file(
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> dict:
+    workspace_root = workspace_root_from_env()
+    if workspace_root is not None:
+        contained = resolve_workspace_path(source_path, workspace_root)
+        if contained is None:
+            raise TranspileError(
+                f"Source path resolves outside the workspace: {source_path}"
+            )
+        source_path = contained
+    else:
+        source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
     error = None
     try:
-        compile_pys(source, source_path=source_path)
+        compile_pys(
+            source,
+            source_path=source_path,
+            allow_runtime_introspection=allow_runtime_introspection,
+        )
     except TranspileError as exc:
         error = _error_dict(exc)
 
@@ -281,7 +321,12 @@ def analyze_file(source_path: Path) -> dict:
             "_site_paths": [],
         }
 
-    resolver = _seed_resolver(tree, source, source_path)
+    resolver = _seed_resolver(
+        tree,
+        source,
+        source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     site_paths = resolver._deps_paths()
     info = module_info_from_ast(source_path, tree)
 
@@ -314,6 +359,7 @@ def analyze_file(source_path: Path) -> dict:
                 type_name,
                 type_modules=resolver.type_modules,
                 site_paths=site_paths,
+                allow_runtime_imports=resolver.allow_runtime_introspection,
             )
             if located:
                 type_definitions[type_name] = located
@@ -341,6 +387,7 @@ def analyze_file(source_path: Path) -> dict:
         "class_parents": class_parents,
         "method_locations": method_locations,
         "_site_paths": [str(p) for p in site_paths],
+        "_allow_runtime_introspection": allow_runtime_introspection,
     }
 
 
@@ -389,6 +436,7 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
         site_paths=site_paths,
         variable_types=analysis.get("variable_types") or {},
         type_modules=analysis.get("type_modules") or {},
+        allow_runtime_imports=bool(analysis.get("_allow_runtime_introspection", False)),
     )
     if not located:
         return None

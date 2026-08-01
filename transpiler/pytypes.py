@@ -293,22 +293,83 @@ def _drop_module_tree(module_name: str) -> None:
             del sys.modules[key]
 
 
-def import_module_from_sites(module_name: str, site_paths: list[Path]) -> ModuleType | None:
-    with _with_sys_path(site_paths):
+def _is_stdlib_path(path: Path) -> bool:
+    """True for interpreter-owned stdlib files, excluding site-packages."""
+    import sysconfig
+
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+
+    for key in ("purelib", "platlib"):
+        raw = sysconfig.get_path(key)
+        if not raw:
+            continue
+        try:
+            resolved.relative_to(Path(raw).resolve())
+            return False
+        except ValueError:
+            continue
+
+    raw_stdlib = sysconfig.get_path("stdlib")
+    if not raw_stdlib:
+        return False
+    try:
+        resolved.relative_to(Path(raw_stdlib).resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def import_module_from_sites(
+    module_name: str,
+    site_paths: list[Path],
+    *,
+    allow_runtime_imports: bool = True,
+) -> ModuleType | None:
+    """Import a module for typing, preferring deps sites; never trust workspace shadows.
+
+    - If the module exists under ``site_paths``, import from there.
+    - Otherwise allow stdlib / interpreter-prefix modules only (F3).
+    """
+    in_sites = bool(site_paths) and _site_has_module(module_name, site_paths)
+    if in_sites and not allow_runtime_imports:
+        return None
+
+    def _accept(module: ModuleType) -> ModuleType | None:
+        file = getattr(module, "__file__", None)
+        if file is None:
+            return module  # built-in / namespace without file
+        path = Path(file)
+        if in_sites and _path_under_sites(path, site_paths):
+            return module
+        if _is_stdlib_path(path):
+            return module
+        return None
+
+    path_ctx = _with_sys_path(site_paths) if in_sites else _with_sys_path([])
+    with path_ctx:
         try:
             if module_name in sys.modules:
                 existing = sys.modules[module_name]
                 file = getattr(existing, "__file__", None)
-                # Prefer a deps/stub site over a previously cached import from elsewhere
-                # (CI often caches a broken/partial PyQt6 before unit tests stub it).
-                if site_paths and _site_has_module(module_name, site_paths):
+                if in_sites:
                     if not file or not _path_under_sites(Path(file), site_paths):
                         _drop_module_tree(module_name)
                     else:
                         return existing
                 else:
-                    return existing
-            return importlib.import_module(module_name)
+                    accepted = _accept(existing)
+                    if accepted is not None:
+                        return accepted
+                    # Drop a workspace-shadowed module so a later trusted import can win.
+                    _drop_module_tree(module_name)
+            module = importlib.import_module(module_name)
+            accepted = _accept(module)
+            if accepted is None:
+                _drop_module_tree(module_name)
+            return accepted
         except Exception:
             return None
 
@@ -321,6 +382,7 @@ def infer_call_return_type(
     imported_modules: dict[str, str],
     site_paths: list[Path],
     type_modules: dict[str, str],
+    allow_runtime_imports: bool = True,
 ) -> str | None:
     info = infer_call_return_info(
         receiver_expr,
@@ -329,6 +391,7 @@ def infer_call_return_type(
         imported_modules=imported_modules,
         site_paths=site_paths,
         type_modules=type_modules,
+        allow_runtime_imports=allow_runtime_imports,
     )
     return info.pys_type if info else None
 
@@ -341,6 +404,7 @@ def infer_call_return_info(
     imported_modules: dict[str, str],
     site_paths: list[Path],
     type_modules: dict[str, str],
+    allow_runtime_imports: bool = True,
 ) -> InferredReturn | None:
     """Infer PYS type (+ optional element type) for a library/module call."""
     recv = receiver_expr.strip()
@@ -370,7 +434,11 @@ def infer_call_return_info(
         mod_name = imported_modules.get(head)
         if not mod_name:
             return None
-        module = import_module_from_sites(mod_name, site_paths)
+        module = import_module_from_sites(
+            mod_name,
+            site_paths,
+            allow_runtime_imports=allow_runtime_imports,
+        )
         if module is None:
             return None
         target = resolve_attr_chain(module, rest)
@@ -388,11 +456,20 @@ def infer_call_return_info(
     if recv_type:
         origin_mod = type_modules.get(recv_type)
         if origin_mod:
-            module = import_module_from_sites(origin_mod, site_paths)
+            module = import_module_from_sites(
+                origin_mod,
+                site_paths,
+                allow_runtime_imports=allow_runtime_imports,
+            )
             if module is not None:
                 cls = getattr(module, recv_type, None)
                 if cls is None:
-                    cls = _find_class_in_package(origin_mod, recv_type, site_paths)
+                    cls = _find_class_in_package(
+                        origin_mod,
+                        recv_type,
+                        site_paths,
+                        allow_runtime_imports=allow_runtime_imports,
+                    )
                 if cls is not None:
                     target = getattr(cls, method_name, None)
                     ann = _get_return_annotation(target)
@@ -434,7 +511,11 @@ def infer_call_return_info(
         head, *rest = recv.split(".")
         mod_name = imported_modules.get(head)
         if mod_name:
-            module = import_module_from_sites(mod_name, site_paths)
+            module = import_module_from_sites(
+                mod_name,
+                site_paths,
+                allow_runtime_imports=allow_runtime_imports,
+            )
             if module is not None:
                 parent = resolve_attr_chain(module, rest)
                 target = getattr(parent, method_name, None) if parent is not None else None
@@ -473,8 +554,18 @@ def _remember_type_origin(
         type_modules[pys_type] = fallback_module
 
 
-def _find_class_in_package(package: str, class_name: str, site_paths: list[Path]) -> Any | None:
-    module = import_module_from_sites(package, site_paths)
+def _find_class_in_package(
+    package: str,
+    class_name: str,
+    site_paths: list[Path],
+    *,
+    allow_runtime_imports: bool = True,
+) -> Any | None:
+    module = import_module_from_sites(
+        package,
+        site_paths,
+        allow_runtime_imports=allow_runtime_imports,
+    )
     if module is None:
         return None
     found = getattr(module, class_name, None)
@@ -491,7 +582,11 @@ def _find_class_in_package(package: str, class_name: str, site_paths: list[Path]
             if info.name.endswith(("_cext", ".cext")):
                 continue
             try:
-                sub = import_module_from_sites(info.name, site_paths)
+                sub = import_module_from_sites(
+                    info.name,
+                    site_paths,
+                    allow_runtime_imports=allow_runtime_imports,
+                )
             except Exception:
                 continue
             if sub is None:
@@ -510,6 +605,7 @@ def resolve_library_class(
     type_modules: dict[str, str],
     imported_modules: dict[str, str],
     site_paths: list[Path],
+    allow_runtime_imports: bool = True,
 ) -> Any | None:
     """Resolve a class/type imported from a Python library (by name)."""
     base = (type_name or "").strip()
@@ -530,7 +626,11 @@ def resolve_library_class(
             candidates.append(mod)
 
     for mod_name in candidates:
-        module = import_module_from_sites(mod_name, site_paths)
+        module = import_module_from_sites(
+            mod_name,
+            site_paths,
+            allow_runtime_imports=allow_runtime_imports,
+        )
         if module is None:
             continue
         found = getattr(module, base, None)
@@ -547,6 +647,7 @@ def library_type_member_status(
     type_modules: dict[str, str],
     imported_modules: dict[str, str],
     site_paths: list[Path],
+    allow_runtime_imports: bool = True,
 ) -> str:
     """Classify a member check against a Python library type.
 
@@ -566,6 +667,7 @@ def library_type_member_status(
         type_modules=type_modules,
         imported_modules=imported_modules,
         site_paths=site_paths,
+        allow_runtime_imports=allow_runtime_imports,
     )
     if cls is None:
         if type_name in type_modules:
@@ -583,6 +685,7 @@ def library_type_has_member(
     type_modules: dict[str, str],
     imported_modules: dict[str, str],
     site_paths: list[Path],
+    allow_runtime_imports: bool = True,
 ) -> bool:
     """True if ``member`` is a public attribute on a library class (MRO-aware)."""
     return (
@@ -592,6 +695,7 @@ def library_type_has_member(
             type_modules=type_modules,
             imported_modules=imported_modules,
             site_paths=site_paths,
+            allow_runtime_imports=allow_runtime_imports,
         )
         == "found"
     )
@@ -602,6 +706,7 @@ def locate_type_definition(
     *,
     type_modules: dict[str, str],
     site_paths: list[Path],
+    allow_runtime_imports: bool = True,
 ) -> tuple[Path, int, int] | None:
     """Return (file, line, column) for a class/type definition if found."""
     module_name = type_modules.get(type_name)
@@ -610,12 +715,21 @@ def locate_type_definition(
     if not candidates:
         return None
     for mod_name in candidates:
-        module = import_module_from_sites(mod_name, site_paths)
+        module = import_module_from_sites(
+            mod_name,
+            site_paths,
+            allow_runtime_imports=allow_runtime_imports,
+        )
         if module is None:
             continue
         cls = getattr(module, type_name, None)
         if cls is None:
-            cls = _find_class_in_package(mod_name.split(".")[0], type_name, site_paths)
+            cls = _find_class_in_package(
+                mod_name.split(".")[0],
+                type_name,
+                site_paths,
+                allow_runtime_imports=allow_runtime_imports,
+            )
         if not isinstance(cls, type):
             continue
         located = locate_python_object(cls)
@@ -672,6 +786,7 @@ def locate_attr_path(
     site_paths: list[Path],
     variable_types: dict[str, str] | None = None,
     type_modules: dict[str, str] | None = None,
+    allow_runtime_imports: bool = True,
 ) -> tuple[Path, int, int, str] | None:
     """Locate a dotted path such as ``mysql.connector`` or ``mysql.connector.connect``.
 
@@ -694,7 +809,11 @@ def locate_attr_path(
             mod_name = ".".join(parts[:i])
             if i == 1:
                 mod_name = imported_modules.get(head, head)
-            module = import_module_from_sites(mod_name, site_paths)
+            module = import_module_from_sites(
+                mod_name,
+                site_paths,
+                allow_runtime_imports=allow_runtime_imports,
+            )
             if module is None:
                 continue
             if i == len(parts):
@@ -711,7 +830,11 @@ def locate_attr_path(
     recv_type = variable_types[head]
     if recv_type.startswith("module:"):
         mod_name = recv_type.split(":", 1)[1]
-        module = import_module_from_sites(mod_name, site_paths)
+        module = import_module_from_sites(
+            mod_name,
+            site_paths,
+            allow_runtime_imports=allow_runtime_imports,
+        )
         if module is None:
             return None
         return locate_python_object(resolve_attr_chain(module, rest) if rest else module)
@@ -719,12 +842,21 @@ def locate_attr_path(
     origin = type_modules.get(recv_type)
     if not origin:
         return None
-    module = import_module_from_sites(origin, site_paths)
+    module = import_module_from_sites(
+        origin,
+        site_paths,
+        allow_runtime_imports=allow_runtime_imports,
+    )
     if module is None:
         return None
     cls = getattr(module, recv_type, None)
     if cls is None:
-        cls = _find_class_in_package(origin.split(".")[0], recv_type, site_paths)
+        cls = _find_class_in_package(
+            origin.split(".")[0],
+            recv_type,
+            site_paths,
+            allow_runtime_imports=allow_runtime_imports,
+        )
     if cls is None:
         return None
     return locate_python_object(resolve_attr_chain(cls, rest))

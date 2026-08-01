@@ -55,7 +55,12 @@ def _is_simple_name(name: str) -> bool:
     return "." not in name and "[" not in name
 
 
-def analyze(module: Module, *, source_path: Path | None = None) -> Module:
+def analyze(
+    module: Module,
+    *,
+    source_path: Path | None = None,
+    allow_runtime_introspection: bool = False,
+) -> Module:
     """Validate module; raise TranspileError on known AST-checkable faults."""
     _reject_let(module)
     _check_return_types(module.body)
@@ -63,7 +68,15 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
     constants: set[str] = set()
     types: dict[str, str] = {}
     fixed: set[str] = set()
-    import_resolver = _seed_imports(module, source_path, declared, constants, types, fixed)
+    import_resolver = _seed_imports(
+        module,
+        source_path,
+        declared,
+        constants,
+        types,
+        fixed,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     class_parents = _class_parents_map(module.body)
     class_names = set(class_parents) | {
         s.name for s in module.body if isinstance(s, ClassDef)
@@ -144,6 +157,8 @@ def _seed_imports(
     constants: set[str],
     types: dict[str, str],
     fixed: set[str],
+    *,
+    allow_runtime_introspection: bool = False,
 ) -> Any | None:
     """Pull imported names (and const/fix) into scope when source_path is known."""
     if source_path is None:
@@ -154,7 +169,11 @@ def _seed_imports(
         return None
     from . import imports as imports_mod
 
-    resolver = imports_mod.make_resolver(module.source, source_path)
+    resolver = imports_mod.make_resolver(
+        module.source,
+        source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
     for stmt in module.body:
         if not isinstance(stmt, ImportStmt):
             continue
@@ -218,9 +237,18 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         return True
     if base in getattr(resolver, "type_modules", {}):
         return True
+    if not resolver.allow_runtime_introspection and resolver.imported_modules:
+        # Safe analysis cannot inspect third-party modules. Treat the type as
+        # unverified instead of importing package code or inventing an error.
+        return True
     site_paths = resolver._deps_paths()
     for mod in sorted(set(resolver.imported_modules.values())):
-        cls = _find_class_in_package(mod, base, site_paths)
+        cls = _find_class_in_package(
+            mod,
+            base,
+            site_paths,
+            allow_runtime_imports=resolver.allow_runtime_introspection,
+        )
         if isinstance(cls, type):
             resolver.type_modules[base] = cls.__module__
             return True
@@ -275,6 +303,7 @@ def _check_library_types(
             imported_modules=resolver.imported_modules,
             site_paths=site_paths,
             type_modules=resolver.type_modules,
+            allow_runtime_imports=resolver.allow_runtime_introspection,
         )
         if info is None:
             continue
@@ -1090,6 +1119,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             type_modules=type_modules,
             imported_modules=imported_modules,
             site_paths=site_paths,
+            allow_runtime_imports=resolver.allow_runtime_introspection,
         )
 
     def is_subtype(child: str | None, parent: str) -> bool:

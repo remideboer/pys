@@ -1,0 +1,27 @@
+{
+  "deps_fingerprint": "98eecc0d810202341d237169e2be186a417e9f5621a7420d5872326e51fdc47f",
+  "index_url": "https://pypi.org/simple",
+  "packages": [
+    {
+      "name": "PyQt6",
+      "sha256": "bd11b459c54dca068e988a42cf838303334f0d441b9d16d92ae6719fcb5ac6ba",
+      "url": "https://files.pythonhosted.org/packages/6f/85/dd9f03d78d87460e109e0121cd6201c5802bdd655656bf2780e964870fea/pyqt6-6.11.0-cp310-abi3-win_amd64.whl",
+      "version": "6.11.0"
+    },
+    {
+      "name": "PyQt6-Qt6",
+      "sha256": "7486c80512e823f2d3087e67f854f0556b345f4368040a853c8dc4d30fd3fe69",
+      "url": "https://files.pythonhosted.org/packages/fa/f1/70e83c23bf897c7f5025aa100482f482038ef70232dc27b407659d941fbf/pyqt6_qt6-6.11.1-py3-none-win_amd64.whl",
+      "version": "6.11.1"
+    },
+    {
+      "name": "PyQt6_sip",
+      "sha256": "98db8ed37cf08130e1ee74b8ff47a6bfb8c3cdfe826310597a630a50e47feedc",
+      "url": "https://files.pythonhosted.org/packages/4a/d6/c40e8ae38a6e2bce9e837b64688f55746bfdad1aa557eb733fb5e90edd7c/pyqt6_sip-13.11.1-cp311-cp311-win_amd64.whl",
+      "version": "13.11.1"
+    }
+  ],
+  "platform": "win-amd64",
+  "python": "3.11",
+  "schema": 1
+}

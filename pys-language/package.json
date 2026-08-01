@@ -22,12 +22,14 @@
     "python"
   ],
   "scripts": {
+    "test": "node --test test/*.test.js",
     "prepare-bundle": "node scripts/prepare-bundle.js",
     "prepare": "npm run prepare-bundle",
     "vscode:prepublish": "npm run prepare-bundle",
-    "package": "npm run prepare-bundle && npx --yes @vscode/vsce package",
+    "package": "npm run prepare-bundle && npx --no-install vsce package",
     "package:elo": "npm run package && python scripts/prepare_elo_zip.py",
-    "publish:marketplace": "npm run prepare-bundle && npx --yes @vscode/vsce publish"
+    "publish:marketplace": "npm run prepare-bundle && npx --no-install vsce publish",
+    "publish:open-vsx": "npx --no-install ovsx publish"
   },
   "engines": {
     "vscode": "^1.80.0"
@@ -56,8 +58,13 @@
     "languages": [
       {
         "id": "pys",
-        "aliases": ["PYS", "pys"],
-        "extensions": [".pys"],
+        "aliases": [
+          "PYS",
+          "pys"
+        ],
+        "extensions": [
+          ".pys"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./icons/pys-light.svg",
@@ -97,7 +104,9 @@
       {
         "language": "pys",
         "scopes": {
-          "pysType": ["entity.name.type.class.pys"]
+          "pysType": [
+            "entity.name.type.class.pys"
+          ]
         }
       }
     ],
@@ -246,5 +255,9 @@
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",
     "onStartupFinished"
-  ]
+  ],
+  "devDependencies": {
+    "@vscode/vsce": "3.9.2",
+    "ovsx": "1.0.2"
+  }
 }

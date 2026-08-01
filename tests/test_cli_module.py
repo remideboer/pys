@@ -29,25 +29,21 @@ def test_module_run_executes_and_prints(tmp_path: Path) -> None:
     assert "cli-ok" in proc.stdout
 
 
-def test_module_run_shows_deps_resolve(tmp_path: Path) -> None:
+def test_module_run_requires_dependency_lock(tmp_path: Path) -> None:
     (tmp_path / "pys.deps").write_text(
         "[dependencies]\n\tmysql-connector-python\n\t\tversion: 8.0.33\n",
         encoding="utf-8",
     )
     source = tmp_path / "hello.pys"
     source.write_text('print("deps-ok")\n', encoding="utf-8")
-    env = _repo_pythonpath()
-    env["PYS_REPO"] = str(tmp_path / "repo")
     proc = subprocess.run(
         [sys.executable, "-m", "transpiler", "run", str(source)],
         check=False,
         capture_output=True,
         text=True,
-        env=env,
+        env=_repo_pythonpath(),
         cwd=str(tmp_path),
     )
-    assert proc.returncode == 0, proc.stderr
-    assert "Resolving 1 dependency" in proc.stdout
-    assert "mysql-connector-python" in proc.stdout
-    assert "Dependencies ready." in proc.stdout
-    assert "deps-ok" in proc.stdout
+    assert proc.returncode != 0
+    assert "Missing pys.lock" in proc.stderr
+    assert "deps-ok" not in proc.stdout
