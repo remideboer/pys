@@ -106,6 +106,7 @@ declaration      = var_decl
                  | shared_decl
                  | function_decl
                  | class_decl
+                 | struct_decl
                  | interface_decl ;
 
 var_decl         = type_name , identifier , "=" , expression
@@ -115,7 +116,7 @@ var_decl         = type_name , identifier , "=" , expression
 const_decl       = [ top_visibility ] , "const" , primitive_type ,
                    identifier , "=" , expression ;
 
-fix_decl         = [ top_visibility ] , "fix" , primitive_type ,
+fix_decl         = [ top_visibility ] , "fix" , ( primitive_type | named_type ) ,
                    identifier , "=" , expression ;
 
 (* shared: cross-task mutable binding (Policy B). See docs/CONCURRENCY.md *)
@@ -160,6 +161,20 @@ constructor_decl = member_access , identifier ,
 
 (* Class methods MUST use member_access; "function" / "func" inside a class is illegal.
    Constructor name equals the enclosing class name. *)
+
+(* ------------------------- Structs ------------------------- *)
+
+struct_decl      = [ top_visibility ] , [ "fix" ] , "struct" , identifier ,
+                   [ type_params ] , struct_body ;
+
+(* No "sealed", no "inherits"/"super", no "implements" — structs are
+   identity-free value types with an implicit canonical constructor
+   `Name(args)` / `Name(field = expr, …)` (same call_suffix as classes). *)
+
+struct_body      = "{" , { struct_field_decl } , "}" ;
+
+struct_field_decl = member_access , [ "fix" ] , type_name , identifier ,
+                    [ "=" , expression ] ;
 
 (* ------------------------- Interfaces ------------------------- *)
 
@@ -356,7 +371,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class interface implements inherits super sealed
+  function func return class struct interface implements inherits super sealed
   import from all var const fix print pass break continue
   this and or not
   public private protected global package module

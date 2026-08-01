@@ -21,6 +21,8 @@ That split is deliberate:
 - **Supportive** = non-recurrent *why* (models for new situations).
 - **Tasks** = where both meet, on a whole product.
 
+Structs (value types): [J-struct](jit/J-struct.md), design contrast [S6](supportive/S6-struct-vs-dict.md).
+
 ## Setup checklist
 
 - [ ] `python -m pip install -e .` from the repo root  

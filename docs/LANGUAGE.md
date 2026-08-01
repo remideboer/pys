@@ -343,6 +343,57 @@ Pair<Car, Truck> pair = Pair<Car, Truck>(car, truck)
 
 Type arguments are available when constructing (`Pair<Car, Truck>(…)`).
 
+### Structs
+
+Structs are **identity-free value types**: fields only, no methods, no
+`inherits` / `super` / `sealed` / `implements`. They compare and copy by value.
+
+```pys
+struct Damage {
+    public int amount
+    public string type
+}
+
+fix struct DamageFix {
+    public int amount
+    public string type
+}
+
+struct Pair<T, U> {
+    public T first
+    public U second
+}
+
+Damage d1 = Damage(20, "physical")
+Damage d2 = Damage(amount=20, type="physical")
+fix Damage d3 = Damage(21, "physical")
+var d4 = Damage(20, "electric")
+```
+
+Rules:
+
+1. Canonical constructor from field order — positional and/or named args
+   (`Type(...)`, never `new`)
+2. Pass-by-value: assignment, call arguments, and returns copy the instance
+3. `==` is field-wise (not reference identity)
+4. No `shared <Struct>`; struct fields and struct bindings reject `null`
+5. Mutability matrix:
+
+| Declaration | Binding | Field `fix` | Field writes |
+|-------------|---------|--------------|--------------|
+| `struct S` | typed / `var` | no | allowed |
+| `struct S` | typed / `var` | yes | rejected |
+| `struct S` | `fix` | (any) | rejected |
+| `fix struct S` | (any) | (any) | rejected |
+
+6. Hashable only when the type is `fix struct` or every field is `fix`
+7. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
+
+**Struct vs `dict`:** same idea as a schema-fixed data bag (value equality, no
+methods), but nominal typing, fixed fields, access modifiers, no `null` fields,
+and optional per-field / type-level `fix`. Construct with `Damage(...)`, not
+brace literals. Prefer a **class** when the type has behavior or inheritance.
+
 ---
 
 ## 7. Visibility and modules
@@ -356,7 +407,7 @@ Type arguments are available when constructing (`Pair<Car, Truck>(…)`).
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 
-Applies to functions, classes, interfaces, and top-level `const` / `fix`.
+Applies to functions, classes, structs, interfaces, and top-level `const` / `fix`.
 
 ### Member access (inside classes)
 

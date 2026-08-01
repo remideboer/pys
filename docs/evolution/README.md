@@ -38,5 +38,6 @@ Each record then uses:
 | [CER-001](CER-001-security-boundaries.md) | Harden security boundaries | Security |
 | [CER-002](CER-002-compile-performance.md) | Cut redundant parse and filesystem work | Performance |
 | [CER-003](CER-003-peg-frontend.md) | Lexer/deps wins + PEG-capable parse front-end | Performance |
+| [CER-004](CER-004-structs.md) | Identity-free struct types | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

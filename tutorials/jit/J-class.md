@@ -31,4 +31,6 @@ package class BigCart inherits Cart {
 3. `inherits` one class; `implements` one or more interfaces  
 4. `this` / `super` for current / parent  
 
+Bag of fields with no behavior → use a [struct](J-struct.md), not a class.
+
 Model: [S5](../supportive/S5-objects-as-responsibility.md)

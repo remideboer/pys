@@ -48,5 +48,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-002](ADR-002-hashed-dependency-locks.md) | Hashed, fail-closed dependency locks | Accepted |
 | [ADR-003](ADR-003-measure-before-optimize.md) | Measure before optimize; record lasting perf fixes as CERs | Accepted |
 | [ADR-004](ADR-004-peg-frontend.md) | PEG-capable front-end (lexer separate, packrat optional) | Accepted |
+| [ADR-005](ADR-005-structs-as-value-types.md) | Structs as identity-free value types | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

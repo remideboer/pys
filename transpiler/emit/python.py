@@ -42,11 +42,17 @@ from ..ast_nodes import (
     ReturnStmt,
     SharedDecl,
     Slice,
+    StructDef,
     TaskDef,
     TasksBlock,
     UnaryOp,
     WhileStmt,
 )
+
+_STRUCT_COPY_HELPER = '''def _pys_struct_copy(value):
+    copy = getattr(value, "_pys_copy", None)
+    return copy() if callable(copy) else value
+'''
 from ..language_spec import _default_value_for_type, _translate_string_literal
 
 _CAST = {"int": "int", "float": "float", "char": "str", "string": "str", "bool": "bool"}
@@ -114,9 +120,12 @@ class _Emitter:
         self.needs_array = False
         self.needs_abc = False
         self.needs_concurrency = False
+        self.needs_dataclass = False
+        self.needs_struct_copy = False
         self.shared_vars: set[str] = set()
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
+        self.struct_names: set[str] = set()
         self._import_resolver = None
         if source_path is not None:
             from .. import imports as imports_mod
@@ -124,6 +133,11 @@ class _Emitter:
             self._import_resolver = imports_mod.make_resolver(source, source_path)
 
     def emit_module(self, module: Module) -> str:
+        self.struct_names = {
+            s.name for s in module.body if isinstance(s, StructDef)
+        }
+        if self._import_resolver is not None:
+            self.struct_names |= set(getattr(self._import_resolver, "structs", set()))
         for stmt in module.body:
             self._stmt(stmt, 0)
         preamble: list[str] = []
@@ -135,6 +149,10 @@ class _Emitter:
             preamble.append("from abc import ABC, abstractmethod")
         if self.needs_array:
             preamble.append("from array import array")
+        if self.needs_dataclass:
+            preamble.append("from dataclasses import dataclass")
+        if self.needs_struct_copy:
+            preamble.extend(_STRUCT_COPY_HELPER.splitlines())
         out = preamble + self.lines
         return "\n".join(out) + ("\n" if out else "")
 
@@ -188,7 +206,7 @@ class _Emitter:
                 text = stmt.value.raw.replace("this.", "self.")
                 self._emit(indent, f"return {text}")
             else:
-                self._emit(indent, f"return {self._expr(stmt.value)}")
+                self._emit(indent, f"return {self._copy_if_struct(self._expr(stmt.value))}")
         elif isinstance(stmt, PassStmt):
             self._emit(indent, "pass")
         elif isinstance(stmt, BreakStmt):
@@ -222,6 +240,8 @@ class _Emitter:
             self._interface(stmt, indent)
         elif isinstance(stmt, ClassDef):
             self._class(stmt, indent)
+        elif isinstance(stmt, StructDef):
+            self._struct(stmt, indent)
         elif isinstance(stmt, ExprStmt):
             self._emit(indent, self._expr(stmt.expr))
         elif isinstance(stmt, Block):
@@ -259,10 +279,20 @@ class _Emitter:
             kind = "number" if stmt.declare_type != "bool" else "number"
         base = stmt.name.split(".")[-1]
         self.var_kinds[base] = kind
+        value = self._expr(stmt.value)
+        # Pass-by-value: copy on store into a binding (not field writes).
+        if "." not in stmt.name:
+            value = self._copy_if_struct(value)
         if "." not in stmt.name and stmt.name in self.shared_vars:
-            self._emit(indent, f"{stmt.name}.set({self._expr(stmt.value)})")
+            self._emit(indent, f"{stmt.name}.set({value})")
             return
-        self._emit(indent, f"{stmt.name} = {self._expr(stmt.value)}")
+        self._emit(indent, f"{stmt.name} = {value}")
+
+    def _copy_if_struct(self, code: str) -> str:
+        if not self.struct_names:
+            return code
+        self.needs_struct_copy = True
+        return f"_pys_struct_copy({code})"
 
     def _array_decl(self, stmt: ArrayDecl, indent: int) -> None:
         self.needs_array = True
@@ -315,6 +345,37 @@ class _Emitter:
             self._emit(indent + 1, "@abstractmethod")
             self._emit(indent + 1, f"def {m}(self):")
             self._emit(indent + 2, "pass")
+
+    def _struct(self, stmt: StructDef, indent: int) -> None:
+        self.needs_dataclass = True
+        self.needs_struct_copy = True
+        self.struct_names.add(stmt.name)
+        all_fix = stmt.type_fix or (bool(stmt.fields) and all(f.is_fix for f in stmt.fields))
+        # Empty struct: treat as immutable/hashable (vacuous all-fields-fix).
+        if not stmt.fields:
+            all_fix = True
+        if all_fix:
+            self._emit(indent, "@dataclass(frozen=True)")
+        else:
+            self._emit(indent, "@dataclass")
+        self._emit(indent, f"class {stmt.name}:")
+        if not stmt.fields:
+            self._emit(indent + 1, "pass")
+            self._emit(indent + 1, "def _pys_copy(self):")
+            self._emit(indent + 2, f"return {stmt.name}()")
+            return
+        for f in stmt.fields:
+            if f.default is not None:
+                self._emit(indent + 1, f"{f.name}: object = {self._expr(f.default)}")
+            else:
+                self._emit(indent + 1, f"{f.name}: object")
+        if not all_fix:
+            self._emit(indent + 1, "__hash__ = None")
+        self._emit(indent + 1, "def _pys_copy(self):")
+        copy_args = ", ".join(
+            f"{f.name}=_pys_struct_copy(self.{f.name})" for f in stmt.fields
+        )
+        self._emit(indent + 2, f"return {stmt.name}({copy_args})")
 
     def _class(self, stmt: ClassDef, indent: int) -> None:
         if stmt.bases:
@@ -430,12 +491,12 @@ class _Emitter:
                 return f"list(map({self._expr(expr.args[0])}, {self._expr(expr.callee.object)}))"
             # super(args) → super().__init__(args); super.method(args) already Member+Call
             if isinstance(expr.callee, Identifier) and expr.callee.name == "super":
-                args = ", ".join(self._expr(a) for a in expr.args)
+                args = ", ".join(self._call_arg(a) for a in expr.args)
                 return f"super().__init__({args})"
-            args = ", ".join(self._expr(a) for a in expr.args)
+            args = ", ".join(self._call_arg(a) for a in expr.args)
             return f"{self._expr(expr.callee)}({args})"
         if isinstance(expr, KeywordArg):
-            return f"{expr.name}={self._expr(expr.value)}"
+            return f"{expr.name}={self._copy_if_struct(self._expr(expr.value))}"
         if isinstance(expr, Member):
             return f"{self._expr(expr.object)}.{expr.name}"
         if isinstance(expr, Index):
@@ -451,6 +512,11 @@ class _Emitter:
         if isinstance(expr, ArrayLiteral):
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
         raise TypeError(f"unsupported expr {type(expr).__name__}")
+
+    def _call_arg(self, arg: Expr) -> str:
+        if isinstance(arg, KeywordArg):
+            return f"{arg.name}={self._copy_if_struct(self._expr(arg.value))}"
+        return self._copy_if_struct(self._expr(arg))
 
     def _await(self, expr: AwaitExpr) -> str:
         tg = self.tg_name or "_pys_tg_0"

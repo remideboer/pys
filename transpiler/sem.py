@@ -26,6 +26,7 @@ from .ast_nodes import (
     ImportStmt,
     InterfaceDef,
     InterpolatedString,
+    KeywordArg,
     Literal,
     Member,
     Module,
@@ -33,6 +34,7 @@ from .ast_nodes import (
     RepeatStmt,
     ReturnStmt,
     SharedDecl,
+    StructDef,
     TasksBlock,
     UnaryOp,
     WhileStmt,
@@ -78,9 +80,24 @@ def analyze(
         allow_runtime_introspection=allow_runtime_introspection,
     )
     class_parents = _class_parents_map(module.body)
+    struct_info = _struct_info_map(module.body)
+    if import_resolver is not None:
+        for name in getattr(import_resolver, "structs", set()):
+            struct_info.setdefault(
+                name,
+                {
+                    "type_fix": name in getattr(import_resolver, "struct_type_fix", set()),
+                    "fields": list(import_resolver.struct_fields.get(name, [])),
+                    "access": dict(import_resolver.struct_field_access.get(name, {})),
+                    "types": dict(import_resolver.struct_field_types.get(name, {})),
+                    "fix_fields": set(import_resolver.struct_field_fix.get(name, set())),
+                    "defaults": set(import_resolver.struct_field_defaults.get(name, set())),
+                },
+            )
+    struct_names = set(struct_info)
     class_names = set(class_parents) | {
         s.name for s in module.body if isinstance(s, ClassDef)
-    }
+    } | struct_names
     interfaces = {s.name for s in module.body if isinstance(s, InterfaceDef)}
     class_implements = _class_implements_map(module.body, interfaces)
     if import_resolver is not None:
@@ -102,6 +119,7 @@ def analyze(
         class_implements=class_implements,
         interfaces=interfaces,
     )
+    _check_structs(module.body, types=types, fixed=fixed, struct_info=struct_info)
     _check_oop(module.body, types=types, resolver=import_resolver)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
@@ -759,6 +777,9 @@ def _check_bindings(
             declared.add(stmt.name)
             if stmt.declare_type:
                 types[stmt.name] = stmt.declare_type
+        elif isinstance(stmt, StructDef):
+            declared.add(stmt.name)
+            types[stmt.name] = stmt.name
         elif isinstance(stmt, ImportStmt):
             if stmt.kind == "as" and stmt.alias:
                 declared.add(stmt.alias)
@@ -1386,6 +1407,254 @@ def _check_interfaces(body: list[Any]) -> None:
                         1,
                         f"class {stmt.name}",
                     )
+
+
+def _struct_info_map(body: list[Any]) -> dict[str, dict[str, Any]]:
+    info: dict[str, dict[str, Any]] = {}
+    for stmt in body:
+        if not isinstance(stmt, StructDef):
+            continue
+        order = [f.name for f in stmt.fields]
+        access = {f.name: f.access or "module" for f in stmt.fields}
+        ftypes = {f.name: f.type_name for f in stmt.fields}
+        ffix = {f.name for f in stmt.fields if f.is_fix or stmt.type_fix}
+        defaults = {f.name for f in stmt.fields if f.default is not None}
+        info[stmt.name] = {
+            "type_fix": stmt.type_fix,
+            "fields": order,
+            "access": access,
+            "types": ftypes,
+            "fix_fields": ffix,
+            "defaults": defaults,
+        }
+    return info
+
+
+def _base_type_name(type_name: str) -> str:
+    """Strip generic args: ``Pair<int, string>`` → ``Pair``."""
+    if "<" in type_name:
+        return type_name.split("<", 1)[0]
+    return type_name
+
+
+def _is_null_lit(expr: Expr | None) -> bool:
+    return isinstance(expr, Literal) and expr.kind == "null"
+
+
+def _check_structs(
+    body: list[Any],
+    *,
+    types: dict[str, str],
+    fixed: set[str],
+    struct_info: dict[str, dict[str, Any]],
+) -> None:
+    """SA rules for struct types, construction, and field mutability."""
+
+    def check_null_in_struct_ctor(call: Call, struct_name: str) -> None:
+        meta = struct_info[struct_name]
+        fields: list[str] = meta["fields"]
+        defaults: set[str] = meta["defaults"]
+        line = call.span.line if call.span else 1
+        col = call.span.column if call.span else 1
+        positional: list[Expr] = []
+        named: dict[str, Expr] = {}
+        for arg in call.args:
+            if isinstance(arg, KeywordArg):
+                if arg.name in named:
+                    _transpile_error(
+                        f"Duplicate named argument '{arg.name}' in struct {struct_name} constructor.",
+                        arg.span.line if arg.span else line,
+                        arg.span.column if arg.span else col,
+                        arg.name,
+                    )
+                if arg.name not in fields:
+                    _transpile_error(
+                        f"Unknown field '{arg.name}' in struct {struct_name} constructor.",
+                        arg.span.line if arg.span else line,
+                        arg.span.column if arg.span else col,
+                        arg.name,
+                    )
+                named[arg.name] = arg.value
+            else:
+                if named:
+                    _transpile_error(
+                        f"Positional argument after named argument in struct {struct_name} constructor.",
+                        arg.span.line if arg.span else line,
+                        arg.span.column if arg.span else col,
+                        struct_name,
+                    )
+                positional.append(arg)
+        if len(positional) > len(fields):
+            _transpile_error(
+                f"Struct {struct_name} constructor expects at most {len(fields)} "
+                f"positional argument(s), got {len(positional)}.",
+                line,
+                col,
+                struct_name,
+            )
+        for i, arg in enumerate(positional):
+            if _is_null_lit(arg):
+                _transpile_error(
+                    f"Struct field '{fields[i]}' of type {struct_name} cannot be null.",
+                    arg.span.line if arg.span else line,
+                    arg.span.column if arg.span else col,
+                    "null",
+                )
+        for fname, val in named.items():
+            if _is_null_lit(val):
+                _transpile_error(
+                    f"Struct field '{fname}' of type {struct_name} cannot be null.",
+                    val.span.line if val.span else line,
+                    val.span.column if val.span else col,
+                    "null",
+                )
+        provided = set(fields[: len(positional)]) | set(named)
+        missing = [f for f in fields if f not in provided and f not in defaults]
+        if missing:
+            _transpile_error(
+                f"Struct {struct_name} constructor missing field(s): {', '.join(missing)}.",
+                line,
+                col,
+                struct_name,
+            )
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            name = expr.callee.name
+            if name in struct_info:
+                check_null_in_struct_ctor(expr, name)
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, SharedDecl):
+                base = _base_type_name(stmt.declare_type or "")
+                if base in struct_info:
+                    _transpile_error(
+                        f"`shared` cannot be used with struct type {base} "
+                        f"(structs are identity-free value types).",
+                        stmt.span.line if stmt.span else 1,
+                        stmt.span.column if stmt.span else 1,
+                        f"shared {stmt.declare_type}",
+                    )
+                if _is_null_lit(stmt.value) and base in struct_info:
+                    _transpile_error(
+                        f"Struct-typed binding cannot be null.",
+                        stmt.span.line if stmt.span else 1,
+                        stmt.span.column if stmt.span else 1,
+                        "null",
+                    )
+            if isinstance(stmt, AssignStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                walk_expr(stmt.value)
+                if stmt.declare_type:
+                    base = _base_type_name(stmt.declare_type)
+                    if base in struct_info and _is_null_lit(stmt.value):
+                        _transpile_error(
+                            f"Struct-typed binding '{stmt.name}' cannot be null.",
+                            line,
+                            col,
+                            "null",
+                        )
+                if "." in stmt.name:
+                    recv, _, member = stmt.name.rpartition(".")
+                    if "." in recv:
+                        continue
+                    recv_t = _base_type_name(types.get(recv, ""))
+                    if recv_t in struct_info:
+                        meta = struct_info[recv_t]
+                        if member not in meta["fields"]:
+                            _transpile_error(
+                                f"'{member}' is not a field of struct {recv_t}.",
+                                line,
+                                col,
+                                stmt.name,
+                            )
+                        if meta["type_fix"]:
+                            _transpile_error(
+                                f"Cannot assign to field '{member}' of fix struct type {recv_t}.",
+                                line,
+                                col,
+                                stmt.name,
+                            )
+                        if recv in fixed:
+                            _transpile_error(
+                                f"Cannot assign to field '{member}' of fix-bound struct '{recv}'.",
+                                line,
+                                col,
+                                stmt.name,
+                            )
+                        if member in meta["fix_fields"]:
+                            _transpile_error(
+                                f"Cannot assign to fix field '{member}' of struct {recv_t}.",
+                                line,
+                                col,
+                                stmt.name,
+                            )
+                        if _is_null_lit(stmt.value):
+                            _transpile_error(
+                                f"Struct field '{member}' cannot be null.",
+                                line,
+                                col,
+                                "null",
+                            )
+                continue
+            if isinstance(stmt, StructDef):
+                for f in stmt.fields:
+                    if f.default is not None and _is_null_lit(f.default):
+                        _transpile_error(
+                            f"Struct field '{f.name}' cannot default to null.",
+                            f.span.line if f.span else 1,
+                            f.span.column if f.span else 1,
+                            "null",
+                        )
+                    fbase = _base_type_name(f.type_name)
+                    if fbase in struct_info and f.default is not None and _is_null_lit(f.default):
+                        _transpile_error(
+                            f"Struct field '{f.name}' cannot be null.",
+                            f.span.line if f.span else 1,
+                            f.span.column if f.span else 1,
+                            "null",
+                        )
+                continue
+            if isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
 
 
 def _check_shared_capture(body: list[Any]) -> None:

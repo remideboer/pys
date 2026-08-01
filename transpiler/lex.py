@@ -48,6 +48,7 @@ KEYWORDS = frozenset(
         "func",
         "return",
         "class",
+        "struct",
         "interface",
         "implements",
         "inherits",

@@ -1,0 +1,204 @@
+##
+a struct is a datastructure that can hold multiple values of different types, it has no identity and is passed by value.
+It is similar to a class, but it is typically used for small data structures that do not require inheritance or polymorphism.
+it can be used in evaluations like a single value, and can be used in expressions like a single value. 
+Code below the requirements section is a sample implementation of a struct and a class that uses it and should parse and compile as valid code
+and run successfully.
+
+**PYS Language Extension — Identity-Free Struct Type**
+
+---
+
+**1. Requirements**
+
+**REQ-STRUCT-01**: PYS SHALL support a `struct` declaration as a sibling production to `class_decl`, producing identity-free value types.
+
+**REQ-STRUCT-01.1**: `struct_decl` SHALL NOT support `inherits`/`super`/`sealed` — identity-free types have no polymorphic dispatch basis and no inheritance chain to seal.
+
+**REQ-STRUCT-01.2**: `==` applied to two struct-typed operands SHALL compile to field-wise comparison, not the reference-equality path used for `class` instances.
+
+**REQ-STRUCT-01.3**: `shared_decl` SHALL be statically rejected when `type_name` resolves to a `struct`.
+
+**REQ-STRUCT-01.4**: Struct fields SHALL support the `fix` qualifier (assign-once at construction). A field without `fix` is mutable, permitted only if the enclosing struct binding itself is mutable (`var`, not `fix`).
+
+**REQ-STRUCT-01.5**: Struct-typed fields SHALL reject `null_lit` as an initializer or assigned value, enforced via static analysis.
+
+**REQ-STRUCT-01.6**: Struct instances SHALL NOT use identity-based hashing; hash derivation SHALL be field-state-based, consistent with REQ-STRUCT-01.2.
+
+**REQ-STRUCT-01.7**: When a struct-typed binding is declared with `fix`, the entire instance SHALL be immutable — including fields declared without a per-field `fix` qualifier. Per-field `fix` remains meaningful only for `var`-bound instances; on a `fix`-bound instance, per-field mutability is moot, since no field can be reassigned regardless of its own qualifier.
+
+REQ-STRUCT-01.8: A struct declared with a leading fix qualifier SHALL be immutable for all instances of that type, irrespective of per-field fix qualifiers or binding form (var/fix). All fields SHALL be treated as assign-once at construction.
+
+REQ-STRUCT-01.9: Structs declared without a leading fix qualifier SHALL default to mutable, consistent with prevailing industry practice (C# structs, Go structs, Swift's let/var-per-binding model) — per-field or per-binding fix remains the opt-in mechanism for partial or instance-level immutability.
+
+REQ-STRUCT-01.10: A struct type SHALL expose an implicit canonical constructor derived from its struct_field_decl list, in declaration order. Construction SHALL be expressible via constructor_call (positional or named arg_list, per existing grammar) without a new keyword and without a user-defined constructor_decl.
+
+REQ-STRUCT-01.11: Positional arguments to a struct's canonical constructor SHALL map to fields in declaration order; named arguments SHALL map by field identifier and MAY appear in any order or be partially omitted only if the corresponding field has a default expression in struct_field_decl.
+---
+
+**2. EBNF**
+
+Insert as a new section under Classes, before Interfaces:
+
+```ebnf
+(* ------------------------- Structs ------------------------- *)
+
+struct_decl      = [ top_visibility ] , "struct" , identifier ,
+                   [ type_params ] , struct_body ;
+
+(* No "sealed", no "inherits"/"super" — structs are identity-free and
+   participate in no inheritance chain. No "implements" — structs carry
+   no behavior, so interface conformance does not apply. *)
+
+struct_body      = "{" , { struct_field_decl } , "}" ;
+
+struct_field_decl = member_access , [ "fix" ] , type_name , identifier ,
+                    [ "=" , expression ] ;
+```
+
+Amend `declaration`:
+
+```ebnf
+declaration      = var_decl
+                 | const_decl
+                 | fix_decl
+                 | shared_decl
+                 | function_decl
+                 | class_decl
+                 | struct_decl
+                 | interface_decl ;
+```
+
+Amend `fix_decl` to allow named types (structs), not only primitives:
+
+```ebnf
+fix_decl         = [ top_visibility ] , "fix" , ( primitive_type | named_type ) ,
+                   identifier , "=" , expression ;
+```
+
+Amend Appendix B (Keywords) — add `struct`:
+
+```
+if else unless loop while for repeat times then do elif
+function func return class struct interface implements inherits super sealed
+import from all var const fix print pass break continue
+this and or not
+public private protected global package module
+int float char string bool list dict tuple set
+true false null
+tasks task await shared
+```
+
+---
+
+**3. Static Analysis Constraints (not expressible in EBNF)**
+
+| # | Constraint | Enforcement point |
+|---|---|---|
+| SA-1 | Reject `shared <StructType> ...` | Type resolution pass on `shared_decl` |
+| SA-2 | Reject `null_lit` as initializer/assignment target for struct-typed field | Type-check pass on `struct_field_decl` and `assignment` |
+| SA-3 | `==` on struct operands routes to field-wise comparison, not reference equality | Codegen/emit layer |
+| SA-4 | Hash derivation consistent with `==` (field-based, not identity-based) | Codegen/emit layer |
+| SA-5 | Parser SHALL emit a specific error (not generic syntax error) if `inherits`/`super`/`sealed`/`implements` follows `struct` | Parser |
+| SA-6 | Reject any `assignment` targeting a field of a `fix`-bound struct instance, regardless of the field's own `fix` qualifier | Type-check pass on `assignment` against binding mutability |
+| SA-7 | If struct_decl carries fix, reject assignment to any field of any instance of that type, regardless of per-field qualifier or binding form
+| SA-8 | Reject new preceding a struct-typed constructor_call	Parser/type-check pass
+| SA-9 | Positional arg_list length SHALL match struct field count unless trailing fields have defaults	Type-check pass on constructor_call against struct_field_decl
+| SA-10 | Named arg_list identifiers SHALL each resolve to a declared field of the target struct	Type-c
+---
+
+**4. Mutability Matrix**
+
+| Struct declaration | Binding form | Field-level qualifier | Result |
+|---|---|---|---|
+| `struct Damage { ... }` | `Damage d = Damage(...)` / `var d = Damage(...)` | no `fix` | field reassignable |
+| `struct Damage { ... }` | `Damage d = Damage(...)` / `var d = Damage(...)` | `fix` | field frozen, binding itself still rebindable |
+| `struct Damage { ... }` | `fix Damage d = Damage(...)` | irrelevant | entire instance frozen, binding not rebindable |
+| `fix struct Damage { ... }` | `Damage d = Damage(...)` / `var d = Damage(...)` | irrelevant | all fields frozen (type-level), binding itself still rebindable |
+| `fix struct Damage { ... }` | `fix Damage d = Damage(...)` | irrelevant | all fields frozen (type-level), binding also not rebindable |
+
+**Similarities with a Python dict**
+
+- Both are pure data containers without meaningful identity in usage context — comparison happens on value, not reference (`dict.__eq__` compares key/value pairs; struct `==` compares fields).
+- Construction is value-oriented like filling a dict, but PYS uses the canonical constructor: `Damage(20, "physical")` / `Damage(amount=20, type="physical")` ↔ `{"amount": 20, "type": "physical"}` (no brace field literals for structs).
+- Mutable by default (dict values overwritable; struct fields without `fix` overwritable).
+- No behavior/methods — REQ-STRUCT-01 restricts `struct_member` to fields only, exactly like a dict has no built-in per-instance behavior.
+
+**Differences**
+
+| Aspect | `struct` (PYS) | Python `dict` |
+|---|---|---|
+| Typing | Static, nominal — `Damage` is a fixed schema with declared types per field | Dynamic, structural — arbitrary keys, no schema, heterogeneous value types allowed |
+| Schema | Fixed at declaration; no runtime add/remove of fields | Open; keys freely added/removed at runtime |
+| Nominal type identity | Two structs with identical fields but different declared type are *not* interchangeable (compiler tracks the distinction) | Two dicts with identical key/value pairs are unconditionally equal — no "type" concept |
+| Per-field immutability | `fix` per field possible (REQ-STRUCT-01.4) | No native per-key immutability; requires a wrapper (e.g. `MappingProxyType`) |
+| Access control | `member_access` (`public`/`private`/...) enforced at compile time | No access control; all keys visible at runtime |
+| Null values | Fields reject `null_lit` (REQ-STRUCT-01.5) | Values may freely be `None` |
+| Hashability | If all fields are `fix`, potentially hashable (usable as set member/dict key) | Unhashable due to mutability — a dict cannot itself be a dict key |
+| Memory representation | Fixed field slots (comparable to `dataclass`/`namedtuple`), predictable layout | Hashmap-based, per-instance overhead for key storage |
+| Ordering | Field order fixed by declaration | Insertion order guaranteed (Python 3.7+), but dynamically alterable |
+
+In short: a struct in this design is the schema-fixed, nominally-typed counterpart to a dict — where the dict offers structural flexibility without type guarantees, the struct offers type guarantees without flexibility.
+/#
+
+struct Damage {
+    public int amount
+    public string type
+}
+
+# fix struct is immutable for all instances of that type, irrespective of per-field fix qualifiers or binding form (var/fix). All fields SHALL be treated as assign-once at construction.
+fix struct DamageFix {
+    public int amount
+    public string type
+}
+
+# fix struct is immutable for all instances of that type, irrespective of per-field fix qualifiers or binding form (var/fix). All fields SHALL be treated as assign-once at construction.
+struct DamageFix2 {
+    public fix int amount 
+    public fix string type
+}
+
+#
+struct DamageFix3 {
+    public int amount 
+    public fix string type
+}
+
+class Unit {
+    private string name
+    private int health
+    private int mana
+
+    public Unit(string name, int health, int mana) {
+        this.name = name
+        this.health = health
+        this.mana = mana
+    }
+
+    public takeDamage(Damage damage) {
+        this.health -= damage.amount
+        if (this.health < 0) {
+            this.health = 0
+        }
+    }
+
+    public doDamage(Unit target, Damage damage) {
+        target.takeDamage(damage)
+    }
+}
+
+Unit u1 = Unit("Warrior", 100, 50)
+Damage d1 = Damage(20, "physical")
+Damage d2 = Damage(amount = 20, type = "physical")  # named arguments are optional, this should be implemented in the core langue for methods as well   
+fix Damage d3 = Damage(21, "physical")
+var d4 = Damage(20, "electric")
+
+print(d1 == d2) # should print true, as the field values are equal
+print(d1 == d3) # should print false, as the field values are not equal  
+print(d4.type) # should print "electric"
+
+d1.amount = 21 # should be allowed, as d1 is mutable
+
+print(d1 == d3) # should print true, as the field values are now equal 
+
+d3.amount = 22 # should be rejected, as d3 is fix-bound and immutable

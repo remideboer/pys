@@ -1,0 +1,74 @@
+# Identity-free structs: construction, equality, mutability, copy-on-call.
+
+struct Damage {
+    public int amount
+    public string type
+}
+
+fix struct DamageFix {
+    public int amount
+    public string type
+}
+
+struct Pair<T, U> {
+    public T first
+    public U second
+}
+
+class Unit {
+    private string name
+    private int health
+    private int mana
+
+    public Unit(string name, int health, int mana) {
+        this.name = name
+        this.health = health
+        this.mana = mana
+    }
+
+    public takeDamage(Damage damage) {
+        this.health = this.health - damage.amount
+        if (this.health < 0) {
+            this.health = 0
+        }
+    }
+
+    public doDamage(Unit target, Damage damage) {
+        target.takeDamage(damage)
+    }
+
+    public int getHealth() {
+        return this.health
+    }
+}
+
+function Damage bump(Damage d) {
+    d.amount = d.amount + 1
+    return d
+}
+
+Unit u1 = Unit("Warrior", 100, 50)
+Damage d1 = Damage(20, "physical")
+Damage d2 = Damage(amount=20, type="physical")
+fix Damage d3 = Damage(21, "physical")
+var d4 = Damage(20, "electric")
+Pair<int, string> p1 = Pair(1, "a")
+
+print(d1 == d2)
+print(d1 == d3)
+print(d4.type)
+print(p1.first)
+
+d1.amount = 21
+print(d1 == d3)
+
+Damage before = Damage(10, "fire")
+Damage after = bump(before)
+print(before.amount)
+print(after.amount)
+
+u1.takeDamage(Damage(15, "physical"))
+print(u1.getHealth())
+
+DamageFix frozen = DamageFix(9, "ice")
+print(frozen.amount)

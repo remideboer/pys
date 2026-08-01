@@ -194,6 +194,12 @@ classDiagram
     +list~FieldDecl~ fields
     +list~MethodDef~ methods
   }
+  class StructDef {
+    +str name
+    +bool type_fix
+    +list~str~ type_params
+    +list~StructField~ fields
+  }
   class TasksBlock {
     +int group_id
     +list~TaskDef~ tasks
@@ -211,6 +217,7 @@ classDiagram
 
   Stmt <|-- FunctionDef
   Stmt <|-- ClassDef
+  Stmt <|-- StructDef
   Stmt <|-- TasksBlock
   Stmt <|-- ImportStmt
   Stmt <|-- AssignStmt

@@ -273,6 +273,26 @@ class FieldDecl(Node):
 
 
 @dataclass
+class StructField(Node):
+    access: str = ""
+    type_name: str = ""
+    name: str = ""
+    is_fix: bool = False
+    default: Expr | None = None
+
+
+@dataclass
+class StructDef(Node):
+    """Identity-free value type (fields only; canonical constructor)."""
+
+    name: str = ""
+    fields: list[StructField] = field(default_factory=list)
+    visibility: str = ""
+    type_params: list[str] = field(default_factory=list)
+    type_fix: bool = False  # leading `fix struct`
+
+
+@dataclass
 class MethodDef(Node):
     access: str = ""
     name: str = ""

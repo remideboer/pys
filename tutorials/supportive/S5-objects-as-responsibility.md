@@ -9,6 +9,10 @@ An **interface** names a responsibility without picking the implementation
 (`Drivable`: start / move / stop). A **class** delivers that responsibility
 (`Car`, `Truck`).
 
+A **struct** *is* a bag of fields: schema-fixed values with no methods and
+value semantics. Use a struct when there is no responsibility to name — only
+data shape ([S6](S6-struct-vs-dict.md), [JIT: struct](../jit/J-struct.md)).
+
 ## Design questions
 
 - What can every instance of this type be asked to do?  

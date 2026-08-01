@@ -15,6 +15,8 @@ from .ast_nodes import (
     Cast,
     ClassDef,
     CommentStmt,
+    StructDef,
+    StructField,
     ContinueStmt,
     Expr,
     ExprStmt,
@@ -371,6 +373,10 @@ def _parse_toplevel(p: _Tok):
             return _parse_class(p, visibility=vis)
         if p.at_kw("class"):
             return _parse_class(p, visibility=vis)
+        if p.at_kw("fix") and p.peek(1).kind == TokenKind.KEYWORD and p.peek(1).text == "struct":
+            return _parse_struct(p, visibility=vis, type_fix=True)
+        if p.at_kw("struct"):
+            return _parse_struct(p, visibility=vis)
         if p.at_kw("interface"):
             return _parse_interface(p, visibility=vis)
         if p.at_kw("const", "fix") or p.at_kw(*_TYPES) or p.at_kw("var"):
@@ -382,6 +388,10 @@ def _parse_toplevel(p: _Tok):
         return _parse_class(p)
     if p.at_kw("class"):
         return _parse_class(p)
+    if p.at_kw("fix") and p.peek(1).kind == TokenKind.KEYWORD and p.peek(1).text == "struct":
+        return _parse_struct(p, type_fix=True)
+    if p.at_kw("struct"):
+        return _parse_struct(p)
     if p.at_kw("interface"):
         return _parse_interface(p)
     if p.at_kw("shared"):
@@ -735,6 +745,88 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
     )
 
 
+def _parse_struct(
+    p: _Tok, visibility: str = "", *, type_fix: bool = False
+) -> StructDef:
+    """Parse ``[fix] struct Name [<T,U>] { fields }`` (no inherits/methods)."""
+    sp = p.span()
+    if type_fix:
+        p.eat_kw("fix")
+    p.eat_kw("struct")
+    if p.at_kw("sealed", "inherits", "super", "implements"):
+        bad = p.cur().text
+        raise FatalParseError(
+            f"Structs cannot use `{bad}` — they are identity-free value types "
+            f"without inheritance or interfaces.",
+            p.cur().line,
+            p.cur().column,
+        )
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    type_params: list[str] = []
+    if p.at(TokenKind.LT):
+        p.eat(TokenKind.LT)
+        type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        p.eat(TokenKind.GT)
+    if p.at_kw("sealed", "inherits", "super", "implements"):
+        bad = p.cur().text
+        raise FatalParseError(
+            f"Structs cannot use `{bad}` — they are identity-free value types "
+            f"without inheritance or interfaces.",
+            p.cur().line,
+            p.cur().column,
+        )
+    p.eat(TokenKind.LBRACE)
+    fields: list[StructField] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        field_sp = p.span()
+        if not p.at_kw("public", "private", "protected", "module"):
+            raise ParseError(
+                "Struct fields require an access modifier "
+                "(`public` / `private` / `protected` / `module`).",
+                p.cur().line,
+                p.cur().column,
+            )
+        access = p.eat(TokenKind.KEYWORD).text
+        is_fix = False
+        if p.at_kw("fix"):
+            is_fix = True
+            p.eat_kw("fix")
+        type_name = _parse_type_name(p)
+        fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        default = None
+        if p.at(TokenKind.OP, text="="):
+            p.eat(TokenKind.OP, text="=")
+            default = _parse_expression(p)
+        fields.append(
+            StructField(
+                span=field_sp,
+                access=access,
+                type_name=type_name,
+                name=fname,
+                is_fix=is_fix,
+                default=default,
+            )
+        )
+    p.eat(TokenKind.RBRACE)
+    return StructDef(
+        span=sp,
+        name=name,
+        fields=fields,
+        visibility=visibility,
+        type_params=type_params,
+        type_fix=type_fix,
+    )
+
+
 def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
     sp = p.span()
     sealed = False
@@ -926,6 +1018,14 @@ def _parse_statement(p: _Tok):
     if p.at(TokenKind.COMMENT):
         t = p.eat(TokenKind.COMMENT)
         return CommentStmt(span=Span(t.line, t.column), text=t.text)
+    # SA-8: `new Type(...)` is not part of PYS; constructors are `Type(...)`.
+    if (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and p.cur().text == "new":
+        raise FatalParseError(
+            "Unexpected `new`. Construct values with `TypeName(...)` "
+            "(structs and classes have no `new` keyword).",
+            p.cur().line,
+            p.cur().column,
+        )
     if p.at_kw("print"):
         return _parse_print(p)
     if p.at_kw("return"):
@@ -972,7 +1072,7 @@ def _parse_statement(p: _Tok):
         and p.peek(2).text == "="
         and not p.at_kw(
             "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
-            "function", "class", "interface", "import", "shared", "tasks", "task",
+            "function", "class", "struct", "interface", "import", "shared", "tasks", "task",
         )
     ) or _at_generic_typed_decl(p):
         return _parse_decl(p)
@@ -1407,6 +1507,13 @@ def _parse_primary(p: _Tok) -> Expr:
         p.eat(TokenKind.RPAREN)
         return e
     if p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD):
+        if p.cur().text == "new":
+            raise FatalParseError(
+                "Unexpected `new`. Construct values with `TypeName(...)` "
+                "(structs and classes have no `new` keyword).",
+                p.cur().line,
+                p.cur().column,
+            )
         name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         return Identifier(span=sp, name=name)
     raise ParseError(f"Unexpected token {p.cur().text!r}", p.cur().line, p.cur().column)
