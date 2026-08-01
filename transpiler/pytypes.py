@@ -506,6 +506,64 @@ def _find_class_in_package(package: str, class_name: str, site_paths: list[Path]
     return None
 
 
+def resolve_library_class(
+    type_name: str,
+    *,
+    type_modules: dict[str, str],
+    imported_modules: dict[str, str],
+    site_paths: list[Path],
+) -> Any | None:
+    """Resolve a class/type imported from a Python library (by name)."""
+    base = (type_name or "").strip()
+    if "<" in base:
+        base = base.split("<", 1)[0]
+    if base.endswith("[]"):
+        base = base[:-2]
+    if not base:
+        return None
+
+    candidates: list[str] = []
+    origin = type_modules.get(base)
+    if origin:
+        candidates.append(origin)
+    # Prefer the exact module that exported this name when recorded as a type.
+    for mod in imported_modules.values():
+        if mod not in candidates:
+            candidates.append(mod)
+
+    for mod_name in candidates:
+        module = import_module_from_sites(mod_name, site_paths)
+        if module is None:
+            continue
+        found = getattr(module, base, None)
+        if isinstance(found, type):
+            type_modules.setdefault(base, found.__module__)
+            return found
+    return None
+
+
+def library_type_has_member(
+    type_name: str,
+    member: str,
+    *,
+    type_modules: dict[str, str],
+    imported_modules: dict[str, str],
+    site_paths: list[Path],
+) -> bool:
+    """True if ``member`` is a public attribute on a library class (MRO-aware)."""
+    if not member or member.startswith("_"):
+        return False
+    cls = resolve_library_class(
+        type_name,
+        type_modules=type_modules,
+        imported_modules=imported_modules,
+        site_paths=site_paths,
+    )
+    if cls is None:
+        return False
+    return hasattr(cls, member)
+
+
 def locate_type_definition(
     type_name: str,
     *,

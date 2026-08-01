@@ -223,6 +223,78 @@ def test_transpile_multi_name_import_from(tmp_path: Path, monkeypatch: pytest.Mo
     assert "from PyQt6.QtWidgets import QApplication, QWidget" in python
 
 
+def test_subclass_can_call_library_parent_methods(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    site = tmp_path / "site"
+    pkg = site / "PyQt6"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "QtWidgets.py").write_text(
+        "class QMainWindow:\n"
+        "    def setWindowTitle(self, title):\n"
+        "        pass\n"
+        "    def setCentralWidget(self, widget):\n"
+        "        pass\n"
+        "class QPushButton:\n"
+        "    def __init__(self, text=''):\n"
+        "        self.text = text\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [site],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import QMainWindow, QPushButton from PyQt6.QtWidgets\n"
+        "package class MainWindow inherits QMainWindow {\n"
+        "    public MainWindow() {\n"
+        "        this.setWindowTitle(\"My App\")\n"
+        "        QPushButton button = QPushButton(\"Press Me!\")\n"
+        "        this.setCentralWidget(button)\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "class MainWindow(QMainWindow):" in python
+    assert "self.setWindowTitle(\"My App\")" in python
+    assert "self.setCentralWidget(button)" in python
+    assert "super().__init__()" in python
+
+
+def test_subclass_rejects_unknown_library_parent_method(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    site = tmp_path / "site"
+    pkg = site / "PyQt6"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("", encoding="utf-8")
+    (pkg / "QtWidgets.py").write_text(
+        "class QMainWindow:\n"
+        "    def setWindowTitle(self, title):\n"
+        "        pass\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [site],
+    )
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import QMainWindow from PyQt6.QtWidgets\n"
+        "package class MainWindow inherits QMainWindow {\n"
+        "    public MainWindow() {\n"
+        "        this.notARealQtMethod()\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TranspileError, match=r"not a member of declared type MainWindow"):
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
+
+
 def test_import_all_resolves_visible_exports(tmp_path: Path) -> None:
     (tmp_path / "funcs.pys").write_text(
         "package function greet(name){\n"

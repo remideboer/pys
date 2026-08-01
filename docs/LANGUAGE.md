@@ -308,6 +308,9 @@ Rules:
 4. `this` / `super` for current instance / parent. Subclass constructors that
    omit `super(...)` / `this(...)` get an implicit zero-arg `super()` at the
    start — write `super(args)` when the parent constructor needs arguments.
+   Subclasses may call public members of a **library** parent (for example
+   `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
+   imported via `pys.deps` / the standard library.
 5. `sealed` may mark a class that should not be subclassed further
 6. Optional type parameters: `class Pair<T, U> { … }`
 

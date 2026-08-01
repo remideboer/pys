@@ -89,7 +89,7 @@ def analyze(module: Module, *, source_path: Path | None = None) -> Module:
         class_implements=class_implements,
         interfaces=interfaces,
     )
-    _check_oop(module.body, types=types)
+    _check_oop(module.body, types=types, resolver=import_resolver)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
@@ -1021,7 +1021,7 @@ def _find_await_cycle(graph: dict[str, set[str]]) -> list[str] | None:
     return None
 
 
-def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
+def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None = None) -> None:
     sealed: set[str] = set()
     class_names: set[str] = set()
     interfaces: set[str] = set()
@@ -1055,6 +1055,9 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
                 impls.append(b)
             elif parent is None:
                 parent = b
+        # Prefer explicit `inherits` parent when present.
+        if stmt.parent:
+            parent = stmt.parent
         class_parents[stmt.name] = parent
         class_implements[stmt.name] = impls
         for b in stmt.bases:
@@ -1066,6 +1069,28 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
                     1,
                     f"class {stmt.name}",
                 )
+
+    type_modules: dict[str, str] = dict(getattr(resolver, "type_modules", {}) or {}) if resolver else {}
+    imported_modules: dict[str, str] = (
+        dict(getattr(resolver, "imported_modules", {}) or {}) if resolver else {}
+    )
+    site_paths: list[Path] = list(resolver._deps_paths()) if resolver is not None else []
+
+    def library_member(type_name: str, member: str) -> bool:
+        # PYS-declared types: only use class_members / interfaces (never scan libs).
+        if type_name in class_members or type_name in interfaces:
+            return False
+        if resolver is None:
+            return False
+        from .pytypes import library_type_has_member
+
+        return library_type_has_member(
+            type_name,
+            member,
+            type_modules=type_modules,
+            imported_modules=imported_modules,
+            site_paths=site_paths,
+        )
 
     def is_subtype(child: str | None, parent: str) -> bool:
         current = child
@@ -1090,6 +1115,9 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
                 iface_members = class_members.get(iface, {})
                 if member in iface_members:
                     return iface, iface_members[member]
+            # Library base (e.g. QMainWindow) or intermediate library type.
+            if library_member(current, member):
+                return current, "public"
             if current in seen:
                 break
             seen.add(current)
@@ -1098,6 +1126,9 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
             members = class_members.get(type_name, {})
             if member in members:
                 return type_name, members[member]
+        # Declared type is itself a library class (composition path with known type).
+        if library_member(type_name, member):
+            return type_name, "public"
         return None, None
 
     def receiver_type(recv: str, local_types: dict[str, str], current_class: str | None) -> str | None:
@@ -1120,6 +1151,18 @@ def _check_oop(body: list[Any], *, types: dict[str, str]) -> None:
         defining_cls, access = lookup_member(recv_t, member)
         if defining_cls is None or access is None:
             known = recv_t in class_members or recv_t in interfaces or recv_t in class_parents
+            if not known and resolver is not None:
+                from .pytypes import resolve_library_class
+
+                known = (
+                    resolve_library_class(
+                        recv_t,
+                        type_modules=type_modules,
+                        imported_modules=imported_modules,
+                        site_paths=site_paths,
+                    )
+                    is not None
+                )
             if known:
                 _transpile_error(
                     f"'{member}' is not a member of declared type {recv_t}.",
@@ -1258,6 +1301,9 @@ def _check_interfaces(body: list[Any]) -> None:
         for b in stmt.bases:
             is_class = any(isinstance(c, ClassDef) and c.name == b for c in body)
             if is_class:
+                continue
+            # `inherits LibraryType` — not an interface; member checks use pytypes.
+            if stmt.parent and b == stmt.parent:
                 continue
             line = stmt.span.line if stmt.span else 1
             if b not in interfaces:
