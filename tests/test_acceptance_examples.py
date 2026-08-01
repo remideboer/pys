@@ -34,12 +34,23 @@ def test_acceptance_concurrency_runs() -> None:
 
 
 def test_acceptance_pokemontcg_compiles_gui_entry() -> None:
-    """Pokemon TCG entry must transpile (run would block on Tk mainloop)."""
+    """Pokemon TCG Tk entry must transpile (run would block on Tk mainloop)."""
     path = ROOT / "examples" / "gui" / "pokemontcg" / "main.pys"
     modules = transpile_with_modules(path)
     joined = "\n".join(modules.values())
     assert "PokemonApp" in joined or "class PokemonApp" in modules.get("ui", "")
     assert "openStore" in joined or "def openStore" in modules.get("store", "")
+
+
+def test_acceptance_pokemontcg_pyqt_compiles_gui_entry() -> None:
+    """Pokemon TCG PyQt silo must transpile (run would block on Qt event loop)."""
+    path = ROOT / "examples" / "gui" / "PyQt" / "main.pys"
+    modules = transpile_with_modules(path)
+    ui = modules.get("ui", "")
+    assert "PokemonQtApp" in ui or "class PokemonQtApp" in ui
+    assert "from PyQt6.QtWidgets import" in ui
+    assert "currentRowChanged" in ui
+    assert "openStore" in "\n".join(modules.values()) or "def openStore" in modules.get("store", "")
 
 
 def test_acceptance_main_showcase_compiles() -> None:

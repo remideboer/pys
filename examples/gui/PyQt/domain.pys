@@ -1,0 +1,456 @@
+# domain.pys — Pokemon TCG domain models (type-safe OO)
+# Catalog fields are a slim projection of the TCGdex Card object.
+
+package class Attack {
+    private string name
+    private string damage
+    private list<string> cost
+
+    public Attack(string name, string damage, list<string> cost) {
+        this.name = name
+        this.damage = damage
+        this.cost = cost
+    }
+
+    public string getName() {
+        return this.name
+    }
+
+    public string getDamage() {
+        return this.damage
+    }
+
+    public list<string> getCost() {
+        return this.cost
+    }
+
+    public string summary() {
+        string dmg = this.damage
+        if (dmg == "") {
+            dmg = "-"
+        }
+        return this.name + " (" + dmg + ")"
+    }
+}
+
+package class Card {
+    private string id
+    private string name
+    private string category
+    private int hp
+    private list<string> types
+    private string rarity
+    private string setName
+    private string stage
+    private int retreat
+    private list<Attack> attacks
+    private string image
+
+    public Card(string id, string name, string category, int hp, list<string> types, string rarity, string setName, string stage, int retreat, list<Attack> attacks, string image) {
+        this.id = id
+        this.name = name
+        this.category = category
+        this.hp = hp
+        this.types = types
+        this.rarity = rarity
+        this.setName = setName
+        this.stage = stage
+        this.retreat = retreat
+        this.attacks = attacks
+        this.image = image
+    }
+
+    public string getId() {
+        return this.id
+    }
+
+    public string getName() {
+        return this.name
+    }
+
+    public string getCategory() {
+        return this.category
+    }
+
+    public int getHp() {
+        return this.hp
+    }
+
+    public list<string> getTypes() {
+        return this.types
+    }
+
+    public string getRarity() {
+        return this.rarity
+    }
+
+    public string getSetName() {
+        return this.setName
+    }
+
+    public string getStage() {
+        return this.stage
+    }
+
+    public int getRetreat() {
+        return this.retreat
+    }
+
+    public list<Attack> getAttacks() {
+        return this.attacks
+    }
+
+    public string getImage() {
+        return this.image
+    }
+
+    public string typesLabel() {
+        if (len(this.types) == 0) {
+            return "-"
+        }
+        string out = ""
+        int i = 0
+        loop (string t in this.types) {
+            if (i > 0) {
+                out = out + ", "
+            }
+            out = out + t
+            i = i + 1
+        }
+        return out
+    }
+
+    public string listLabel() {
+        return this.name + " [" + this.id + "]"
+    }
+
+    public string detailText() {
+        string lines = "Name: " + this.name + "\n"
+        lines = lines + "Id: " + this.id + "\n"
+        lines = lines + "Set: " + this.setName + "\n"
+        lines = lines + "Category: " + this.category + "\n"
+        lines = lines + "Rarity: " + this.rarity + "\n"
+        lines = lines + "Stage: " + this.stage + "\n"
+        lines = lines + "HP: " + str(this.hp) + "\n"
+        lines = lines + "Types: " + this.typesLabel() + "\n"
+        lines = lines + "Retreat: " + str(this.retreat) + "\n"
+        lines = lines + "Attacks:\n"
+        loop (Attack a in this.attacks) {
+            lines = lines + "  - " + a.summary() + "\n"
+        }
+        return lines
+    }
+}
+
+package class OwnedEntry {
+    private string cardId
+    private int quantity
+
+    public OwnedEntry(string cardId, int quantity) {
+        this.cardId = cardId
+        this.quantity = quantity
+    }
+
+    public string getCardId() {
+        return this.cardId
+    }
+
+    public int getQuantity() {
+        return this.quantity
+    }
+
+    public setQuantity(int quantity) {
+        if (quantity < 0) {
+            quantity = 0
+        }
+        this.quantity = quantity
+    }
+
+    public add(int delta) {
+        this.quantity = this.quantity + delta
+        if (this.quantity < 0) {
+            this.quantity = 0
+        }
+    }
+}
+
+package class Deck {
+    private string name
+    private list<OwnedEntry> entries
+
+    public Deck(string name, list<OwnedEntry> entries) {
+        this.name = name
+        this.entries = entries
+    }
+
+    public string getName() {
+        return this.name
+    }
+
+    public setName(string name) {
+        this.name = name
+    }
+
+    public list<OwnedEntry> getEntries() {
+        return this.entries
+    }
+
+    public int totalCards() {
+        int n = 0
+        loop (OwnedEntry e in this.entries) {
+            n = n + e.getQuantity()
+        }
+        return n
+    }
+
+    public int quantityOf(string cardId) {
+        loop (OwnedEntry e in this.entries) {
+            if (e.getCardId() == cardId) {
+                return e.getQuantity()
+            }
+        }
+        return 0
+    }
+
+    public setCardQuantity(string cardId, int quantity) {
+        if (quantity <= 0) {
+            list<OwnedEntry> kept = []
+            loop (OwnedEntry e in this.entries) {
+                if (e.getCardId() != cardId) {
+                    kept.append(e)
+                }
+            }
+            this.entries = kept
+            return
+        }
+        loop (OwnedEntry e in this.entries) {
+            if (e.getCardId() == cardId) {
+                e.setQuantity(quantity)
+                return
+            }
+        }
+        this.entries.append(OwnedEntry(cardId, quantity))
+    }
+}
+
+package class TypeStat {
+    private string typeName
+    private int count
+    private int hpSum
+
+    public TypeStat(string typeName) {
+        this.typeName = typeName
+        this.count = 0
+        this.hpSum = 0
+    }
+
+    public string getTypeName() {
+        return this.typeName
+    }
+
+    public int getCount() {
+        return this.count
+    }
+
+    public int getHpSum() {
+        return this.hpSum
+    }
+
+    public addCard(int hp, int quantity) {
+        this.count = this.count + quantity
+        this.hpSum = this.hpSum + (hp * quantity)
+    }
+
+    public int avgHp() {
+        if (this.count == 0) {
+            return 0
+        }
+        return this.hpSum / this.count
+    }
+
+    public string summary() {
+        int avg = this.avgHp()
+        return this.typeName + ": " + str(this.count) + " cards, avg HP " + str(avg)
+    }
+}
+
+package class CardCatalog {
+    private list<Card> cards
+    private dict<string, Card> byId
+
+    public CardCatalog(list<Card> cards) {
+        this.cards = cards
+        this.byId = dict()
+        loop (Card c in cards) {
+            this.byId[c.getId()] = c
+        }
+    }
+
+    public list<Card> allCards() {
+        return this.cards
+    }
+
+    public Card get(string cardId) {
+        if (cardId in this.byId) {
+            return this.byId[cardId]
+        }
+        return null
+    }
+
+    public int size() {
+        return len(this.cards)
+    }
+}
+
+package class CollectionBook {
+    private list<OwnedEntry> owned
+
+    public CollectionBook(list<OwnedEntry> owned) {
+        this.owned = owned
+    }
+
+    public list<OwnedEntry> getOwned() {
+        return this.owned
+    }
+
+    public int quantityOf(string cardId) {
+        loop (OwnedEntry e in this.owned) {
+            if (e.getCardId() == cardId) {
+                return e.getQuantity()
+            }
+        }
+        return 0
+    }
+
+    public removeCard(string cardId) {
+        list<OwnedEntry> kept = []
+        loop (OwnedEntry e in this.owned) {
+            if (e.getCardId() != cardId) {
+                kept.append(e)
+            }
+        }
+        this.owned = kept
+    }
+
+    public addCard(string cardId, int delta) {
+        if (delta == 0) {
+            return
+        }
+        loop (OwnedEntry e in this.owned) {
+            if (e.getCardId() == cardId) {
+                e.add(delta)
+                if (e.getQuantity() == 0) {
+                    this.removeCard(cardId)
+                }
+                return
+            }
+        }
+        if (delta > 0) {
+            this.owned.append(OwnedEntry(cardId, delta))
+        }
+    }
+
+    public setQuantity(string cardId, int quantity) {
+        if (quantity <= 0) {
+            this.removeCard(cardId)
+            return
+        }
+        loop (OwnedEntry e in this.owned) {
+            if (e.getCardId() == cardId) {
+                e.setQuantity(quantity)
+                return
+            }
+        }
+        this.owned.append(OwnedEntry(cardId, quantity))
+    }
+
+    public list<TypeStat> statsByType(CardCatalog catalog) {
+        dict<string, TypeStat> stats = dict()
+        loop (OwnedEntry e in this.owned) {
+            Card c = catalog.get(e.getCardId())
+            if (c != null) {
+                list<string> types = c.getTypes()
+                if (len(types) == 0) {
+                    string key = "Unknown"
+                    if (key in stats) {
+                        stats[key].addCard(c.getHp(), e.getQuantity())
+                    }
+                    else {
+                        TypeStat st = TypeStat(key)
+                        st.addCard(c.getHp(), e.getQuantity())
+                        stats[key] = st
+                    }
+                }
+                else {
+                    loop (string t in types) {
+                        if (t in stats) {
+                            stats[t].addCard(c.getHp(), e.getQuantity())
+                        }
+                        else {
+                            TypeStat st = TypeStat(t)
+                            st.addCard(c.getHp(), e.getQuantity())
+                            stats[t] = st
+                        }
+                    }
+                }
+            }
+        }
+        list<TypeStat> result = []
+        loop (string key in stats) {
+            result.append(stats[key])
+        }
+        return result
+    }
+}
+
+package class DeckBook {
+    private list<Deck> decks
+
+    public DeckBook(list<Deck> decks) {
+        this.decks = decks
+    }
+
+    public list<Deck> getDecks() {
+        return this.decks
+    }
+
+    public Deck getByName(string name) {
+        loop (Deck d in this.decks) {
+            if (d.getName() == name) {
+                return d
+            }
+        }
+        return null
+    }
+
+    public bool createDeck(string name) {
+        if (this.getByName(name) != null) {
+            return false
+        }
+        this.decks.append(Deck(name, []))
+        return true
+    }
+
+    public deleteDeck(string name) {
+        list<Deck> kept = []
+        loop (Deck d in this.decks) {
+            if (d.getName() != name) {
+                kept.append(d)
+            }
+        }
+        this.decks = kept
+    }
+
+    public bool setDeckCard(string deckName, string cardId, int quantity, CollectionBook collection) {
+        Deck d = this.getByName(deckName)
+        if (d == null) {
+            return false
+        }
+        int owned = collection.quantityOf(cardId)
+        if (quantity > owned) {
+            return false
+        }
+        d.setCardQuantity(cardId, quantity)
+        return true
+    }
+}

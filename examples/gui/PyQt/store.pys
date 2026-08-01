@@ -1,0 +1,160 @@
+# store.pys — load/save catalog, collection, and decks as local JSON
+
+import json
+from pathlib import Path
+import domain
+
+package class AppStore {
+    private Path dataDir
+    private CardCatalog catalog
+    private CollectionBook collection
+    private DeckBook decks
+
+    public AppStore(Path dataDir) {
+        this.dataDir = dataDir
+        this.catalog = CardCatalog([])
+        this.collection = CollectionBook([])
+        this.decks = DeckBook([])
+    }
+
+    public CardCatalog getCatalog() {
+        return this.catalog
+    }
+
+    public CollectionBook getCollection() {
+        return this.collection
+    }
+
+    public DeckBook getDecks() {
+        return this.decks
+    }
+
+    public Path getDataDir() {
+        return this.dataDir
+    }
+
+    public dict readJson(string filename) {
+        Path path = this.dataDir / filename
+        string text = path.read_text(encoding="utf-8-sig")
+        dict data = json.loads(text)
+        return data
+    }
+
+    public writeJson(string filename, dict payload) {
+        Path path = this.dataDir / filename
+        string text = json.dumps(payload, indent=2)
+        path.write_text(text, encoding="utf-8")
+    }
+
+    public CardCatalog loadCatalog() {
+        dict data = this.readJson("catalog" + ".json")
+        list rawCards = data["cards"]
+        list<Card> cards = []
+        loop (dict raw in rawCards) {
+            list<Attack> attacks = []
+            list rawAttacks = raw["attacks"]
+            loop (dict ra in rawAttacks) {
+                list costRaw = ra["cost"]
+                list<string> cost = []
+                loop (string c in costRaw) {
+                    cost.append(c)
+                }
+                string dmg = ra["damage"]
+                attacks.append(Attack(ra["name"], dmg, cost))
+            }
+            list typesRaw = raw["types"]
+            list<string> types = []
+            loop (string t in typesRaw) {
+                types.append(t)
+            }
+            int hp = raw["hp"]
+            int retreat = raw["retreat"]
+            cards.append(Card(raw["id"], raw["name"], raw["category"], hp, types, raw["rarity"], raw["setName"], raw["stage"], retreat, attacks, raw["image"]))
+        }
+        return CardCatalog(cards)
+    }
+
+    public CollectionBook loadCollection() {
+        Path path = this.dataDir / ("collection" + ".json")
+        if (path.exists() == false) {
+            return CollectionBook([])
+        }
+        dict data = this.readJson("collection" + ".json")
+        list rows = data["owned"]
+        list<OwnedEntry> owned = []
+        loop (dict row in rows) {
+            int qty = row["quantity"]
+            owned.append(OwnedEntry(row["cardId"], qty))
+        }
+        return CollectionBook(owned)
+    }
+
+    public DeckBook loadDecks() {
+        Path path = this.dataDir / ("decks" + ".json")
+        if (path.exists() == false) {
+            return DeckBook([])
+        }
+        dict data = this.readJson("decks" + ".json")
+        list rows = data["decks"]
+        list<Deck> decks = []
+        loop (dict row in rows) {
+            list entryRows = row["entries"]
+            list<OwnedEntry> entries = []
+            loop (dict er in entryRows) {
+                int qty = er["quantity"]
+                entries.append(OwnedEntry(er["cardId"], qty))
+            }
+            decks.append(Deck(row["name"], entries))
+        }
+        return DeckBook(decks)
+    }
+
+    public loadAll() {
+        this.catalog = this.loadCatalog()
+        this.collection = this.loadCollection()
+        this.decks = this.loadDecks()
+    }
+
+    public saveCollection() {
+        list entries = []
+        loop (OwnedEntry e in this.collection.getOwned()) {
+            dict row = dict()
+            row["cardId"] = e.getCardId()
+            row["quantity"] = e.getQuantity()
+            entries.append(row)
+        }
+        dict payload = dict()
+        payload["owned"] = entries
+        this.writeJson("collection" + ".json", payload)
+    }
+
+    public saveDecks() {
+        list deckRows = []
+        loop (Deck d in this.decks.getDecks()) {
+            list entryRows = []
+            loop (OwnedEntry e in d.getEntries()) {
+                dict er = dict()
+                er["cardId"] = e.getCardId()
+                er["quantity"] = e.getQuantity()
+                entryRows.append(er)
+            }
+            dict dr = dict()
+            dr["name"] = d.getName()
+            dr["entries"] = entryRows
+            deckRows.append(dr)
+        }
+        dict payload = dict()
+        payload["decks"] = deckRows
+        this.writeJson("decks" + ".json", payload)
+    }
+}
+
+global function Path defaultDataDir() {
+    return Path("data")
+}
+
+global function AppStore openStore() {
+    AppStore store = AppStore(defaultDataDir())
+    store.loadAll()
+    return store
+}

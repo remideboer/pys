@@ -1,21 +1,9 @@
-import QApplication, QWidget from PyQt6.QtWidgets
-print(QApplication)
-print(QWidget)
+# main.pys — Pokemon TCG PyQt6 demo (isolated silo)
+# Run: python -m transpiler run examples/gui/PyQt/main.pys
 
-# Only needed for access to command line arguments
-import sys
+import store
+import ui
 
-# You need one (and only one) QApplication instance per application.
-# Pass in sys.argv to allow command line arguments for your app.
-# If you know you won't use command line arguments QApplication([]) works too.
-QApplication app = QApplication(sys.argv)
-
-# Create a Qt widget, which will be our window.
-QWidget window = QWidget()
-window.show()  # IMPORTANT!!!!! Windows are hidden by default.
-
-# Start the event loop.
-app.exec()
-
-
-
+AppStore appStore = openStore()
+PokemonQtApp app = PokemonQtApp(appStore)
+app.run()

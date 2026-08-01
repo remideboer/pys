@@ -1,8 +1,12 @@
-# Pokemon TCG demo (Tkinter + PYS)
+# Pokemon TCG demo (Tkinter + PYS) — isolated silo
 
 Type-safe OO PYS example: browse a [TCGdex](https://tcgdex.dev/rest)-extracted
 card catalog, manage an owned collection with per-type stats, and build decks
 from owned cards. UI is a Tkinter notebook (Catalog | Collection | Decks).
+Clicking a master-list row updates the detail pane immediately.
+
+This folder is self-contained (stdlib Tkinter). The PyQt6 twin lives in
+`examples/gui/PyQt/`.
 
 Domain inspiration: [Pokemon TCG card browser](https://www.pokemon.com/us/pokemon-tcg/pokemon-cards).
 Card data comes from TCGdex (not scraped from Pokemon.com).
@@ -36,9 +40,9 @@ client; this demo keeps domain types in PYS and maps JSON into `Card` /
 
 | Tab | Master (left) | Detail (right) |
 |-----|---------------|----------------|
-| Catalog | All catalog cards | Stats, types, attacks; **Add to collection** |
-| Collection | Owned cards + qty | Card detail; **+1 / -1 / Remove**; type stats |
-| Decks | Deck names | Deck contents; create/delete; add/remove owned cards |
+| Catalog | All catalog cards (click row → detail) | Stats, types, attacks; **Add to collection** |
+| Collection | Owned cards + qty (click row → detail) | Card detail; **+1 / -1 / Remove**; type stats |
+| Decks | Deck names (click row → detail) | Deck contents; create/delete; add/remove owned cards |
 
 Deck rule (teaching): only cards you own, and deck quantity cannot exceed owned
 quantity. No full 60-card tournament validation.

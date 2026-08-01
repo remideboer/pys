@@ -1,4 +1,6 @@
 # ui.pys — Tkinter notebook: Catalog | Collection | Decks (master–detail)
+# Selecting a list item updates the detail pane immediately.
+# Isolated silo (stdlib). PyQt twin: examples/gui/PyQt/
 
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -8,31 +10,41 @@ import domain
 
 package class PokemonApp {
     private AppStore appStore
-    private list uiRoot
-    private list catalogList
-    private list catalogDetail
-    private list catalogIds
-    private list collectionList
-    private list collectionDetail
-    private list typeStatsBox
-    private list collectionIds
-    private list deckList
-    private list deckCards
-    private list deckDetail
-    private list deckNames
-    private list newDeckEntry
+    private Tk root
+    private Notebook notebook
+
+    private Frame catalogLeft
+    private Frame catalogRight
+    private Listbox catalogList
+    private Text catalogDetail
+    private list<string> catalogIds
+
+    private Frame collectionLeft
+    private Frame collectionRight
+    private Listbox collectionList
+    private Text collectionDetail
+    private Text typeStatsBox
+    private list<string> collectionIds
+
+    private Frame decksLeft
+    private Frame decksRight
+    private Listbox deckList
+    private Listbox deckCards
+    private Text deckDetail
+    private Entry newDeckEntry
+    private list<string> deckNames
 
     public refreshCatalog() {
-        this.catalogList[0].delete(0, "end")
+        this.catalogList.delete(0, "end")
         this.catalogIds = []
         loop (Card c in this.appStore.getCatalog().allCards()) {
-            this.catalogList[0].insert("end", c.listLabel())
+            this.catalogList.insert("end", c.listLabel())
             this.catalogIds.append(c.getId())
         }
     }
 
     public refreshCollection() {
-        this.collectionList[0].delete(0, "end")
+        this.collectionList.delete(0, "end")
         this.collectionIds = []
         loop (OwnedEntry e in this.appStore.getCollection().getOwned()) {
             Card c = this.appStore.getCatalog().get(e.getCardId())
@@ -41,50 +53,55 @@ package class PokemonApp {
             if (c != null) {
                 label = c.getName() + " x" + str(q)
             }
-            this.collectionList[0].insert("end", label)
+            this.collectionList.insert("end", label)
             this.collectionIds.append(e.getCardId())
         }
-        this.typeStatsBox[0].delete("1.0", "end")
+        this.typeStatsBox.delete("1.0", "end")
         list<TypeStat> typeStats = this.appStore.getCollection().statsByType(this.appStore.getCatalog())
         if (len(typeStats) == 0) {
-            this.typeStatsBox[0].insert("1.0", "No owned cards yet.")
+            this.typeStatsBox.insert("1.0", "No owned cards yet.")
         }
         else {
             string text = "Stats by type:\n"
             loop (TypeStat st in typeStats) {
                 text = text + st.summary() + "\n"
             }
-            this.typeStatsBox[0].insert("1.0", text)
+            this.typeStatsBox.insert("1.0", text)
         }
     }
 
     public refreshDecks() {
-        this.deckList[0].delete(0, "end")
+        this.deckList.delete(0, "end")
         this.deckNames = []
         loop (Deck d in this.appStore.getDecks().getDecks()) {
             int n = d.totalCards()
             string label = d.getName() + " (" + str(n) + " cards)"
-            this.deckList[0].insert("end", label)
+            this.deckList.insert("end", label)
             this.deckNames.append(d.getName())
         }
     }
 
     public showCatalogDetail() {
-        list sel = this.catalogList[0].curselection()
+        list sel = this.catalogList.curselection()
         if (len(sel) == 0) {
+            this.catalogDetail.delete("1.0", "end")
             return
         }
         int idx = sel[0]
         string cid = this.catalogIds[idx]
         Card c = this.appStore.getCatalog().get(cid)
-        this.catalogDetail[0].delete("1.0", "end")
+        this.catalogDetail.delete("1.0", "end")
         if (c != null) {
-            this.catalogDetail[0].insert("1.0", c.detailText())
+            this.catalogDetail.insert("1.0", c.detailText())
         }
     }
 
+    public onCatalogSelect(event) {
+        this.showCatalogDetail()
+    }
+
     public addSelectedToCollection() {
-        list sel = this.catalogList[0].curselection()
+        list sel = this.catalogList.curselection()
         if (len(sel) == 0) {
             messagebox.showinfo("Collection", "Select a card in the catalog first.")
             return
@@ -98,26 +115,31 @@ package class PokemonApp {
     }
 
     public showCollectionDetail() {
-        list sel = this.collectionList[0].curselection()
+        list sel = this.collectionList.curselection()
         if (len(sel) == 0) {
+            this.collectionDetail.delete("1.0", "end")
             return
         }
         int idx = sel[0]
         string cid = this.collectionIds[idx]
         Card c = this.appStore.getCatalog().get(cid)
         int qty = this.appStore.getCollection().quantityOf(cid)
-        this.collectionDetail[0].delete("1.0", "end")
+        this.collectionDetail.delete("1.0", "end")
         string header = "Owned quantity: " + str(qty) + "\n\n"
         if (c != null) {
-            this.collectionDetail[0].insert("1.0", header + c.detailText())
+            this.collectionDetail.insert("1.0", header + c.detailText())
         }
         else {
-            this.collectionDetail[0].insert("1.0", header + "Unknown card id: " + cid)
+            this.collectionDetail.insert("1.0", header + "Unknown card id: " + cid)
         }
     }
 
+    public onCollectionSelect(event) {
+        this.showCollectionDetail()
+    }
+
     public bumpOwned(int delta) {
-        list sel = this.collectionList[0].curselection()
+        list sel = this.collectionList.curselection()
         if (len(sel) == 0) {
             messagebox.showinfo("Collection", "Select an owned card first.")
             return
@@ -128,6 +150,13 @@ package class PokemonApp {
         this.appStore.saveCollection()
         this.refreshCollection()
         this.refreshDecks()
+        if (idx < len(this.collectionIds)) {
+            this.collectionList.selection_set(idx)
+            this.showCollectionDetail()
+        }
+        else {
+            this.collectionDetail.delete("1.0", "end")
+        }
     }
 
     public onBumpPlus() {
@@ -139,7 +168,7 @@ package class PokemonApp {
     }
 
     public removeOwned() {
-        list sel = this.collectionList[0].curselection()
+        list sel = this.collectionList.curselection()
         if (len(sel) == 0) {
             return
         }
@@ -149,12 +178,13 @@ package class PokemonApp {
         this.appStore.saveCollection()
         this.refreshCollection()
         this.refreshDecks()
+        this.collectionDetail.delete("1.0", "end")
     }
 
     public showDeckDetail() {
-        list sel = this.deckList[0].curselection()
-        this.deckCards[0].delete(0, "end")
-        this.deckDetail[0].delete("1.0", "end")
+        list sel = this.deckList.curselection()
+        this.deckCards.delete(0, "end")
+        this.deckDetail.delete("1.0", "end")
         if (len(sel) == 0) {
             return
         }
@@ -166,7 +196,7 @@ package class PokemonApp {
         }
         int total = d.totalCards()
         string text = "Deck: " + name + "\nTotal cards: " + str(total) + "\n"
-        this.deckDetail[0].insert("1.0", text)
+        this.deckDetail.insert("1.0", text)
         loop (OwnedEntry e in d.getEntries()) {
             Card c = this.appStore.getCatalog().get(e.getCardId())
             int q = e.getQuantity()
@@ -174,12 +204,16 @@ package class PokemonApp {
             if (c != null) {
                 label = c.getName() + " x" + str(q)
             }
-            this.deckCards[0].insert("end", label)
+            this.deckCards.insert("end", label)
         }
     }
 
+    public onDeckSelect(event) {
+        this.showDeckDetail()
+    }
+
     public createDeck() {
-        string name = this.newDeckEntry[0].get().strip()
+        string name = this.newDeckEntry.get().strip()
         if (name == "") {
             messagebox.showinfo("Decks", "Enter a deck name.")
             return
@@ -190,12 +224,12 @@ package class PokemonApp {
             return
         }
         this.appStore.saveDecks()
-        this.newDeckEntry[0].delete(0, "end")
+        this.newDeckEntry.delete(0, "end")
         this.refreshDecks()
     }
 
     public deleteSelectedDeck() {
-        list sel = this.deckList[0].curselection()
+        list sel = this.deckList.curselection()
         if (len(sel) == 0) {
             return
         }
@@ -204,23 +238,23 @@ package class PokemonApp {
         this.appStore.getDecks().deleteDeck(name)
         this.appStore.saveDecks()
         this.refreshDecks()
-        this.deckCards[0].delete(0, "end")
-        this.deckDetail[0].delete("1.0", "end")
+        this.deckCards.delete(0, "end")
+        this.deckDetail.delete("1.0", "end")
     }
 
     public addOwnedToDeck() {
-        list dsel = this.deckList[0].curselection()
+        list dsel = this.deckList.curselection()
         if (len(dsel) == 0) {
             messagebox.showinfo("Decks", "Select a deck first.")
             return
         }
         string cardId = ""
-        list csel = this.collectionList[0].curselection()
+        list csel = this.collectionList.curselection()
         if (len(csel) > 0) {
             cardId = this.collectionIds[csel[0]]
         }
         else {
-            list catsel = this.catalogList[0].curselection()
+            list catsel = this.catalogList.curselection()
             if (len(catsel) == 0) {
                 messagebox.showinfo("Decks", "Select a card in Collection (or Catalog).")
                 return
@@ -246,13 +280,13 @@ package class PokemonApp {
         }
         this.appStore.saveDecks()
         this.refreshDecks()
-        this.deckList[0].selection_set(dsel[0])
+        this.deckList.selection_set(dsel[0])
         this.showDeckDetail()
     }
 
     public removeCardFromDeck() {
-        list dsel = this.deckList[0].curselection()
-        list csel = this.deckCards[0].curselection()
+        list dsel = this.deckList.curselection()
+        list csel = this.deckCards.curselection()
         if (len(dsel) == 0) {
             return
         }
@@ -264,7 +298,7 @@ package class PokemonApp {
         if (d == null) {
             return
         }
-        list entries = d.getEntries()
+        list<OwnedEntry> entries = d.getEntries()
         int idx = csel[0]
         if (idx >= len(entries)) {
             return
@@ -274,12 +308,12 @@ package class PokemonApp {
         this.appStore.getDecks().setDeckCard(name, e.getCardId(), nextQty, this.appStore.getCollection())
         this.appStore.saveDecks()
         this.refreshDecks()
-        this.deckList[0].selection_set(dsel[0])
+        this.deckList.selection_set(dsel[0])
         this.showDeckDetail()
     }
 
     public run() {
-        this.uiRoot[0].mainloop()
+        this.root.mainloop()
     }
 
     public PokemonApp(AppStore appStore) {
@@ -287,85 +321,79 @@ package class PokemonApp {
         this.catalogIds = []
         this.collectionIds = []
         this.deckNames = []
-        this.uiRoot = []
-        this.catalogList = []
-        this.catalogDetail = []
-        this.collectionList = []
-        this.collectionDetail = []
-        this.typeStatsBox = []
-        this.deckList = []
-        this.deckCards = []
-        this.deckDetail = []
-        this.newDeckEntry = []
 
-        this.uiRoot.append(tk.Tk())
-        this.uiRoot[0].title("PYS Pokemon TCG Demo")
-        this.uiRoot[0].geometry("900x560")
+        this.root = tk.Tk()
+        this.root.title("PYS Pokemon TCG Demo")
+        this.root.geometry("900x560")
 
-        this.uiRoot.append(ttk.Notebook(this.uiRoot[0]))
-        this.uiRoot[1].pack(fill="both", expand=True, padx=8, pady=8)
+        this.notebook = ttk.Notebook(this.root)
+        this.notebook.pack(fill="both", expand=True, padx=8, pady=8)
 
-        this.uiRoot.append(ttk.Frame(this.uiRoot[1]))
-        this.uiRoot[1].add(this.uiRoot[2], text="Catalog")
-        this.uiRoot.append(ttk.Frame(this.uiRoot[2]))
-        this.uiRoot[3].pack(side="left", fill="both", expand=True)
-        this.uiRoot.append(ttk.Frame(this.uiRoot[2]))
-        this.uiRoot[4].pack(side="right", fill="both", expand=True)
-        ttk.Label(this.uiRoot[3], text="Cards (TCGdex extract)").pack(anchor="w")
-        this.catalogList.append(tk.Listbox(this.uiRoot[3], width=40))
-        this.catalogList[0].pack(fill="both", expand=True)
-        ttk.Button(this.uiRoot[3], text="Show detail", command=this.showCatalogDetail).pack(fill="x", pady=2)
-        ttk.Button(this.uiRoot[3], text="Add to collection", command=this.addSelectedToCollection).pack(fill="x", pady=2)
-        this.catalogDetail.append(tk.Text(this.uiRoot[4], width=50, height=30))
-        this.catalogDetail[0].pack(fill="both", expand=True)
+        Frame catalogTab = ttk.Frame(this.notebook)
+        this.notebook.add(catalogTab, text="Catalog")
+        this.catalogLeft = ttk.Frame(catalogTab)
+        this.catalogLeft.pack(side="left", fill="both", expand=True)
+        this.catalogRight = ttk.Frame(catalogTab)
+        this.catalogRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.catalogLeft, text="Cards (TCGdex extract) — click a row for detail").pack(anchor="w")
+        this.catalogList = tk.Listbox(this.catalogLeft, width=40)
+        this.catalogList.pack(fill="both", expand=True)
+        this.catalogList.bind("<<ListboxSelect>>", this.onCatalogSelect)
+        ttk.Button(this.catalogLeft, text="Add to collection", command=this.addSelectedToCollection).pack(fill="x", pady=2)
+        this.catalogDetail = tk.Text(this.catalogRight, width=50, height=30)
+        this.catalogDetail.pack(fill="both", expand=True)
 
-        this.uiRoot.append(ttk.Frame(this.uiRoot[1]))
-        this.uiRoot[1].add(this.uiRoot[5], text="Collection")
-        this.uiRoot.append(ttk.Frame(this.uiRoot[5]))
-        this.uiRoot[6].pack(side="left", fill="both", expand=True)
-        this.uiRoot.append(ttk.Frame(this.uiRoot[5]))
-        this.uiRoot[7].pack(side="right", fill="both", expand=True)
-        ttk.Label(this.uiRoot[6], text="Owned cards").pack(anchor="w")
-        this.collectionList.append(tk.Listbox(this.uiRoot[6], width=40))
-        this.collectionList[0].pack(fill="both", expand=True)
-        ttk.Button(this.uiRoot[6], text="Show detail", command=this.showCollectionDetail).pack(fill="x", pady=2)
-        this.uiRoot.append(ttk.Frame(this.uiRoot[6]))
-        this.uiRoot[8].pack(fill="x")
-        ttk.Button(this.uiRoot[8], text="+1", command=this.onBumpPlus).pack(side="left", expand=True, fill="x")
-        ttk.Button(this.uiRoot[8], text="-1", command=this.onBumpMinus).pack(side="left", expand=True, fill="x")
-        ttk.Button(this.uiRoot[8], text="Remove", command=this.removeOwned).pack(side="left", expand=True, fill="x")
-        this.collectionDetail.append(tk.Text(this.uiRoot[7], width=50, height=18))
-        this.collectionDetail[0].pack(fill="both", expand=True)
-        ttk.Label(this.uiRoot[7], text="Stats by type").pack(anchor="w")
-        this.typeStatsBox.append(tk.Text(this.uiRoot[7], width=50, height=8))
-        this.typeStatsBox[0].pack(fill="both", expand=True)
+        Frame collectionTab = ttk.Frame(this.notebook)
+        this.notebook.add(collectionTab, text="Collection")
+        this.collectionLeft = ttk.Frame(collectionTab)
+        this.collectionLeft.pack(side="left", fill="both", expand=True)
+        this.collectionRight = ttk.Frame(collectionTab)
+        this.collectionRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.collectionLeft, text="Owned cards — click a row for detail").pack(anchor="w")
+        this.collectionList = tk.Listbox(this.collectionLeft, width=40)
+        this.collectionList.pack(fill="both", expand=True)
+        this.collectionList.bind("<<ListboxSelect>>", this.onCollectionSelect)
+        Frame bumpRow = ttk.Frame(this.collectionLeft)
+        bumpRow.pack(fill="x")
+        ttk.Button(bumpRow, text="+1", command=this.onBumpPlus).pack(side="left", expand=True, fill="x")
+        ttk.Button(bumpRow, text="-1", command=this.onBumpMinus).pack(side="left", expand=True, fill="x")
+        ttk.Button(bumpRow, text="Remove", command=this.removeOwned).pack(side="left", expand=True, fill="x")
+        this.collectionDetail = tk.Text(this.collectionRight, width=50, height=18)
+        this.collectionDetail.pack(fill="both", expand=True)
+        ttk.Label(this.collectionRight, text="Stats by type").pack(anchor="w")
+        this.typeStatsBox = tk.Text(this.collectionRight, width=50, height=8)
+        this.typeStatsBox.pack(fill="both", expand=True)
 
-        this.uiRoot.append(ttk.Frame(this.uiRoot[1]))
-        this.uiRoot[1].add(this.uiRoot[9], text="Decks")
-        this.uiRoot.append(ttk.Frame(this.uiRoot[9]))
-        this.uiRoot[10].pack(side="left", fill="both", expand=True)
-        this.uiRoot.append(ttk.Frame(this.uiRoot[9]))
-        this.uiRoot[11].pack(side="right", fill="both", expand=True)
-        ttk.Label(this.uiRoot[10], text="Your decks").pack(anchor="w")
-        this.deckList.append(tk.Listbox(this.uiRoot[10], width=40))
-        this.deckList[0].pack(fill="both", expand=True)
-        ttk.Button(this.uiRoot[10], text="Show detail", command=this.showDeckDetail).pack(fill="x", pady=2)
-        this.uiRoot.append(ttk.Frame(this.uiRoot[10]))
-        this.uiRoot[12].pack(fill="x", pady=4)
-        this.newDeckEntry.append(ttk.Entry(this.uiRoot[12]))
-        this.newDeckEntry[0].pack(side="left", fill="x", expand=True)
-        ttk.Button(this.uiRoot[12], text="Create", command=this.createDeck).pack(side="left")
-        ttk.Button(this.uiRoot[10], text="Delete deck", command=this.deleteSelectedDeck).pack(fill="x")
-        ttk.Button(this.uiRoot[10], text="Add selected owned/catalog card", command=this.addOwnedToDeck).pack(fill="x")
-        ttk.Button(this.uiRoot[10], text="Remove selected deck card", command=this.removeCardFromDeck).pack(fill="x")
-        this.deckDetail.append(tk.Text(this.uiRoot[11], width=50, height=8))
-        this.deckDetail[0].pack(fill="x")
-        ttk.Label(this.uiRoot[11], text="Cards in deck").pack(anchor="w")
-        this.deckCards.append(tk.Listbox(this.uiRoot[11], width=50))
-        this.deckCards[0].pack(fill="both", expand=True)
+        Frame decksTab = ttk.Frame(this.notebook)
+        this.notebook.add(decksTab, text="Decks")
+        this.decksLeft = ttk.Frame(decksTab)
+        this.decksLeft.pack(side="left", fill="both", expand=True)
+        this.decksRight = ttk.Frame(decksTab)
+        this.decksRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.decksLeft, text="Your decks — click a row for detail").pack(anchor="w")
+        this.deckList = tk.Listbox(this.decksLeft, width=40)
+        this.deckList.pack(fill="both", expand=True)
+        this.deckList.bind("<<ListboxSelect>>", this.onDeckSelect)
+        Frame newDeckRow = ttk.Frame(this.decksLeft)
+        newDeckRow.pack(fill="x", pady=4)
+        this.newDeckEntry = ttk.Entry(newDeckRow)
+        this.newDeckEntry.pack(side="left", fill="x", expand=True)
+        ttk.Button(newDeckRow, text="Create", command=this.createDeck).pack(side="left")
+        ttk.Button(this.decksLeft, text="Delete deck", command=this.deleteSelectedDeck).pack(fill="x")
+        ttk.Button(this.decksLeft, text="Add selected owned/catalog card", command=this.addOwnedToDeck).pack(fill="x")
+        ttk.Button(this.decksLeft, text="Remove selected deck card", command=this.removeCardFromDeck).pack(fill="x")
+        this.deckDetail = tk.Text(this.decksRight, width=50, height=8)
+        this.deckDetail.pack(fill="x")
+        ttk.Label(this.decksRight, text="Cards in deck").pack(anchor="w")
+        this.deckCards = tk.Listbox(this.decksRight, width=50)
+        this.deckCards.pack(fill="both", expand=True)
 
         this.refreshCatalog()
         this.refreshCollection()
         this.refreshDecks()
+        if (len(this.catalogIds) > 0) {
+            this.catalogList.selection_set(0)
+            this.showCatalogDetail()
+        }
     }
 }

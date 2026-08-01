@@ -1,0 +1,427 @@
+# ui.pys — PyQt6 notebook: Catalog | Collection | Decks (master–detail)
+# Selecting a list row updates the detail pane immediately (currentRowChanged).
+# Isolated silo under examples/gui/PyQt (Tk twin: examples/gui/pokemontcg).
+
+import QApplication, QWidget, QListWidget, QTextEdit, QLabel, QPushButton, QTabWidget, QHBoxLayout, QVBoxLayout, QLineEdit, QMessageBox from PyQt6.QtWidgets
+import sys
+import store
+import domain
+
+package class PokemonQtApp {
+    private AppStore appStore
+    private QApplication qtApp
+    private QWidget window
+    private QTabWidget tabs
+
+    private QListWidget catalogList
+    private QTextEdit catalogDetail
+    private list<string> catalogIds
+
+    private QListWidget collectionList
+    private QTextEdit collectionDetail
+    private QTextEdit typeStatsBox
+    private list<string> collectionIds
+
+    private QListWidget deckList
+    private QListWidget deckCards
+    private QTextEdit deckDetail
+    private QLineEdit newDeckEntry
+    private list<string> deckNames
+
+    public refreshCatalog() {
+        this.catalogList.clear()
+        this.catalogIds = []
+        loop (Card c in this.appStore.getCatalog().allCards()) {
+            this.catalogList.addItem(c.listLabel())
+            this.catalogIds.append(c.getId())
+        }
+    }
+
+    public refreshCollection() {
+        this.collectionList.clear()
+        this.collectionIds = []
+        loop (OwnedEntry e in this.appStore.getCollection().getOwned()) {
+            Card c = this.appStore.getCatalog().get(e.getCardId())
+            int q = e.getQuantity()
+            string label = e.getCardId() + " x" + str(q)
+            if (c != null) {
+                label = c.getName() + " x" + str(q)
+            }
+            this.collectionList.addItem(label)
+            this.collectionIds.append(e.getCardId())
+        }
+        this.typeStatsBox.clear()
+        list<TypeStat> typeStats = this.appStore.getCollection().statsByType(this.appStore.getCatalog())
+        if (len(typeStats) == 0) {
+            this.typeStatsBox.setPlainText("No owned cards yet.")
+        }
+        else {
+            string text = "Stats by type:\n"
+            loop (TypeStat st in typeStats) {
+                text = text + st.summary() + "\n"
+            }
+            this.typeStatsBox.setPlainText(text)
+        }
+    }
+
+    public refreshDecks() {
+        this.deckList.clear()
+        this.deckNames = []
+        loop (Deck d in this.appStore.getDecks().getDecks()) {
+            int n = d.totalCards()
+            string label = d.getName() + " (" + str(n) + " cards)"
+            this.deckList.addItem(label)
+            this.deckNames.append(d.getName())
+        }
+    }
+
+    public showCatalogDetail(int row) {
+        this.catalogDetail.clear()
+        if (row < 0) {
+            return
+        }
+        if (row >= len(this.catalogIds)) {
+            return
+        }
+        string cid = this.catalogIds[row]
+        Card c = this.appStore.getCatalog().get(cid)
+        if (c != null) {
+            this.catalogDetail.setPlainText(c.detailText())
+        }
+    }
+
+    public onCatalogRowChanged(int row) {
+        this.showCatalogDetail(row)
+    }
+
+    public addSelectedToCollection() {
+        int row = this.catalogList.currentRow()
+        if (row < 0) {
+            QMessageBox.information(this.window, "Collection", "Select a card in the catalog first.")
+            return
+        }
+        string cid = this.catalogIds[row]
+        this.appStore.getCollection().addCard(cid, 1)
+        this.appStore.saveCollection()
+        this.refreshCollection()
+        QMessageBox.information(this.window, "Collection", "Added 1 copy to your collection.")
+    }
+
+    public showCollectionDetail(int row) {
+        this.collectionDetail.clear()
+        if (row < 0) {
+            return
+        }
+        if (row >= len(this.collectionIds)) {
+            return
+        }
+        string cid = this.collectionIds[row]
+        Card c = this.appStore.getCatalog().get(cid)
+        int qty = this.appStore.getCollection().quantityOf(cid)
+        string header = "Owned quantity: " + str(qty) + "\n\n"
+        if (c != null) {
+            this.collectionDetail.setPlainText(header + c.detailText())
+        }
+        else {
+            this.collectionDetail.setPlainText(header + "Unknown card id: " + cid)
+        }
+    }
+
+    public onCollectionRowChanged(int row) {
+        this.showCollectionDetail(row)
+    }
+
+    public bumpOwned(int delta) {
+        int row = this.collectionList.currentRow()
+        if (row < 0) {
+            QMessageBox.information(this.window, "Collection", "Select an owned card first.")
+            return
+        }
+        string cid = this.collectionIds[row]
+        this.appStore.getCollection().addCard(cid, delta)
+        this.appStore.saveCollection()
+        this.refreshCollection()
+        this.refreshDecks()
+        if (row < len(this.collectionIds)) {
+            this.collectionList.setCurrentRow(row)
+            this.showCollectionDetail(row)
+        }
+        else {
+            this.collectionDetail.clear()
+        }
+    }
+
+    public onBumpPlus() {
+        this.bumpOwned(1)
+    }
+
+    public onBumpMinus() {
+        this.bumpOwned(-1)
+    }
+
+    public removeOwned() {
+        int row = this.collectionList.currentRow()
+        if (row < 0) {
+            return
+        }
+        string cid = this.collectionIds[row]
+        this.appStore.getCollection().removeCard(cid)
+        this.appStore.saveCollection()
+        this.refreshCollection()
+        this.refreshDecks()
+        this.collectionDetail.clear()
+    }
+
+    public showDeckDetail(int row) {
+        this.deckCards.clear()
+        this.deckDetail.clear()
+        if (row < 0) {
+            return
+        }
+        if (row >= len(this.deckNames)) {
+            return
+        }
+        string name = this.deckNames[row]
+        Deck d = this.appStore.getDecks().getByName(name)
+        if (d == null) {
+            return
+        }
+        int total = d.totalCards()
+        string text = "Deck: " + name + "\nTotal cards: " + str(total) + "\n"
+        this.deckDetail.setPlainText(text)
+        loop (OwnedEntry e in d.getEntries()) {
+            Card c = this.appStore.getCatalog().get(e.getCardId())
+            int q = e.getQuantity()
+            string label = e.getCardId() + " x" + str(q)
+            if (c != null) {
+                label = c.getName() + " x" + str(q)
+            }
+            this.deckCards.addItem(label)
+        }
+    }
+
+    public onDeckRowChanged(int row) {
+        this.showDeckDetail(row)
+    }
+
+    public createDeck() {
+        string name = this.newDeckEntry.text().strip()
+        if (name == "") {
+            QMessageBox.information(this.window, "Decks", "Enter a deck name.")
+            return
+        }
+        bool ok = this.appStore.getDecks().createDeck(name)
+        if (ok == false) {
+            QMessageBox.critical(this.window, "Decks", "A deck with that name already exists.")
+            return
+        }
+        this.appStore.saveDecks()
+        this.newDeckEntry.clear()
+        this.refreshDecks()
+    }
+
+    public deleteSelectedDeck() {
+        int row = this.deckList.currentRow()
+        if (row < 0) {
+            return
+        }
+        string name = this.deckNames[row]
+        this.appStore.getDecks().deleteDeck(name)
+        this.appStore.saveDecks()
+        this.refreshDecks()
+        this.deckCards.clear()
+        this.deckDetail.clear()
+    }
+
+    public addOwnedToDeck() {
+        int drow = this.deckList.currentRow()
+        if (drow < 0) {
+            QMessageBox.information(this.window, "Decks", "Select a deck first.")
+            return
+        }
+        string cardId = ""
+        int crow = this.collectionList.currentRow()
+        if (crow >= 0) {
+            cardId = this.collectionIds[crow]
+        }
+        else {
+            int catrow = this.catalogList.currentRow()
+            if (catrow < 0) {
+                QMessageBox.information(this.window, "Decks", "Select a card in Collection (or Catalog).")
+                return
+            }
+            cardId = this.catalogIds[catrow]
+        }
+        int owned = this.appStore.getCollection().quantityOf(cardId)
+        if (owned <= 0) {
+            QMessageBox.critical(this.window, "Decks", "You can only add cards you own. Add it to your collection first.")
+            return
+        }
+        string name = this.deckNames[drow]
+        Deck d = this.appStore.getDecks().getByName(name)
+        int current = 0
+        if (d != null) {
+            current = d.quantityOf(cardId)
+        }
+        int nextQty = current + 1
+        bool ok = this.appStore.getDecks().setDeckCard(name, cardId, nextQty, this.appStore.getCollection())
+        if (ok == false) {
+            QMessageBox.critical(this.window, "Decks", "Not enough owned copies for this deck.")
+            return
+        }
+        this.appStore.saveDecks()
+        this.refreshDecks()
+        this.deckList.setCurrentRow(drow)
+        this.showDeckDetail(drow)
+    }
+
+    public removeCardFromDeck() {
+        int drow = this.deckList.currentRow()
+        int crow = this.deckCards.currentRow()
+        if (drow < 0) {
+            return
+        }
+        if (crow < 0) {
+            return
+        }
+        string name = this.deckNames[drow]
+        Deck d = this.appStore.getDecks().getByName(name)
+        if (d == null) {
+            return
+        }
+        list<OwnedEntry> entries = d.getEntries()
+        if (crow >= len(entries)) {
+            return
+        }
+        OwnedEntry e = entries[crow]
+        int nextQty = e.getQuantity() - 1
+        this.appStore.getDecks().setDeckCard(name, e.getCardId(), nextQty, this.appStore.getCollection())
+        this.appStore.saveDecks()
+        this.refreshDecks()
+        this.deckList.setCurrentRow(drow)
+        this.showDeckDetail(drow)
+    }
+
+    public run() {
+        this.window.show()
+        this.qtApp.exec()
+    }
+
+    public PokemonQtApp(AppStore appStore) {
+        this.appStore = appStore
+        this.catalogIds = []
+        this.collectionIds = []
+        this.deckNames = []
+
+        this.qtApp = QApplication(sys.argv)
+        this.window = QWidget()
+        this.window.setWindowTitle("PYS Pokemon TCG Demo (PyQt6)")
+        this.window.resize(900, 560)
+
+        QVBoxLayout rootLayout = QVBoxLayout(this.window)
+        this.tabs = QTabWidget()
+        rootLayout.addWidget(this.tabs, 1)
+
+        QWidget catalogPage = QWidget()
+        QHBoxLayout catalogLayout = QHBoxLayout(catalogPage)
+        QWidget catalogLeft = QWidget()
+        QVBoxLayout catalogLeftLayout = QVBoxLayout(catalogLeft)
+        catalogLeftLayout.addWidget(QLabel("Cards (TCGdex extract) — click a row for detail"))
+        this.catalogList = QListWidget()
+        this.catalogList.setMinimumWidth(280)
+        catalogLeftLayout.addWidget(this.catalogList, 1)
+        this.catalogList.currentRowChanged.connect(this.onCatalogRowChanged)
+        QPushButton addBtn = QPushButton("Add to collection")
+        addBtn.clicked.connect(this.addSelectedToCollection)
+        catalogLeftLayout.addWidget(addBtn)
+        this.catalogDetail = QTextEdit()
+        this.catalogDetail.setReadOnly(True)
+        this.catalogDetail.setPlaceholderText("Select a card to see details…")
+        catalogLayout.addWidget(catalogLeft, 1)
+        catalogLayout.addWidget(this.catalogDetail, 2)
+        this.tabs.addTab(catalogPage, "Catalog")
+
+        QWidget collectionPage = QWidget()
+        QHBoxLayout collectionLayout = QHBoxLayout(collectionPage)
+        QWidget collectionLeft = QWidget()
+        QVBoxLayout collectionLeftLayout = QVBoxLayout(collectionLeft)
+        collectionLeftLayout.addWidget(QLabel("Owned cards — click a row for detail"))
+        this.collectionList = QListWidget()
+        this.collectionList.setMinimumWidth(280)
+        collectionLeftLayout.addWidget(this.collectionList, 1)
+        this.collectionList.currentRowChanged.connect(this.onCollectionRowChanged)
+        QWidget bumpRow = QWidget()
+        QHBoxLayout bumpLayout = QHBoxLayout(bumpRow)
+        QPushButton plusBtn = QPushButton("+1")
+        plusBtn.clicked.connect(this.onBumpPlus)
+        QPushButton minusBtn = QPushButton("-1")
+        minusBtn.clicked.connect(this.onBumpMinus)
+        QPushButton removeBtn = QPushButton("Remove")
+        removeBtn.clicked.connect(this.removeOwned)
+        bumpLayout.addWidget(plusBtn)
+        bumpLayout.addWidget(minusBtn)
+        bumpLayout.addWidget(removeBtn)
+        collectionLeftLayout.addWidget(bumpRow)
+        QWidget collectionRight = QWidget()
+        QVBoxLayout collectionRightLayout = QVBoxLayout(collectionRight)
+        this.collectionDetail = QTextEdit()
+        this.collectionDetail.setReadOnly(True)
+        this.collectionDetail.setPlaceholderText("Select an owned card to see details…")
+        collectionRightLayout.addWidget(this.collectionDetail, 2)
+        collectionRightLayout.addWidget(QLabel("Stats by type"))
+        this.typeStatsBox = QTextEdit()
+        this.typeStatsBox.setReadOnly(True)
+        collectionRightLayout.addWidget(this.typeStatsBox, 1)
+        collectionLayout.addWidget(collectionLeft, 1)
+        collectionLayout.addWidget(collectionRight, 2)
+        this.tabs.addTab(collectionPage, "Collection")
+
+        QWidget decksPage = QWidget()
+        QHBoxLayout decksLayout = QHBoxLayout(decksPage)
+        QWidget decksLeft = QWidget()
+        QVBoxLayout decksLeftLayout = QVBoxLayout(decksLeft)
+        decksLeftLayout.addWidget(QLabel("Your decks — click a row for detail"))
+        this.deckList = QListWidget()
+        this.deckList.setMinimumWidth(280)
+        decksLeftLayout.addWidget(this.deckList, 1)
+        this.deckList.currentRowChanged.connect(this.onDeckRowChanged)
+        QWidget newDeckRow = QWidget()
+        QHBoxLayout newDeckLayout = QHBoxLayout(newDeckRow)
+        this.newDeckEntry = QLineEdit()
+        this.newDeckEntry.setPlaceholderText("New deck name")
+        newDeckLayout.addWidget(this.newDeckEntry, 1)
+        QPushButton createBtn = QPushButton("Create")
+        createBtn.clicked.connect(this.createDeck)
+        newDeckLayout.addWidget(createBtn)
+        decksLeftLayout.addWidget(newDeckRow)
+        QPushButton deleteDeckBtn = QPushButton("Delete deck")
+        deleteDeckBtn.clicked.connect(this.deleteSelectedDeck)
+        decksLeftLayout.addWidget(deleteDeckBtn)
+        QPushButton addToDeckBtn = QPushButton("Add selected owned/catalog card")
+        addToDeckBtn.clicked.connect(this.addOwnedToDeck)
+        decksLeftLayout.addWidget(addToDeckBtn)
+        QPushButton removeFromDeckBtn = QPushButton("Remove selected deck card")
+        removeFromDeckBtn.clicked.connect(this.removeCardFromDeck)
+        decksLeftLayout.addWidget(removeFromDeckBtn)
+        QWidget decksRight = QWidget()
+        QVBoxLayout decksRightLayout = QVBoxLayout(decksRight)
+        this.deckDetail = QTextEdit()
+        this.deckDetail.setReadOnly(True)
+        this.deckDetail.setPlaceholderText("Select a deck to see details…")
+        this.deckDetail.setMaximumHeight(120)
+        decksRightLayout.addWidget(this.deckDetail)
+        decksRightLayout.addWidget(QLabel("Cards in deck"))
+        this.deckCards = QListWidget()
+        decksRightLayout.addWidget(this.deckCards, 1)
+        decksLayout.addWidget(decksLeft, 1)
+        decksLayout.addWidget(decksRight, 2)
+        this.tabs.addTab(decksPage, "Decks")
+
+        this.refreshCatalog()
+        this.refreshCollection()
+        this.refreshDecks()
+        if (len(this.catalogIds) > 0) {
+            this.catalogList.setCurrentRow(0)
+        }
+    }
+}
