@@ -16,6 +16,7 @@ import sys
 import sysconfig
 import tempfile
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
@@ -92,10 +93,21 @@ def find_deps_file(start: Path, *, stop_at: Path | None = None) -> Path | None:
     When ``stop_at`` is set (or ``PYS_WORKSPACE_ROOT`` is in the environment),
     do not honor a ``pys.deps`` above that directory.
     """
-    current = start.resolve()
+    bound = _workspace_stop_at(stop_at)
+    bound_key = str(bound) if bound is not None else None
+    try:
+        start_key = str(start.resolve())
+    except OSError:
+        return None
+    return _find_deps_file_cached(start_key, bound_key)
+
+
+@lru_cache(maxsize=512)
+def _find_deps_file_cached(start_key: str, bound_key: str | None) -> Path | None:
+    current = Path(start_key)
     if current.is_file():
         current = current.parent
-    bound = _workspace_stop_at(stop_at)
+    bound = Path(bound_key) if bound_key is not None else None
     for directory in [current, *current.parents]:
         if bound is not None:
             try:
@@ -840,6 +852,11 @@ def prepend_pythonpath(paths: Iterable[Path], env: dict[str, str] | None = None)
 
 def module_present_on_paths(module_ref: str, site_paths: Iterable[Path]) -> bool:
     """True if dotted module_ref exists under any site path (as file or package)."""
+    return _module_present_on_paths_cached(module_ref, tuple(Path(p) for p in site_paths))
+
+
+@lru_cache(maxsize=4096)
+def _module_present_on_paths_cached(module_ref: str, site_paths: tuple[Path, ...]) -> bool:
     parts = [p for p in module_ref.split(".") if p]
     if not parts:
         return False
@@ -866,6 +883,12 @@ def module_present_on_paths(module_ref: str, site_paths: Iterable[Path]) -> bool
         if candidate.is_dir() and any(candidate.iterdir()):
             return True
     return False
+
+
+def clear_filesystem_caches() -> None:
+    """Drop memoized deps path probes after the filesystem changes."""
+    _find_deps_file_cached.cache_clear()
+    _module_present_on_paths_cached.cache_clear()
 
 
 def is_external_python_module(module_ref: str, site_paths: Iterable[Path] | None = None) -> bool:

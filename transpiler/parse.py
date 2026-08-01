@@ -45,7 +45,7 @@ from .ast_nodes import (
     UnaryOp,
     WhileStmt,
 )
-from .lex import LexError, Token, TokenKind, tokenize
+from .lex import LexError, Token, TokenKind, TokenizeResult, tokenize, tokenize_with_flags
 
 _TYPES = frozenset({"int", "float", "char", "string", "bool"})
 _VIS = frozenset({"global", "package", "module"})
@@ -63,11 +63,48 @@ class FatalParseError(ParseError):
     """Semantic fault discovered while parsing; do not fall back to legacy."""
 
 
+_PACKRAT_FAIL = object()
+
+
+def _packrat(rule_id: str):
+    """Memoize a production at (rule_id, position) when ``_Tok.memo`` is enabled."""
+
+    def decorator(fn):
+        def wrapped(p: _Tok):
+            memo = p.memo
+            if memo is None:
+                return fn(p)
+            key = (rule_id, p.i)
+            cached = memo.get(key)
+            if cached is not None:
+                marker, payload = cached
+                if marker is _PACKRAT_FAIL:
+                    raise payload
+                result, end = payload
+                p.i = end
+                return result
+            start = p.i
+            try:
+                result = fn(p)
+            except ParseError as exc:
+                memo[key] = (_PACKRAT_FAIL, exc)
+                p.i = start
+                raise
+            memo[key] = (None, (result, p.i))
+            return result
+
+        return wrapped
+
+    return decorator
+
+
 class _Tok:
-    def __init__(self, tokens: list[Token]) -> None:
+    def __init__(self, tokens: list[Token], *, packrat: bool = False) -> None:
         self.tokens = tokens
         self.i = 0
         self.task_serial = 0
+        # Packrat / PEG memo (PEP 617): per-parse only when enabled.
+        self.memo: dict | None = {} if packrat else None
 
     def cur(self) -> Token:
         return self.tokens[self.i]
@@ -118,20 +155,41 @@ class _Tok:
 
 def parse_program(source: str) -> Module:
     try:
-        tokens = tokenize(source)
+        lexed = tokenize_with_flags(source)
     except LexError as exc:
         from .transpiler import TranspileError
 
         raise TranspileError(str(exc.message), exc.line, exc.column, "") from exc
+    return parse_program_from_tokens(lexed, source=source)
 
-    brace_mode = any(t.kind in {TokenKind.LBRACE, TokenKind.RBRACE} for t in tokens)
+
+def parse_program_from_tokens(
+    tokens: list[Token] | TokenizeResult,
+    *,
+    source: str = "",
+    engine: str = "auto",
+) -> Module:
+    """Parse from an existing token list (lex once; benches / PEG dual-run).
+
+    ``engine``: ``\"rd\"`` classic recursive descent, ``\"peg\"`` packrat brace
+    parser, ``\"auto\"`` uses the default brace engine (PEG when enabled).
+    """
+    if isinstance(tokens, TokenizeResult):
+        lexed = tokens
+        token_list = lexed.tokens
+        brace_mode = lexed.brace_mode
+        legacy_indent = lexed.legacy_indent_keywords
+    else:
+        token_list = tokens
+        brace_mode = any(t.kind in {TokenKind.LBRACE, TokenKind.RBRACE} for t in token_list)
+        legacy_indent = any(
+            t.kind == TokenKind.KEYWORD and t.text in {"then", "do", "times", "func", "repeat"}
+            for t in token_list
+        )
 
     # Indent-style forms (then/func/repeat/…) — only when there are no braces.
     # (`times` is also a common parameter name in brace mode.)
-    if not brace_mode and any(
-        t.kind == TokenKind.KEYWORD and t.text in {"then", "do", "times", "func", "repeat"}
-        for t in tokens
-    ):
+    if not brace_mode and legacy_indent:
         try:
             body = _parse_indent_program(source)
             return Module(span=Span(1, 1), source=source, body=body, brace_mode=False)
@@ -140,7 +198,41 @@ def parse_program(source: str) -> Module:
 
             raise TranspileError(str(exc), exc.line, exc.column, "") from exc
 
-    p = _Tok(tokens)
+    # PEG = same productions with packrat memo (PEP 617); RD = memo off.
+    use_peg = engine == "peg" or (engine == "auto" and _BRACE_ENGINE == "peg")
+    if use_peg:
+        from . import peg as peg_mod
+
+        return peg_mod.parse_brace_module(
+            token_list, source=source, brace_mode=brace_mode
+        )
+
+    return _parse_brace_module_rd(
+        token_list, source=source, brace_mode=brace_mode, packrat=False
+    )
+
+
+# Default stays RD: packrat adds memo overhead and this grammar rarely backtracks
+# enough to win (measured in CER-003). Use engine=\"peg\" / set_brace_engine for dual-run.
+_BRACE_ENGINE = "rd"
+
+
+def set_brace_engine(engine: str) -> None:
+    """Test helper: ``\"rd\"`` or ``\"peg\"``."""
+    global _BRACE_ENGINE
+    if engine not in {"rd", "peg"}:
+        raise ValueError(f"unsupported brace engine {engine!r}")
+    _BRACE_ENGINE = engine
+
+
+def _parse_brace_module_rd(
+    tokens: list[Token],
+    *,
+    source: str,
+    brace_mode: bool,
+    packrat: bool = False,
+) -> Module:
+    p = _Tok(tokens, packrat=packrat)
     body: list = []
     try:
         while not p.done():
@@ -259,6 +351,7 @@ def _parse_indent_program(source: str) -> list:
     return body
 
 
+@_packrat("toplevel")
 def _parse_toplevel(p: _Tok):
     if p.at(TokenKind.BLANK):
         t = p.eat(TokenKind.BLANK)
@@ -824,6 +917,7 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
     )
 
 
+@_packrat("statement")
 def _parse_statement(p: _Tok):
     sp = p.span()
     if p.at(TokenKind.BLANK):
@@ -951,6 +1045,7 @@ def _parse_print(p: _Tok) -> PrintStmt:
     return PrintStmt(span=sp, value=value)
 
 
+@_packrat("block")
 def _parse_block(p: _Tok) -> Block:
     sp = p.span()
     p.eat(TokenKind.LBRACE)
@@ -1077,10 +1172,12 @@ def _parse_loop(p: _Tok):
     return WhileStmt(span=sp, cond=cond, body=body)
 
 
+@_packrat("expression")
 def _parse_expression(p: _Tok) -> Expr:
     return _parse_or(p)
 
 
+@_packrat("or")
 def _parse_or(p: _Tok) -> Expr:
     left = _parse_and(p)
     while p.at_kw("or") or p.at(TokenKind.OP, text="||"):
@@ -1092,6 +1189,7 @@ def _parse_or(p: _Tok) -> Expr:
     return left
 
 
+@_packrat("and")
 def _parse_and(p: _Tok) -> Expr:
     left = _parse_not(p)
     while p.at_kw("and") or p.at(TokenKind.OP, text="&&"):
@@ -1103,6 +1201,7 @@ def _parse_and(p: _Tok) -> Expr:
     return left
 
 
+@_packrat("not")
 def _parse_not(p: _Tok) -> Expr:
     if p.at_kw("not") or p.at(TokenKind.OP, text="!"):
         sp = p.span()
@@ -1113,6 +1212,7 @@ def _parse_not(p: _Tok) -> Expr:
     return _parse_cmp(p)
 
 
+@_packrat("cmp")
 def _parse_cmp(p: _Tok) -> Expr:
     left = _parse_add(p)
     if p.at_kw("in"):
@@ -1130,6 +1230,7 @@ def _parse_cmp(p: _Tok) -> Expr:
     return left
 
 
+@_packrat("add")
 def _parse_add(p: _Tok) -> Expr:
     left = _parse_mul(p)
     while p.at(TokenKind.OP) and p.cur().text in {"+", "-"}:
@@ -1139,6 +1240,7 @@ def _parse_add(p: _Tok) -> Expr:
     return left
 
 
+@_packrat("mul")
 def _parse_mul(p: _Tok) -> Expr:
     left = _parse_unary(p)
     while p.at(TokenKind.OP) and p.cur().text in {"*", "/", "%"}:
@@ -1148,6 +1250,7 @@ def _parse_mul(p: _Tok) -> Expr:
     return left
 
 
+@_packrat("unary")
 def _parse_unary(p: _Tok) -> Expr:
     if p.at_kw("await"):
         sp = p.span()
@@ -1160,6 +1263,7 @@ def _parse_unary(p: _Tok) -> Expr:
     return _parse_cast_postfix(p)
 
 
+@_packrat("cast_postfix")
 def _parse_cast_postfix(p: _Tok) -> Expr:
     # (int) x  or  (Truck) c  — type name then ')' then operand
     if (
@@ -1204,6 +1308,7 @@ def _parse_call_arg(p: _Tok) -> Expr:
     return _parse_expression(p)
 
 
+@_packrat("postfix")
 def _parse_postfix(p: _Tok) -> Expr:
     expr = _parse_primary(p)
     # Generic constructor sugar: Type<Args>(...) — drop type args for Python emit.
@@ -1263,6 +1368,7 @@ def _parse_postfix(p: _Tok) -> Expr:
     return expr
 
 
+@_packrat("primary")
 def _parse_primary(p: _Tok) -> Expr:
     sp = p.span()
     if p.at(TokenKind.INT):

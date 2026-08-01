@@ -9,6 +9,7 @@ import sys
 import types
 import typing
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import Any, get_args, get_origin
@@ -263,6 +264,11 @@ def _path_under_sites(path: Path, site_paths: list[Path]) -> bool:
 
 
 def _site_has_module(module_name: str, site_paths: list[Path]) -> bool:
+    return _site_has_module_cached(module_name, tuple(site_paths))
+
+
+@lru_cache(maxsize=4096)
+def _site_has_module_cached(module_name: str, site_paths: tuple[Path, ...]) -> bool:
     parts = module_name.split(".")
     for site in site_paths:
         base = Path(site).joinpath(*parts)
@@ -282,6 +288,20 @@ def _site_has_module(module_name: str, site_paths: list[Path]) -> bool:
     return False
 
 
+def clear_filesystem_caches() -> None:
+    """Forget memoized module/stdlib/deps lookups after the filesystem changes.
+
+    Each IDE request runs in a fresh process, so the caches normally live for one
+    compile; callers that install packages in-process must reset them explicitly.
+    """
+    _interpreter_layout.cache_clear()
+    _is_stdlib_path.cache_clear()
+    _site_has_module_cached.cache_clear()
+    from . import deps as deps_mod
+
+    deps_mod.clear_filesystem_caches()
+
+
 def _drop_module_tree(module_name: str) -> None:
     # Drop the whole top-level package tree so a stub site package can replace
     # a previously imported real install (common when acceptance tests load
@@ -293,33 +313,36 @@ def _drop_module_tree(module_name: str) -> None:
             del sys.modules[key]
 
 
-def _is_stdlib_path(path: Path) -> bool:
-    """True for interpreter-owned stdlib files, excluding site-packages."""
+@lru_cache(maxsize=1)
+def _interpreter_layout() -> tuple[tuple[Path, ...], Path | None]:
+    """Resolved (site dirs, stdlib dir) for this interpreter; fixed for the process."""
     import sysconfig
 
+    def resolved(key: str) -> Path | None:
+        raw = sysconfig.get_path(key)
+        if not raw:
+            return None
+        try:
+            return Path(raw).resolve()
+        except OSError:
+            return None
+
+    site_dirs = tuple(p for p in (resolved("purelib"), resolved("platlib")) if p is not None)
+    return site_dirs, resolved("stdlib")
+
+
+@lru_cache(maxsize=4096)
+def _is_stdlib_path(path: Path) -> bool:
+    """True for interpreter-owned stdlib files, excluding site-packages."""
     try:
         resolved = path.resolve()
     except OSError:
         return False
 
-    for key in ("purelib", "platlib"):
-        raw = sysconfig.get_path(key)
-        if not raw:
-            continue
-        try:
-            resolved.relative_to(Path(raw).resolve())
-            return False
-        except ValueError:
-            continue
-
-    raw_stdlib = sysconfig.get_path("stdlib")
-    if not raw_stdlib:
+    site_dirs, stdlib_dir = _interpreter_layout()
+    if any(resolved.is_relative_to(site_dir) for site_dir in site_dirs):
         return False
-    try:
-        resolved.relative_to(Path(raw_stdlib).resolve())
-        return True
-    except ValueError:
-        return False
+    return stdlib_dir is not None and resolved.is_relative_to(stdlib_dir)
 
 
 def import_module_from_sites(

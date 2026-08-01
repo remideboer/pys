@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterator
 
 
 class TokenKind(Enum):
@@ -95,8 +94,11 @@ KEYWORDS = frozenset(
     }
 )
 
+# Indent-mode markers used when the file has no braces.
+_LEGACY_INDENT_KEYWORDS = frozenset({"then", "do", "times", "func", "repeat"})
+
 # Multi-char operators longest-first
-_OPS = [
+_OPS = (
     "++",
     "--",
     "+=",
@@ -112,7 +114,38 @@ _OPS = [
     "&&",
     "||",
     "->",
-]
+)
+
+# First character → ops starting with that char, longest first (_OPS is already ordered).
+_OPS_BY_FIRST: dict[str, tuple[str, ...]] = {}
+for _op in _OPS:
+    _OPS_BY_FIRST.setdefault(_op[0], [])
+    _OPS_BY_FIRST[_op[0]].append(_op)
+_OPS_BY_FIRST = {k: tuple(v) for k, v in _OPS_BY_FIRST.items()}
+
+_SINGLES: dict[str, TokenKind] = {
+    "(": TokenKind.LPAREN,
+    ")": TokenKind.RPAREN,
+    "{": TokenKind.LBRACE,
+    "}": TokenKind.RBRACE,
+    "[": TokenKind.LBRACK,
+    "]": TokenKind.RBRACK,
+    ",": TokenKind.COMMA,
+    ".": TokenKind.DOT,
+    ":": TokenKind.COLON,
+    ";": TokenKind.SEMI,
+    "<": TokenKind.LT,
+    ">": TokenKind.GT,
+    "+": TokenKind.OP,
+    "-": TokenKind.OP,
+    "*": TokenKind.OP,
+    "/": TokenKind.OP,
+    "%": TokenKind.OP,
+    "=": TokenKind.OP,
+    "!": TokenKind.OP,
+}
+
+_SKIP_AFTER_RBRACE = frozenset({TokenKind.BLANK, TokenKind.COMMENT, TokenKind.NEWLINE})
 
 
 @dataclass(frozen=True)
@@ -122,6 +155,15 @@ class Token:
     line: int
     column: int
     index: int
+
+
+@dataclass(frozen=True)
+class TokenizeResult:
+    """Tokens plus mode flags gathered during the single lex pass."""
+
+    tokens: list[Token]
+    brace_mode: bool
+    legacy_indent_keywords: bool
 
 
 @dataclass
@@ -136,6 +178,11 @@ class LexError(ValueError):
 
 def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
     """Tokenize PYS source. Block comments are skipped; standalone `#` lines become COMMENT tokens."""
+    return tokenize_with_flags(source, emit_newlines=emit_newlines).tokens
+
+
+def tokenize_with_flags(source: str, *, emit_newlines: bool = False) -> TokenizeResult:
+    """Tokenize and report brace / legacy-indent cues without a second token scan."""
     tokens: list[Token] = []
     i = 0
     line = 1
@@ -143,6 +190,8 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
     n = len(source)
     at_line_start = True
     after_rbrace = False
+    brace_mode = False
+    legacy_indent_keywords = False
 
     def peek(k: int = 0) -> str:
         j = i + k
@@ -161,11 +210,15 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
                 at_line_start = False
 
     def add(kind: TokenKind, text: str, start_line: int, start_col: int, start_index: int) -> None:
-        nonlocal after_rbrace
+        nonlocal after_rbrace, brace_mode, legacy_indent_keywords
         tokens.append(Token(kind, text, start_line, start_col, start_index))
+        if kind in {TokenKind.LBRACE, TokenKind.RBRACE}:
+            brace_mode = True
+        if kind == TokenKind.KEYWORD and text in _LEGACY_INDENT_KEYWORDS:
+            legacy_indent_keywords = True
         if kind == TokenKind.RBRACE:
             after_rbrace = True
-        elif kind not in {TokenKind.BLANK, TokenKind.COMMENT, TokenKind.NEWLINE}:
+        elif kind not in _SKIP_AFTER_RBRACE:
             after_rbrace = False
 
     def skip_collapsed_blanks() -> None:
@@ -184,11 +237,11 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
                 add(TokenKind.BLANK, "", line, col, i)
                 after_rbrace = False
             for _ in range(k):
-                bump(peek())
+                bump(source[i])
             bump("\n")
 
     while i < n:
-        ch = peek()
+        ch = source[i]
         if ch == "\t":
             raise LexError("tabs are not allowed; replace tabs with spaces.", line, col)
         if ch in " \r":
@@ -205,15 +258,15 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
         if ch == "#" and peek(1) == "#":
             start_line, start_col = line, col
             bump(ch)
-            bump(peek())
+            bump(source[i] if i < n else "")
             closed = False
             while i < n:
-                if peek() == "/" and peek(1) == "#":
+                if source[i] == "/" and peek(1) == "#":
                     bump("/")
                     bump("#")
                     closed = True
                     break
-                bump(peek())
+                bump(source[i])
             if not closed:
                 raise LexError("Unterminated multiline comment. Close with /#.", start_line, start_col)
             continue
@@ -222,9 +275,9 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
             standalone = at_line_start
             start_line, start_col, start_i = line, col, i
             chars: list[str] = []
-            while i < n and peek() != "\n":
-                chars.append(peek())
-                bump(peek())
+            while i < n and source[i] != "\n":
+                chars.append(source[i])
+                bump(source[i])
             if standalone:
                 add(TokenKind.COMMENT, "".join(chars).strip(), start_line, start_col, start_i)
             continue
@@ -235,18 +288,18 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
         if ch in {'"', "'"}:
             quote = ch
             bump(ch)
-            chars: list[str] = [quote]
-            while i < n and peek() != quote:
-                if peek() == "\\" and i + 1 < n:
-                    chars.append(peek())
-                    bump(peek())
-                    chars.append(peek())
-                    bump(peek())
+            chars = [quote]
+            while i < n and source[i] != quote:
+                if source[i] == "\\" and i + 1 < n:
+                    chars.append(source[i])
+                    bump(source[i])
+                    chars.append(source[i])
+                    bump(source[i])
                     continue
-                if peek() == "\n":
+                if source[i] == "\n":
                     raise LexError("Unterminated string literal.", start_line, start_col)
-                chars.append(peek())
-                bump(peek())
+                chars.append(source[i])
+                bump(source[i])
             if i >= n:
                 raise LexError("Unterminated string literal.", start_line, start_col)
             chars.append(quote)
@@ -262,15 +315,15 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
         # Numbers
         if ch.isdigit():
             text_chars: list[str] = []
-            while peek().isdigit():
-                text_chars.append(peek())
-                bump(peek())
-            if peek() == "." and peek(1).isdigit():
+            while i < n and source[i].isdigit():
+                text_chars.append(source[i])
+                bump(source[i])
+            if i < n and source[i] == "." and peek(1).isdigit():
                 text_chars.append(".")
                 bump(".")
-                while peek().isdigit():
-                    text_chars.append(peek())
-                    bump(peek())
+                while i < n and source[i].isdigit():
+                    text_chars.append(source[i])
+                    bump(source[i])
                 add(TokenKind.FLOAT, "".join(text_chars), start_line, start_col, start_i)
             else:
                 add(TokenKind.INT, "".join(text_chars), start_line, start_col, start_i)
@@ -279,53 +332,39 @@ def tokenize(source: str, *, emit_newlines: bool = False) -> list[Token]:
         # Ident / keyword
         if ch.isalpha() or ch == "_":
             text_chars = []
-            while peek().isalnum() or peek() == "_":
-                text_chars.append(peek())
-                bump(peek())
+            while i < n and (source[i].isalnum() or source[i] == "_"):
+                text_chars.append(source[i])
+                bump(source[i])
             text = "".join(text_chars)
             kind = TokenKind.KEYWORD if text in KEYWORDS else TokenKind.IDENT
             add(kind, text, start_line, start_col, start_i)
             continue
 
-        # Multi-char ops
-        matched = False
-        for op in _OPS:
-            if source.startswith(op, i):
-                for _ in op:
-                    bump(peek())
-                add(TokenKind.OP, op, start_line, start_col, start_i)
-                matched = True
-                break
-        if matched:
-            continue
+        # Multi-char ops (longest match among those sharing the first character)
+        ops = _OPS_BY_FIRST.get(ch)
+        if ops is not None:
+            matched = False
+            for op in ops:
+                if source.startswith(op, i):
+                    for _ in op:
+                        bump(source[i])
+                    add(TokenKind.OP, op, start_line, start_col, start_i)
+                    matched = True
+                    break
+            if matched:
+                continue
 
-        singles = {
-            "(": TokenKind.LPAREN,
-            ")": TokenKind.RPAREN,
-            "{": TokenKind.LBRACE,
-            "}": TokenKind.RBRACE,
-            "[": TokenKind.LBRACK,
-            "]": TokenKind.RBRACK,
-            ",": TokenKind.COMMA,
-            ".": TokenKind.DOT,
-            ":": TokenKind.COLON,
-            ";": TokenKind.SEMI,
-            "<": TokenKind.LT,
-            ">": TokenKind.GT,
-            "+": TokenKind.OP,
-            "-": TokenKind.OP,
-            "*": TokenKind.OP,
-            "/": TokenKind.OP,
-            "%": TokenKind.OP,
-            "=": TokenKind.OP,
-            "!": TokenKind.OP,
-        }
-        if ch in singles:
+        kind = _SINGLES.get(ch)
+        if kind is not None:
             bump(ch)
-            add(singles[ch], ch, start_line, start_col, start_i)
+            add(kind, ch, start_line, start_col, start_i)
             continue
 
         raise LexError(f"Unexpected character {ch!r}.", line, col)
 
     add(TokenKind.EOF, "", line, col, i)
-    return tokens
+    return TokenizeResult(
+        tokens=tokens,
+        brace_mode=brace_mode,
+        legacy_indent_keywords=legacy_indent_keywords,
+    )

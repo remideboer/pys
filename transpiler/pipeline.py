@@ -7,7 +7,6 @@ from typing import Literal
 from . import parse as parse_mod
 from . import sem as sem_mod
 from .emit import python as emit_python
-from .lex import LexError, tokenize
 
 Target = Literal["python"]
 
@@ -22,14 +21,7 @@ def compile_pys(
     """Compile PYS to the requested backend. Only `python` is implemented."""
     if target != "python":
         raise ValueError(f"Unsupported emit target {target!r}; only 'python' is available.")
-    # Lex early so invalid tokens fail before legacy emit.
-    try:
-        tokenize(source)
-    except LexError as exc:
-        from .transpiler import TranspileError
-
-        raise TranspileError(str(exc.message), exc.line, exc.column, "") from exc
-
+    # parse_program lexes first, so invalid tokens still fail before any emit.
     tree = parse_mod.parse_program(source)
     tree = sem_mod.analyze(
         tree,

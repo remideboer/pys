@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +62,40 @@ def pys_import_line(stmt: ImportStmt) -> str:
         names = stmt.names or ([stmt.name] if stmt.name else [])
         return f"import {', '.join(names)} from {stmt.module}"
     return ""
+
+
+@dataclass(frozen=True)
+class _ParsedModule:
+    """Everything the resolver needs from one file: metadata plus its import lines."""
+
+    info: ModuleInfo
+    imports: tuple[tuple[str, int], ...]
+
+
+@lru_cache(maxsize=256)
+def _parse_module(path: Path, source: str) -> _ParsedModule:
+    """Parse a module once per (path, content).
+
+    sem and emit each build their own resolver over the same files, so without
+    this every module would be parsed several times per compile. Keying on the
+    source text means an edited file is never served from a stale entry.
+    """
+    from .parse import parse_program
+
+    tree = parse_program(source)
+    imports: list[tuple[str, int]] = []
+    for stmt in tree.body:
+        if not isinstance(stmt, ImportStmt):
+            continue
+        line = pys_import_line(stmt)
+        if line:
+            imports.append((line, stmt.span.line if stmt.span else 1))
+    return _ParsedModule(module_info_from_ast(path, tree), tuple(imports))
+
+
+def clear_parse_cache() -> None:
+    """Drop memoized module parses (only needed when caching itself is under test)."""
+    _parse_module.cache_clear()
 
 
 def extract_module_info(path: Path, source: str) -> ModuleInfo:
@@ -213,9 +248,7 @@ class ImportResolver:
         self._deps_site_paths_loaded = False
 
         if self.source_path is not None:
-            from .parse import parse_program
-
-            info = module_info_from_ast(self.source_path, parse_program(source))
+            info = _parse_module(self.source_path, source).info
             self.exports = dict(info.exports)
             self.constants = set(info.constants)
             self.fixed_vars = set(info.fixed_vars)
@@ -280,9 +313,11 @@ class ImportResolver:
         return path
 
     def _same_package(self, other: Path) -> bool:
+        # source_path / ModuleInfo.path are already resolved; re-resolve here was
+        # hundreds of filesystem hits per analyze with no semantic gain.
         if self.source_path is None:
             return False
-        return self.source_path.parent.resolve() == other.parent.resolve()
+        return self.source_path.parent == other.parent
 
     def _load_module(self, module_path: Path) -> ModuleInfo:
         from .transpiler import TranspileError
@@ -294,11 +329,9 @@ class ImportResolver:
             raise TranspileError(f"Circular import involving '{path.name}'.")
         self.transpiling.add(path)
         try:
-            from .parse import parse_program
-
             source = path.read_text(encoding="utf-8")
-            tree = parse_program(source)
-            info = module_info_from_ast(path, tree)
+            parsed = _parse_module(path, source)
+            info = parsed.info
             # Recurse into the child's imports so transpile_with_modules discovers
             # the full dependency graph.
             child = ImportResolver(
@@ -308,14 +341,8 @@ class ImportResolver:
                 transpiling=self.transpiling,
                 allow_runtime_introspection=self.allow_runtime_introspection,
             )
-            for stmt in tree.body:
-                if not isinstance(stmt, ImportStmt):
-                    continue
-                line = pys_import_line(stmt)
-                if line:
-                    child.translate_import_statement(
-                        line, stmt.span.line if stmt.span else 1, line
-                    )
+            for line, line_number in parsed.imports:
+                child.translate_import_statement(line, line_number, line)
             self.module_cache[path] = info
             return info
         finally:
@@ -565,20 +592,11 @@ def discover_imported_modules(
     """Parse entry file imports (recursively) and return the module cache."""
     source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
-    from .parse import parse_program
-
     resolver = ImportResolver(
         source,
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
     )
-    tree = parse_program(source)
-    for stmt in tree.body:
-        if not isinstance(stmt, ImportStmt):
-            continue
-        line = pys_import_line(stmt)
-        if line:
-            resolver.translate_import_statement(
-                line, stmt.span.line if stmt.span else 1, line
-            )
+    for line, line_number in _parse_module(source_path, source).imports:
+        resolver.translate_import_statement(line, line_number, line)
     return resolver.module_cache

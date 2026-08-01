@@ -1,0 +1,55 @@
+---
+description: Bidirectional project memory — consult and update CERs/ADRs so the codebase evolves instead of devolving
+alwaysApply: true
+---
+
+# Project memory — CERs and ADRs
+
+Memory is **bidirectional**: look back before coding, write forward when the
+change lands. Stale records are as bad as ignored ones.
+
+| Kind | Path | Level |
+| --- | --- | --- |
+| **CER** (code evolution) | `docs/evolution/` | Symbol / pre-post behavior |
+| **ADR** (architecture) | `docs/adr/` | System boundaries and contracts |
+
+Indexes: `docs/evolution/README.md`, `docs/adr/README.md`.
+
+## Loop (every non-trivial change)
+
+### 1. Look back
+
+- Skim indexes for records touching the area (security, deps/locks, IDE,
+  parse/import/pipeline, publish, perf).
+- Read matching CERs/ADRs; treat **post-behavior** / **Decision** as the baseline.
+- Do not reintroduce documented pre-behavior unless the user asks to reverse it.
+
+### 2. Change the code
+
+- Prefer extending post-behavior over “simplifying back” to pre-behavior.
+- Perf: measure first (ADR-003). Security: fail closed at boundaries (ADR-001).
+
+### 3. Write forward (same change set — not a later chore)
+
+Update or add records **before calling the work done**:
+
+| What happened | What to write |
+| --- | --- |
+| New lasting code-level fix / behavior shift | New CER entry or new CER; refresh index |
+| New or changed system boundary / contract | New ADR or amend Accepted ADR; refresh index |
+| Reverses a prior decision | Mark old record `Superseded by …`, link new one |
+| Extends an existing decision without reversing it | Amend the living CER/ADR (post-behavior, consequences, commits) |
+| Pure typo / comment / docs unrelated to decisions | No CER/ADR required |
+
+Ship code + memory together. A PR/commit that changes a decided behavior without
+touching the matching CER/ADR is incomplete.
+
+## Anti-devolution examples (unless a new record supersedes them)
+
+- IDE helpers: `python -I`, bundled path, no workspace `PYTHONPATH`
+- Analysis/transpile: no pip-install / no third-party import for typing by default
+- `PYS_WORKSPACE_ROOT` → realpath containment; no `interpreter.path` in `pys.deps`
+- Hashed fail-closed locks; no second `tokenize` in `compile_pys`
+- Keep parse memoization; do not re-`resolve()` already-resolved package parents without measurement + CER
+- Do not force PEG (`_BRACE_ENGINE = "peg"`) without a CER showing packrat ≤ RD on the gate corpus
+- Keep `parse_program_from_tokens` / single-lex compile path; do not restore double-counted phase benches

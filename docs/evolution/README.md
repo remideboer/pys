@@ -1,0 +1,42 @@
+# Code evolution records (CERs)
+
+These notes track **why the code changed**, not system architecture.
+
+They sit between commit messages (too short) and ADRs (system-level decisions
+in [`../adr/`](../adr/README.md)): each record describes a concrete pre-behavior,
+the measurable or security cost of that behavior, and the post-behavior that
+replaced it.
+
+**Project memory (look back + write forward):** consult relevant CERs/ADRs before
+changing related code, and **update or add** records in the same change set when
+behavior or decisions move. Stale memory is a defect. Enforced by
+`.cursor/rules/project-memory.mdc`.
+
+## Format
+
+| Field | Meaning |
+| --- | --- |
+| Status | `Accepted` once landed on the branch / merge commit |
+| Date | When the change landed |
+| Commits | Primary git SHA(s) |
+| Scope | Files / symbols that moved |
+
+Each record then uses:
+
+1. **Context** — what the code was doing and for whom
+2. **Entries** — one subsection per distinct code change:
+   - Pre-behavior
+   - Why it hurt
+   - Post-behavior
+   - Evidence (tests, benches, risk)
+3. **Trade-offs** — what we deliberately did *not* change
+
+## Index
+
+| ID | Title | Theme |
+| --- | --- | --- |
+| [CER-001](CER-001-security-boundaries.md) | Harden security boundaries | Security |
+| [CER-002](CER-002-compile-performance.md) | Cut redundant parse and filesystem work | Performance |
+| [CER-003](CER-003-peg-frontend.md) | Lexer/deps wins + PEG-capable parse front-end | Performance |
+
+Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

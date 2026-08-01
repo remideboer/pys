@@ -142,7 +142,9 @@ editor Run controls — no workspace `.vscode/run_pys.py` required.
 Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) · overview
 [`docs/LANGUAGE.md`](docs/LANGUAGE.md) · visuals
 [`docs/language-railroad.html`](docs/language-railroad.html) · architecture
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · code evolution
+[`docs/evolution/`](docs/evolution/README.md) · ADRs
+[`docs/adr/`](docs/adr/README.md).
 
 **Curriculum:** [`tutorials/`](tutorials/) — whole-task classes with scaffolding and JIT cards.  
 **Showcase:** [`examples/main.pys`](examples/main.pys) (dense reference, not lesson 1).  

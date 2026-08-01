@@ -2,7 +2,7 @@
 
 How the PYS toolchain is structured and how a `.pys` file becomes running Python.
 
-Related docs: [LANGUAGE.md](LANGUAGE.md) · [CONCURRENCY.md](CONCURRENCY.md) · [pipeline-migration.md](pipeline-migration.md)
+Related docs: [LANGUAGE.md](LANGUAGE.md) · [CONCURRENCY.md](CONCURRENCY.md) · [pipeline-migration.md](pipeline-migration.md) · [evolution/](evolution/README.md) (code CERs) · [adr/](adr/README.md) (ADRs)
 
 ---
 
@@ -53,8 +53,8 @@ flowchart TB
   end
 
   subgraph front [Front end]
-    Lex["lex.tokenize"]
-    Parse["parse.parse_program"]
+    Lex["lex.tokenize_with_flags"]
+    Parse["parse.parse_program<br/>peg packrat optional"]
     AST["ast_nodes.Module"]
     Sem["sem.analyze"]
   end
@@ -297,3 +297,8 @@ The extension packages a copy of the transpiler (`npm run prepare`). Diagnostics
 | New dependency behavior | `deps.py` + `pys.deps` docs in the README |
 
 Characterization goldens: `tests/golden/` (regen only via `python tests/golden/regen.py`).
+
+Why recent security and performance code moved the way it did (pre/post behavior,
+not architecture diagrams): [`evolution/`](evolution/README.md).
+System-level decisions: [`adr/`](adr/README.md). Both are project memory —
+see `.cursor/rules/project-memory.mdc`.

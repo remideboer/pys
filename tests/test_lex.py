@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from transpiler.lex import LexError, TokenKind, tokenize
+from transpiler.lex import LexError, TokenKind, tokenize, tokenize_with_flags
 
 
 def test_tokenize_literals_and_keywords() -> None:
@@ -59,3 +59,19 @@ def test_all_golden_sources_lex() -> None:
     root = __import__("pathlib").Path(__file__).resolve().parent / "golden"
     for pys in sorted(root.rglob("*.pys")):
         tokenize(pys.read_text(encoding="utf-8"))
+
+
+def test_tokenize_with_flags_detects_brace_mode() -> None:
+    braced = tokenize_with_flags("function f(){\n    print(1)\n}\n")
+    assert braced.brace_mode is True
+    assert braced.tokens == tokenize("function f(){\n    print(1)\n}\n")
+
+    plain = tokenize_with_flags("print(1)\n")
+    assert plain.brace_mode is False
+    assert plain.legacy_indent_keywords is False
+
+
+def test_tokenize_with_flags_detects_legacy_indent_keywords() -> None:
+    result = tokenize_with_flags("if true then\n    print(1)\n")
+    assert result.brace_mode is False
+    assert result.legacy_indent_keywords is True
