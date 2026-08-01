@@ -50,6 +50,9 @@ touching the matching CER/ADR is incomplete.
 - Analysis/transpile: no pip-install / no third-party import for typing by default
 - `PYS_WORKSPACE_ROOT` → realpath containment; no `interpreter.path` in `pys.deps`
 - Hashed fail-closed locks; no second `tokenize` in `compile_pys`
+- `run_source` tests for dep-free examples under this repo: set
+  `PYS_WORKSPACE_ROOT` to the example’s directory (CER-001 §4) — never inherit
+  the root MySQL `pys.lock` (breaks Linux CI with win-amd64 platform mismatch)
 - Keep parse memoization; do not re-`resolve()` already-resolved package parents without measurement + CER
 - Do not force PEG (`_BRACE_ENGINE = "peg"`) without a CER showing packrat ≤ RD on the gate corpus
 - Keep `parse_program_from_tokens` / single-lex compile path; do not restore double-counted phase benches

@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-01 |
-| Commits | `4446848` (`fix: harden transpiler security boundaries`) |
+| Commits | `4446848`; test isolation `cbd7e0a`, `7034f15` |
 | Scope | `pys-language/ide-process.js`, `extension.js`, `transpiler/workspace.py`, `deps.py`, `imports.py`, `pytypes.py`, `pipeline.py`, `ide.py`, `sem.py`, publish workflows |
 | ADRs | [ADR-001](../adr/ADR-001-trust-boundaries.md), [ADR-002](../adr/ADR-002-hashed-dependency-locks.md) |
 
@@ -128,17 +128,43 @@ constraints for an innocent nested project.
 ### Why it hurt
 
 Dependency and interpreter policy could be hijacked by files the student never
-opened as the project root. (Also broke CI when a root MySQL lock leaked into a
-dependency-free concurrency example — fixed in `cbd7e0a` by setting the env in
-tests.)
+opened as the project root.
+
+The same upward walk also breaks **CI** when a test calls `run_source` on a
+dependency-free example that lives under this monorepo: discovery finds the
+repo-root `pys.deps` / `pys.lock` (MySQL, often locked for `win-amd64`). On
+`ubuntu-latest` that fails with:
+
+```text
+pys.lock targets platform win-amd64, running platform is linux-x86_64.
+```
 
 ### Post-behavior
 
 Extension sets `PYS_WORKSPACE_ROOT`. Deps discovery and run stop at that root.
 
+**Testing rule (do not regress):** any test that `run_source`s an example which
+must not use the repo-root lock must bind the workspace to that example’s
+folder (same pattern as the VS Code Run button for a silo):
+
+```python
+monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(example_path.parent))
+assert run_source(example_path) == 0
+```
+
+Canonical copies:
+
+- `tests/test_acceptance_examples.py` → `test_acceptance_concurrency_runs` (`cbd7e0a`)
+- `tests/test_structs.py` → `test_example_structs_runs` (`7034f15`)
+
+Prefer `transpile` / `compile_pys` when you only need compile success; use
+`run_source` only when execution is the acceptance criterion, and always isolate
+the workspace if the file sits under a parent that has an unrelated `pys.lock`.
+
 **Evidence:** `test_find_deps_file_stops_at_workspace_root`,
 `test_run_source_ignores_deps_above_workspace`,
-`ide-process.test.js` (run env carries the variable)
+`ide-process.test.js` (run env carries the variable),
+`test_acceptance_concurrency_runs`, `test_example_structs_runs`
 
 ---
 

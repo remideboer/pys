@@ -27,6 +27,9 @@ can silently pick different bits than the author reviewed.
 - Changing `pys.deps` without regenerating the lock is a hard error — intentional.
 - Platform-specific locks may be needed when artifacts differ (document in
   project README / CI); do not weaken hashing to paper over that.
+- In this monorepo, a root `pys.lock` (often `win-amd64`) must not leak into
+  `run_source` tests for dep-free examples on Linux CI — bind
+  `PYS_WORKSPACE_ROOT` (see [CER-001](../evolution/CER-001-security-boundaries.md) §4).
 - Analysis may recognize locked modules without installing them
   (`lock_declares_module`).
 
