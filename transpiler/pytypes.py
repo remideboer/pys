@@ -548,31 +548,19 @@ def library_type_member_status(
     imported_modules: dict[str, str],
     site_paths: list[Path],
 ) -> str:
-    """Classify a member check against an imported Python library type.
+    """Classify a member check against a Python library type.
 
     Returns one of:
     - ``found`` — class loaded; ``member`` exists (``hasattr``, MRO-aware)
     - ``absent`` — class loaded; ``member`` does not exist
-    - ``unavailable`` — ``type_name`` is a known imported library type
-      (``type_modules``) but the module/class could not be imported here
-    - ``not_library`` — not a known library type name for this check
+    - ``unavailable`` — type is recorded in ``type_modules`` but the class
+      could not be imported in this environment
+    - ``not_library`` — cannot resolve a library class for ``type_name``
+
+    Types may be known either by explicit ``import Name from …`` (``type_modules``)
+    or by resolving ``Name`` inside an imported package (e.g. ``Frame`` via
+    ``import tkinter.ttk as ttk``).
     """
-    if not member or member.startswith("_"):
-        # Private/dunder API is not part of the PYS-visible library surface.
-        if type_name in type_modules:
-            cls = resolve_library_class(
-                type_name,
-                type_modules=type_modules,
-                imported_modules=imported_modules,
-                site_paths=site_paths,
-            )
-            return "unavailable" if cls is None else "absent"
-        return "not_library"
-
-    if type_name not in type_modules:
-        # Only introspect names that were actually imported as types.
-        return "not_library"
-
     cls = resolve_library_class(
         type_name,
         type_modules=type_modules,
@@ -580,7 +568,11 @@ def library_type_member_status(
         site_paths=site_paths,
     )
     if cls is None:
-        return "unavailable"
+        if type_name in type_modules:
+            return "unavailable"
+        return "not_library"
+    if not member or member.startswith("_"):
+        return "absent"
     return "found" if hasattr(cls, member) else "absent"
 
 

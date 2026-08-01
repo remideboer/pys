@@ -338,6 +338,35 @@ def test_subclass_allows_library_parent_when_module_unloadable(
     assert "self.show()" in python
 
 
+def test_library_type_member_via_package_import(tmp_path: Path) -> None:
+    """``Frame`` via ``import tkinter.ttk as ttk`` must allow ``.pack`` (hasattr)."""
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import tkinter.ttk as ttk\n"
+        "function build(){\n"
+        "    Frame panel = ttk.Frame()\n"
+        "    panel.pack()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    python = transpile(main.read_text(encoding="utf-8"), source_path=main)
+    assert "panel.pack()" in python
+
+
+def test_library_type_rejects_absent_member_via_package_import(tmp_path: Path) -> None:
+    main = tmp_path / "main.pys"
+    main.write_text(
+        "import tkinter.ttk as ttk\n"
+        "function build(){\n"
+        "    Frame panel = ttk.Frame()\n"
+        "    panel.notARealTkMethod()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TranspileError, match=r"'notARealTkMethod' is not a member of declared type Frame"):
+        transpile(main.read_text(encoding="utf-8"), source_path=main)
+
+
 def test_import_all_resolves_visible_exports(tmp_path: Path) -> None:
     (tmp_path / "funcs.pys").write_text(
         "package function greet(name){\n"

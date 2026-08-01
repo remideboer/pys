@@ -1170,20 +1170,24 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             # Environment cannot introspect the library; do not invent an error.
             return
         if defining_cls is None or access is None:
-            known = recv_t in class_members or recv_t in interfaces or recv_t in class_parents
-            if not known and resolver is not None:
-                from .pytypes import resolve_library_class
-
-                known = (
-                    resolve_library_class(
-                        recv_t,
-                        type_modules=type_modules,
-                        imported_modules=imported_modules,
-                        site_paths=site_paths,
-                    )
-                    is not None
+            # Strict missing-member errors only for types declared in PYS source.
+            if recv_t in class_members or recv_t in interfaces:
+                _transpile_error(
+                    f"'{member}' is not a member of declared type {recv_t}.",
+                    line,
+                    column,
+                    code or f"{recv}.{member}",
                 )
-            if known:
+                return
+            # Library / unresolved external type: re-check via introspection.
+            # (lookup may have returned None when the name was not yet in
+            # type_modules but is still resolvable from imported packages.)
+            status = library_member_status(recv_t, member)
+            if status == "found":
+                return
+            if status == "unavailable":
+                return
+            if status == "absent":
                 _transpile_error(
                     f"'{member}' is not a member of declared type {recv_t}.",
                     line,
