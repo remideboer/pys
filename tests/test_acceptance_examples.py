@@ -3,7 +3,10 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from transpiler.transpiler import transpile_with_modules, run_source
+from transpiler.workspace import WORKSPACE_ROOT_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCEPTANCE = [
@@ -27,9 +30,12 @@ def test_acceptance_examples_transpile() -> None:
                 raise AssertionError(f"{path.name} module {stem!r} is not valid Python: {exc}") from exc
 
 
-def test_acceptance_concurrency_runs() -> None:
+def test_acceptance_concurrency_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     """Concurrency showcase must execute end-to-end (no GUI / DB)."""
     path = ROOT / "examples" / "concurrency" / "main.pys"
+    # This example has no third-party dependencies. Bound its Run exactly as
+    # the extension does so it cannot inherit the unrelated root MySQL lock.
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(path.parent))
     assert run_source(path) == 0
 
 
