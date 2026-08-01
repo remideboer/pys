@@ -317,6 +317,7 @@ slice_or_index   = expression
      this(args)          -> constructor chaining
      super(args)         -> super().__init__(args)
      super.name(args)    -> super().name(args)
+     (subclass ctor without super/this gets implicit super().__init__())
      name.loop(fn)       -> list(map(fn, name))
 *)
 

@@ -94,6 +94,19 @@ def _pys_import_line(stmt: ImportStmt) -> str:
     raise TypeError(stmt.kind)
 
 
+def _ctor_chains_to_parent(body: Block | None) -> bool:
+    """True if the constructor already calls ``super(...)`` or ``this(...)``."""
+    if body is None:
+        return False
+    for stmt in body.statements:
+        if not isinstance(stmt, ExprStmt) or not isinstance(stmt.expr, Call):
+            continue
+        callee = stmt.expr.callee
+        if isinstance(callee, Identifier) and callee.name in {"super", "this"}:
+            return True
+    return False
+
+
 class _Emitter:
     def __init__(self, *, source: str = "", source_path: Path | None = None) -> None:
         self.source_path = source_path
@@ -316,12 +329,15 @@ class _Emitter:
             default = _default_value_for_type(f.type_name or "string")
             self._emit(indent + 1, f"{f.name} = {default}")
             self.var_kinds[f.name] = "string" if f.type_name == "string" else "number"
+        # Subclass ctors get an implicit super().__init__() when the body never
+        # calls super(...) or this(...). Interface-only classes are unchanged.
+        inject_super = bool(stmt.parent)
         for i, m in enumerate(stmt.methods):
             if i > 0 and self.lines and self.lines[-1] != "":
                 self.lines.append("")
-            self._method(m, indent + 1)
+            self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
 
-    def _method(self, m: MethodDef, indent: int) -> None:
+    def _method(self, m: MethodDef, indent: int, *, inject_super: bool = False) -> None:
         if m.is_constructor:
             parts = ["self"]
             for i, name in enumerate(m.params):
@@ -335,6 +351,11 @@ class _Emitter:
         else:
             params = ", ".join(["self", *m.params])
             self._emit(indent, f"def {m.name}({params}):")
+        need_super = inject_super and not _ctor_chains_to_parent(m.body)
+        if need_super:
+            self._emit(indent + 1, "super().__init__()")
+            if m.body is None or not m.body.statements:
+                return
         self._block(m.body, indent + 1)
 
     def _if(self, stmt: IfStmt, indent: int, *, first: bool) -> None:

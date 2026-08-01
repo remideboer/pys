@@ -305,7 +305,9 @@ Rules:
 2. Constructor name equals the class name
 3. One superclass via `inherits` (alias `super` in the header); one or more
    interfaces via `implements`
-4. `this` / `super` for current instance / parent
+4. `this` / `super` for current instance / parent. Subclass constructors that
+   omit `super(...)` / `this(...)` get an implicit zero-arg `super()` at the
+   start — write `super(args)` when the parent constructor needs arguments.
 5. `sealed` may mark a class that should not be subclassed further
 6. Optional type parameters: `class Pair<T, U> { … }`
 

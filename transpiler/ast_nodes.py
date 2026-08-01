@@ -287,6 +287,7 @@ class MethodDef(Node):
 class ClassDef(Node):
     name: str = ""
     bases: list[str] = field(default_factory=list)
+    parent: str = ""  # superclass from `inherits` / header `super` (not interfaces)
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""

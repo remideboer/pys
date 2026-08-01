@@ -659,9 +659,11 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
         p.eat(TokenKind.GT)
     bases: list[str] = []
+    parent = ""
     if p.at_kw("inherits", "super"):
         p.eat(TokenKind.KEYWORD)
-        bases.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        parent = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        bases.append(parent)
     if p.at_kw("implements"):
         p.eat_kw("implements")
         bases.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
@@ -767,7 +769,14 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             fields.append(FieldDecl(span=member_sp, access=access, type_name=type_name, name=mname))
     p.eat(TokenKind.RBRACE)
     return ClassDef(
-        span=sp, name=name, bases=bases, fields=fields, methods=methods, visibility=visibility, sealed=sealed
+        span=sp,
+        name=name,
+        bases=bases,
+        parent=parent,
+        fields=fields,
+        methods=methods,
+        visibility=visibility,
+        sealed=sealed,
     )
 
 

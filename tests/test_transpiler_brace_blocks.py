@@ -524,6 +524,44 @@ print(car.getMake())
     assert "return self.make" in transpiled
 
 
+def test_subclass_constructor_injects_implicit_super() -> None:
+    source = """class Car {
+    public Car() {
+        pass
+    }
+}
+class Truck inherits Car {
+    public Truck() {
+        pass
+    }
+}
+"""
+    transpiled = transpile(source)
+    truck_init = transpiled.split("class Truck")[1]
+    assert "super().__init__()" in truck_init
+    # Base class with no parent must not get a synthetic super call.
+    car_init = transpiled.split("class Car")[1].split("class Truck")[0]
+    assert "super().__init__()" not in car_init
+
+
+def test_subclass_constructor_keeps_explicit_super() -> None:
+    source = """class Car {
+    public Car(string make) {
+        pass
+    }
+}
+class Truck inherits Car {
+    public Truck(string make) {
+        super(make)
+    }
+}
+"""
+    transpiled = transpile(source)
+    truck_init = transpiled.split("class Truck")[1]
+    assert truck_init.count("super().__init__") == 1
+    assert "super().__init__(make)" in truck_init
+
+
 def test_private_field_denied_in_subclass() -> None:
     source = """class Car {
     private string make
