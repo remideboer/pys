@@ -10,13 +10,16 @@ from pathlib import Path
 import pytest
 
 from transpiler.transpiler import TranspileError, transpile, run_source
+from transpiler.workspace import WORKSPACE_ROOT_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLE = ROOT / "examples" / "structs.pys"
 
 
-def test_example_structs_runs() -> None:
+def test_example_structs_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Runnable example must not inherit the repo-root MySQL win-amd64 lock on CI."""
     assert EXAMPLE.is_file()
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(EXAMPLE.parent))
     assert run_source(EXAMPLE) == 0
 
 
