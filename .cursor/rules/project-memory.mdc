@@ -64,3 +64,4 @@ touching the matching CER/ADR is incomplete.
   Do not grow a decorator surface to paper over missing constructs.
 - Int literals / bitwise (ADR-007 / CER-006): `0b`/`0x`/`_`; width aliases are
   unsigned ranges; `and`/`or`/`not` stay logical; rotate deferred
+  ([F-001](../../docs/TODO-FUTURE.md#f-001-bitwise-rotate) in `docs/TODO-FUTURE.md`)

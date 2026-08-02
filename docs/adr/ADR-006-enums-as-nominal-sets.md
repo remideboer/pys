@@ -26,7 +26,8 @@ strings, and classes. Requirements live in `requirements/enums.pys`.
 5. **Naming:** non-`SCREAMING_SNAKE_CASE` members emit a **warning** (non-fatal)
    with tip + suggested rename for IDE quick fix.
 6. **Emit:** `enum.Enum` + `auto()`, `IntEnum`, or `StrEnum` (Python 3.11+).
-7. **Deferred:** `match` / exhaustiveness (document only; not this increment).
+7. **Deferred:** `match` / exhaustiveness — [F-002](../TODO-FUTURE.md#f-002-enum-match-exhaustiveness);
+   value aliases via real syntax — [F-003](../TODO-FUTURE.md#f-003-enum-value-aliases).
 
 ## Consequences
 

@@ -24,7 +24,8 @@ literals, bitwise operators, and small fixed-width integer names. Requirements:
 4. **Width aliases** `nibble`/`byte`/`int16`/`int32`/`dword`/`int64` are
    unsigned ranges on `int` (matching sample prints). Emit as plain `int`; SA
    rejects out-of-range literals.
-5. **Rotate deferred** (`<<<` / `>>>`, rotate word forms) — explicit error.
+5. **Rotate deferred** (`<<<` / `>>>`, rotate word forms) — explicit error;
+   tracked as [F-001](../TODO-FUTURE.md#f-001-bitwise-rotate).
 
 ## Consequences
 
