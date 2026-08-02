@@ -1,4 +1,4 @@
-# Switch statement (continue = fall-through) and switch expression.
+# Switch: statement + expression, fall-through, default, primitives.
 
 enum Day {
     MONDAY
@@ -10,6 +10,7 @@ enum Day {
     WEDNESDAY
 }
 
+# --- Statement: continue = fall-through (no implicit fall-through) ---
 int numLetters = 0
 Day day = Day.WEDNESDAY
 
@@ -29,13 +30,63 @@ switch (day) {
     case WEDNESDAY:
         numLetters = 9
 }
+print(numLetters)  # 9
 
-print(numLetters)
-
+# --- Expression: multi-label arms (same grouping as continue above) ---
 numLetters = switch (day) {
     case MONDAY, SUNDAY, FRIDAY => 6
     case TUESDAY, THURSDAY => 7
     case SATURDAY => 8
     case WEDNESDAY => 9
 }
-print(numLetters)
+print(numLetters)  # 9
+
+# --- Statement with default (non-exhaustive enum is fine when default exists) ---
+string kind = ""
+Day today = Day.SATURDAY
+switch (today) {
+    case MONDAY:
+        continue
+    case FRIDAY:
+        kind = "weekday-end"
+    case SATURDAY:
+        continue
+    case SUNDAY:
+        kind = "weekend"
+    default:
+        kind = "midweek"
+}
+print(kind)  # weekend
+
+# --- Expression with default (required for int / non-exhaustive subjects) ---
+int code = 404
+string label = switch (code) {
+    case 200 => "ok"
+    case 404 => "not found"
+    default => "other"
+}
+print(label)  # not found
+
+# --- Qualified enum labels (Day.MEMBER) work the same as bare MEMBER ---
+string when = switch (Day.MONDAY) {
+    case Day.MONDAY, Day.FRIDAY => "start or end"
+    case Day.WEDNESDAY => "middle"
+    default => "other day"
+}
+print(when)  # start or end
+
+# --- Bool / string subjects also use default when not exhaustive ---
+bool ready = false
+string gate = switch (ready) {
+    case true => "open"
+    default => "closed"
+}
+print(gate)  # closed
+
+string cmd = "help"
+string reply = switch (cmd) {
+    case "run" => "starting"
+    case "help" => "usage"
+    default => "unknown"
+}
+print(reply)  # usage
