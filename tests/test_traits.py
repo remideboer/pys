@@ -50,6 +50,11 @@ def test_traits_product_behavior() -> None:
         "Item: apple",
         "False",
         "True",
+        "True",
+        "bolt#42",
+        "Item: gauge",
+        "within limit",
+        "overflow",
         "HEY/hi",
     ]
 
