@@ -11,6 +11,7 @@ Open a card **when a task step needs a form or fix**. Do not read the whole fold
 | [J-loop](J-loop.md) | `loop` forms |
 | [J-function-import](J-function-import.md) | `function`, `import`, visibility |
 | [J-class](J-class.md) | `class` / `interface` / `inherits` |
+| [J-trait](J-trait.md) | `trait` / `uses` / `requires`, collision override |
 | [J-struct](J-struct.md) | `struct` / `fix struct`, construct, copy / `==` |
 | [J-enum](J-enum.md) | `enum`, `.value`, same-enum `==`, naming warning |
 | [J-int-literals](J-int-literals.md) | `0b`/`0x`, width aliases, bitwise vs logical |

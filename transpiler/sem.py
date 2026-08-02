@@ -40,6 +40,8 @@ from .ast_nodes import (
     SwitchExpr,
     SwitchStmt,
     TasksBlock,
+    TraitDef,
+    TraitRequire,
     UnaryOp,
     WhileStmt,
 )
@@ -168,6 +170,7 @@ def analyze(
         class_names=class_names,
     )
     _check_oop(module.body, types=types, resolver=import_resolver)
+    _check_traits(module.body, types=types)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
@@ -1419,6 +1422,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     class_members: dict[str, dict[str, str]] = {}
     class_parents: dict[str, str | None] = {}
     class_implements: dict[str, list[str]] = {}
+    traits = _trait_map(body)
 
     for stmt in body:
         if isinstance(stmt, InterfaceDef):
@@ -1434,6 +1438,13 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             for m in stmt.methods:
                 if not m.is_constructor:
                     members[m.name] = m.access or "public"
+            # Flatten trait methods into the host's member map (public).
+            for tname in stmt.uses:
+                trait = traits.get(tname)
+                if trait is None:
+                    continue
+                for m in trait.methods:
+                    members.setdefault(m.name, "public")
             class_members[stmt.name] = members
         elif isinstance(stmt, StructDef):
             # Struct fields are always public; type export uses top_visibility.
@@ -1695,8 +1706,342 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     walk_stmts(body, types, None)
 
 
+def _trait_map(body: list[Any]) -> dict[str, TraitDef]:
+    return {s.name: s for s in body if isinstance(s, TraitDef)}
+
+
+def _class_map(body: list[Any]) -> dict[str, ClassDef]:
+    return {s.name: s for s in body if isinstance(s, ClassDef)}
+
+
+def _host_fields_and_methods(
+    cls: ClassDef, classes: dict[str, ClassDef]
+) -> tuple[dict[str, str], dict[str, tuple[str, int, list[str]]]]:
+    """Collect fields and methods from class + inherits chain.
+
+    Methods map: name -> (return_type, arity, param_types).
+    """
+    fields: dict[str, str] = {}
+    methods: dict[str, tuple[str, int, list[str]]] = {}
+    current: ClassDef | None = cls
+    seen: set[str] = set()
+    while current and current.name not in seen:
+        seen.add(current.name)
+        for f in current.fields:
+            fields.setdefault(f.name, f.type_name)
+        for m in current.methods:
+            if m.is_constructor:
+                continue
+            methods.setdefault(
+                m.name, (m.return_type or "", len(m.params), list(m.param_types))
+            )
+        parent_name = current.parent or ""
+        if not parent_name:
+            for b in current.bases:
+                if b in classes:
+                    parent_name = b
+                    break
+        current = classes.get(parent_name) if parent_name else None
+    return fields, methods
+
+
+def _collect_self_members(expr: Expr | None, found: set[str]) -> None:
+    """Collect ``self.x`` / ``this.x`` member names used in an expression."""
+    if expr is None:
+        return
+    if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+        if expr.object.name in {"self", "this"}:
+            found.add(expr.name)
+        _collect_self_members(expr.object, found)
+        return
+    if isinstance(expr, Call):
+        _collect_self_members(expr.callee, found)
+        for a in expr.args:
+            if isinstance(a, KeywordArg):
+                _collect_self_members(a.value, found)
+            else:
+                _collect_self_members(a, found)
+        return
+    for attr in ("left", "right", "operand", "value", "expr", "cond", "object", "index"):
+        child = getattr(expr, attr, None)
+        if isinstance(child, Expr):
+            _collect_self_members(child, found)
+    elements = getattr(expr, "elements", None)
+    if isinstance(elements, list):
+        for el in elements:
+            if isinstance(el, Expr):
+                _collect_self_members(el, found)
+
+
+def _collect_self_members_in_stmts(stmts: list[Any], found: set[str]) -> None:
+    for stmt in stmts:
+        if isinstance(stmt, AssignStmt):
+            _collect_self_members(stmt.value, found)
+            # lvalue this.x = …
+            if "." in stmt.name:
+                root, _, rest = stmt.name.partition(".")
+                if root in {"self", "this"} and rest:
+                    found.add(rest.split(".", 1)[0].split("[", 1)[0])
+        elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+            _collect_self_members(
+                getattr(stmt, "value", None) or getattr(stmt, "expr", None), found
+            )
+        elif isinstance(stmt, IfStmt):
+            _collect_self_members(stmt.cond, found)
+            if stmt.then_body:
+                _collect_self_members_in_stmts(stmt.then_body.statements, found)
+            if stmt.else_body:
+                _collect_self_members_in_stmts(stmt.else_body.statements, found)
+        elif isinstance(stmt, Block):
+            _collect_self_members_in_stmts(stmt.statements, found)
+        elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+            if isinstance(stmt, WhileStmt):
+                _collect_self_members(stmt.cond, found)
+            elif isinstance(stmt, ForEachStmt):
+                _collect_self_members(stmt.iterable, found)
+            if stmt.body:
+                _collect_self_members_in_stmts(stmt.body.statements, found)
+        elif isinstance(stmt, SwitchStmt):
+            _collect_self_members(stmt.subject, found)
+            for case in stmt.cases:
+                if case.body:
+                    _collect_self_members_in_stmts(case.body.statements, found)
+
+
+def _check_traits(body: list[Any], *, types: dict[str, str]) -> None:
+    """Validate trait composition: requires, collisions, this.x, not-a-type."""
+    traits = _trait_map(body)
+    classes = _class_map(body)
+    trait_names = set(traits)
+    interfaces = {s.name for s in body if isinstance(s, InterfaceDef)}
+
+    # Trait method bodies: this.x must be required or another method of the trait.
+    for trait in traits.values():
+        allowed = {r.name for r in trait.requires} | {m.name for m in trait.methods}
+        for m in trait.methods:
+            used: set[str] = set()
+            if m.body:
+                _collect_self_members_in_stmts(m.body.statements, used)
+            for name in sorted(used):
+                if name not in allowed:
+                    line = m.span.line if m.span else 1
+                    col = m.span.column if m.span else 1
+                    _transpile_error(
+                        f"Trait '{trait.name}' method '{m.name}' uses `this.{name}` "
+                        f"but '{name}' is not declared in `requires` "
+                        f"(and is not a method of this trait).",
+                        line,
+                        col,
+                        name,
+                        code="pys.trait-this",
+                        tips=[
+                            f"Add `requires … {name}` to trait {trait.name}, "
+                            f"or remove the access."
+                        ],
+                    )
+
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        line = stmt.span.line if stmt.span else 1
+        # Trait listed in implements
+        for b in stmt.bases:
+            if b in trait_names:
+                _transpile_error(
+                    f"'{b}' is a trait, not an interface — use `uses {b}` "
+                    f"for composition (traits are not nominal types).",
+                    line,
+                    1,
+                    b,
+                    code="pys.trait-not-interface",
+                    tips=[f"Change `implements {b}` to `uses {b}`."],
+                    suggested_fix=None,
+                )
+
+        if not stmt.uses:
+            continue
+
+        host_fields, host_methods = _host_fields_and_methods(stmt, classes)
+        method_owners: dict[str, list[str]] = {}
+
+        for tname in stmt.uses:
+            trait = traits.get(tname)
+            if trait is None:
+                _transpile_error(
+                    f"Unknown trait '{tname}' used by class {stmt.name}.",
+                    line,
+                    1,
+                    tname,
+                    code="pys.trait-unknown",
+                )
+            for req in trait.requires:
+                rline = req.span.line if req.span else line
+                rcol = req.span.column if req.span else 1
+                if req.kind == "field":
+                    if req.name not in host_fields:
+                        _transpile_error(
+                            f"{stmt.name} uses {tname} but does not provide "
+                            f"'{req.name}' ({req.type_name}), required by trait {tname}.",
+                            rline,
+                            rcol,
+                            req.name,
+                            code="pys.trait-requires",
+                        )
+                    got = _base_type_name(host_fields[req.name] or "")
+                    want = _base_type_name(req.type_name or "")
+                    if want and got and got != want:
+                        _transpile_error(
+                            f"{stmt.name} uses {tname} but '{req.name}' has type "
+                            f"{got}, required {want} by trait {tname}.",
+                            rline,
+                            rcol,
+                            req.name,
+                            code="pys.trait-requires",
+                        )
+                else:
+                    if req.name not in host_methods:
+                        _transpile_error(
+                            f"{stmt.name} uses {tname} but does not provide "
+                            f"'{req.name}' (...), required by trait {tname}.",
+                            rline,
+                            rcol,
+                            req.name,
+                            code="pys.trait-requires",
+                        )
+                    ret, arity, _ptypes = host_methods[req.name]
+                    if arity != len(req.params):
+                        _transpile_error(
+                            f"{stmt.name} method '{req.name}' does not match "
+                            f"trait {tname} requires (expected {len(req.params)} "
+                            f"parameter(s), found {arity}).",
+                            rline,
+                            rcol,
+                            req.name,
+                            code="pys.trait-requires",
+                        )
+                    want_ret = _base_type_name(req.type_name or "")
+                    got_ret = _base_type_name(ret or "")
+                    if want_ret and got_ret and want_ret != got_ret:
+                        _transpile_error(
+                            f"{stmt.name} method '{req.name}' return type {got_ret} "
+                            f"does not match trait {tname} requires {want_ret}.",
+                            rline,
+                            rcol,
+                            req.name,
+                            code="pys.trait-requires",
+                        )
+            for m in trait.methods:
+                method_owners.setdefault(m.name, []).append(tname)
+
+        host_method_names = {m.name for m in stmt.methods if not m.is_constructor}
+        for mname, owners in method_owners.items():
+            if len(set(owners)) > 1 and mname not in host_method_names:
+                _transpile_error(
+                    f"Class {stmt.name} uses traits that both define '{mname}' "
+                    f"({', '.join(sorted(set(owners)))}) — provide an explicit "
+                    f"override on {stmt.name} to disambiguate "
+                    f"(e.g. call `TraitName.{mname}(this)` from the override).",
+                    line,
+                    1,
+                    mname,
+                    code="pys.trait-collision",
+                    tips=[
+                        f"Add `public … {mname}(...) {{ … }}` on {stmt.name} "
+                        f"that chooses which trait method to call."
+                    ],
+                )
+
+    # Reject trait construction / trait as binding type.
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            if expr.callee.name in trait_names:
+                _transpile_error(
+                    f"Trait '{expr.callee.name}' cannot be instantiated "
+                    f"— compose it with `uses` on a class.",
+                    expr.span.line if expr.span else 1,
+                    expr.span.column if expr.span else 1,
+                    expr.callee.name,
+                    code="pys.trait-not-type",
+                )
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "callee",
+            "object",
+            "index",
+            "subject",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                if stmt.declare_type and _base_type_name(stmt.declare_type) in trait_names:
+                    _transpile_error(
+                        f"'{stmt.declare_type}' is a trait, not a type — "
+                        f"traits cannot be used as variable types.",
+                        stmt.span.line if stmt.span else 1,
+                        stmt.span.column if stmt.span else 1,
+                        stmt.declare_type,
+                        code="pys.trait-not-type",
+                    )
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    if case.body:
+                        walk(case.body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TraitDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
+    # silence unused in some type-checkers
+    _ = (types, interfaces)
+
+
 def _check_interfaces(body: list[Any]) -> None:
     interfaces: dict[str, dict[str, int]] = {}
+    traits = _trait_map(body)
     for stmt in body:
         if isinstance(stmt, InterfaceDef):
             arities = dict(stmt.method_arities)
@@ -1712,6 +2057,13 @@ def _check_interfaces(body: list[Any]) -> None:
             if m.is_constructor:
                 continue
             available[m.name] = len(m.params)
+        # Trait-composed methods count toward interface satisfaction.
+        for tname in stmt.uses:
+            trait = traits.get(tname)
+            if trait is None:
+                continue
+            for m in trait.methods:
+                available.setdefault(m.name, len(m.params))
         # Include inherited methods (single inheritance).
         parent = None
         for b in stmt.bases:
@@ -1727,6 +2079,12 @@ def _check_interfaces(body: list[Any]) -> None:
             for m in parent_cls.methods:
                 if not m.is_constructor:
                     available.setdefault(m.name, len(m.params))
+            for tname in parent_cls.uses:
+                trait = traits.get(tname)
+                if trait is None:
+                    continue
+                for m in trait.methods:
+                    available.setdefault(m.name, len(m.params))
             parent = None
             for b in parent_cls.bases:
                 if b not in interfaces:
@@ -1740,6 +2098,8 @@ def _check_interfaces(body: list[Any]) -> None:
             # `inherits LibraryType` — not an interface; member checks use pytypes.
             if stmt.parent and b == stmt.parent:
                 continue
+            if b in traits:
+                continue  # reported by _check_traits
             line = stmt.span.line if stmt.span else 1
             if b not in interfaces:
                 _transpile_error(

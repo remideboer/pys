@@ -49,6 +49,8 @@ from .ast_nodes import (
     Span,
     TaskDef,
     TasksBlock,
+    TraitDef,
+    TraitRequire,
     UnaryOp,
     WhileStmt,
 )
@@ -448,6 +450,8 @@ def _parse_toplevel(p: _Tok):
             return _parse_enum(p, visibility=vis)
         if p.at_kw("interface"):
             return _parse_interface(p, visibility=vis)
+        if p.at_kw("trait"):
+            return _parse_trait(p, visibility=vis)
         if p.at_kw("const", "fix") or p.at_kw(*_TYPES) or p.at_kw("var"):
             return _parse_decl(p, visibility=vis)
         raise ParseError("Expected declaration after visibility", p.cur().line, p.cur().column)
@@ -465,6 +469,8 @@ def _parse_toplevel(p: _Tok):
         return _parse_enum(p)
     if p.at_kw("interface"):
         return _parse_interface(p)
+    if p.at_kw("trait"):
+        return _parse_trait(p)
     if p.at_kw("shared"):
         return _parse_shared(p)
     if p.at_kw("tasks"):
@@ -977,10 +983,17 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         p.eat_gt()
     bases: list[str] = []
     parent = ""
+    uses: list[str] = []
     if p.at_kw("inherits", "super"):
         p.eat(TokenKind.KEYWORD)
         parent = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         bases.append(parent)
+    if p.at_kw("uses"):
+        p.eat_kw("uses")
+        uses.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            uses.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
     if p.at_kw("implements"):
         p.eat_kw("implements")
         bases.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
@@ -1078,6 +1091,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                     access=access,
                     name=mname,
                     params=[n for _, n in params],
+                    param_types=[t for t, _ in params],
                     body=body,
                     return_type=type_name,
                 )
@@ -1090,10 +1104,133 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         name=name,
         bases=bases,
         parent=parent,
+        uses=uses,
         fields=fields,
         methods=methods,
         visibility=visibility,
         sealed=sealed,
+    )
+
+
+def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
+    """Parse ``trait Name { requires … | method bodies }`` (always-public members)."""
+    sp = p.span()
+    p.eat_kw("trait")
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    p.eat(TokenKind.LBRACE)
+    requires: list[TraitRequire] = []
+    methods: list[MethodDef] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        member_sp = p.span()
+        if p.at_kw("public", "private", "protected", "module"):
+            raise FatalParseError(
+                "Trait members are always public — omit access modifiers.",
+                p.cur().line,
+                p.cur().column,
+            )
+        if p.at_kw("requires"):
+            p.eat_kw("requires")
+            req_type = _parse_type_name(p)
+            req_name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            if p.at(TokenKind.LPAREN):
+                p.eat(TokenKind.LPAREN)
+                params: list[tuple[str, str]] = []
+                if not p.at(TokenKind.RPAREN):
+                    params.append(_parse_param(p))
+                    while p.at(TokenKind.COMMA):
+                        p.eat(TokenKind.COMMA)
+                        params.append(_parse_param(p))
+                p.eat(TokenKind.RPAREN)
+                if p.at(TokenKind.LBRACE):
+                    raise FatalParseError(
+                        f"Trait `requires` method '{req_name}' cannot have a body "
+                        f"— the host class must supply it.",
+                        p.cur().line,
+                        p.cur().column,
+                    )
+                requires.append(
+                    TraitRequire(
+                        span=member_sp,
+                        kind="method",
+                        type_name=req_type,
+                        name=req_name,
+                        params=[n for _, n in params],
+                        param_types=[t for t, _ in params],
+                    )
+                )
+            else:
+                requires.append(
+                    TraitRequire(
+                        span=member_sp,
+                        kind="field",
+                        type_name=req_type,
+                        name=req_name,
+                    )
+                )
+            continue
+        # Trait method: [return_type] name ( params ) block
+        type_name = ""
+        if p.cur().text in _TYPES or (
+            p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and p.peek(1).kind != TokenKind.LPAREN
+        ):
+            if p.peek(1).kind != TokenKind.LPAREN:
+                type_name = _parse_type_name(p)
+        mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        if not p.at(TokenKind.LPAREN):
+            raise FatalParseError(
+                "Traits cannot declare fields — use `requires Type name` for host state, "
+                "or a method with a body.",
+                p.cur().line,
+                p.cur().column,
+            )
+        p.eat(TokenKind.LPAREN)
+        params = []
+        if not p.at(TokenKind.RPAREN):
+            params.append(_parse_param(p))
+            while p.at(TokenKind.COMMA):
+                p.eat(TokenKind.COMMA)
+                params.append(_parse_param(p))
+        p.eat(TokenKind.RPAREN)
+        if not p.at(TokenKind.LBRACE):
+            raise FatalParseError(
+                f"Trait method '{mname}' must have a body "
+                f"(use `requires` for host-supplied methods).",
+                p.cur().line,
+                p.cur().column,
+            )
+        body = _parse_block(p)
+        methods.append(
+            MethodDef(
+                span=member_sp,
+                access="public",
+                name=mname,
+                params=[n for _, n in params],
+                param_types=[t for t, _ in params],
+                body=body,
+                return_type=type_name,
+            )
+        )
+    p.eat(TokenKind.RBRACE)
+    if not requires and not methods:
+        raise FatalParseError(
+            f"Trait '{name}' cannot be empty — add `requires` and/or methods.",
+            sp.line,
+            sp.column,
+        )
+    return TraitDef(
+        span=sp,
+        name=name,
+        requires=requires,
+        methods=methods,
+        visibility=visibility,
     )
 
 

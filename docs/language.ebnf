@@ -117,7 +117,8 @@ declaration      = var_decl
                  | class_decl
                  | struct_decl
                  | enum_decl
-                 | interface_decl ;
+                 | interface_decl
+                 | trait_decl ;
 
 var_decl         = type_name , identifier , "=" , expression
                  | "var" , identifier , "=" , expression
@@ -152,8 +153,10 @@ parameter        = [ type_name ] , identifier ;
 class_decl       = [ top_visibility ] , [ "sealed" ] , "class" , identifier ,
                    [ type_params ] ,
                    [ ( "inherits" | "super" ) , identifier ] ,
+                   [ "uses" , identifier , { "," , identifier } ] ,
                    [ "implements" , identifier , { "," , identifier } ] ,
                    class_body ;
+(* Resolution order: base class, then trait composition, then interface check. *)
 
 type_params      = "<" , identifier , { "," , identifier } , ">" ;
 
@@ -205,6 +208,22 @@ interface_decl   = [ top_visibility ] , "interface" , identifier ,
 interface_method = "public" , [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" ;
 (* No body, no fields. Implementing classes must provide matching methods. *)
+
+(* ------------------------- Traits ------------------------- *)
+
+trait_decl       = [ top_visibility ] , "trait" , identifier ,
+                   "{" , { trait_member } , "}" ;
+
+trait_member     = trait_method_decl | trait_requires ;
+
+trait_method_decl = [ return_type ] , identifier ,
+                    "(" , [ parameter_list ] , ")" , block ;
+(* Always public; body accesses host state via `this`. *)
+
+trait_requires   = "requires" , ( type_name , identifier
+                                 | return_type , identifier ,
+                                   "(" , [ parameter_list ] , ")" ) ;
+(* Host must supply matching field or method. No body here. *)
 
 (* ------------------------- Blocks & statements ------------------------- *)
 
@@ -417,7 +436,8 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
 
   if else unless loop while for repeat times then do elif
   function func return class struct enum interface implements inherits super sealed
-  import from all var const fix print pass break continue
+  trait uses requires
+  import from all var const fix print pass break continue switch case default
   this and or not xor shift
   public private protected global package module
   int float char string bool byte nibble int16 int32 int64 dword

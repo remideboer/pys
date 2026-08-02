@@ -9,8 +9,8 @@ const {
 } = require('./ide-process');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
-  'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface', 'trait',
+  'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
   'tasks', 'task', 'await', 'shared',
@@ -22,8 +22,8 @@ const PYS_TYPES = [
 ];
 
 const PYS_MD_KEYWORDS = new Set([
-  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
-  'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface', 'trait',
+  'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
   'tasks', 'task', 'await', 'shared',
@@ -417,6 +417,9 @@ function activate(context) {
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
         struct: 'Value type (fields only): `package struct Damage { int amount }`\nConstruct with `Damage(20)` / `Damage(amount=20)`. Fields are always public; use `global`/`package`/`module` on the struct. Copied on assign/call.',
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
+        trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
+        uses: 'Compose traits onto a class: `class Product uses Printable, Comparable { … }`\nPlaced after `inherits` and before `implements`.',
+        requires: 'Trait host obligation: `requires string name` or `requires int compareTo(Product other)`.\nThe using class (or ancestor) must supply it.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         switch: 'Multi-way branch: statement `case L: …` (trailing `continue` = fall-through) or expression `case L, M => expr`. Exhaustive expressions need all enum members or `default`.',

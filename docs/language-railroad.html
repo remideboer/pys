@@ -389,10 +389,11 @@
     {
       id: 'declaration',
       title: 'declaration',
-      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | enum_decl | interface_decl ;',
+      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | enum_decl | interface_decl | trait_decl ;',
       node: Choice(
         N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'),
-        N('function_decl'), N('class_decl'), N('struct_decl'), N('enum_decl'), N('interface_decl')
+        N('function_decl'), N('class_decl'), N('struct_decl'), N('enum_decl'),
+        N('interface_decl'), N('trait_decl')
       )
     },
     {
@@ -416,7 +417,7 @@
     {
       id: 'class_decl',
       title: 'class_decl',
-      ebnf: '[ top_visibility ] [ "sealed" ] "class" identifier [ type_params ] [ inherits/super Id ] [ implements Id {"," Id} ] class_body ;',
+      ebnf: '[ top_visibility ] [ "sealed" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses Id {"," Id} ] [ implements Id {"," Id} ] class_body ;',
       node: Seq(
         Opt(N('top_visibility')),
         Opt(T('sealed')),
@@ -424,6 +425,7 @@
         N('identifier'),
         Opt(N('type_params')),
         Opt(Seq(Choice(T('inherits'), T('super')), N('identifier'))),
+        Opt(Seq(T('uses'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         Opt(Seq(T('implements'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         N('class_body')
       )
@@ -475,6 +477,56 @@
       node: Seq(
         N('identifier'),
         Opt(Seq(T('='), Choice(N('integer'), N('string_literal'))))
+      )
+    },
+    {
+      id: 'trait_decl',
+      title: 'trait_decl',
+      ebnf: '[ top_visibility ] "trait" identifier "{" { trait_member } "}" ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        T('trait'),
+        N('identifier'),
+        T('{'),
+        Star(N('trait_member')),
+        T('}')
+      )
+    },
+    {
+      id: 'trait_member',
+      title: 'trait_member',
+      ebnf: 'trait_method_decl | trait_requires ;',
+      node: Choice(N('trait_method_decl'), N('trait_requires'))
+    },
+    {
+      id: 'trait_method_decl',
+      title: 'trait_method_decl',
+      ebnf: '[ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      node: Seq(
+        Opt(N('return_type')),
+        N('identifier'),
+        T('('),
+        Opt(N('parameter_list')),
+        T(')'),
+        N('block')
+      )
+    },
+    {
+      id: 'trait_requires',
+      title: 'trait_requires',
+      ebnf: '"requires" ( type_name identifier | return_type identifier "(" [ parameter_list ] ")" ) ;',
+      node: Seq(
+        T('requires'),
+        Choice(
+          Seq(N('type_name'), N('identifier')),
+          Seq(
+            N('return_type'),
+            N('identifier'),
+            T('('),
+            Opt(N('parameter_list')),
+            T(')')
+          )
+        )
       )
     },
     {

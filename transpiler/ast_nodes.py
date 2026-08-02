@@ -349,6 +349,7 @@ class ClassDef(Node):
     name: str = ""
     bases: list[str] = field(default_factory=list)
     parent: str = ""  # superclass from `inherits` / header `super` (not interfaces)
+    uses: list[str] = field(default_factory=list)  # trait names (composition, not bases)
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""
@@ -360,6 +361,27 @@ class InterfaceDef(Node):
     name: str = ""
     methods: list[str] = field(default_factory=list)  # method names
     method_arities: dict[str, int] = field(default_factory=dict)
+    visibility: str = ""
+
+
+@dataclass
+class TraitRequire(Node):
+    """Host obligation declared by a trait (`requires …`)."""
+
+    kind: str = "field"  # "field" | "method"
+    type_name: str = ""  # field type or method return type
+    name: str = ""
+    params: list[str] = field(default_factory=list)
+    param_types: list[str] = field(default_factory=list)
+
+
+@dataclass
+class TraitDef(Node):
+    """Composable behavior: methods + requires; not a nominal type."""
+
+    name: str = ""
+    requires: list[TraitRequire] = field(default_factory=list)
+    methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""
 
 

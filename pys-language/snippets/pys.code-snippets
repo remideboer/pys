@@ -162,6 +162,33 @@
     ],
     "description": "PYS enum (implicit auto values)"
   },
+  "Trait": {
+    "prefix": "trait",
+    "body": [
+      "trait ${1:Name} {",
+      "\trequires ${2|string,int,bool|} ${3:field}",
+      "",
+      "\t${4|string,int,bool,void|} ${5:method}() {",
+      "\t\t${0}",
+      "\t}",
+      "}"
+    ],
+    "description": "PYS trait with requires + method body"
+  },
+  "Class uses traits": {
+    "prefix": "uses",
+    "body": [
+      "class ${1:Name} uses ${2:Trait} {",
+      "\tprivate ${3|string,int|} ${4:field}",
+      "",
+      "\tpublic ${1:Name}(${3} ${4}) {",
+      "\t\tthis.${4} = ${4}",
+      "\t}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS class composing a trait via uses"
+  },
   "Enum explicit": {
     "prefix": "enumx",
     "body": [

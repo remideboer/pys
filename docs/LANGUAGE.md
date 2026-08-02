@@ -322,7 +322,7 @@ modifiers instead (`public name(…) { … }`).
 
 ---
 
-## 6. Classes and interfaces
+## 6. Classes, interfaces, and traits
 
 ### Interfaces
 
@@ -363,16 +363,51 @@ Rules:
 
 1. Members need an access modifier: `public` / `private` / `protected` / `module`
 2. Constructor name equals the class name
-3. One superclass via `inherits` (alias `super` in the header); one or more
-   interfaces via `implements`
-4. `this` / `super` for current instance / parent. Subclass constructors that
+3. One superclass via `inherits` (alias `super` in the header); zero or more
+   traits via `uses`; one or more interfaces via `implements`
+4. Header order: `inherits` → `uses` → `implements`
+5. `this` / `super` for current instance / parent. Subclass constructors that
    omit `super(...)` / `this(...)` get an implicit zero-arg `super()` at the
    start — write `super(args)` when the parent constructor needs arguments.
    Subclasses may call public members of a **library** parent (for example
    `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
    imported via `pys.deps` / the standard library.
-5. `sealed` may mark a class that should not be subclassed further
-6. Optional type parameters: `class Pair<T, U> { … }`
+6. `sealed` may mark a class that should not be subclassed further
+7. Optional type parameters: `class Pair<T, U> { … }`
+
+### Traits
+
+A **trait** is reusable behavior composed onto a class with `uses`. It is **not**
+a nominal type (cannot appear in `implements`, as a variable type, or as
+`Trait()`). Methods are always public; host state is declared with `requires`
+and accessed via `this`.
+
+```pys
+trait Printable {
+    requires string name
+
+    string label() {
+        return "Item: " + this.name
+    }
+}
+
+class Product uses Printable {
+    private string name
+
+    public Product(string name) {
+        this.name = name
+    }
+}
+```
+
+Rules:
+
+1. Every `this.x` in a trait method must be listed in that trait's `requires`
+   (or be another method of the same trait)
+2. The host class (or an ancestor) must supply each `requires` field/method
+3. If two used traits define the same method name, the class must override it;
+   call `TraitName.method(this)` from the override to pick a side
+4. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)
 
 ### Polymorphism
 

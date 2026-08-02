@@ -52,5 +52,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-006](ADR-006-enums-as-nominal-sets.md) | Enums as nominal closed sets | Accepted |
 | [ADR-007](ADR-007-int-literals-and-widths.md) | Binary/hex literals, bitwise, width aliases | Accepted |
 | [ADR-008](ADR-008-switch-stmt-and-expr.md) | Switch statement and expression | Accepted |
+| [ADR-009](ADR-009-traits-composition.md) | Traits as composition (not types) | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

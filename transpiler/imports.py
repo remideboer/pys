@@ -19,6 +19,7 @@ from .ast_nodes import (
     InterfaceDef,
     Module,
     StructDef,
+    TraitDef,
 )
 from .workspace import resolve_workspace_path, workspace_root_from_env
 
@@ -168,6 +169,12 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             exports[stmt.name] = vis
             interfaces.add(stmt.name)
             class_methods[stmt.name] = dict(stmt.method_arities)
+            symbol_locations[stmt.name] = (path, line, col)
+            class_decl_lines[stmt.name] = line
+        elif isinstance(stmt, TraitDef):
+            # Traits are exportable symbols for go-to, but not nominal types.
+            vis = stmt.visibility or "module"
+            exports[stmt.name] = vis
             symbol_locations[stmt.name] = (path, line, col)
             class_decl_lines[stmt.name] = line
         elif isinstance(stmt, StructDef):

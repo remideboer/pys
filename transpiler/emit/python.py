@@ -49,6 +49,7 @@ from ..ast_nodes import (
     SwitchStmt,
     TaskDef,
     TasksBlock,
+    TraitDef,
     UnaryOp,
     WhileStmt,
 )
@@ -153,6 +154,8 @@ class _Emitter:
         self.fn_return_types: dict[str, str] = {}
         self.struct_names: set[str] = set()
         self.struct_field_types: dict[str, dict[str, str]] = {}
+        self.trait_defs: dict[str, TraitDef] = {}
+        self.trait_names: set[str] = set()
         self._import_resolver = None
         if source_path is not None:
             from .. import imports as imports_mod
@@ -168,6 +171,10 @@ class _Emitter:
             for s in module.body
             if isinstance(s, StructDef)
         }
+        self.trait_defs = {
+            s.name: s for s in module.body if isinstance(s, TraitDef)
+        }
+        self.trait_names = set(self.trait_defs)
         self.fn_return_types = {
             s.name: s.return_type
             for s in module.body
@@ -288,6 +295,9 @@ class _Emitter:
             self.var_types = prev_types
         elif isinstance(stmt, InterfaceDef):
             self._interface(stmt, indent)
+        elif isinstance(stmt, TraitDef):
+            # Traits are composition-only; methods are flattened into `uses` hosts.
+            return
         elif isinstance(stmt, ClassDef):
             self._class(stmt, indent)
         elif isinstance(stmt, StructDef):
@@ -538,7 +548,25 @@ class _Emitter:
             self._emit(indent, f"class {stmt.name}({bases}):")
         else:
             self._emit(indent, f"class {stmt.name}:")
-        if not stmt.fields and not stmt.methods:
+        host_names = {m.name for m in stmt.methods if not m.is_constructor}
+        # Trait methods to flatten: public name if host does not override;
+        # always emit mangled `_Trait_method` when host overrides that name
+        # so `Trait.method(this)` can disambiguate.
+        flat_methods: list = []
+        mangled_methods: list[tuple[str, object]] = []
+        for tname in stmt.uses:
+            trait = self.trait_defs.get(tname)
+            if trait is None:
+                continue
+            for m in trait.methods:
+                mangled = f"_{tname}_{m.name}"
+                if m.name in host_names:
+                    mangled_methods.append((mangled, m))
+                else:
+                    flat_methods.append(m)
+                    # Still emit mangled twin when multiple traits could share
+                    # the name after an override path; keep one public body.
+        if not stmt.fields and not stmt.methods and not flat_methods and not mangled_methods:
             self._emit(indent + 1, "pass")
             return
         for f in stmt.fields:
@@ -548,26 +576,46 @@ class _Emitter:
         # Subclass ctors get an implicit super().__init__() when the body never
         # calls super(...) or this(...). Interface-only classes are unchanged.
         inject_super = bool(stmt.parent)
-        for i, m in enumerate(stmt.methods):
-            if i > 0 and self.lines and self.lines[-1] != "":
+        first_method = True
+        for mangled, m in mangled_methods:
+            if not first_method and self.lines and self.lines[-1] != "":
                 self.lines.append("")
+            first_method = False
+            self._method(m, indent + 1, inject_super=False, emit_name=mangled)
+        for i, m in enumerate(stmt.methods):
+            if (not first_method or i > 0) and self.lines and self.lines[-1] != "":
+                self.lines.append("")
+            first_method = False
             self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
+        for m in flat_methods:
+            if not first_method and self.lines and self.lines[-1] != "":
+                self.lines.append("")
+            first_method = False
+            self._method(m, indent + 1, inject_super=False)
 
-    def _method(self, m: MethodDef, indent: int, *, inject_super: bool = False) -> None:
+    def _method(
+        self,
+        m: MethodDef,
+        indent: int,
+        *,
+        inject_super: bool = False,
+        emit_name: str | None = None,
+    ) -> None:
+        name = emit_name or m.name
         if m.is_constructor:
             parts = ["self"]
-            for i, name in enumerate(m.params):
+            for i, pname in enumerate(m.params):
                 ptype = m.param_types[i] if i < len(m.param_types) else ""
                 default = _default_value_for_type(ptype) if ptype else None
                 if default is not None and ptype:
-                    parts.append(f"{name}={default}")
+                    parts.append(f"{pname}={default}")
                 else:
-                    parts.append(name)
+                    parts.append(pname)
             self._emit(indent, f"def __init__({', '.join(parts)}):")
         else:
             params = ", ".join(["self", *m.params])
-            self._emit(indent, f"def {m.name}({params}):")
-            if m.return_type:
+            self._emit(indent, f"def {name}({params}):")
+            if m.return_type and emit_name is None:
                 self.fn_return_types[m.name] = m.return_type
         need_super = inject_super and not _ctor_chains_to_parent(m.body)
         prev_types = dict(self.var_types)
@@ -719,6 +767,19 @@ class _Emitter:
                 right = f"({right})"
             return f"{left} {expr.op} {right}"
         if isinstance(expr, Call):
+            # TraitName.method(this, …) → self._TraitName_method(…)
+            if (
+                isinstance(expr.callee, Member)
+                and isinstance(expr.callee.object, Identifier)
+                and expr.callee.object.name in self.trait_names
+            ):
+                mangled = f"_{expr.callee.object.name}_{expr.callee.name}"
+                args = list(expr.args)
+                if args and isinstance(args[0], Identifier) and args[0].name == "self":
+                    rest = ", ".join(self._call_arg(a) for a in args[1:])
+                    return f"self.{mangled}({rest})" if rest else f"self.{mangled}()"
+                joined = ", ".join(self._call_arg(a) for a in args)
+                return f"{mangled}({joined})"
             # array.loop(fn) → list(map(fn, array))
             if (
                 isinstance(expr.callee, Member)
