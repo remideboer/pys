@@ -62,3 +62,5 @@ touching the matching CER/ADR is incomplete.
   need was not designed as a language construct. Prefer a real keyword, form,
   or declaration (e.g. enum aliases → proper syntax later, not `@alias`).
   Do not grow a decorator surface to paper over missing constructs.
+- Int literals / bitwise (ADR-007 / CER-006): `0b`/`0x`/`_`; width aliases are
+  unsigned ranges; `and`/`or`/`not` stay logical; rotate deferred

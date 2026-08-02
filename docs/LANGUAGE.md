@@ -65,12 +65,32 @@ only when the initializer makes the type obvious.
 
 | Type | Literals / notes |
 |------|------------------|
-| `int` | `10` |
+| `int` | `10`, `0b1010`, `0xFF` (optional `_` separators) |
+| `byte` | unsigned 8-bit alias of `int` (0..255) |
+| `nibble` | unsigned 4-bit alias of `int` (0..15) |
+| `int16` | unsigned 16-bit alias of `int` (0..65535) |
+| `int32` / `dword` | unsigned 32-bit alias of `int` |
+| `int64` | unsigned 64-bit alias of `int` |
 | `float` | `3.14` |
 | `char` | `'A'` (single character) |
 | `string` | `"hello"` or `'hello'` |
 | `bool` | `true` / `false` |
 | `null` | null reference (`None` in Python) |
+
+Width aliases emit as Python `int`. Out-of-range literal assigns are rejected.
+
+```pys
+int i = 0b1010
+byte b = 0b1011_1101
+nibble n = 0xA
+print(i & 0b0101)
+print(i xor 0b0101)
+print(i shift left 1)
+```
+
+Bitwise operators: `& | ^ ~ << >>`, plus word forms `xor` and `shift left` /
+`shift right`. Logical `and` / `or` / `not` stay short-circuit boolean (not
+bitwise). Rotate (`<<<` / `>>>`) is deferred.
 
 ### Declaration forms
 

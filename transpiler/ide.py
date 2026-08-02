@@ -33,7 +33,23 @@ from . import sem as sem_mod
 from .transpiler import TranspileError, TranspileWarning
 from .workspace import resolve_workspace_path, workspace_root_from_env
 
-_PRIMITIVES = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
+_PRIMITIVES = {
+    "int",
+    "float",
+    "char",
+    "string",
+    "bool",
+    "byte",
+    "nibble",
+    "int16",
+    "int32",
+    "int64",
+    "dword",
+    "list",
+    "dict",
+    "tuple",
+    "set",
+}
 
 
 def _error_dict(exc: TranspileError) -> dict:

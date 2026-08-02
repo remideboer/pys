@@ -50,7 +50,8 @@ KEYWORDS = frozenset(
         "class",
         "struct",
         "enum",
-        "interface",        "implements",
+        "interface",
+        "implements",
         "inherits",
         "super",
         "sealed",
@@ -68,6 +69,8 @@ KEYWORDS = frozenset(
         "and",
         "or",
         "not",
+        "xor",
+        "shift",
         "public",
         "private",
         "protected",
@@ -79,6 +82,12 @@ KEYWORDS = frozenset(
         "char",
         "string",
         "bool",
+        "byte",
+        "nibble",
+        "int16",
+        "int32",
+        "int64",
+        "dword",
         "list",
         "dict",
         "tuple",
@@ -110,8 +119,14 @@ _OPS = (
     "==",
     "!=",
     "<>",
+    "<<<",  # deferred rotate — lexed then rejected in parse
+    ">>>",
+    "<<",
+    ">>",
     "<=",
     ">=",
+    "**",
+    "//",
     "&&",
     "||",
     "->",
@@ -144,6 +159,10 @@ _SINGLES: dict[str, TokenKind] = {
     "%": TokenKind.OP,
     "=": TokenKind.OP,
     "!": TokenKind.OP,
+    "&": TokenKind.OP,
+    "|": TokenKind.OP,
+    "^": TokenKind.OP,
+    "~": TokenKind.OP,
 }
 
 _SKIP_AFTER_RBRACE = frozenset({TokenKind.BLANK, TokenKind.COMMENT, TokenKind.NEWLINE})
@@ -313,10 +332,62 @@ def tokenize_with_flags(source: str, *, emit_newlines: bool = False) -> Tokenize
                 add(TokenKind.STRING, text, start_line, start_col, start_i)
             continue
 
-        # Numbers
+        # Numbers: decimal / 0b… / 0x… with optional `_` separators
         if ch.isdigit():
             text_chars: list[str] = []
-            while i < n and source[i].isdigit():
+            # Binary / hexadecimal (must have at least one digit after prefix)
+            if ch == "0" and i + 1 < n and source[i + 1] in "bBxX":
+                text_chars.append("0")
+                bump("0")
+                prefix = source[i]
+                text_chars.append(prefix)
+                bump(prefix)
+                base = 2 if prefix in "bB" else 16
+
+                def _is_digit(c: str) -> bool:
+                    if base == 2:
+                        return c in "01"
+                    return c.isdigit() or ("a" <= c.lower() <= "f")
+
+                if i >= n or not _is_digit(source[i]):
+                    raise LexError(
+                        f"Invalid {'binary' if base == 2 else 'hexadecimal'} literal "
+                        f"(expected digits after 0{prefix}).",
+                        start_line,
+                        start_col,
+                    )
+                while i < n:
+                    if source[i] == "_":
+                        if i + 1 >= n or not _is_digit(source[i + 1]):
+                            raise LexError(
+                                "Invalid numeric literal (misplaced `_`).",
+                                line,
+                                col,
+                            )
+                        text_chars.append("_")
+                        bump("_")
+                        continue
+                    if not _is_digit(source[i]):
+                        break
+                    text_chars.append(source[i])
+                    bump(source[i])
+                add(TokenKind.INT, "".join(text_chars), start_line, start_col, start_i)
+                continue
+
+            # Decimal (optional `_` between digits) or float
+            while i < n:
+                if source[i] == "_":
+                    if i + 1 >= n or not source[i + 1].isdigit():
+                        raise LexError(
+                            "Invalid numeric literal (misplaced `_`).",
+                            line,
+                            col,
+                        )
+                    text_chars.append("_")
+                    bump("_")
+                    continue
+                if not source[i].isdigit():
+                    break
                 text_chars.append(source[i])
                 bump(source[i])
             if i < n and source[i] == "." and peek(1).isdigit():

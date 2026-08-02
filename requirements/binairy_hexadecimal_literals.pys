@@ -1,0 +1,70 @@
+## Binary and Hexadecimal Literals
+in order to help integration with interfacing with hardware like the ESP32 or Arduino
+using MicroPython or Arduino IDE, PYS must support binary and hexadecimal literals
+Literals are a way to represent a value in a program.
+For example, the number 10 can be represented as a decimal literal (10), a binary literal (0b1010),
+or a hexadecimal literal (0xA) or (0xa)
+The number 10 in binary is 1010, and the number 10 in hexadecimal is a.
+
+Width aliases (`byte`, `nibble`, `int16`, `int32`, `int64`, `dword`) are **unsigned**
+ranges on `int` (emit as Python int). `byte` is unsigned 8-bit (0..255), not signed int8.
+
+`and` / `or` / `not` remain **logical** (short-circuit), not bitwise.
+Bitwise: `& | ^ ~ << >>`, plus `xor` and `shift left` / `shift right`.
+Rotate (`<<<` / `>>>`, rotate word forms) is deferred.
+/#
+int i1 = 0b1010
+print(i1) # 10
+
+byte b1 = 0b1011_1101 # byte is unsigned 8-bit (0..255)
+print(b1) # 189
+
+byte b2 = 0b0100_0100
+print(b2) # 68
+
+nibble b3 = 0xA
+print(b3) # 10
+
+# same as
+int16 i1 = 0xFFFF
+print(i1) # 65535
+int32 i2 = 0xFFFF_FFFF
+print(i2) # 4294967295
+int64 i3 = 0xFFFF_FFFF_FFFF_FFFF
+print(i3) # 18446744073709551615
+
+dword d1 = 0xFFFF_FFFF
+print(d1) # 4294967295
+
+##
+bitwise operations are supported for binary and hexadecimal literals
+bitwise AND &
+bitwise OR |
+bitwise XOR ^  xor
+bitwise NOT ~
+bitwise shift left <<   /  shift left
+bitwise shift right >>  /  shift right
+for later development:
+    bitwise rotate left
+    bitwise rotate right
+    bitwise rotate left through carry
+    bitwise rotate right through carry
+/#
+
+print(0b1010 & 0b0101)
+print(0b1010 | 0b0101)
+print(0b1010 ^ 0b0101)
+print(0b1010 xor 0b0101)
+print(~0b1010)
+print(0b1010 << 1)
+print(0b1010 shift left 1)
+print(0b1010 >> 1)
+print(0b1010 shift right 1)
+
+print(0b1010 + 0b0101)
+print(0b1010 - 0b0101)
+print(0b1010 * 0b0101)
+print(0b1010 / 0b0101)
+print(0b1010 % 0b0101)
+print(0b1010 ** 0b0101)
+print(0b1010 // 0b0101)

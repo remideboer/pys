@@ -51,8 +51,25 @@ from .ast_nodes import (
 )
 from .lex import LexError, Token, TokenKind, TokenizeResult, tokenize, tokenize_with_flags
 
-_TYPES = frozenset({"int", "float", "char", "string", "bool"})
+_TYPES = frozenset(
+    {
+        "int",
+        "float",
+        "char",
+        "string",
+        "bool",
+        "byte",
+        "nibble",
+        "int16",
+        "int32",
+        "int64",
+        "dword",
+    }
+)
 _VIS = frozenset({"global", "package", "module"})
+_ROTATE_DEFERRED = (
+    "Bitwise rotate (`<<<` / `>>>`) is not implemented yet — use `<<` / `>>` for shifts."
+)
 
 
 class ParseError(ValueError):
@@ -84,17 +101,20 @@ def _packrat(rule_id: str):
                 marker, payload = cached
                 if marker is _PACKRAT_FAIL:
                     raise payload
-                result, end = payload
+                result, end, end_gt = payload
                 p.i = end
+                p._pending_gt = end_gt
                 return result
             start = p.i
+            start_gt = p._pending_gt
             try:
                 result = fn(p)
             except ParseError as exc:
                 memo[key] = (_PACKRAT_FAIL, exc)
                 p.i = start
+                p._pending_gt = start_gt
                 raise
-            memo[key] = (None, (result, p.i))
+            memo[key] = (None, (result, p.i, p._pending_gt))
             return result
 
         return wrapped
@@ -107,6 +127,9 @@ class _Tok:
         self.tokens = tokens
         self.i = 0
         self.task_serial = 0
+        # Extra `>` closers pending after splitting a `>>` / `>>>` shift token
+        # inside generic type arguments (`list<tuple<int, string>>`).
+        self._pending_gt = 0
         # Packrat / PEG memo (PEP 617): per-parse only when enabled.
         self.memo: dict | None = {} if packrat else None
 
@@ -136,6 +159,34 @@ class _Tok:
         t = self.cur()
         return t.kind == TokenKind.KEYWORD and t.text in words
 
+    def at_gt(self) -> bool:
+        if self._pending_gt > 0:
+            return True
+        t = self.cur()
+        if t.kind == TokenKind.GT:
+            return True
+        return t.kind == TokenKind.OP and t.text in {">>", ">>>"}
+
+    def eat_gt(self) -> Token:
+        """Consume one generic closer `>`, splitting `>>` / `>>>` if needed."""
+        if self._pending_gt > 0:
+            self._pending_gt -= 1
+            t = self.cur()
+            return Token(TokenKind.GT, ">", t.line, t.column, t.index)
+        t = self.cur()
+        if t.kind == TokenKind.GT:
+            self.i += 1
+            return t
+        if t.kind == TokenKind.OP and t.text == ">>":
+            self.i += 1
+            self._pending_gt = 1
+            return Token(TokenKind.GT, ">", t.line, t.column, t.index)
+        if t.kind == TokenKind.OP and t.text == ">>>":
+            self.i += 1
+            self._pending_gt = 2
+            return Token(TokenKind.GT, ">", t.line, t.column, t.index)
+        raise ParseError(f"Expected '>', got {t.kind.name} {t.text!r}", t.line, t.column)
+
     def eat(self, *kinds: TokenKind, text: str | None = None) -> Token:
         t = self.cur()
         if kinds and t.kind not in kinds:
@@ -155,6 +206,17 @@ class _Tok:
     def span(self) -> Span:
         t = self.cur()
         return Span(t.line, t.column)
+
+
+def _gt_close_count(t: Token) -> int:
+    """How many generic `>` this token closes (0 if not a closer)."""
+    if t.kind == TokenKind.GT:
+        return 1
+    if t.kind == TokenKind.OP and t.text == ">>":
+        return 2
+    if t.kind == TokenKind.OP and t.text == ">>>":
+        return 3
+    return 0
 
 
 def parse_program(source: str) -> Module:
@@ -598,13 +660,17 @@ def _looks_like_typed_name(p: _Tok) -> bool:
                 return False
             if t.kind == TokenKind.LT:
                 depth += 1
-            elif t.kind == TokenKind.GT:
-                depth -= 1
-                if depth == 0:
-                    return (
-                        p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-                        and p.peek(k + 2).kind == TokenKind.LPAREN
-                    )
+            else:
+                closes = _gt_close_count(t)
+                if closes:
+                    depth -= closes
+                    if depth == 0:
+                        return (
+                            p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                            and p.peek(k + 2).kind == TokenKind.LPAREN
+                        )
+                    if depth < 0:
+                        return False
             k += 1
     if p.peek(1).kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
         return False
@@ -621,7 +687,7 @@ def _parse_type_name(p: _Tok) -> str:
     while p.at(TokenKind.COMMA):
         p.eat(TokenKind.COMMA)
         args.append(_parse_type_name(p))
-    p.eat(TokenKind.GT)
+    p.eat_gt()
     return f"{base}<{', '.join(args)}>"
 
 
@@ -645,14 +711,18 @@ def _at_generic_typed_decl(p: _Tok) -> bool:
             return False
         if t.kind == TokenKind.LT:
             depth += 1
-        elif t.kind == TokenKind.GT:
-            depth -= 1
-            if depth == 0:
-                return (
-                    p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
-                    and p.peek(k + 2).kind == TokenKind.OP
-                    and p.peek(k + 2).text == "="
-                )
+        else:
+            closes = _gt_close_count(t)
+            if closes:
+                depth -= closes
+                if depth == 0:
+                    return (
+                        p.peek(k + 1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                        and p.peek(k + 2).kind == TokenKind.OP
+                        and p.peek(k + 2).text == "="
+                    )
+                if depth < 0:
+                    return False
         k += 1
 
 
@@ -776,7 +846,7 @@ def _parse_struct(
         while p.at(TokenKind.COMMA):
             p.eat(TokenKind.COMMA)
             type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
-        p.eat(TokenKind.GT)
+        p.eat_gt()
     if p.at_kw("sealed", "inherits", "super", "implements"):
         bad = p.cur().text
         raise FatalParseError(
@@ -901,7 +971,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         while p.at(TokenKind.COMMA):
             p.eat(TokenKind.COMMA)
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
-        p.eat(TokenKind.GT)
+        p.eat_gt()
     bases: list[str] = []
     parent = ""
     if p.at_kw("inherits", "super"):
@@ -1373,10 +1443,10 @@ def _parse_not(p: _Tok) -> Expr:
 
 @_packrat("cmp")
 def _parse_cmp(p: _Tok) -> Expr:
-    left = _parse_add(p)
+    left = _parse_bit_or(p)
     if p.at_kw("in"):
         p.eat_kw("in")
-        right = _parse_add(p)
+        right = _parse_bit_or(p)
         return BinaryOp(span=left.span, op="in", left=left, right=right)
     if p.at(TokenKind.LT, TokenKind.GT) or (
         p.at(TokenKind.OP) and p.cur().text in {"==", "!=", "<>", "<=", ">="}
@@ -1384,8 +1454,76 @@ def _parse_cmp(p: _Tok) -> Expr:
         op = p.eat(p.cur().kind).text
         if op == "<>":
             op = "!="
-        right = _parse_add(p)
+        right = _parse_bit_or(p)
         return BinaryOp(span=left.span, op=op, left=left, right=right)
+    return left
+
+
+def _reject_rotate(p: _Tok) -> None:
+    if p.at(TokenKind.OP) and p.cur().text in {"<<<", ">>>"}:
+        raise FatalParseError(_ROTATE_DEFERRED, p.cur().line, p.cur().column)
+
+
+@_packrat("bit_or")
+def _parse_bit_or(p: _Tok) -> Expr:
+    left = _parse_bit_xor(p)
+    while p.at(TokenKind.OP, text="|"):
+        p.eat(TokenKind.OP, text="|")
+        right = _parse_bit_xor(p)
+        left = BinaryOp(span=left.span, op="|", left=left, right=right)
+    return left
+
+
+@_packrat("bit_xor")
+def _parse_bit_xor(p: _Tok) -> Expr:
+    left = _parse_bit_and(p)
+    while p.at_kw("xor") or p.at(TokenKind.OP, text="^"):
+        if p.at_kw("xor"):
+            p.eat_kw("xor")
+            op = "^"
+        else:
+            p.eat(TokenKind.OP, text="^")
+            op = "^"
+        right = _parse_bit_and(p)
+        left = BinaryOp(span=left.span, op=op, left=left, right=right)
+    return left
+
+
+@_packrat("bit_and")
+def _parse_bit_and(p: _Tok) -> Expr:
+    left = _parse_shift(p)
+    while p.at(TokenKind.OP, text="&"):
+        p.eat(TokenKind.OP, text="&")
+        right = _parse_shift(p)
+        left = BinaryOp(span=left.span, op="&", left=left, right=right)
+    return left
+
+
+def _at_shift_word(p: _Tok) -> bool:
+    if not p.at_kw("shift"):
+        return False
+    nxt = p.peek(1)
+    return nxt.kind in {TokenKind.IDENT, TokenKind.KEYWORD} and nxt.text in {"left", "right"}
+
+
+@_packrat("shift")
+def _parse_shift(p: _Tok) -> Expr:
+    left = _parse_add(p)
+    while True:
+        _reject_rotate(p)
+        if p.at(TokenKind.OP) and p.cur().text in {"<<", ">>"}:
+            op = p.eat(TokenKind.OP).text
+            right = _parse_add(p)
+            left = BinaryOp(span=left.span, op=op, left=left, right=right)
+            continue
+        if _at_shift_word(p):
+            p.eat_kw("shift")
+            direction = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            op = "<<" if direction == "left" else ">>"
+            right = _parse_add(p)
+            left = BinaryOp(span=left.span, op=op, left=left, right=right)
+            continue
+        break
     return left
 
 
@@ -1401,11 +1539,21 @@ def _parse_add(p: _Tok) -> Expr:
 
 @_packrat("mul")
 def _parse_mul(p: _Tok) -> Expr:
-    left = _parse_unary(p)
-    while p.at(TokenKind.OP) and p.cur().text in {"*", "/", "%"}:
+    left = _parse_power(p)
+    while p.at(TokenKind.OP) and p.cur().text in {"*", "/", "%", "//"}:
         op = p.eat(TokenKind.OP).text
-        right = _parse_unary(p)
+        right = _parse_power(p)
         left = BinaryOp(span=left.span, op=op, left=left, right=right)
+    return left
+
+
+@_packrat("power")
+def _parse_power(p: _Tok) -> Expr:
+    left = _parse_unary(p)
+    if p.at(TokenKind.OP, text="**"):
+        p.eat(TokenKind.OP, text="**")
+        right = _parse_power(p)  # right-associative
+        return BinaryOp(span=left.span, op="**", left=left, right=right)
     return left
 
 
@@ -1415,7 +1563,7 @@ def _parse_unary(p: _Tok) -> Expr:
         sp = p.span()
         p.eat_kw("await")
         return AwaitExpr(span=sp, target=_parse_cast_postfix(p))
-    if p.at(TokenKind.OP) and p.cur().text in {"+", "-"}:
+    if p.at(TokenKind.OP) and p.cur().text in {"+", "-", "~"}:
         sp = p.span()
         op = p.eat(TokenKind.OP).text
         return UnaryOp(span=sp, op=op, operand=_parse_unary(p))
@@ -1473,17 +1621,19 @@ def _parse_postfix(p: _Tok) -> Expr:
     # Generic constructor sugar: Type<Args>(...) — drop type args for Python emit.
     if isinstance(expr, Identifier) and p.at(TokenKind.LT):
         saved = p.i
+        saved_gt = p._pending_gt
         try:
             p.eat(TokenKind.LT)
             _parse_type_name(p)
             while p.at(TokenKind.COMMA):
                 p.eat(TokenKind.COMMA)
                 _parse_type_name(p)
-            p.eat(TokenKind.GT)
+            p.eat_gt()
             if not p.at(TokenKind.LPAREN):
                 raise ParseError("not a constructor", p.cur().line, p.cur().column)
         except ParseError:
             p.i = saved
+            p._pending_gt = saved_gt
     while True:
         if p.at(TokenKind.LPAREN):
             sp = expr.span

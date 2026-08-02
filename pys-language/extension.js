@@ -12,20 +12,27 @@ const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
   'tasks', 'task', 'await', 'shared',
 ];
 
-const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
+const PYS_TYPES = [
+  'int', 'float', 'char', 'string', 'bool',
+  'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
+];
 
 const PYS_MD_KEYWORDS = new Set([
   'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'print', 'all', 'sealed',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
   'tasks', 'task', 'await', 'shared',
 ]);
-const PYS_MD_TYPES = new Set(['int', 'float', 'char', 'string', 'bool', 'list', 'dict', 'tuple', 'set']);
+const PYS_MD_TYPES = new Set([
+  'int', 'float', 'char', 'string', 'bool',
+  'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
+  'list', 'dict', 'tuple', 'set',
+]);
 const PYS_MD_CONSTANTS = new Set(['true', 'false', 'null']);
 
 function escapeHtml(text) {
@@ -430,10 +437,18 @@ function activate(context) {
         await: 'Wait until a value is ready (named task handle / future). Only inside a `task` body.',
         shared: 'Cross-task mutable cell: `shared int counter = 0`. Outer captures are otherwise read-only inside tasks.',
         string: 'Text type (transpiles to Python `str`)',
-        int: 'Integer type',
+        int: 'Integer type. Literals: `10`, `0b1010`, `0xFF` (optional `_` separators).',
         float: 'Floating-point type',
         char: 'Single-character type (transpiles to `str`)',
         bool: 'Boolean type',
+        byte: 'Unsigned 8-bit int alias (0..255). Emit as Python int.',
+        nibble: 'Unsigned 4-bit int alias (0..15). Emit as Python int.',
+        int16: 'Unsigned 16-bit int alias (0..65535). Emit as Python int.',
+        int32: 'Unsigned 32-bit int alias (0..2³²−1). Emit as Python int.',
+        int64: 'Unsigned 64-bit int alias (0..2⁶⁴−1). Emit as Python int.',
+        dword: 'Unsigned 32-bit int alias (same range as int32).',
+        xor: 'Bitwise XOR (same as `^`). `and`/`or`/`not` stay logical.',
+        shift: 'Word form: `shift left` / `shift right` (same as `<<` / `>>`).',
       };
       if (!hints[word]) {
         return null;

@@ -42,15 +42,27 @@ from .ast_nodes import (
 )
 
 _TYPED_INTERP = re.compile(r"#([sficbo])\{([^}]+)\}")
-_PRIMITIVES = frozenset({"int", "float", "char", "string", "bool"})
+_WIDTH_ALIASES = frozenset({"byte", "nibble", "int16", "int32", "int64", "dword"})
+_INT_LIKE = frozenset({"int"}) | _WIDTH_ALIASES
+_WIDTH_MAX: dict[str, int] = {
+    "nibble": (1 << 4) - 1,
+    "byte": (1 << 8) - 1,
+    "int16": (1 << 16) - 1,
+    "int32": (1 << 32) - 1,
+    "dword": (1 << 32) - 1,
+    "int64": (1 << 64) - 1,
+}
+_PRIMITIVES = frozenset({"int", "float", "char", "string", "bool"}) | _WIDTH_ALIASES
 _SPEC_TYPES: dict[str, set[str]] = {
     "s": {"string"},
-    "i": {"int"},
+    "i": set(_INT_LIKE),
     "f": {"float"},
     "c": {"char"},
     "b": {"bool"},
     "o": set(),
 }
+_BITWISE_BINOPS = frozenset({"&", "|", "^", "<<", ">>"})
+_INT_ARITH_BINOPS = frozenset({"//", "**"})
 
 
 def _is_simple_name(name: str) -> bool:
@@ -141,6 +153,8 @@ def analyze(
         class_implements=class_implements,
         interfaces=interfaces,
     )
+    _check_width_ranges(module.body, types=types)
+    _check_int_ops(module.body, types=types, class_names=class_names)
     _check_structs(module.body, types=types, fixed=fixed, struct_info=struct_info)
     _check_enums(module.body, types=types, fixed=fixed, enum_info=enum_info)
     _check_oop(module.body, types=types, resolver=import_resolver)
@@ -202,6 +216,194 @@ def _transpile_warning(
             tips=tips,
         )
     )
+
+
+def _literal_int_value(expr: Expr | None) -> int | None:
+    """Parse an int literal text (`0b…` / `0x…` / decimal with `_`)."""
+    if not isinstance(expr, Literal) or expr.kind != "int":
+        return None
+    try:
+        return int(expr.text.replace("_", ""), 0)
+    except ValueError:
+        return None
+
+
+def _expr_is_int_like(
+    expr: Expr | None,
+    types: dict[str, str],
+    class_names: set[str],
+) -> bool | None:
+    """True/False when known; None when type cannot be determined."""
+    if expr is None:
+        return None
+    if isinstance(expr, Literal):
+        if expr.kind == "int":
+            return True
+        if expr.kind in {"float", "string", "char", "bool", "null"}:
+            return False
+        return None
+    if isinstance(expr, Identifier):
+        t = _base_type_name(types.get(expr.name, ""))
+        if t in _INT_LIKE:
+            return True
+        if t in {"float", "string", "char", "bool"}:
+            return False
+        return None
+    if isinstance(expr, UnaryOp) and expr.op in {"+", "-", "~"}:
+        return _expr_is_int_like(expr.operand, types, class_names)
+    if isinstance(expr, BinaryOp) and expr.op in (
+        _BITWISE_BINOPS | _INT_ARITH_BINOPS | {"+", "-", "*", "/", "%"}
+    ):
+        left = _expr_is_int_like(expr.left, types, class_names)
+        right = _expr_is_int_like(expr.right, types, class_names)
+        if left is False or right is False:
+            return False
+        if left is True and right is True:
+            return True
+        return None
+    inferred = _infer_type(expr, class_names)
+    if inferred in _INT_LIKE:
+        return True
+    if inferred in {"float", "string", "char", "bool"}:
+        return False
+    return None
+
+
+def _check_width_ranges(body: list[Any], *, types: dict[str, str]) -> None:
+    """Reject literal assigns outside unsigned width-alias ranges."""
+
+    def check_assign(declare_type: str | None, value: Expr | None, line: int, col: int) -> None:
+        if not declare_type:
+            return
+        base = _base_type_name(declare_type)
+        if base not in _WIDTH_MAX:
+            return
+        lit = _literal_int_value(value)
+        if lit is None:
+            return
+        if lit < 0 or lit > _WIDTH_MAX[base]:
+            _transpile_error(
+                f"Value {lit} is out of range for {base} "
+                f"(unsigned 0..{_WIDTH_MAX[base]}).",
+                line,
+                col,
+                declare_type,
+            )
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                check_assign(stmt.declare_type, stmt.value, line, col)
+            elif isinstance(stmt, SharedDecl):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                check_assign(stmt.declare_type, stmt.value, line, col)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
+
+
+def _check_int_ops(
+    body: list[Any],
+    *,
+    types: dict[str, str],
+    class_names: set[str],
+) -> None:
+    """Require int-like operands for bitwise / shift / // / ** / ~."""
+
+    def require_int(expr: Expr | None, op: str, line: int, col: int) -> None:
+        ok = _expr_is_int_like(expr, types, class_names)
+        if ok is False:
+            _transpile_error(
+                f"Operator '{op}' requires int-like operands "
+                f"(int / byte / nibble / int16 / int32 / int64 / dword).",
+                line,
+                col,
+                op,
+            )
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        line = expr.span.line if expr.span else 1
+        col = expr.span.column if expr.span else 1
+        if isinstance(expr, UnaryOp) and expr.op == "~":
+            require_int(expr.operand, "~", line, col)
+            walk_expr(expr.operand)
+            return
+        if isinstance(expr, BinaryOp) and expr.op in (_BITWISE_BINOPS | _INT_ARITH_BINOPS):
+            require_int(expr.left, expr.op, line, col)
+            require_int(expr.right, expr.op, line, col)
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(stmt, WhileStmt):
+                    walk_expr(stmt.cond)
+                elif isinstance(stmt, ForEachStmt):
+                    walk_expr(stmt.iterable)
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                local = dict(types)
+                for i, p in enumerate(stmt.params):
+                    if i < len(stmt.param_types) and stmt.param_types[i]:
+                        local[p] = stmt.param_types[i]
+                _check_int_ops(stmt.body.statements, types=local, class_names=class_names)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        _check_int_ops(m.body.statements, types=dict(types), class_names=class_names)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
 
 
 def _pys_import_line(stmt: ImportStmt) -> str:
@@ -297,7 +499,24 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
     from .pytypes import _find_class_in_package
 
     base = _base_type_name(type_name)
-    primitives = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set", "var"}
+    primitives = {
+        "int",
+        "float",
+        "char",
+        "string",
+        "bool",
+        "byte",
+        "nibble",
+        "int16",
+        "int32",
+        "int64",
+        "dword",
+        "list",
+        "dict",
+        "tuple",
+        "set",
+        "var",
+    }
     if not base or base in primitives:
         return True
     if base in resolver.class_parents or base in resolver.interfaces or base in resolver.exports:
@@ -436,6 +655,8 @@ def _is_assignable_type(
     a_base = _base_type_name(actual)
     d_base = _base_type_name(declared)
     if a_base == d_base:
+        return True
+    if a_base in _INT_LIKE and d_base in _INT_LIKE:
         return True
     if d_base in _PRIMITIVES or a_base in _PRIMITIVES:
         return d_base in {"int", "float"} and a_base in {"int", "float"}

@@ -612,6 +612,47 @@
       )
     },
     {
+      id: 'integer',
+      title: 'integer',
+      ebnf: 'integer = decimal_integer | binary_integer | hex_integer ;',
+      node: Choice(N('decimal_integer'), N('binary_integer'), N('hex_integer'))
+    },
+    {
+      id: 'binary_integer',
+      title: 'binary_integer',
+      ebnf: '"0" ("b"|"B") bin_digit { ["_"] bin_digit } ;',
+      node: Seq(T('0'), Choice(T('b'), T('B')), N('bin_digit'), Star(Seq(Opt(T('_')), N('bin_digit'))))
+    },
+    {
+      id: 'hex_integer',
+      title: 'hex_integer',
+      ebnf: '"0" ("x"|"X") hex_digit { ["_"] hex_digit } ;',
+      node: Seq(T('0'), Choice(T('x'), T('X')), N('hex_digit'), Star(Seq(Opt(T('_')), N('hex_digit'))))
+    },
+    {
+      id: 'primitive_type',
+      title: 'primitive_type',
+      ebnf: '"int"|"float"|"char"|"string"|"bool"|"byte"|"nibble"|"int16"|"int32"|"int64"|"dword" ;',
+      node: Choice(
+        T('int'), T('float'), T('char'), T('string'), T('bool'),
+        T('byte'), T('nibble'), T('int16'), T('int32'), T('int64'), T('dword')
+      )
+    },
+    {
+      id: 'bit_ops',
+      title: 'bit / shift / power',
+      ebnf: 'bit_or → bit_xor → bit_and → shift → add → mul → power → unary(~) ; and/or/not stay logical',
+      node: Seq(
+        N('bit_or_expr'),
+        T('|'),
+        Choice(T('^'), T('xor')),
+        T('&'),
+        Choice(T('<<'), T('>>'), Seq(T('shift'), T('left')), Seq(T('shift'), T('right'))),
+        Choice(T('**'), T('//')),
+        T('~')
+      )
+    },
+    {
       id: 'expression',
       title: 'cast_expr',
       ebnf: 'cast_expr = [ "(" type_name ")" ] postfix_expr ;',

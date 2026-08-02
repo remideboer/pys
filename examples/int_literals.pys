@@ -1,0 +1,39 @@
+# Binary / hex literals, width aliases, and bitwise ops.
+
+int i1 = 0b1010
+print(i1)
+
+byte b1 = 0b1011_1101
+print(b1)
+
+byte b2 = 0b0100_0100
+print(b2)
+
+nibble n1 = 0xA
+print(n1)
+
+int16 w1 = 0xFFFF
+print(w1)
+
+int32 i2 = 0xFFFF_FFFF
+print(i2)
+
+int64 i3 = 0xFFFF_FFFF_FFFF_FFFF
+print(i3)
+
+dword d1 = 0xFFFF_FFFF
+print(d1)
+
+print(0b1010 & 0b0101)
+print(0b1010 | 0b0101)
+print(0b1010 ^ 0b0101)
+print(0b1010 xor 0b0101)
+print(~0b1010)
+print(0b1010 << 1)
+print(0b1010 shift left 1)
+print(0b1010 >> 1)
+print(0b1010 shift right 1)
+
+print(0b1010 + 0b0101)
+print(0b1010 // 0b0010)
+print(2 ** 3)

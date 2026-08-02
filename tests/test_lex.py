@@ -14,6 +14,29 @@ def test_tokenize_literals_and_keywords() -> None:
     assert any(t.text == "print" for t in toks)
 
 
+def test_tokenize_binary_hex_and_underscores() -> None:
+    toks = tokenize("int a = 0b1010\nint b = 0xA_F\nint c = 1_000\n")
+    ints = [t.text for t in toks if t.kind == TokenKind.INT]
+    assert ints == ["0b1010", "0xA_F", "1_000"]
+
+
+def test_tokenize_bitwise_and_power_ops() -> None:
+    toks = tokenize("a << 1 >> 2 & 3 | 4 ^ 5 ~ 6 ** 2 // 3\n")
+    ops = [t.text for t in toks if t.kind == TokenKind.OP]
+    assert ops == ["<<", ">>", "&", "|", "^", "~", "**", "//"]
+
+
+def test_tokenize_rotate_ops_as_tokens() -> None:
+    toks = tokenize("x <<< 1 >>> 2\n")
+    assert [t.text for t in toks if t.kind == TokenKind.OP] == ["<<<", ">>>"]
+
+
+@pytest.mark.parametrize("source", ["0b", "0x", "0b_", "0x_", "0b2", "1_"])
+def test_tokenize_rejects_bad_numeric_literals(source: str) -> None:
+    with pytest.raises(LexError):
+        tokenize(f"int x = {source}\n")
+
+
 def test_from_is_keyword() -> None:
     toks = tokenize("import A, B from mod.pys\n")
     from_toks = [t for t in toks if t.text == "from"]

@@ -9,9 +9,23 @@
   "Typed variable": {
     "prefix": "tvar",
     "body": [
-      "${1|int,float,string,char,bool|} ${2:name} = ${3:value}"
+      "${1|int,float,string,char,bool,byte,nibble,int16,int32,int64,dword|} ${2:name} = ${3:value}"
     ],
     "description": "Explicitly typed variable declaration"
+  },
+  "Binary literal": {
+    "prefix": "0b",
+    "body": [
+      "0b${1:1010}"
+    ],
+    "description": "Binary integer literal"
+  },
+  "Hex literal": {
+    "prefix": "0x",
+    "body": [
+      "0x${1:FF}"
+    ],
+    "description": "Hexadecimal integer literal"
   },
   "Function definition": {
     "prefix": "function",

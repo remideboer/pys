@@ -56,7 +56,19 @@ _STRUCT_COPY_HELPER = '''def _pys_struct_copy(value):
 '''
 from ..language_spec import _default_value_for_type, _translate_string_literal
 
-_CAST = {"int": "int", "float": "float", "char": "str", "string": "str", "bool": "bool"}
+_CAST = {
+    "int": "int",
+    "float": "float",
+    "char": "str",
+    "string": "str",
+    "bool": "bool",
+    "byte": "int",
+    "nibble": "int",
+    "int16": "int",
+    "int32": "int",
+    "int64": "int",
+    "dword": "int",
+}
 _ARRAY_TYPECODE = {"int": "i", "float": "d", "char": "u", "bool": "b"}
 _BINOP_PREC = {
     "or": 1,
@@ -70,11 +82,18 @@ _BINOP_PREC = {
     ">": 3,
     "<=": 3,
     ">=": 3,
-    "+": 4,
-    "-": 4,
-    "*": 5,
-    "/": 5,
-    "%": 5,
+    "|": 4,
+    "^": 5,
+    "&": 6,
+    "<<": 7,
+    ">>": 7,
+    "+": 8,
+    "-": 8,
+    "*": 9,
+    "/": 9,
+    "%": 9,
+    "//": 9,
+    "**": 10,
 }
 
 
@@ -303,7 +322,18 @@ class _Emitter:
         kind = self._infer_kind(stmt.value)
         if stmt.declare_type == "string":
             kind = "string"
-        elif stmt.declare_type in {"int", "float", "bool", "char"}:
+        elif stmt.declare_type in {
+            "int",
+            "float",
+            "bool",
+            "char",
+            "byte",
+            "nibble",
+            "int16",
+            "int32",
+            "int64",
+            "dword",
+        }:
             kind = "number" if stmt.declare_type != "bool" else "number"
         base = stmt.name.split(".")[-1]
         self.var_kinds[base] = kind

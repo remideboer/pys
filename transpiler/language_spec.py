@@ -112,7 +112,19 @@ def _translate_string_literal(value: str) -> str:
 
 
 def _translate_cast(type_name: str, expr: str) -> str:
-    cast_map = {"int": "int", "float": "float", "char": "str", "string": "str", "bool": "bool"}
+    cast_map = {
+        "int": "int",
+        "float": "float",
+        "char": "str",
+        "string": "str",
+        "bool": "bool",
+        "byte": "int",
+        "nibble": "int",
+        "int16": "int",
+        "int32": "int",
+        "int64": "int",
+        "dword": "int",
+    }
     rewritten = _rewrite_plus_expr(expr.strip())
     if type_name in cast_map:
         return f"{cast_map[type_name]}({rewritten})"
@@ -494,6 +506,12 @@ def _default_value_for_type(type_name: str) -> str:
         "char": "''",
         "string": "''",
         "bool": "False",
+        "byte": "0",
+        "nibble": "0",
+        "int16": "0",
+        "int32": "0",
+        "int64": "0",
+        "dword": "0",
     }
     return defaults.get(type_name, "None")
 
