@@ -417,10 +417,10 @@
     {
       id: 'class_decl',
       title: 'class_decl',
-      ebnf: '[ top_visibility ] [ "sealed" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses Id {"," Id} ] [ implements Id {"," Id} ] class_body ;',
+      ebnf: '[ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses Id {"," Id} ] [ implements Id {"," Id} ] class_body ;',
       node: Seq(
         Opt(N('top_visibility')),
-        Opt(T('sealed')),
+        Opt(Choice(T('sealed'), T('abstract'))),
         T('class'),
         N('identifier'),
         Opt(N('type_params')),
@@ -428,6 +428,20 @@
         Opt(Seq(T('uses'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         Opt(Seq(T('implements'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         N('class_body')
+      )
+    },
+    {
+      id: 'abstract_method_decl',
+      title: 'abstract_method_decl',
+      ebnf: 'member_access "abstract" return_type identifier "(" [ parameter_list ] ")" ;',
+      node: Seq(
+        N('member_access'),
+        T('abstract'),
+        N('return_type'),
+        N('identifier'),
+        T('('),
+        Opt(N('parameter_list')),
+        T(')')
       )
     },
     {

@@ -222,7 +222,7 @@
         },
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:sealed\\s+)?class|(?:fix\\s+)?struct|enum|interface|trait|const|fix)\\b)"
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:(?:sealed|abstract)\\s+)?class|(?:fix\\s+)?struct|enum|interface|trait|const|fix)\\b)"
         },
         {
           "name": "meta.struct.declaration.pys",
@@ -286,7 +286,7 @@
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:(<)([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)(>))?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(uses)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed|abstract)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:(<)([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)(>))?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(uses)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -389,15 +389,18 @@
         },
         {
           "name": "meta.method.declaration.pys",
-          "match": "\\b(public|private|protected|module)\\s+(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "match": "\\b(public|private|protected|module)\\s+(?:(abstract)\\s+)?(?:(int|float|char|string|bool|void|byte|nibble|int16|int32|int64|dword)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "storage.type.pys"
+              "name": "storage.modifier.pys"
             },
             "3": {
+              "name": "storage.type.pys"
+            },
+            "4": {
               "name": "entity.name.function.pys"
             }
           }
@@ -435,7 +438,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed|shared)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed|abstract|shared)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",
@@ -455,7 +458,7 @@
       "patterns": [
         {
           "name": "storage.type.pys",
-          "match": "\\b(?:var|int|float|char|bool|str|string|list|dict|tuple|set)\\b"
+          "match": "\\b(?:var|int|float|char|bool|str|string|void|list|dict|tuple|set)\\b"
         }
       ]
     },

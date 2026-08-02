@@ -13,11 +13,11 @@ const PYS_KEYWORDS = [
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
-  'tasks', 'task', 'await', 'shared',
+  'abstract', 'tasks', 'task', 'await', 'shared',
 ];
 
 const PYS_TYPES = [
-  'int', 'float', 'char', 'string', 'bool',
+  'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
 ];
 
@@ -26,10 +26,10 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
-  'tasks', 'task', 'await', 'shared',
+  'abstract', 'tasks', 'task', 'await', 'shared',
 ]);
 const PYS_MD_TYPES = new Set([
-  'int', 'float', 'char', 'string', 'bool',
+  'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
   'list', 'dict', 'tuple', 'set',
 ]);
@@ -435,7 +435,9 @@ function activate(context) {
         global: 'Top-level export with global access across the whole project. Use: `global function name(...)` or `global const float PI = ...`.',
         package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
-        sealed: 'Prevents inheritance: `sealed class Ship { ... }`. No class may use `inherits` on a sealed class.',
+        sealed: 'Prevents inheritance: `sealed class Ship { ... }`. No class may use `inherits` on a sealed class. Mutually exclusive with `abstract`.',
+        abstract: 'Abstract class or method: `abstract class Shape { public abstract float area() }`.\nConcrete subclasses must implement every abstract method. Cannot write `sealed abstract`. Do not instantiate an abstract class.',
+        void: 'No return value: `public void add(string item) { … }` or `public abstract void add(string item)`.\nA `void` method must not `return expr` (bare `return` is ok).',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',
         from: 'Used in `import name from module.pys` / `import all from module.pys`.',
         tasks: 'Structured concurrency group: `tasks { task { … } }`. Leaving the block waits for all children.',

@@ -438,7 +438,7 @@ def _parse_toplevel(p: _Tok):
         vis = p.eat(TokenKind.KEYWORD).text
         if p.at_kw("function"):
             return _parse_function(p, visibility=vis)
-        if p.at_kw("sealed"):
+        if p.at_kw("sealed", "abstract"):
             return _parse_class(p, visibility=vis)
         if p.at_kw("class"):
             return _parse_class(p, visibility=vis)
@@ -457,7 +457,7 @@ def _parse_toplevel(p: _Tok):
         raise ParseError("Expected declaration after visibility", p.cur().line, p.cur().column)
     if p.at_kw("function"):
         return _parse_function(p)
-    if p.at_kw("sealed"):
+    if p.at_kw("sealed", "abstract"):
         return _parse_class(p)
     if p.at_kw("class"):
         return _parse_class(p)
@@ -968,9 +968,25 @@ def _parse_enum(p: _Tok, visibility: str = "") -> EnumDef:
 def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
     sp = p.span()
     sealed = False
+    abstract = False
     if p.at_kw("sealed"):
         sealed = True
         p.eat_kw("sealed")
+        if p.at_kw("abstract"):
+            raise FatalParseError(
+                "`sealed` and `abstract` are mutually exclusive on the same class.",
+                p.cur().line,
+                p.cur().column,
+            )
+    elif p.at_kw("abstract"):
+        abstract = True
+        p.eat_kw("abstract")
+        if p.at_kw("sealed"):
+            raise FatalParseError(
+                "`sealed` and `abstract` are mutually exclusive on the same class.",
+                p.cur().line,
+                p.cur().column,
+            )
     p.eat_kw("class")
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     if p.at(TokenKind.LT):
@@ -1028,11 +1044,54 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 p.cur().line,
                 p.cur().column,
             )
+        # Abstract method: access abstract ReturnType name(params) — no body.
+        if p.at_kw("abstract"):
+            p.eat_kw("abstract")
+            if not access:
+                raise FatalParseError(
+                    "Abstract methods require an access modifier "
+                    "(e.g. `public abstract string get(int index)`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            ret = _parse_type_name(p)
+            if p.at(TokenKind.LBRACK):
+                p.eat(TokenKind.LBRACK)
+                p.eat(TokenKind.RBRACK)
+                ret += "[]"
+            mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            p.eat(TokenKind.LPAREN)
+            params: list[tuple[str, str]] = []
+            if not p.at(TokenKind.RPAREN):
+                params.append(_parse_param(p))
+                while p.at(TokenKind.COMMA):
+                    p.eat(TokenKind.COMMA)
+                    params.append(_parse_param(p))
+            p.eat(TokenKind.RPAREN)
+            if p.at(TokenKind.LBRACE):
+                raise FatalParseError(
+                    f"Abstract method '{mname}' cannot have a body.",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            methods.append(
+                MethodDef(
+                    span=member_sp,
+                    access=access,
+                    name=mname,
+                    params=[n for _, n in params],
+                    param_types=[t for t, _ in params],
+                    body=None,
+                    is_abstract=True,
+                    return_type=ret,
+                )
+            )
+            continue
         # constructor
         if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
             p.eat(TokenKind.LPAREN)
-            params: list[tuple[str, str]] = []
+            params = []
             if not p.at(TokenKind.RPAREN):
                 params.append(_parse_param(p))
                 while p.at(TokenKind.COMMA):
@@ -1053,7 +1112,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             )
             continue
         type_name = ""
-        if p.cur().text in _TYPES or (
+        if p.cur().text in _TYPES or p.at_kw("void") or (
             p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
             and (
                 p.peek(1).kind == TokenKind.LBRACK
@@ -1109,6 +1168,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         methods=methods,
         visibility=visibility,
         sealed=sealed,
+        abstract=abstract,
     )
 
 

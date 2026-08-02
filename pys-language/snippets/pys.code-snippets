@@ -132,6 +132,27 @@
     ],
     "description": "PYS class with constructor and method"
   },
+  "Abstract class": {
+    "prefix": "abstract",
+    "body": [
+      "abstract class ${1:Name} {",
+      "\tpublic ${1:Name}() {",
+      "\t\t${2}",
+      "\t}",
+      "",
+      "\tpublic abstract ${3|int,string,bool,void,float|} ${4:method}(${5})",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS abstract class with abstract method (no body)"
+  },
+  "Abstract method": {
+    "prefix": "abstractmethod",
+    "body": [
+      "public abstract ${1|int,string,bool,void,float|} ${2:method}(${3})"
+    ],
+    "description": "PYS abstract method signature (inside abstract class)"
+  },
   "Struct": {
     "prefix": "struct",
     "body": [

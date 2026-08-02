@@ -543,8 +543,13 @@ class _Emitter:
         self._emit(indent + 2, f"return {stmt.name}({copy_args})")
 
     def _class(self, stmt: ClassDef, indent: int) -> None:
-        if stmt.bases:
-            bases = ", ".join(stmt.bases)
+        bases_list = list(stmt.bases)
+        if stmt.abstract:
+            self.needs_abc = True
+            if "ABC" not in bases_list:
+                bases_list.append("ABC")
+        if bases_list:
+            bases = ", ".join(bases_list)
             self._emit(indent, f"class {stmt.name}({bases}):")
         else:
             self._emit(indent, f"class {stmt.name}:")
@@ -602,6 +607,13 @@ class _Emitter:
         emit_name: str | None = None,
     ) -> None:
         name = emit_name or m.name
+        if m.is_abstract:
+            self.needs_abc = True
+            self._emit(indent, "@abstractmethod")
+            params = ", ".join(["self", *m.params])
+            self._emit(indent, f"def {name}({params}):")
+            self._emit(indent + 1, "pass")
+            return
         if m.is_constructor:
             parts = ["self"]
             for i, pname in enumerate(m.params):
@@ -615,7 +627,7 @@ class _Emitter:
         else:
             params = ", ".join(["self", *m.params])
             self._emit(indent, f"def {name}({params}):")
-            if m.return_type and emit_name is None:
+            if m.return_type and m.return_type != "void" and emit_name is None:
                 self.fn_return_types[m.name] = m.return_type
         need_super = inject_super and not _ctor_chains_to_parent(m.body)
         prev_types = dict(self.var_types)

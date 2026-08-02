@@ -315,10 +315,11 @@ Rules:
    `package function int multiply(…)`
 3. Parameters may be typed: `int a`
 4. Visibility on the function controls who may import it (see §7)
-5. Void functions (no value returned) may omit the return type
+5. Void functions (no value returned) may omit the return type, or write `void`
+   explicitly. A `void` body must not `return expr`.
 
 Inside a **class**, do not write `function` / `func` — methods use member access
-modifiers instead (`public name(…) { … }`).
+modifiers instead (`public name(…) { … }` or `public void name(…) { … }`).
 
 ---
 
@@ -373,7 +374,46 @@ Rules:
    `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
    imported via `pys.deps` / the standard library.
 6. `sealed` may mark a class that should not be subclassed further
-7. Optional type parameters: `class Pair<T, U> { … }`
+7. `abstract` marks a class that cannot be instantiated and may declare
+   body-less `abstract` methods; mutually exclusive with `sealed`
+8. Optional type parameters: `class Pair<T, U> { … }`
+
+### Abstract classes
+
+An **abstract class** is a nominal type with shared fields/concrete methods plus
+variation points declared as `abstract` methods (no `{ … }` body). Subclasses
+must implement every inherited abstract method. Direct construction
+(`AbstractName(...)`) is rejected; constructors may still run via `super(...)`.
+
+```pys
+abstract class AbstractList {
+    protected int size
+
+    public AbstractList() {
+        this.size = 0
+    }
+
+    public bool isEmpty() {
+        return this.size == 0
+    }
+
+    public abstract string get(int index)
+    public abstract void add(string item)
+}
+
+class ArrayListPys inherits AbstractList {
+    public ArrayListPys() { super() }
+    public string get(int index) { return "" }
+    public void add(string item) { this.size = this.size + 1 }
+}
+```
+
+Rules:
+
+1. Abstract methods only inside `abstract class`; need access + `abstract` + return type
+2. `void` means no value: do not `return expr` (bare `return` is fine)
+3. Abstract classes **are** types (unlike traits) — usable for bindings / polymorphism
+4. See `examples/abstract_list.pys` and JIT [J-abstract](../tutorials/jit/J-abstract.md)
 
 ### Traits
 

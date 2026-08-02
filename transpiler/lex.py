@@ -55,6 +55,8 @@ KEYWORDS = frozenset(
         "inherits",
         "super",
         "sealed",
+        "abstract",
+        "void",
         "trait",
         "uses",
         "requires",

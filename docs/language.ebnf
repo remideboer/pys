@@ -143,31 +143,37 @@ function_decl    = [ top_visibility ] , "function" , [ return_type ] ,
    Form:  global function AppStore openStore()
 *)
 
-return_type      = primitive_type | named_type | array_type ;
+return_type      = primitive_type | named_type | array_type | "void" ;
+(* void: method must not return a value (bare `return` / fall-off OK). *)
 
 parameter_list   = parameter , { "," , parameter } ;
 parameter        = [ type_name ] , identifier ;
 
 (* ------------------------- Classes ------------------------- *)
 
-class_decl       = [ top_visibility ] , [ "sealed" ] , "class" , identifier ,
+class_decl       = [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , identifier ,
                    [ type_params ] ,
                    [ ( "inherits" | "super" ) , identifier ] ,
                    [ "uses" , identifier , { "," , identifier } ] ,
                    [ "implements" , identifier , { "," , identifier } ] ,
                    class_body ;
-(* Resolution order: base class, then trait composition, then interface check. *)
+(* sealed and abstract are mutually exclusive.
+   Resolution order: base class, then trait composition, then interface check. *)
 
 type_params      = "<" , identifier , { "," , identifier } , ">" ;
 
 class_body       = "{" , { class_member } , "}" ;
 
-class_member     = field_decl | method_decl | constructor_decl ;
+class_member     = field_decl | method_decl | abstract_method_decl | constructor_decl ;
 
 field_decl       = member_access , type_name , identifier , [ "=" , expression ] ;
 
 method_decl      = member_access , [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
+
+abstract_method_decl = member_access , "abstract" , return_type , identifier ,
+                       "(" , [ parameter_list ] , ")" ;
+(* No block. Only legal inside an abstract class. *)
 
 constructor_decl = member_access , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
@@ -435,8 +441,8 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class struct enum interface implements inherits super sealed
-  trait uses requires
+  function func return class struct enum interface implements inherits super sealed abstract
+  trait uses requires void
   import from all var const fix print pass break continue switch case default
   this and or not xor shift
   public private protected global package module

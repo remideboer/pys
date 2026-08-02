@@ -30,30 +30,74 @@ def rewrite_overloaded_methods(python_text: str) -> str:
     return "\n".join(rewritten) + "\n"
 
 
+_METHOD_DEF_RE = re.compile(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$")
+_DECORATOR_RE = re.compile(r"^    @[A-Za-z_][\w.]*\s*$")
+
+
+def _method_def_line(line: str) -> re.Match[str] | None:
+    if not line.strip():
+        return None
+    return _METHOD_DEF_RE.match(line)
+
+
+def _def_line_of(method_lines: List[str]) -> str | None:
+    for ln in method_lines:
+        if _method_def_line(ln):
+            return ln
+    return None
+
+
+def _split_trailing_decorators(segment: List[str]) -> tuple[List[str], List[str]]:
+    """Pull trailing blank/`@decorator` lines off a text segment for the next method."""
+    i = len(segment)
+    while i > 0 and not segment[i - 1].strip():
+        i -= 1
+    deco_start = i
+    while deco_start > 0 and _DECORATOR_RE.match(segment[deco_start - 1]):
+        deco_start -= 1
+    if deco_start == i:
+        return segment, []
+    # Include blanks between decorators and the following def.
+    return segment[:deco_start], segment[deco_start:]
+
+
+def _collect_method_body(class_lines: List[str], index: int) -> tuple[List[str], int]:
+    method_lines = [class_lines[index]]
+    index += 1
+    while index < len(class_lines):
+        next_line = class_lines[index]
+        if next_line.strip() and len(next_line) - len(next_line.lstrip(" ")) <= 4:
+            break
+        method_lines.append(next_line)
+        index += 1
+    return method_lines, index
+
+
 def _transform_class_body(class_lines: List[str]) -> List[str]:
     segments: List[tuple[str, List[str]]] = []
     index = 0
     while index < len(class_lines):
         line = class_lines[index]
-        if line.strip() and re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", line):
-            method_lines = [line]
-            index += 1
-            while index < len(class_lines):
-                next_line = class_lines[index]
-                if next_line.strip() and len(next_line) - len(next_line.lstrip(" ")) <= 4:
-                    break
-                method_lines.append(next_line)
-                index += 1
+        if _method_def_line(line):
+            method_lines, index = _collect_method_body(class_lines, index)
             segments.append(("method", method_lines))
             continue
         segment: List[str] = []
         while index < len(class_lines):
             current = class_lines[index]
-            if current.strip() and re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", current):
+            if _method_def_line(current):
                 break
             segment.append(current)
             index += 1
-        segments.append(("text", segment))
+        if index < len(class_lines) and _method_def_line(class_lines[index]):
+            segment, decorators = _split_trailing_decorators(segment)
+            if segment:
+                segments.append(("text", segment))
+            method_lines, index = _collect_method_body(class_lines, index)
+            segments.append(("method", list(decorators) + method_lines))
+            continue
+        if segment:
+            segments.append(("text", segment))
 
     method_groups: dict[str, List[List[str]]] = {}
     transformed: List[str] = []
@@ -61,40 +105,54 @@ def _transform_class_body(class_lines: List[str]) -> List[str]:
         if kind == "text":
             transformed.extend(payload)
             continue
-        method_lines = payload
-        method_name_match = re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", method_lines[0])
-        if not method_name_match:
-            transformed.extend(method_lines)
+        def_line = _def_line_of(payload)
+        if def_line is None:
+            transformed.extend(payload)
             continue
-        method_name = method_name_match.group(1)
-        method_groups.setdefault(method_name, []).append(method_lines)
+        method_name_match = _METHOD_DEF_RE.match(def_line)
+        assert method_name_match is not None
+        method_groups.setdefault(method_name_match.group(1), []).append(payload)
 
     for kind, payload in segments:
         if kind == "text":
             continue
-        method_lines = payload
-        method_name_match = re.match(r"^    def\s+([A-Za-z_]\w*)\s*\((.*?)\)\s*:\s*$", method_lines[0])
-        if not method_name_match:
-            transformed.extend(method_lines)
+        def_line = _def_line_of(payload)
+        if def_line is None:
+            transformed.extend(payload)
             continue
+        method_name_match = _METHOD_DEF_RE.match(def_line)
+        assert method_name_match is not None
         method_name = method_name_match.group(1)
         overloads = method_groups[method_name]
         if len(overloads) == 1:
-            transformed.extend(method_lines)
+            transformed.extend(payload)
             continue
-        overload_index = overloads.index(method_lines)
+        overload_index = overloads.index(payload)
+        prefix: List[str] = []
+        body_start = 0
+        for i, ln in enumerate(payload):
+            if _method_def_line(ln):
+                body_start = i
+                break
+            prefix.append(ln)
+        def_header = payload[body_start]
         if overload_index == 0:
             has_type_kwargs = any(
-                re.search(r"__\w+__=object", ol[0]) for ol in overloads
+                re.search(r"__\w+__=object", dl)
+                for ol in overloads
+                for dl in [_def_line_of(ol)]
+                if dl is not None
             )
             if has_type_kwargs:
                 dispatcher = f"    def {method_name}(self, *args, **kwargs):\n"
             else:
                 dispatcher = f"    def {method_name}(self, *args):\n"
             for idx, overload in enumerate(overloads):
+                ol_def = _def_line_of(overload)
+                assert ol_def is not None
                 header_match = re.match(
                     r"^    def\s+[A-Za-z_]\w*\s*\(self(?:,\s*(?P<params>.*))?\)\s*:",
-                    overload[0],
+                    ol_def,
                 )
                 param_count = 0
                 if header_match and header_match.group("params"):
@@ -116,10 +174,10 @@ def _transform_class_body(class_lines: List[str]) -> List[str]:
                 f'        raise TypeError(f"{{method_name}}() got an unexpected number of arguments")\n'
             )
             transformed.append(dispatcher.rstrip("\n"))
-        helper_def = method_lines[0].replace(
+        helper_def = def_header.replace(
             f"def {method_name}", f"def _{method_name}_{overload_index}", 1
         )
-        helper_lines = [helper_def] + method_lines[1:]
+        helper_lines = prefix + [helper_def] + payload[body_start + 1 :]
         transformed.extend(helper_lines)
 
     return transformed

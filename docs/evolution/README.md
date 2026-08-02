@@ -43,5 +43,6 @@ Each record then uses:
 | [CER-006](CER-006-int-literals-bitwise-widths.md) | Binary/hex literals, bitwise, width aliases | Language |
 | [CER-007](CER-007-switch-stmt-and-expr.md) | Switch statement and expression | Language |
 | [CER-008](CER-008-traits.md) | Traits composition (`uses` / `requires`) | Language |
+| [CER-009](CER-009-abstract-classes.md) | Abstract classes (`abstract` / `void`) | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

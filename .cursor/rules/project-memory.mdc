@@ -58,6 +58,9 @@ touching the matching CER/ADR is incomplete.
 - Keep `parse_program_from_tokens` / single-lex compile path; do not restore double-counted phase benches
 - Structs stay identity-free value types (ADR-005 / CER-004): no methods/inherits/`new`; fields always public (visibility on the struct); copy on assign/call/return; hash only when all fields fix / `fix struct`
 - Enums stay nominal closed sets (ADR-006 / CER-005): all-or-nothing values; no `@alias` / match until a new record; casing is Warning + IDE quick fix, not a hard error
+- Abstract classes (ADR-010 / CER-009): `sealed` XOR `abstract`; abstract methods
+  only in abstract classes (no body); nominal types; emit `ABC`/`@abstractmethod`
+  (Python only — no `@` in PYS source); reject direct instantiate
 - **No `@` annotations / decorators in PYS.** An `@foo` mark usually means the
   need was not designed as a language construct. Prefer a real keyword, form,
   or declaration (e.g. enum aliases → proper syntax later, not `@alias`).

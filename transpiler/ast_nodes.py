@@ -341,6 +341,7 @@ class MethodDef(Node):
     param_types: list[str] = field(default_factory=list)
     body: Block | None = None
     is_constructor: bool = False
+    is_abstract: bool = False
     return_type: str = ""
 
 
@@ -354,6 +355,7 @@ class ClassDef(Node):
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""
     sealed: bool = False
+    abstract: bool = False
 
 
 @dataclass

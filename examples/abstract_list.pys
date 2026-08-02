@@ -1,0 +1,77 @@
+# Abstract class: shared state + concrete methods + abstract variation points.
+
+abstract class AbstractList {
+    protected int size
+
+    public AbstractList() {
+        this.size = 0
+    }
+
+    # Concrete: works from size alone.
+    public bool isEmpty() {
+        return this.size == 0
+    }
+
+    # Template method: calls abstract get() — subclass supplies storage.
+    public bool contains(string item) {
+        loop (int i = 0, i < this.size, i++) {
+            if (this.get(i) == item) {
+                return true
+            }
+        }
+        return false
+    }
+
+    public abstract string get(int index)
+    public abstract void add(string item)
+}
+
+# Contiguous storage (simplified array list).
+class ArrayListPys inherits AbstractList {
+    private string item0
+    private string item1
+    private string item2
+
+    public ArrayListPys() {
+        super()
+        this.item0 = ""
+        this.item1 = ""
+        this.item2 = ""
+    }
+
+    public string get(int index) {
+        if (index == 0) {
+            return this.item0
+        }
+        if (index == 1) {
+            return this.item1
+        }
+        return this.item2
+    }
+
+    public void add(string item) {
+        if (this.size == 0) {
+            this.item0 = item
+        }
+        else if (this.size == 1) {
+            this.item1 = item
+        }
+        else {
+            this.item2 = item
+        }
+        this.size = this.size + 1
+    }
+}
+
+ArrayListPys xs = ArrayListPys()
+print(xs.isEmpty())  # true
+xs.add("a")
+xs.add("b")
+print(xs.isEmpty())  # false
+print(xs.get(0))  # a
+print(xs.contains("b"))  # true
+print(xs.contains("z"))  # false
+
+# Polymorphic binding: static type is the abstract class.
+AbstractList view = xs
+print(view.contains("a"))  # true

@@ -171,6 +171,7 @@ def analyze(
     )
     _check_oop(module.body, types=types, resolver=import_resolver)
     _check_traits(module.body, types=types)
+    _check_abstract_classes(module.body)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
@@ -733,6 +734,8 @@ def _check_return_types(body: list[Any]) -> None:
                     if m.body:
                         _check_return_types(m.body.statements)
                     continue
+                if m.is_abstract:
+                    continue
                 _check_fn_returns(m.return_type, m.body, m.span.line if m.span else 1)
                 if m.body:
                     _check_return_types(m.body.statements)
@@ -759,17 +762,28 @@ def _check_return_types(body: list[Any]) -> None:
 def _check_fn_returns(return_type: str, body: Block | None, line: int) -> None:
     if not body:
         return
+    is_void = return_type == "void"
 
     def walk(stmts: list[Any]) -> None:
         for stmt in stmts:
-            if isinstance(stmt, ReturnStmt) and stmt.value is not None and not return_type:
-                _transpile_error(
-                    "Functions that return a value must declare a return type in the signature "
-                    "(e.g. `global function AppStore openStore()` or `public int capacity()`).",
-                    stmt.span.line if stmt.span else line,
-                    stmt.span.column if stmt.span else 1,
-                    "return",
-                )
+            if isinstance(stmt, ReturnStmt) and stmt.value is not None:
+                if is_void:
+                    _transpile_error(
+                        "A `void` method cannot return a value "
+                        "(use bare `return` or omit the return).",
+                        stmt.span.line if stmt.span else line,
+                        stmt.span.column if stmt.span else 1,
+                        "return",
+                        code="pys.void-return",
+                    )
+                elif not return_type:
+                    _transpile_error(
+                        "Functions that return a value must declare a return type in the signature "
+                        "(e.g. `global function AppStore openStore()` or `public int capacity()`).",
+                        stmt.span.line if stmt.span else line,
+                        stmt.span.column if stmt.span else 1,
+                        "return",
+                    )
             elif isinstance(stmt, IfStmt):
                 if stmt.then_body:
                     walk(stmt.then_body.statements)
@@ -1704,6 +1718,166 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                         walk_stmts(t.body.statements, local_types, current_class)
 
     walk_stmts(body, types, None)
+
+
+def _check_abstract_classes(body: list[Any]) -> None:
+    """Abstract method placement, subclass impl, no direct instantiation."""
+    classes = _class_map(body)
+    abstract_names = {n for n, c in classes.items() if c.abstract}
+
+    for cls in classes.values():
+        line = cls.span.line if cls.span else 1
+        for m in cls.methods:
+            if m.is_abstract and not cls.abstract:
+                _transpile_error(
+                    f"Abstract method '{m.name}' is only allowed inside an "
+                    f"`abstract class` (declare `abstract class {cls.name}`).",
+                    m.span.line if m.span else line,
+                    m.span.column if m.span else 1,
+                    m.name,
+                    code="pys.abstract-method",
+                    tips=[f"Change to `abstract class {cls.name}` or give '{m.name}' a body."],
+                )
+
+        if cls.abstract:
+            continue
+
+        # Concrete class: must implement all abstract methods from ancestors.
+        required: dict[str, tuple[str, int, list[str]]] = {}
+        current_name = cls.parent or ""
+        if not current_name:
+            for b in cls.bases:
+                if b in classes:
+                    current_name = b
+                    break
+        seen: set[str] = set()
+        while current_name and current_name not in seen:
+            seen.add(current_name)
+            parent = classes.get(current_name)
+            if parent is None:
+                break
+            # Concrete methods on ancestors satisfy abstracts further up.
+            for m in parent.methods:
+                if m.is_constructor:
+                    continue
+                if m.is_abstract:
+                    required.setdefault(
+                        m.name, (m.return_type or "", len(m.params), list(m.param_types))
+                    )
+                else:
+                    required.pop(m.name, None)
+            next_name = parent.parent or ""
+            if not next_name:
+                for b in parent.bases:
+                    if b in classes:
+                        next_name = b
+                        break
+            current_name = next_name
+
+        provided = {
+            m.name: (m.return_type or "", len(m.params), list(m.param_types))
+            for m in cls.methods
+            if not m.is_constructor and not m.is_abstract
+        }
+        for mname, (ret, arity, _pt) in required.items():
+            if mname not in provided:
+                _transpile_error(
+                    f"Class {cls.name} must implement abstract method '{mname}' "
+                    f"inherited from its abstract ancestors.",
+                    line,
+                    1,
+                    mname,
+                    code="pys.abstract-impl",
+                    tips=[f"Add `public {ret or 'void'} {mname}(...) {{ … }}` on {cls.name}."],
+                )
+            got_ret, got_arity, _ = provided[mname]
+            if got_arity != arity:
+                _transpile_error(
+                    f"Class {cls.name} method '{mname}' does not match abstract "
+                    f"signature (expected {arity} parameter(s), found {got_arity}).",
+                    line,
+                    1,
+                    mname,
+                    code="pys.abstract-impl",
+                )
+            want = _base_type_name(ret)
+            got = _base_type_name(got_ret)
+            if want and got and want != got and want != "void" and got != "void":
+                # Allow generic erasure / named type mismatch soft: only when both concrete.
+                if want not in {"T", "U"} and got not in {"T", "U"}:
+                    pass  # arity is the hard check; return types often erased generics
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            if expr.callee.name in abstract_names:
+                _transpile_error(
+                    f"Abstract class '{expr.callee.name}' cannot be instantiated "
+                    f"— construct a concrete subclass instead.",
+                    expr.span.line if expr.span else 1,
+                    expr.span.column if expr.span else 1,
+                    expr.callee.name,
+                    code="pys.abstract-new",
+                    tips=[f"Use a class that `inherits {expr.callee.name}`."],
+                )
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "callee",
+            "object",
+            "index",
+            "subject",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    if case.body:
+                        walk(case.body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
 
 
 def _trait_map(body: list[Any]) -> dict[str, TraitDef]:
