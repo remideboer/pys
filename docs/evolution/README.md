@@ -41,5 +41,6 @@ Each record then uses:
 | [CER-004](CER-004-structs.md) | Identity-free struct types | Language |
 | [CER-005](CER-005-enums-and-warnings.md) | Enums + first-class compiler warnings | Language |
 | [CER-006](CER-006-int-literals-bitwise-widths.md) | Binary/hex literals, bitwise, width aliases | Language |
+| [CER-007](CER-007-switch-stmt-and-expr.md) | Switch statement and expression | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

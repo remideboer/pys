@@ -25,3 +25,5 @@ if not (ok) {
 1. Condition in `(…)`  
 2. Body in `{ … }`  
 3. `unless (cond)` ≡ `if not (cond)` — use when the negative case is the story you want to name
+
+For multi-way branches on enums/primitives, see [J-switch](J-switch.md).

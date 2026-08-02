@@ -218,6 +218,46 @@ if not (x > 100) {
 
 `else if not (…)` is also valid (transpiles to `elif not (…)`).
 
+### `switch` — statement and expression
+
+Multi-way branch on an enum or equality-comparable primitive (`int` / width
+aliases, `string`, `char`, `bool`, `float`). **No implicit fall-through.**
+
+**Statement** — `case LABEL:` then statements. A trailing bare `continue` falls
+through to the next case (nested-loop `continue` keeps loop meaning). `break`
+is not required. Bare enum labels (`MONDAY`) resolve from the subject type
+(also `Day.MONDAY`). Non-exhaustive enum/primitive switches without `default`
+emit a **warning**.
+
+```pys
+switch (day) {
+    case MONDAY:
+        continue
+    case FRIDAY:
+        continue
+    case SUNDAY:
+        numLetters = 6
+    case WEDNESDAY:
+        numLetters = 9
+    default:
+        numLetters = 0
+}
+```
+
+**Expression** — assignable RHS; arms use `=>`. Multi-label with commas.
+Every path must yield the same type. Exhaustiveness is **required**: cover all
+enum members or provide `default` (non-enum subjects always need `default`).
+
+```pys
+numLetters = switch (day) {
+    case MONDAY, SUNDAY, FRIDAY => 6
+    case WEDNESDAY => 9
+    default => 0
+}
+```
+
+Do not mix `:` and `=>` in one switch. See example `examples/switch.pys`.
+
 ### `loop` — three shapes
 
 **C-style for** (init, condition, step share one loop variable; that variable

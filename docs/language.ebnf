@@ -215,6 +215,7 @@ statement        = declaration_stmt
                  | expression_stmt
                  | if_stmt
                  | unless_stmt
+                 | switch_stmt
                  | loop_stmt
                  | tasks_stmt
                  | await_stmt
@@ -252,6 +253,21 @@ if_stmt          = "if" , [ "not" ] , "(" , expression , ")" , block ,
 
 unless_stmt      = "unless" , "(" , expression , ")" , block ;
 (* Transpiles to: if not (expression) *)
+
+(* Switch: no implicit fall-through; trailing `continue` falls through.
+   Statement arms use `case L:`; expression arms use `case L, M => expr`.
+   Mix of `:` and `=>` in one switch is illegal. *)
+switch_stmt      = "switch" , "(" , expression , ")" , "{" , switch_stmt_arm , { switch_stmt_arm } , "}" ;
+switch_stmt_arm  = "case" , case_label , ":" , { statement }
+                 | "default" , ":" , { statement } ;
+
+switch_expr      = "switch" , "(" , expression , ")" , "{" , switch_expr_arm , { switch_expr_arm } , "}" ;
+switch_expr_arm  = "case" , case_label , { "," , case_label } , "=>" , expression
+                 | "default" , "=>" , expression ;
+
+case_label       = identifier
+                 | identifier , "." , identifier
+                 | integer | string_lit | char_lit | boolean | null_lit ;
 
 loop_stmt        = c_for_loop | while_loop | foreach_loop ;
 
@@ -341,7 +357,8 @@ primary          = identifier
                  | literal
                  | array_literal
                  | "(" , expression , ")"
-                 | constructor_call ;
+                 | constructor_call
+                 | switch_expr ;
 
 constructor_call = named_type , [ type_args ] , "(" , [ arg_list ] , ")" ;
 

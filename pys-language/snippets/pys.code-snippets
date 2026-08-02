@@ -75,6 +75,28 @@
     ],
     "description": "PYS unless block"
   },
+  "Switch statement": {
+    "prefix": "switch",
+    "body": [
+      "switch (${1:subject}) {",
+      "\tcase ${2:LABEL}:",
+      "\t\t${3}",
+      "\tdefault:",
+      "\t\t${0}",
+      "}"
+    ],
+    "description": "PYS switch statement (continue = fall-through)"
+  },
+  "Switch expression": {
+    "prefix": "switchexpr",
+    "body": [
+      "switch (${1:subject}) {",
+      "\tcase ${2:LABEL} => ${3:value}",
+      "\tdefault => ${0:value}",
+      "}"
+    ],
+    "description": "PYS switch expression (multi-label with commas)"
+  },
   "C-style loop": {
     "prefix": "loop",
     "body": [

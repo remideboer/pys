@@ -9,7 +9,7 @@ mark it done here.
 | ID | Area | Status | Summary |
 | --- | --- | --- | --- |
 | [F-001](#f-001-bitwise-rotate) | Language / bitwise | Deferred | Rotate `<<<` / `>>>` and word forms |
-| [F-002](#f-002-enum-match-exhaustiveness) | Language / enums | Deferred | `match` / exhaustiveness |
+| [F-002](#f-002-enum-match-exhaustiveness) | Language / enums | Superseded | Was `match`; delivered as `switch` (ADR-008) |
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | Deferred | PYS source-level DAP stepping |
 
@@ -42,10 +42,14 @@ Hardware-style rotate for int-like values:
 
 | | |
 | --- | --- |
-| Status | Deferred |
+| Status | **Superseded** by [ADR-008](adr/ADR-008-switch-stmt-and-expr.md) / [CER-007](evolution/CER-007-switch-stmt-and-expr.md) |
 | Source | [`requirements/enums.pys`](../requirements/enums.pys); [ADR-006](adr/ADR-006-enums-as-nominal-sets.md) |
 
-`match` / `case` with exhaustiveness checking over enum members.
+Originally: `match` / `case` with exhaustiveness over enum members.
+
+**Delivered as** PYS `switch` (statement + expression) with enum bare labels,
+`continue` fall-through, and expression exhaustiveness — not a separate
+`match` keyword.
 
 ---
 

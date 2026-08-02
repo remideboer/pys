@@ -426,7 +426,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|enum|interface|implements|inherits|return|repeat|times|import|from|all|break|continue|pass|unless|not|and|or|xor|shift|this|super|tasks|task|await)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|enum|interface|implements|inherits|return|repeat|times|import|from|all|break|continue|pass|unless|switch|case|default|not|and|or|xor|shift|this|super|tasks|task|await)\\b"
         }
       ]
     },
@@ -516,7 +516,7 @@
       "patterns": [
         {
           "name": "keyword.operator.pys",
-          "match": "\\+\\+|--|<<<|>>>|<<|>>|\\*\\*|//|<=|>=|==|!=|<>|[+\\-*/%!=<>&|^~]|\\bxor\\b|\\bshift\\s+(?:left|right)\\b"
+          "match": "\\+\\+|--|<<<|>>>|<<|>>|=>|\\*\\*|//|<=|>=|==|!=|<>|[+\\-*/%!=<>&|^~]|\\bxor\\b|\\bshift\\s+(?:left|right)\\b"
         },
         {
           "name": "invalid.illegal.pys",

@@ -9,7 +9,7 @@ const {
 } = require('./ide-process');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
@@ -22,7 +22,7 @@ const PYS_TYPES = [
 ];
 
 const PYS_MD_KEYWORDS = new Set([
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
@@ -419,6 +419,9 @@ function activate(context) {
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
+        switch: 'Multi-way branch: statement `case L: …` (trailing `continue` = fall-through) or expression `case L, M => expr`. Exhaustive expressions need all enum members or `default`.',
+        case: 'Switch arm: `case LABEL:` (statement) or `case A, B => expr` (expression). Bare enum labels resolve from the subject type.',
+        default: 'Switch catch-all arm: `default:` or `default => expr`. Required for non-exhaustive switch expressions.',
         this: 'Current instance reference (becomes `self` in Python)',
         super: 'Call parent constructor/method: `super(...)`',
         private: 'Visible only inside the defining class. Required on fields and methods.',

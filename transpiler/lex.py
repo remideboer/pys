@@ -65,6 +65,9 @@ KEYWORDS = frozenset(
         "pass",
         "break",
         "continue",
+        "switch",
+        "case",
+        "default",
         "this",
         "and",
         "or",
@@ -129,6 +132,7 @@ _OPS = (
     "//",
     "&&",
     "||",
+    "=>",
     "->",
 )
 

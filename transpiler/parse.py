@@ -20,6 +20,9 @@ from .ast_nodes import (
     StructDef,
     StructField,
     ContinueStmt,
+    SwitchCase,
+    SwitchExpr,
+    SwitchStmt,
     Expr,
     ExprStmt,
     FieldDecl,
@@ -1180,6 +1183,8 @@ def _parse_statement(p: _Tok):
         return _parse_if(p)
     if p.at_kw("unless"):
         return _parse_unless(p)
+    if p.at_kw("switch"):
+        return _parse_switch_stmt(p)
     if p.at_kw("loop"):
         return _parse_loop(p)
     if p.at_kw("tasks"):
@@ -1202,6 +1207,7 @@ def _parse_statement(p: _Tok):
         and not p.at_kw(
             "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
             "function", "class", "struct", "enum", "interface", "import", "shared", "tasks", "task",
+            "switch", "case", "default",
         )
     ) or _at_generic_typed_decl(p):
         return _parse_decl(p)
@@ -1314,6 +1320,206 @@ def _parse_unless(p: _Tok) -> IfStmt:
     p.eat(TokenKind.RPAREN)
     body = _parse_block(p)
     return IfStmt(span=sp, cond=cond, then_body=body, else_body=None, negated=True)
+
+
+def _skip_switch_noise(p: _Tok) -> None:
+    while p.at(TokenKind.BLANK) or p.at(TokenKind.COMMENT):
+        p.eat(p.cur().kind)
+
+
+def _parse_case_label(p: _Tok) -> Expr:
+    """Parse a case label: literal, bare name, or ``Enum.MEMBER``."""
+    sp = p.span()
+    if p.at(TokenKind.INT):
+        return Literal(span=sp, kind="int", text=p.eat(TokenKind.INT).text)
+    if p.at(TokenKind.STRING):
+        return Literal(span=sp, kind="string", text=p.eat(TokenKind.STRING).text)
+    if p.at(TokenKind.CHAR):
+        return Literal(span=sp, kind="char", text=p.eat(TokenKind.CHAR).text)
+    if p.at_kw("true", "false"):
+        return Literal(span=sp, kind="bool", text=p.eat(TokenKind.KEYWORD).text)
+    if p.at_kw("null"):
+        p.eat_kw("null")
+        return Literal(span=sp, kind="null", text="null")
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    if p.at(TokenKind.DOT):
+        p.eat(TokenKind.DOT)
+        member = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        return Member(
+            span=sp,
+            object=Identifier(span=sp, name=name),
+            name=member,
+        )
+    return Identifier(span=sp, name=name)
+
+
+def _switch_form_is_expr(p: _Tok) -> bool:
+    """True if the switch body uses ``=>`` arms (expression form)."""
+    saved = p.i
+    saved_gt = p._pending_gt
+    try:
+        _skip_switch_noise(p)
+        if p.at(TokenKind.RBRACE):
+            return False
+        if p.at_kw("default"):
+            p.eat_kw("default")
+            return p.at(TokenKind.OP, text="=>")
+        if not p.at_kw("case"):
+            return False
+        p.eat_kw("case")
+        _parse_case_label(p)
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            _parse_case_label(p)
+        return p.at(TokenKind.OP, text="=>")
+    finally:
+        p.i = saved
+        p._pending_gt = saved_gt
+
+
+def _parse_switch_common(p: _Tok) -> tuple[Span, Expr, list[SwitchCase], bool]:
+    """Parse ``switch (subject) { arms }``. Returns (span, subject, cases, is_expr)."""
+    sp = p.span()
+    p.eat_kw("switch")
+    p.eat(TokenKind.LPAREN)
+    subject = _parse_expression(p)
+    p.eat(TokenKind.RPAREN)
+    p.eat(TokenKind.LBRACE)
+    is_expr = _switch_form_is_expr(p)
+    cases: list[SwitchCase] = []
+    while not p.at(TokenKind.RBRACE):
+        _skip_switch_noise(p)
+        if p.at(TokenKind.RBRACE):
+            break
+        arm_sp = p.span()
+        if p.at_kw("default"):
+            p.eat_kw("default")
+            if is_expr:
+                if not p.at(TokenKind.OP, text="=>"):
+                    raise FatalParseError(
+                        "Switch expression arms use `=>` (found statement-style `:`).",
+                        p.cur().line,
+                        p.cur().column,
+                    )
+                p.eat(TokenKind.OP, text="=>")
+                value = _parse_expression(p)
+                cases.append(
+                    SwitchCase(span=arm_sp, is_default=True, value=value)
+                )
+            else:
+                if p.at(TokenKind.OP, text="=>"):
+                    raise FatalParseError(
+                        "Switch statement arms use `:` (found expression-style `=>`).",
+                        p.cur().line,
+                        p.cur().column,
+                    )
+                p.eat(TokenKind.COLON)
+                body_stmts: list = []
+                while not p.at(TokenKind.RBRACE) and not p.at_kw("case", "default"):
+                    _skip_switch_noise(p)
+                    if p.at(TokenKind.RBRACE) or p.at_kw("case", "default"):
+                        break
+                    body_stmts.append(_parse_statement(p))
+                fallthrough = False
+                if body_stmts and isinstance(body_stmts[-1], ContinueStmt):
+                    fallthrough = True
+                    body_stmts = body_stmts[:-1]
+                cases.append(
+                    SwitchCase(
+                        span=arm_sp,
+                        is_default=True,
+                        body=Block(span=arm_sp, statements=body_stmts),
+                        fallthrough=fallthrough,
+                    )
+                )
+            continue
+        if not p.at_kw("case"):
+            raise ParseError(
+                "Expected `case` or `default` in switch.",
+                p.cur().line,
+                p.cur().column,
+            )
+        p.eat_kw("case")
+        labels = [_parse_case_label(p)]
+        while p.at(TokenKind.COMMA):
+            if not is_expr:
+                raise FatalParseError(
+                    "Multi-label `case A, B` is only valid in switch expressions "
+                    "(use `=>`). For statements, put one label per case and use "
+                    "`continue` to fall through.",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat(TokenKind.COMMA)
+            labels.append(_parse_case_label(p))
+        if is_expr:
+            if p.at(TokenKind.COLON):
+                raise FatalParseError(
+                    "Switch expression arms use `=>` (found statement-style `:`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat(TokenKind.OP, text="=>")
+            value = _parse_expression(p)
+            cases.append(SwitchCase(span=arm_sp, labels=labels, value=value))
+        else:
+            if p.at(TokenKind.OP, text="=>"):
+                raise FatalParseError(
+                    "Switch statement arms use `:` (found expression-style `=>`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat(TokenKind.COLON)
+            body_stmts = []
+            while not p.at(TokenKind.RBRACE) and not p.at_kw("case", "default"):
+                _skip_switch_noise(p)
+                if p.at(TokenKind.RBRACE) or p.at_kw("case", "default"):
+                    break
+                body_stmts.append(_parse_statement(p))
+            fallthrough = False
+            if body_stmts and isinstance(body_stmts[-1], ContinueStmt):
+                fallthrough = True
+                body_stmts = body_stmts[:-1]
+            cases.append(
+                SwitchCase(
+                    span=arm_sp,
+                    labels=labels,
+                    body=Block(span=arm_sp, statements=body_stmts),
+                    fallthrough=fallthrough,
+                )
+            )
+    p.eat(TokenKind.RBRACE)
+    if not cases:
+        raise FatalParseError(
+            "Switch must have at least one `case` or `default` arm.",
+            sp.line,
+            sp.column,
+        )
+    return sp, subject, cases, is_expr
+
+
+def _parse_switch_stmt(p: _Tok) -> SwitchStmt | ExprStmt:
+    """Parse a switch used as a statement (or reject expression-only misuse)."""
+    sp, subject, cases, is_expr = _parse_switch_common(p)
+    if is_expr:
+        # Bare switch-expression as a statement is allowed as ExprStmt.
+        return ExprStmt(
+            span=sp,
+            expr=SwitchExpr(span=sp, subject=subject, cases=cases),
+        )
+    return SwitchStmt(span=sp, subject=subject, cases=cases)
+
+
+def _parse_switch_expr(p: _Tok) -> SwitchExpr:
+    sp, subject, cases, is_expr = _parse_switch_common(p)
+    if not is_expr:
+        raise FatalParseError(
+            "Switch expression requires `=>` arms "
+            "(statement form with `:` cannot be used as a value).",
+            sp.line,
+            sp.column,
+        )
+    return SwitchExpr(span=sp, subject=subject, cases=cases)
 
 
 def _parse_loop(p: _Tok):
@@ -1680,6 +1886,8 @@ def _parse_postfix(p: _Tok) -> Expr:
 @_packrat("primary")
 def _parse_primary(p: _Tok) -> Expr:
     sp = p.span()
+    if p.at_kw("switch"):
+        return _parse_switch_expr(p)
     if p.at(TokenKind.INT):
         return Literal(span=sp, kind="int", text=p.eat(TokenKind.INT).text)
     if p.at(TokenKind.FLOAT):

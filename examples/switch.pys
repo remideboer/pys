@@ -1,0 +1,41 @@
+# Switch statement (continue = fall-through) and switch expression.
+
+enum Day {
+    MONDAY
+    FRIDAY
+    SUNDAY
+    TUESDAY
+    THURSDAY
+    SATURDAY
+    WEDNESDAY
+}
+
+int numLetters = 0
+Day day = Day.WEDNESDAY
+
+switch (day) {
+    case MONDAY:
+        continue
+    case FRIDAY:
+        continue
+    case SUNDAY:
+        numLetters = 6
+    case TUESDAY:
+        continue
+    case THURSDAY:
+        numLetters = 7
+    case SATURDAY:
+        numLetters = 8
+    case WEDNESDAY:
+        numLetters = 9
+}
+
+print(numLetters)
+
+numLetters = switch (day) {
+    case MONDAY, SUNDAY, FRIDAY => 6
+    case TUESDAY, THURSDAY => 7
+    case SATURDAY => 8
+    case WEDNESDAY => 9
+}
+print(numLetters)

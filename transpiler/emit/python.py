@@ -44,6 +44,9 @@ from ..ast_nodes import (
     Slice,
     EnumDef,
     StructDef,
+    SwitchCase,
+    SwitchExpr,
+    SwitchStmt,
     TaskDef,
     TasksBlock,
     UnaryOp,
@@ -253,6 +256,8 @@ class _Emitter:
             self._emit(indent, "continue")
         elif isinstance(stmt, IfStmt):
             self._if(stmt, indent, first=True)
+        elif isinstance(stmt, SwitchStmt):
+            self._switch_stmt(stmt, indent)
         elif isinstance(stmt, WhileStmt):
             self._emit(indent, f"while {self._expr(stmt.cond)}:")
             self._block(stmt.body, indent + 1)
@@ -598,6 +603,80 @@ class _Emitter:
         self._emit(indent, "else:")
         self._block(stmt.else_body, indent + 1)
 
+    def _switch_label_cmp(self, subject: str, label: Expr) -> str:
+        return f"{subject} == {self._expr(label)}"
+
+    def _switch_labels_cond(self, subject: str, labels: list[Expr]) -> str:
+        if not labels:
+            return "True"
+        parts = [self._switch_label_cmp(subject, lab) for lab in labels]
+        if len(parts) == 1:
+            return parts[0]
+        return " or ".join(f"({p})" for p in parts)
+
+    def _switch_stmt_groups(
+        self, cases: list[SwitchCase]
+    ) -> list[tuple[list[Expr] | None, Block | None]]:
+        """Collapse fall-through chains into (labels|None for default, body) groups."""
+        groups: list[tuple[list[Expr] | None, Block | None]] = []
+        pending: list[Expr] = []
+        for case in cases:
+            if case.is_default:
+                if pending:
+                    # Fall-through into default: treat pending labels with default body.
+                    groups.append((pending, case.body))
+                    pending = []
+                else:
+                    groups.append((None, case.body))
+                continue
+            pending.extend(case.labels)
+            if case.fallthrough:
+                continue
+            groups.append((pending, case.body))
+            pending = []
+        if pending:
+            # Sem rejects trailing fall-through; keep defensive emit.
+            groups.append((pending, Block(statements=[])))
+        return groups
+
+    def _switch_stmt(self, stmt: SwitchStmt, indent: int) -> None:
+        subject = self._expr(stmt.subject)
+        groups = self._switch_stmt_groups(stmt.cases)
+        first = True
+        for labels, body in groups:
+            if labels is None:
+                self._emit(indent, "else:")
+                self._block(body, indent + 1)
+                first = False
+                continue
+            cond = self._switch_labels_cond(subject, labels)
+            head = f"if {cond}:" if first else f"elif {cond}:"
+            self._emit(indent, head)
+            self._block(body, indent + 1)
+            first = False
+
+    def _switch_expr(self, expr: SwitchExpr) -> str:
+        subject = self._expr(expr.subject)
+        # Build nested conditional from last arm to first for readability.
+        arms: list[tuple[list[Expr] | None, Expr | None]] = []
+        for case in expr.cases:
+            if case.is_default:
+                arms.append((None, case.value))
+            else:
+                arms.append((case.labels, case.value))
+        if not arms:
+            return "None"
+        # Default arm (if any) is the innermost else; otherwise last case.
+        result = "None"
+        for labels, value in reversed(arms):
+            val = self._expr(value)
+            if labels is None:
+                result = val
+            else:
+                cond = self._switch_labels_cond(subject, labels)
+                result = f"({val} if {cond} else {result})"
+        return result
+
     def _block(self, block: Block | None, indent: int) -> None:
         if block is None or not block.statements:
             self._emit(indent, "pass")
@@ -669,6 +748,8 @@ class _Emitter:
             return inner
         if isinstance(expr, ArrayLiteral):
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
+        if isinstance(expr, SwitchExpr):
+            return self._switch_expr(expr)
         raise TypeError(f"unsupported expr {type(expr).__name__}")
 
     def _call_arg(self, arg: Expr) -> str:

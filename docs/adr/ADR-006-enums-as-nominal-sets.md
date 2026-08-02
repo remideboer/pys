@@ -26,8 +26,10 @@ strings, and classes. Requirements live in `requirements/enums.pys`.
 5. **Naming:** non-`SCREAMING_SNAKE_CASE` members emit a **warning** (non-fatal)
    with tip + suggested rename for IDE quick fix.
 6. **Emit:** `enum.Enum` + `auto()`, `IntEnum`, or `StrEnum` (Python 3.11+).
-7. **Deferred:** `match` / exhaustiveness — [F-002](../TODO-FUTURE.md#f-002-enum-match-exhaustiveness);
-   value aliases via real syntax — [F-003](../TODO-FUTURE.md#f-003-enum-value-aliases).
+7. **Exhaustiveness / multi-way branch:** delivered as `switch` (stmt + expr) in
+   [ADR-008](ADR-008-switch-stmt-and-expr.md) — supersedes the deferred `match`
+   idea in [F-002](../TODO-FUTURE.md#f-002-enum-match-exhaustiveness).
+   Value aliases via real syntax remain deferred — [F-003](../TODO-FUTURE.md#f-003-enum-value-aliases).
 
 ## Consequences
 
@@ -41,7 +43,7 @@ strings, and classes. Requirements live in `requirements/enums.pys`.
 
 - Treating enums as sugar for `const int` / string unions.
 - Fatal error on naming (rejected in favor of warning).
-- Shipping `match` in the same increment (YAGNI / deferred).
+- Shipping a separate `match` keyword (superseded by `switch` / ADR-008).
 - **`@alias` (or any `@` annotation)** — PYS does not use decorator-style marks;
   those usually signal a missing language construct. Alias/duplicate naming, if
   needed later, gets proper syntax in a new ADR/CER — not an annotation bolt-on.

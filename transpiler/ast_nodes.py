@@ -184,6 +184,29 @@ class Block(Node):
 
 
 @dataclass
+class SwitchCase(Node):
+    """One arm of a switch statement or expression."""
+
+    labels: list[Expr] = field(default_factory=list)  # empty when is_default
+    is_default: bool = False
+    body: Block | None = None  # statement form
+    value: Expr | None = None  # expression form (`=> expr`)
+    fallthrough: bool = False  # statement arm ends with switch-continue
+
+
+@dataclass
+class SwitchStmt(Node):
+    subject: Expr | None = None
+    cases: list[SwitchCase] = field(default_factory=list)
+
+
+@dataclass
+class SwitchExpr(Expr):
+    subject: Expr | None = None
+    cases: list[SwitchCase] = field(default_factory=list)
+
+
+@dataclass
 class IfStmt(Node):
     cond: Expr | None = None
     then_body: Block | None = None

@@ -36,6 +36,9 @@ from .ast_nodes import (
     ReturnStmt,
     SharedDecl,
     StructDef,
+    SwitchCase,
+    SwitchExpr,
+    SwitchStmt,
     TasksBlock,
     UnaryOp,
     WhileStmt,
@@ -157,6 +160,13 @@ def analyze(
     _check_int_ops(module.body, types=types, class_names=class_names)
     _check_structs(module.body, types=types, fixed=fixed, struct_info=struct_info)
     _check_enums(module.body, types=types, fixed=fixed, enum_info=enum_info)
+    _check_switch(
+        module.body,
+        types=types,
+        enum_info=enum_info,
+        warnings=warnings,
+        class_names=class_names,
+    )
     _check_oop(module.body, types=types, resolver=import_resolver)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
@@ -311,6 +321,10 @@ def _check_width_ranges(body: list[Any], *, types: dict[str, str]) -> None:
                     walk(stmt.then_body.statements)
                 if stmt.else_body:
                     walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                for case in stmt.cases:
+                    if case.body:
+                        walk(case.body.statements)
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
             elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
@@ -355,6 +369,13 @@ def _check_int_ops(
         if isinstance(expr, BinaryOp) and expr.op in (_BITWISE_BINOPS | _INT_ARITH_BINOPS):
             require_int(expr.left, expr.op, line, col)
             require_int(expr.right, expr.op, line, col)
+        if isinstance(expr, SwitchExpr):
+            walk_expr(expr.subject)
+            for case in expr.cases:
+                for lab in case.labels:
+                    walk_expr(lab)
+                walk_expr(case.value)
+            return
         for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
             child = getattr(expr, attr, None)
             if isinstance(child, Expr):
@@ -379,6 +400,13 @@ def _check_int_ops(
                     walk(stmt.then_body.statements)
                 if stmt.else_body:
                     walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    for lab in case.labels:
+                        walk_expr(lab)
+                    if case.body:
+                        walk(case.body.statements)
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
             elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
@@ -714,6 +742,10 @@ def _check_return_types(body: list[Any]) -> None:
                 _check_return_types(node.then_body.statements)
             if node.else_body:
                 _check_return_types(node.else_body.statements)
+        elif isinstance(node, SwitchStmt):
+            for case in node.cases:
+                if case.body:
+                    _check_return_types(case.body.statements)
         elif isinstance(node, Block):
             _check_return_types(node.statements)
         elif isinstance(node, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
@@ -740,6 +772,10 @@ def _check_fn_returns(return_type: str, body: Block | None, line: int) -> None:
                     walk(stmt.then_body.statements)
                 if stmt.else_body:
                     walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                for case in stmt.cases:
+                    if case.body:
+                        walk(case.body.statements)
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
             elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
@@ -766,6 +802,19 @@ def _infer_type(expr: Expr | None, class_names: set[str] | None = None) -> str |
     if isinstance(expr, Member) and isinstance(expr.object, Identifier):
         if class_names and expr.object.name in class_names:
             return expr.object.name
+    if isinstance(expr, SwitchExpr):
+        arm_types: list[str] = []
+        for case in expr.cases:
+            t = _infer_type(case.value, class_names)
+            if t is None:
+                return None
+            arm_types.append(t)
+        if not arm_types:
+            return None
+        first = arm_types[0]
+        if all(t == first for t in arm_types):
+            return first
+        return None
     if isinstance(expr, BinaryOp) and expr.op == "+":
         left = _infer_type(expr.left, class_names)
         right = _infer_type(expr.right, class_names)
@@ -1142,6 +1191,21 @@ def _check_bindings(
                     class_implements=class_implements,
                     interfaces=interfaces,
                 )
+        elif isinstance(stmt, SwitchStmt):
+            for case in stmt.cases:
+                if case.body:
+                    _check_bindings(
+                        case.body.statements,
+                        types=types,
+                        declared=declared,
+                        constants=constants,
+                        fixed=fixed,
+                        loop_counters=loop_counters,
+                        class_parents=class_parents,
+                        class_names=class_names,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    )
         elif isinstance(stmt, Block):
             _check_bindings(
                 stmt.statements,
@@ -2121,6 +2185,457 @@ def _enum_info_map(
     return info
 
 
+_SWITCH_PRIMITIVES = frozenset({"int", "string", "char", "bool", "float"}) | _WIDTH_ALIASES
+
+
+def _switch_subject_type(
+    expr: Expr | None,
+    types: dict[str, str],
+    enum_info: dict[str, dict[str, Any]],
+    class_names: set[str],
+) -> str | None:
+    if expr is None:
+        return None
+    if isinstance(expr, Identifier):
+        t = _base_type_name(types.get(expr.name, "") or "")
+        if t:
+            return t
+    if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+        ename = expr.object.name
+        if ename in enum_info and expr.name in enum_info[ename]["members"]:
+            return ename
+    return _infer_type(expr, class_names)
+
+
+def _switch_label_key(
+    label: Expr,
+    *,
+    subject_type: str,
+    enum_info: dict[str, dict[str, Any]],
+) -> tuple[str, str] | None:
+    """Return a comparable key for duplicate detection, or None if invalid shape."""
+    if isinstance(label, Literal):
+        return (label.kind, label.text)
+    if isinstance(label, Member) and isinstance(label.object, Identifier):
+        return ("enum", f"{label.object.name}.{label.name}")
+    if isinstance(label, Identifier):
+        if subject_type in enum_info:
+            return ("enum", f"{subject_type}.{label.name}")
+        return ("ident", label.name)
+    return None
+
+
+def _resolve_switch_label(
+    label: Expr,
+    *,
+    subject_type: str,
+    enum_info: dict[str, dict[str, Any]],
+) -> Expr:
+    """Rewrite bare enum member labels to ``Enum.MEMBER``; return label otherwise."""
+    if (
+        isinstance(label, Identifier)
+        and subject_type in enum_info
+        and label.name in enum_info[subject_type]["members"]
+    ):
+        sp = label.span
+        return Member(
+            span=sp,
+            object=Identifier(span=sp, name=subject_type),
+            name=label.name,
+        )
+    return label
+
+
+def _validate_switch_label(
+    label: Expr,
+    *,
+    subject_type: str,
+    enum_info: dict[str, dict[str, Any]],
+) -> None:
+    line = label.span.line if label.span else 1
+    col = label.span.column if label.span else 1
+    if isinstance(label, Literal) and label.kind == "null":
+        _transpile_error(
+            "Switch case labels cannot be null.",
+            line,
+            col,
+            "null",
+            code="pys.switch-label",
+        )
+    if subject_type in enum_info:
+        members = set(enum_info[subject_type]["members"])
+        if isinstance(label, Member) and isinstance(label.object, Identifier):
+            if label.object.name != subject_type:
+                _transpile_error(
+                    f"Switch on {subject_type} cannot use label from enum "
+                    f"{label.object.name}.",
+                    line,
+                    col,
+                    label.object.name,
+                    code="pys.switch-label",
+                )
+            if label.name not in members:
+                _transpile_error(
+                    f"'{label.name}' is not a member of enum {subject_type}.",
+                    line,
+                    col,
+                    label.name,
+                    code="pys.switch-label",
+                    tips=[f"Known members: {', '.join(enum_info[subject_type]['members'])}."],
+                )
+            return
+        if isinstance(label, Identifier):
+            if label.name not in members:
+                _transpile_error(
+                    f"Unknown enum member '{label.name}' for switch on {subject_type}.",
+                    line,
+                    col,
+                    label.name,
+                    code="pys.switch-label",
+                    tips=[
+                        f"Use a member of {subject_type}, or qualify as "
+                        f"{subject_type}.{label.name}."
+                    ],
+                )
+            return
+        _transpile_error(
+            f"Switch on enum {subject_type} requires enum member labels "
+            f"(e.g. {subject_type}.MEMBER or bare MEMBER).",
+            line,
+            col,
+            getattr(label, "text", None) or getattr(label, "name", "label"),
+            code="pys.switch-label",
+        )
+    # Primitive / int-like subjects: require compatible literals.
+    expected_kind = "int" if subject_type in _INT_LIKE else subject_type
+    if isinstance(label, Literal):
+        kind = label.kind
+        if expected_kind == "int" and kind == "int":
+            return
+        if kind == expected_kind:
+            return
+        _transpile_error(
+            f"Switch on {subject_type} cannot use {kind} label.",
+            line,
+            col,
+            label.text,
+            code="pys.switch-label",
+        )
+    _transpile_error(
+        f"Switch on {subject_type} requires {expected_kind} literal case labels.",
+        line,
+        col,
+        getattr(label, "name", None) or "label",
+        code="pys.switch-label",
+    )
+
+
+def _check_one_switch(
+    *,
+    subject: Expr | None,
+    cases: list[SwitchCase],
+    is_expr: bool,
+    span_line: int,
+    span_col: int,
+    types: dict[str, str],
+    enum_info: dict[str, dict[str, Any]],
+    warnings: list,
+    class_names: set[str],
+) -> None:
+    subject_type = _switch_subject_type(subject, types, enum_info, class_names)
+    if not subject_type:
+        _transpile_error(
+            "Cannot determine type of switch subject.",
+            subject.span.line if subject and subject.span else span_line,
+            subject.span.column if subject and subject.span else span_col,
+            "switch",
+            code="pys.switch-subject",
+            tips=["Declare the subject with a type (enum, int, string, char, or bool)."],
+        )
+    if subject_type not in enum_info and subject_type not in _SWITCH_PRIMITIVES:
+        _transpile_error(
+            f"Switch subject type '{subject_type}' is not supported "
+            f"(use an enum or equality-comparable primitive).",
+            subject.span.line if subject and subject.span else span_line,
+            subject.span.column if subject and subject.span else span_col,
+            subject_type,
+            code="pys.switch-subject",
+        )
+
+    seen_keys: set[tuple[str, str]] = set()
+    covered_members: set[str] = set()
+    has_default = False
+    arm_value_types: list[str | None] = []
+
+    for idx, case in enumerate(cases):
+        line = case.span.line if case.span else span_line
+        col = case.span.column if case.span else span_col
+        if case.fallthrough and idx == len(cases) - 1:
+            _transpile_error(
+                "`continue` fall-through requires a following case.",
+                line,
+                col,
+                "continue",
+                code="pys.switch-fallthrough",
+            )
+        if case.is_default:
+            if has_default:
+                _transpile_error(
+                    "Switch may have at most one `default` arm.",
+                    line,
+                    col,
+                    "default",
+                    code="pys.switch-default",
+                )
+            has_default = True
+            if is_expr:
+                arm_value_types.append(_infer_type(case.value, class_names))
+            continue
+
+        resolved: list[Expr] = []
+        for label in case.labels:
+            _validate_switch_label(
+                label, subject_type=subject_type, enum_info=enum_info
+            )
+            key = _switch_label_key(
+                label, subject_type=subject_type, enum_info=enum_info
+            )
+            if key is None:
+                _transpile_error(
+                    "Invalid switch case label.",
+                    label.span.line if label.span else line,
+                    label.span.column if label.span else col,
+                    "case",
+                    code="pys.switch-label",
+                )
+            if key in seen_keys:
+                _transpile_error(
+                    f"Duplicate switch case label '{key[1]}'.",
+                    label.span.line if label.span else line,
+                    label.span.column if label.span else col,
+                    key[1],
+                    code="pys.switch-duplicate",
+                )
+            seen_keys.add(key)
+            new_label = _resolve_switch_label(
+                label, subject_type=subject_type, enum_info=enum_info
+            )
+            resolved.append(new_label)
+            if subject_type in enum_info and isinstance(new_label, Member):
+                covered_members.add(new_label.name)
+        case.labels = resolved
+        if is_expr:
+            arm_value_types.append(_infer_type(case.value, class_names))
+
+    if is_expr:
+        if any(t is None for t in arm_value_types):
+            _transpile_error(
+                "Cannot infer a common type for switch expression arms.",
+                span_line,
+                span_col,
+                "switch",
+                code="pys.switch-type",
+            )
+        first = arm_value_types[0]
+        if any(t != first for t in arm_value_types):
+            _transpile_error(
+                "All switch expression arms must yield the same type "
+                f"(found {', '.join(sorted({t for t in arm_value_types if t}))}).",
+                span_line,
+                span_col,
+                "switch",
+                code="pys.switch-type",
+            )
+        if subject_type in enum_info:
+            missing = [
+                m for m in enum_info[subject_type]["members"] if m not in covered_members
+            ]
+            if missing and not has_default:
+                _transpile_error(
+                    f"Switch expression on {subject_type} is not exhaustive "
+                    f"(missing {', '.join(missing)}); add the members or `default`.",
+                    span_line,
+                    span_col,
+                    "switch",
+                    code="pys.switch-exhaustive",
+                    tips=["Expression switches must yield a value on every path."],
+                )
+        elif not has_default:
+            _transpile_error(
+                f"Switch expression on {subject_type} requires a `default` arm.",
+                span_line,
+                span_col,
+                "switch",
+                code="pys.switch-default",
+            )
+    else:
+        # Statement: warn when not proven exhaustive and no default.
+        if not has_default:
+            if subject_type in enum_info:
+                missing = [
+                    m
+                    for m in enum_info[subject_type]["members"]
+                    if m not in covered_members
+                ]
+                if missing:
+                    _transpile_warning(
+                        warnings,
+                        f"Switch on {subject_type} is not exhaustive "
+                        f"(missing {', '.join(missing)}); consider adding `default`.",
+                        span_line,
+                        span_col,
+                        "switch",
+                        code="pys.switch-exhaustive",
+                        tips=[
+                            "Statement switches warn when cases may not cover all members."
+                        ],
+                    )
+            else:
+                _transpile_warning(
+                    warnings,
+                    f"Switch on {subject_type} is not exhaustive without `default`.",
+                    span_line,
+                    span_col,
+                    "switch",
+                    code="pys.switch-exhaustive",
+                    tips=["Add a `default` arm for values not listed in `case` labels."],
+                )
+
+
+def _check_switch(
+    body: list[Any],
+    *,
+    types: dict[str, str],
+    enum_info: dict[str, dict[str, Any]],
+    warnings: list,
+    class_names: set[str],
+) -> None:
+    """Resolve labels, enforce exhaustiveness/default, unify expression types."""
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, SwitchExpr):
+            _check_one_switch(
+                subject=expr.subject,
+                cases=expr.cases,
+                is_expr=True,
+                span_line=expr.span.line if expr.span else 1,
+                span_col=expr.span.column if expr.span else 1,
+                types=types,
+                enum_info=enum_info,
+                warnings=warnings,
+                class_names=class_names,
+            )
+            walk_expr(expr.subject)
+            for case in expr.cases:
+                for lab in case.labels:
+                    walk_expr(lab)
+                walk_expr(case.value)
+            return
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "callee",
+            "object",
+            "index",
+            "subject",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+        elements = getattr(expr, "elements", None)
+        if isinstance(elements, list):
+            for el in elements:
+                if isinstance(el, Expr):
+                    walk_expr(el)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, SwitchStmt):
+                _check_one_switch(
+                    subject=stmt.subject,
+                    cases=stmt.cases,
+                    is_expr=False,
+                    span_line=stmt.span.line if stmt.span else 1,
+                    span_col=stmt.span.column if stmt.span else 1,
+                    types=types,
+                    enum_info=enum_info,
+                    warnings=warnings,
+                    class_names=class_names,
+                )
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    for lab in case.labels:
+                        walk_expr(lab)
+                    if case.body:
+                        walk(case.body.statements)
+                continue
+            if isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(stmt, ForEachStmt):
+                    walk_expr(stmt.iterable)
+                elif isinstance(stmt, WhileStmt):
+                    walk_expr(stmt.cond)
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                local_types = dict(types)
+                for p in stmt.params:
+                    local_types.setdefault(p, "int")
+                _check_switch(
+                    stmt.body.statements,
+                    types=local_types,
+                    enum_info=enum_info,
+                    warnings=warnings,
+                    class_names=class_names,
+                )
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        _check_switch(
+                            m.body.statements,
+                            types=dict(types),
+                            enum_info=enum_info,
+                            warnings=warnings,
+                            class_names=class_names,
+                        )
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        _check_switch(
+                            t.body.statements,
+                            types=dict(types),
+                            enum_info=enum_info,
+                            warnings=warnings,
+                            class_names=class_names,
+                        )
+
+    walk(body)
+
+
 def _check_enums(
     body: list[Any],
     *,
@@ -2237,6 +2752,13 @@ def _check_enums(
             walk_expr(expr.left)
             walk_expr(expr.right)
             return
+        if isinstance(expr, SwitchExpr):
+            walk_expr(expr.subject)
+            for case in expr.cases:
+                for lab in case.labels:
+                    walk_expr(lab)
+                walk_expr(case.value)
+            return
         for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
             child = getattr(expr, attr, None)
             if isinstance(child, Expr):
@@ -2297,6 +2819,13 @@ def _check_enums(
                     walk(stmt.then_body.statements)
                 if stmt.else_body:
                     walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    for lab in case.labels:
+                        walk_expr(lab)
+                    if case.body:
+                        walk(case.body.statements)
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
             elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
