@@ -39,5 +39,6 @@ Each record then uses:
 | [CER-002](CER-002-compile-performance.md) | Cut redundant parse and filesystem work | Performance |
 | [CER-003](CER-003-peg-frontend.md) | Lexer/deps wins + PEG-capable parse front-end | Performance |
 | [CER-004](CER-004-structs.md) | Identity-free struct types | Language |
+| [CER-005](CER-005-enums-and-warnings.md) | Enums + first-class compiler warnings | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

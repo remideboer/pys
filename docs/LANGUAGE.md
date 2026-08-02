@@ -402,6 +402,50 @@ struct’s top-level visibility — not per-field modifiers. Construct with
 `Damage(...)`, not brace literals. Prefer a **class** when the type has
 behavior or inheritance.
 
+### Enums
+
+Enums are **nominal closed sets** of named constants. Members are immutable.
+Optional `global` / `package` / `module` on the declaration (same as structs).
+
+```pys
+enum Priority {
+    LOW
+    MEDIUM
+    HIGH
+}
+
+enum HttpStatus {
+    OK = 200
+    CREATED = 201
+}
+
+enum Method {
+    GET = "GET"
+    POST = "POST"
+}
+
+HttpStatus s = HttpStatus.OK
+print(s == HttpStatus.CREATED)
+print(s.value)
+```
+
+Rules:
+
+1. Body must be non-empty
+2. All-or-nothing values: every member has `=` or none do (implicit →
+   `enum.auto()`)
+3. Explicit values are homogeneous (all `int` or all `string`) and unique
+   (duplicate aliases, if added later, will be a real language form — PYS does
+   not use `@` annotations)
+4. Access only as `EnumName.MEMBER` (no call constructor / `new`)
+5. Nominal typing: no implicit assign from bare `int` / `string`; use `.value`
+   for the underlying value
+6. `==` / `!=` only between members of the **same** enum
+7. Member names should be `SCREAMING_SNAKE_CASE` (compiler **warning**, with IDE
+   tip + rename quick fix) — compile still succeeds
+8. Emit: implicit → `enum.Enum` + `auto()`; int → `IntEnum`; string → `StrEnum`
+9. **Deferred:** `match` / exhaustiveness checking (follow-up)
+
 ---
 
 ## 7. Visibility and modules
@@ -415,7 +459,7 @@ behavior or inheritance.
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 
-Applies to functions, classes, structs, interfaces, and top-level `const` / `fix`.
+Applies to functions, classes, structs, enums, interfaces, and top-level `const` / `fix`.
 
 ### Member access (inside classes)
 

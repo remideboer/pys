@@ -15,6 +15,8 @@ from .ast_nodes import (
     Cast,
     ClassDef,
     CommentStmt,
+    EnumDef,
+    EnumMember,
     StructDef,
     StructField,
     ContinueStmt,
@@ -377,6 +379,8 @@ def _parse_toplevel(p: _Tok):
             return _parse_struct(p, visibility=vis, type_fix=True)
         if p.at_kw("struct"):
             return _parse_struct(p, visibility=vis)
+        if p.at_kw("enum"):
+            return _parse_enum(p, visibility=vis)
         if p.at_kw("interface"):
             return _parse_interface(p, visibility=vis)
         if p.at_kw("const", "fix") or p.at_kw(*_TYPES) or p.at_kw("var"):
@@ -392,6 +396,8 @@ def _parse_toplevel(p: _Tok):
         return _parse_struct(p, type_fix=True)
     if p.at_kw("struct"):
         return _parse_struct(p)
+    if p.at_kw("enum"):
+        return _parse_enum(p)
     if p.at_kw("interface"):
         return _parse_interface(p)
     if p.at_kw("shared"):
@@ -798,7 +804,7 @@ def _parse_struct(
                 p.cur().line,
                 p.cur().column,
             )
-        if p.at_kw("function", "func", "class", "interface", "struct", "tasks"):
+        if p.at_kw("function", "func", "class", "interface", "struct", "enum", "tasks"):
             bad = p.cur().text
             raise FatalParseError(
                 f"Structs cannot contain `{bad}` — only fields are allowed "
@@ -835,6 +841,49 @@ def _parse_struct(
         type_params=type_params,
         type_fix=type_fix,
     )
+
+
+def _parse_enum(p: _Tok, visibility: str = "") -> EnumDef:
+    """Parse ``[top_visibility] enum Name { MEMBER [= INT|STRING]+ }``."""
+    sp = p.span()
+    p.eat_kw("enum")
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    p.eat(TokenKind.LBRACE)
+    members: list[EnumMember] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        mem_sp = p.span()
+        mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        value: Expr | None = None
+        if p.at(TokenKind.OP, text="="):
+            p.eat(TokenKind.OP, text="=")
+            lit = p.cur()
+            if lit.kind == TokenKind.INT:
+                p.eat(TokenKind.INT)
+                value = Literal(span=Span(lit.line, lit.column), kind="int", text=lit.text)
+            elif lit.kind == TokenKind.STRING:
+                p.eat(TokenKind.STRING)
+                value = Literal(span=Span(lit.line, lit.column), kind="string", text=lit.text)
+            else:
+                raise FatalParseError(
+                    "Enum member value must be an integer or string literal.",
+                    lit.line,
+                    lit.column,
+                )
+        members.append(EnumMember(span=mem_sp, name=mname, value=value))
+    p.eat(TokenKind.RBRACE)
+    if not members:
+        raise FatalParseError(
+            f"Enum '{name}' cannot be empty — declare at least one member.",
+            sp.line,
+            sp.column,
+        )
+    return EnumDef(span=sp, name=name, members=members, visibility=visibility)
 
 
 def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
@@ -1082,7 +1131,7 @@ def _parse_statement(p: _Tok):
         and p.peek(2).text == "="
         and not p.at_kw(
             "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
-            "function", "class", "struct", "interface", "import", "shared", "tasks", "task",
+            "function", "class", "struct", "enum", "interface", "import", "shared", "tasks", "task",
         )
     ) or _at_generic_typed_decl(p):
         return _parse_decl(p)

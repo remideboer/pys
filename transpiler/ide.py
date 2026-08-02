@@ -29,7 +29,8 @@ from .pytypes import (
     locate_attr_path,
     locate_type_definition,
 )
-from .transpiler import TranspileError
+from . import sem as sem_mod
+from .transpiler import TranspileError, TranspileWarning
 from .workspace import resolve_workspace_path, workspace_root_from_env
 
 _PRIMITIVES = {"int", "float", "char", "string", "bool", "list", "dict", "tuple", "set"}
@@ -46,6 +47,10 @@ def _error_dict(exc: TranspileError) -> dict:
         "tips": list(getattr(exc, "tips", None) or []),
         "source_file": str(exc.source_file) if exc.source_file else None,
     }
+
+
+def _warning_dict(warn: TranspileWarning) -> dict:
+    return warn.to_dict()
 
 
 def _base_type(type_name: str) -> str:
@@ -132,6 +137,7 @@ def _register_type(
         base in resolver.class_parents
         or base in resolver.interfaces
         or base in getattr(resolver, "structs", set())
+        or base in getattr(resolver, "enums", set())
         or base in resolver.exports
     ):
         validated_types.add(base)
@@ -187,6 +193,7 @@ def _collect_hints_and_types(
         list(resolver.class_parents)
         + list(resolver.interfaces)
         + list(getattr(resolver, "structs", set()))
+        + list(getattr(resolver, "enums", set()))
     ):
         _register_type(
             name,
@@ -301,6 +308,7 @@ def analyze_file(
         source_path = source_path.resolve()
     source = source_path.read_text(encoding="utf-8")
     error = None
+    warnings: list[dict] = []
     try:
         compile_pys(
             source,
@@ -318,6 +326,7 @@ def analyze_file(
         return {
             "ok": False,
             "error": error,
+            "warnings": [],
             "hints": [],
             "symbols": {},
             "variable_types": {},
@@ -329,6 +338,19 @@ def analyze_file(
             "method_locations": {},
             "_site_paths": [],
         }
+
+    if error is None:
+        try:
+            tree = sem_mod.analyze(
+                tree,
+                source_path=source_path,
+                allow_runtime_introspection=allow_runtime_introspection,
+            )
+            warnings = [
+                _warning_dict(w) for w in getattr(tree, "analysis_warnings", []) or []
+            ]
+        except TranspileError as exc:
+            error = _error_dict(exc)
 
     resolver = _seed_resolver(
         tree,
@@ -368,7 +390,16 @@ def analyze_file(
             **getattr(resolver, "struct_field_locations", {}),
         }.items()
     }
-
+    enum_member_locations = {
+        typ: {
+            member: {"file": str(path), "line": line, "column": col, "kind": "member"}
+            for member, (path, line, col) in members.items()
+        }
+        for typ, members in {
+            **info.enum_member_locations,
+            **getattr(resolver, "enum_member_locations", {}),
+        }.items()
+    }
     for type_name in set(resolver.type_modules) | set(type_definitions) | set(validated_types):
         if type_name in _PRIMITIVES:
             continue
@@ -396,6 +427,7 @@ def analyze_file(
     return {
         "ok": error is None,
         "error": error,
+        "warnings": warnings,
         "hints": hints,
         "symbols": symbols,
         "variable_types": variable_types,
@@ -406,6 +438,7 @@ def analyze_file(
         "class_parents": class_parents,
         "method_locations": method_locations,
         "struct_field_locations": struct_field_locations,
+        "enum_member_locations": enum_member_locations,
         "_site_paths": [str(p) for p in site_paths],
         "_allow_runtime_introspection": allow_runtime_introspection,
     }
@@ -430,6 +463,12 @@ def _lookup_struct_field(analysis: dict, type_name: str, field: str) -> dict | N
     """Find a struct field declaration for ``Type.field`` or binding.field."""
     fields = (analysis.get("struct_field_locations") or {}).get(type_name) or {}
     return fields.get(field)
+
+
+def _lookup_enum_member(analysis: dict, type_name: str, member: str) -> dict | None:
+    """Find an enum member declaration for ``EnumName.MEMBER``."""
+    members = (analysis.get("enum_member_locations") or {}).get(type_name) or {}
+    return members.get(member)
 
 
 def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
@@ -458,6 +497,13 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
             field_loc = _lookup_struct_field(analysis, base, member)
             if field_loc:
                 return field_loc
+            enum_loc = _lookup_enum_member(analysis, base, member)
+            if enum_loc:
+                return enum_loc
+            # EnumName.MEMBER when head is the type itself
+            enum_loc = _lookup_enum_member(analysis, head, member)
+            if enum_loc:
+                return enum_loc
 
     site_paths = [Path(p) for p in analysis.get("_site_paths") or []]
     located = locate_attr_path(

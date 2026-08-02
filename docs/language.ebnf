@@ -107,6 +107,7 @@ declaration      = var_decl
                  | function_decl
                  | class_decl
                  | struct_decl
+                 | enum_decl
                  | interface_decl ;
 
 var_decl         = type_name , identifier , "=" , expression
@@ -176,6 +177,16 @@ struct_body      = "{" , { struct_field_decl } , "}" ;
 (* Fields are always public; top_visibility on struct_decl controls import access. *)
 struct_field_decl = [ "fix" ] , type_name , identifier ,
                     [ "=" , expression ] ;
+
+(* ------------------------- Enums ------------------------- *)
+
+enum_decl        = [ top_visibility ] , "enum" , identifier ,
+                   "{" , enum_member , { enum_member } , "}" ;
+(* Non-empty body required. All-or-nothing: every member has "=" or none do.
+   Explicit values are homogeneous (all INT or all STRING) and unique.
+   `@alias` / match exhaustiveness are deferred. *)
+
+enum_member      = identifier , [ "=" , ( integer | string_literal ) ] ;
 
 (* ------------------------- Interfaces ------------------------- *)
 
@@ -372,7 +383,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class struct interface implements inherits super sealed
+  function func return class struct enum interface implements inherits super sealed
   import from all var const fix print pass break continue
   this and or not
   public private protected global package module

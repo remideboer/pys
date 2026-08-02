@@ -16,6 +16,7 @@ from .ast_nodes import (
     Call,
     Cast,
     ClassDef,
+    EnumDef,
     Expr,
     ExprStmt,
     ForEachStmt,
@@ -63,7 +64,14 @@ def analyze(
     source_path: Path | None = None,
     allow_runtime_introspection: bool = False,
 ) -> Module:
-    """Validate module; raise TranspileError on known AST-checkable faults."""
+    """Validate module; raise TranspileError on known AST-checkable faults.
+
+    Non-fatal issues are appended to ``module.analysis_warnings``.
+    """
+    from .transpiler import TranspileWarning
+
+    warnings: list[TranspileWarning] = []
+    module.analysis_warnings = warnings
     _reject_let(module)
     _check_return_types(module.body)
     declared: set[str] = set()
@@ -94,10 +102,24 @@ def analyze(
                     "defaults": set(import_resolver.struct_field_defaults.get(name, set())),
                 },
             )
+    enum_info = _enum_info_map(module.body, warnings=warnings)
+    if import_resolver is not None:
+        for name in getattr(import_resolver, "enums", set()):
+            enum_info.setdefault(
+                name,
+                {
+                    "members": list(import_resolver.enum_members.get(name, [])),
+                    "value_kind": import_resolver.enum_value_kinds.get(name, "auto"),
+                    "member_values": dict(
+                        import_resolver.enum_member_values.get(name, {})
+                    ),
+                },
+            )
     struct_names = set(struct_info)
+    enum_names = set(enum_info)
     class_names = set(class_parents) | {
         s.name for s in module.body if isinstance(s, ClassDef)
-    } | struct_names
+    } | struct_names | enum_names
     interfaces = {s.name for s in module.body if isinstance(s, InterfaceDef)}
     class_implements = _class_implements_map(module.body, interfaces)
     if import_resolver is not None:
@@ -120,6 +142,7 @@ def analyze(
         interfaces=interfaces,
     )
     _check_structs(module.body, types=types, fixed=fixed, struct_info=struct_info)
+    _check_enums(module.body, types=types, fixed=fixed, enum_info=enum_info)
     _check_oop(module.body, types=types, resolver=import_resolver)
     _check_interfaces(module.body)
     _check_shared_capture(module.body)
@@ -152,6 +175,32 @@ def _transpile_error(
         code=code,
         suggested_fix=suggested_fix,
         tips=tips,
+    )
+
+
+def _transpile_warning(
+    warnings: list,
+    message: str,
+    line: int = 1,
+    column: int = 1,
+    code_line: str = "",
+    *,
+    code: str | None = None,
+    suggested_fix: str | None = None,
+    tips: list[str] | None = None,
+) -> None:
+    from .transpiler import TranspileWarning
+
+    warnings.append(
+        TranspileWarning(
+            message,
+            line,
+            column,
+            code_line,
+            code=code,
+            suggested_fix=suggested_fix,
+            tips=tips,
+        )
     )
 
 
@@ -492,6 +541,10 @@ def _infer_type(expr: Expr | None, class_names: set[str] | None = None) -> str |
         if class_names and expr.callee.name in class_names:
             return expr.callee.name
         return None
+    # EnumName.MEMBER → EnumName (enums are registered in class_names).
+    if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+        if class_names and expr.object.name in class_names:
+            return expr.object.name
     if isinstance(expr, BinaryOp) and expr.op == "+":
         left = _infer_type(expr.left, class_names)
         right = _infer_type(expr.right, class_names)
@@ -778,6 +831,9 @@ def _check_bindings(
             if stmt.declare_type:
                 types[stmt.name] = stmt.declare_type
         elif isinstance(stmt, StructDef):
+            declared.add(stmt.name)
+            types[stmt.name] = stmt.name
+        elif isinstance(stmt, EnumDef):
             declared.add(stmt.name)
             types[stmt.name] = stmt.name
         elif isinstance(stmt, ImportStmt):
@@ -1097,10 +1153,18 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         elif isinstance(stmt, StructDef):
             # Struct fields are always public; type export uses top_visibility.
             class_members[stmt.name] = {f.name: "public" for f in stmt.fields}
+        elif isinstance(stmt, EnumDef):
+            members = {m.name: "public" for m in stmt.members}
+            members["value"] = "public"
+            class_members[stmt.name] = members
 
     if resolver is not None:
         for name, access in getattr(resolver, "struct_field_access", {}).items():
             class_members.setdefault(name, dict(access))
+        for name, members in getattr(resolver, "enum_members", {}).items():
+            access = {m: "public" for m in members}
+            access["value"] = "public"
+            class_members.setdefault(name, access)
 
     for stmt in body:
         if not isinstance(stmt, ClassDef):
@@ -1705,6 +1769,320 @@ def _check_structs(
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
             elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
+
+
+_SCREAMING_SNAKE = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$")
+
+
+def _to_screaming_snake(name: str) -> str:
+    """Suggest SCREAMING_SNAKE_CASE for an identifier."""
+    if not name:
+        return name
+    if name.isupper() and "_" in name:
+        return name
+    spaced = re.sub(r"(?<!^)(?=[A-Z])", "_", name)
+    spaced = re.sub(r"[\s\-]+", "_", spaced)
+    return spaced.upper()
+
+
+def _enum_info_map(
+    body: list[Any],
+    *,
+    warnings: list | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Build enum metadata; emit casing warnings; raise on declaration errors."""
+    warnings = warnings if warnings is not None else []
+    info: dict[str, dict[str, Any]] = {}
+    for stmt in body:
+        if not isinstance(stmt, EnumDef):
+            continue
+        line = stmt.span.line if stmt.span else 1
+        col = stmt.span.column if stmt.span else 1
+        if not stmt.members:
+            _transpile_error(
+                f"Enum '{stmt.name}' cannot be empty — declare at least one member.",
+                line,
+                col,
+                f"enum {stmt.name}",
+            )
+        has_value = [m.value is not None for m in stmt.members]
+        if any(has_value) and not all(has_value):
+            bad = next(m for m in stmt.members if (m.value is None) == has_value[0])
+            _transpile_error(
+                f"Enum '{stmt.name}' must be fully implicit or fully explicit — "
+                f"do not mix members with and without `=`.",
+                bad.span.line if bad.span else line,
+                bad.span.column if bad.span else col,
+                bad.name,
+            )
+        value_kind = "auto"
+        member_values: dict[str, str] = {}
+        seen_names: set[str] = set()
+        seen_values: dict[str, str] = {}
+        if all(has_value):
+            kinds: set[str] = set()
+            for m in stmt.members:
+                assert isinstance(m.value, Literal)
+                if m.value.kind not in {"int", "string"}:
+                    _transpile_error(
+                        f"Enum member '{m.name}' value must be int or string.",
+                        m.span.line if m.span else line,
+                        m.span.column if m.span else col,
+                        m.name,
+                    )
+                kinds.add(m.value.kind)
+            if len(kinds) > 1:
+                _transpile_error(
+                    f"Enum '{stmt.name}' explicit values must be homogeneous "
+                    f"(all int or all string).",
+                    line,
+                    col,
+                    f"enum {stmt.name}",
+                )
+            value_kind = next(iter(kinds))
+            for m in stmt.members:
+                assert isinstance(m.value, Literal)
+                key = m.value.text
+                if key in seen_values:
+                    _transpile_error(
+                        f"Duplicate enum value in '{stmt.name}': "
+                        f"'{m.name}' and '{seen_values[key]}' both use {key}.",
+                        m.span.line if m.span else line,
+                        m.span.column if m.span else col,
+                        m.name,
+                    )
+                seen_values[key] = m.name
+                member_values[m.name] = key
+        for m in stmt.members:
+            if m.name in seen_names:
+                _transpile_error(
+                    f"Duplicate enum member '{m.name}' in enum {stmt.name}.",
+                    m.span.line if m.span else line,
+                    m.span.column if m.span else col,
+                    m.name,
+                )
+            seen_names.add(m.name)
+            if not _SCREAMING_SNAKE.match(m.name):
+                suggested = _to_screaming_snake(m.name)
+                _transpile_warning(
+                    warnings,
+                    f"Enum member '{m.name}' should be SCREAMING_SNAKE_CASE "
+                    f"(suggested: {suggested}).",
+                    m.span.line if m.span else line,
+                    m.span.column if m.span else col,
+                    m.name,
+                    code="pys.enum-naming",
+                    suggested_fix=suggested,
+                    tips=[
+                        "Rename the member to SCREAMING_SNAKE_CASE "
+                        "(e.g. OK, NOT_FOUND).",
+                    ],
+                )
+        info[stmt.name] = {
+            "members": [m.name for m in stmt.members],
+            "value_kind": value_kind,
+            "member_values": member_values,
+        }
+    return info
+
+
+def _check_enums(
+    body: list[Any],
+    *,
+    types: dict[str, str],
+    fixed: set[str],
+    enum_info: dict[str, dict[str, Any]],
+) -> None:
+    """SA: construction, ==, .value, immutability for enum types."""
+
+    def expr_enum_type(expr: Expr | None) -> str | None:
+        if expr is None:
+            return None
+        if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+            ename = expr.object.name
+            if ename in enum_info and expr.name in enum_info[ename]["members"]:
+                return ename
+            # binding.MEMBER is not valid for enums; only EnumName.MEMBER
+        if isinstance(expr, Identifier):
+            t = _base_type_name(types.get(expr.name, ""))
+            if t in enum_info:
+                return t
+        return None
+
+    def underlying_of(enum_name: str) -> str:
+        kind = enum_info[enum_name]["value_kind"]
+        if kind == "string":
+            return "string"
+        return "int"  # auto and int
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            if expr.callee.name in enum_info:
+                _transpile_error(
+                    f"Enum '{expr.callee.name}' values are constructed as "
+                    f"{expr.callee.name}.MEMBER, not by calling the type.",
+                    expr.span.line if expr.span else 1,
+                    expr.span.column if expr.span else 1,
+                    expr.callee.name,
+                )
+        if isinstance(expr, Member):
+            if isinstance(expr.object, Identifier):
+                ename = expr.object.name
+                if ename in enum_info:
+                    if expr.name == "value":
+                        _transpile_error(
+                            f"'.value' applies to enum members/variables, not the type "
+                            f"'{ename}'.",
+                            expr.span.line if expr.span else 1,
+                            expr.span.column if expr.span else 1,
+                            ".value",
+                        )
+                    elif expr.name not in enum_info[ename]["members"]:
+                        _transpile_error(
+                            f"'{expr.name}' is not a member of enum {ename}.",
+                            expr.span.line if expr.span else 1,
+                            expr.span.column if expr.span else 1,
+                            expr.name,
+                        )
+                else:
+                    root_t = _base_type_name(types.get(ename, ""))
+                    if root_t in enum_info and expr.name not in {"value"} | set(
+                        enum_info[root_t]["members"]
+                    ):
+                        # Allow .value on enum-typed bindings; reject unknown attrs.
+                        if expr.name != "value":
+                            _transpile_error(
+                                f"'{expr.name}' is not a valid access on enum {root_t} "
+                                f"(use .value for the underlying value).",
+                                expr.span.line if expr.span else 1,
+                                expr.span.column if expr.span else 1,
+                                expr.name,
+                            )
+            # Nested: EnumName.MEMBER.value
+            if (
+                isinstance(expr.object, Member)
+                and expr.name == "value"
+                and isinstance(expr.object.object, Identifier)
+            ):
+                ename = expr.object.object.name
+                if ename in enum_info and expr.object.name in enum_info[ename]["members"]:
+                    pass  # ok
+            walk_expr(expr.object)
+            return
+        if isinstance(expr, BinaryOp) and expr.op in {"==", "!="}:
+            left_e = expr_enum_type(expr.left)
+            right_e = expr_enum_type(expr.right)
+            left_t = left_e or _infer_type(expr.left, set(enum_info))
+            right_t = right_e or _infer_type(expr.right, set(enum_info))
+            if left_e or right_e:
+                if left_e and right_e and left_e != right_e:
+                    _transpile_error(
+                        f"Cannot compare enum {left_e} with enum {right_e} — "
+                        f"only members of the same enum may use '{expr.op}'.",
+                        expr.span.line if expr.span else 1,
+                        expr.span.column if expr.span else 1,
+                        expr.op,
+                    )
+                elif (left_e and not right_e) or (right_e and not left_e):
+                    other = right_t if left_e else left_t
+                    en = left_e or right_e
+                    if other in {"int", "string", "float", "bool", "char"} or (
+                        other and other in enum_info and other != en
+                    ):
+                        _transpile_error(
+                            f"Cannot compare enum {en} with {other or 'non-enum'} — "
+                            f"use .value for underlying interchange, or compare "
+                            f"same-enum members.",
+                            expr.span.line if expr.span else 1,
+                            expr.span.column if expr.span else 1,
+                            expr.op,
+                        )
+            walk_expr(expr.left)
+            walk_expr(expr.right)
+            return
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                walk_expr(stmt.value)
+                # Reject EnumName.MEMBER = ... and enum_var.member = ...
+                if "." in stmt.name:
+                    parts = stmt.name.split(".")
+                    root = parts[0]
+                    if root in enum_info:
+                        _transpile_error(
+                            f"Cannot assign to enum member '{stmt.name}' — "
+                            f"enum members are immutable.",
+                            line,
+                            col,
+                            stmt.name,
+                        )
+                    root_t = _base_type_name(types.get(root, ""))
+                    if root_t in enum_info:
+                        _transpile_error(
+                            f"Cannot assign through enum-typed '{root}' — "
+                            f"enum values are immutable.",
+                            line,
+                            col,
+                            stmt.name,
+                        )
+                if stmt.declare_type:
+                    base = _base_type_name(stmt.declare_type)
+                    if base in enum_info:
+                        # Reject bare int/string assignment (already covered by
+                        # _check_bindings type mismatch when inferred).
+                        if _is_null_lit(stmt.value):
+                            _transpile_error(
+                                f"Enum-typed binding '{stmt.name}' cannot be null.",
+                                line,
+                                col,
+                                "null",
+                            )
+                continue
+            if isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(stmt, ForEachStmt):
+                    walk_expr(stmt.iterable)
+                elif isinstance(stmt, WhileStmt):
+                    walk_expr(stmt.cond)
                 if stmt.body:
                     walk(stmt.body.statements)
             elif isinstance(stmt, FunctionDef) and stmt.body:

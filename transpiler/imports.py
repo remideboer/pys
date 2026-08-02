@@ -13,6 +13,7 @@ from typing import Any
 from .ast_nodes import (
     AssignStmt,
     ClassDef,
+    EnumDef,
     FunctionDef,
     ImportStmt,
     InterfaceDef,
@@ -50,7 +51,14 @@ class ModuleInfo:
     struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = field(
         default_factory=dict
     )
-
+    enums: set[str] = field(default_factory=set)
+    enum_members: dict[str, list[str]] = field(default_factory=dict)
+    enum_value_kinds: dict[str, str] = field(default_factory=dict)
+    enum_member_values: dict[str, dict[str, str]] = field(default_factory=dict)
+    # type_name -> member_name -> (path, line, col)
+    enum_member_locations: dict[str, dict[str, tuple[Path, int, int]]] = field(
+        default_factory=dict
+    )
 
 def _error(
     message: str,
@@ -140,6 +148,11 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
     struct_field_fix: dict[str, set[str]] = {}
     struct_field_defaults: dict[str, set[str]] = {}
     struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
+    enums: set[str] = set()
+    enum_members: dict[str, list[str]] = {}
+    enum_value_kinds: dict[str, str] = {}
+    enum_member_values: dict[str, dict[str, str]] = {}
+    enum_member_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
 
     iface_names = {s.name for s in tree.body if isinstance(s, InterfaceDef)}
 
@@ -187,6 +200,37 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             struct_field_fix[stmt.name] = ffix
             struct_field_defaults[stmt.name] = fdefaults
             struct_field_locations[stmt.name] = flocs
+        elif isinstance(stmt, EnumDef):
+            vis = stmt.visibility or "module"
+            exports[stmt.name] = vis
+            symbol_locations[stmt.name] = (path, line, col)
+            class_decl_lines[stmt.name] = line
+            enums.add(stmt.name)
+            order_m: list[str] = []
+            mvals: dict[str, str] = {}
+            mlocs: dict[str, tuple[Path, int, int]] = {}
+            has_vals = [m.value is not None for m in stmt.members]
+            kind = "auto"
+            if has_vals and all(has_vals):
+                from .ast_nodes import Literal as AstLiteral
+
+                kinds = {
+                    m.value.kind
+                    for m in stmt.members
+                    if isinstance(m.value, AstLiteral)
+                }
+                kind = next(iter(kinds), "auto") if len(kinds) == 1 else "auto"
+            for m in stmt.members:
+                order_m.append(m.name)
+                ml = m.span.line if m.span else line
+                mc = m.span.column if m.span else col
+                mlocs[m.name] = (path, ml, mc)
+                if m.value is not None and hasattr(m.value, "text"):
+                    mvals[m.name] = m.value.text  # type: ignore[attr-defined]
+            enum_members[stmt.name] = order_m
+            enum_value_kinds[stmt.name] = kind
+            enum_member_values[stmt.name] = mvals
+            enum_member_locations[stmt.name] = mlocs
         elif isinstance(stmt, ClassDef):
             vis = stmt.visibility or "module"
             exports[stmt.name] = vis
@@ -254,6 +298,11 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
         struct_field_fix=struct_field_fix,
         struct_field_defaults=struct_field_defaults,
         struct_field_locations=struct_field_locations,
+        enums=enums,
+        enum_members=enum_members,
+        enum_value_kinds=enum_value_kinds,
+        enum_member_values=enum_member_values,
+        enum_member_locations=enum_member_locations,
     )
 
 
@@ -310,6 +359,11 @@ class ImportResolver:
         self.struct_field_fix: dict[str, set[str]] = {}
         self.struct_field_defaults: dict[str, set[str]] = {}
         self.struct_field_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
+        self.enums: set[str] = set()
+        self.enum_members: dict[str, list[str]] = {}
+        self.enum_value_kinds: dict[str, str] = {}
+        self.enum_member_values: dict[str, dict[str, str]] = {}
+        self.enum_member_locations: dict[str, dict[str, tuple[Path, int, int]]] = {}
         self._deps_site_paths: list[Path] | None = None
         self._deps_site_paths_loaded = False
 
@@ -335,6 +389,15 @@ class ImportResolver:
             self.struct_field_defaults = {k: set(v) for k, v in info.struct_field_defaults.items()}
             self.struct_field_locations = {
                 k: dict(v) for k, v in info.struct_field_locations.items()
+            }
+            self.enums = set(info.enums)
+            self.enum_members = {k: list(v) for k, v in info.enum_members.items()}
+            self.enum_value_kinds = dict(info.enum_value_kinds)
+            self.enum_member_values = {
+                k: dict(v) for k, v in info.enum_member_values.items()
+            }
+            self.enum_member_locations = {
+                k: dict(v) for k, v in info.enum_member_locations.items()
             }
             for name, t in info.types.items():
                 self.variable_types[name] = t
@@ -497,6 +560,16 @@ class ImportResolver:
                 )
                 self.struct_field_locations[name] = dict(
                     info.struct_field_locations.get(name, {})
+                )
+            if name in info.enums:
+                self.enums.add(name)
+                self.enum_members[name] = list(info.enum_members.get(name, []))
+                self.enum_value_kinds[name] = info.enum_value_kinds.get(name, "auto")
+                self.enum_member_values[name] = dict(
+                    info.enum_member_values.get(name, {})
+                )
+                self.enum_member_locations[name] = dict(
+                    info.enum_member_locations.get(name, {})
                 )
             if name in info.class_decl_lines:
                 self.type_definitions[name] = (info.path, info.class_decl_lines[name], 1)

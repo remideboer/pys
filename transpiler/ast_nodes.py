@@ -23,6 +23,8 @@ class Module(Node):
     source: str = ""
     body: list[Any] = field(default_factory=list)
     brace_mode: bool = False
+    # Filled by sem.analyze — non-fatal diagnostics (not part of parse).
+    analysis_warnings: list[Any] = field(default_factory=list)
 
 
 @dataclass
@@ -291,6 +293,21 @@ class StructDef(Node):
     visibility: str = ""
     type_params: list[str] = field(default_factory=list)
     type_fix: bool = False  # leading `fix struct`
+
+
+@dataclass
+class EnumMember(Node):
+    name: str = ""
+    value: Expr | None = None  # Literal int/string when explicit
+
+
+@dataclass
+class EnumDef(Node):
+    """Nominal closed set of named constants (identity-style members)."""
+
+    name: str = ""
+    members: list[EnumMember] = field(default_factory=list)
+    visibility: str = ""
 
 
 @dataclass

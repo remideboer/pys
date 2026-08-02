@@ -12,9 +12,11 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 1. **Core behavior** — Happy path, edge cases, and rejection/error cases match the requirement / BDD scenario.
 2. **Tests** — Unit (and golden/acceptance where the repo uses them); CI green; no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4).
 3. **Tooling surface** — Lexer/parser/sem/emit (as applicable), plus IDE: highlighting, go-to on the symbols users navigate, hover/completions/snippets where the feature introduces keywords or types — at least parity with similar existing features (e.g. class).
-4. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
-5. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
-6. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
+4. **Diagnostics maturity** — When a feature emits diagnostics: **Error** and/or **Warning** as appropriate, actionable **tips**, and **quick fixes** when a `suggested_fix` / edit is available (analyzer JSON + IDE CodeAction). Do not ship a warning-only rule without IDE Warning severity + tip/quick-fix plumbing.
+5. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
+6. **Railroad sync** — `docs/language-railroad.html` stays in sync with `docs/language.ebnf` whenever grammar/features change (same change set; the HTML is the navigable EBNF view, not an optional extra).
+7. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
+8. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
 
 ## How to work
 
@@ -26,6 +28,7 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 
 ```text
 ❌ “Structs are implemented” after parse+emit only, with IDE/docs/field navigation still open
+❌ EBNF updated but language-railroad.html still missing the new productions
 ❌ Closing a plan todo as done while listing “optional later” gaps that block teaching use
-✅ “Implemented” only when language + tests + IDE parity + docs + CER/ADR (+ CI) are in place
+✅ “Implemented” only when language + tests + IDE parity + docs + railroad + CER/ADR (+ CI) are in place
 ```

@@ -1,6 +1,8 @@
 """Compile PYS source through lex → parse → sem → emit[target]."""
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -28,4 +30,7 @@ def compile_pys(
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
     )
+    if os.environ.get("PYS_SUPPRESS_WARNINGS", "").strip() not in {"1", "true", "yes"}:
+        for warn in getattr(tree, "analysis_warnings", []) or []:
+            print(str(warn), file=sys.stderr)
     return emit_python.emit(tree, source_path=source_path)

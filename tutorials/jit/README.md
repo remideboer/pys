@@ -11,6 +11,7 @@ Open a card **when a task step needs a form or fix**. Do not read the whole fold
 | [J-function-import](J-function-import.md) | `function`, `import`, visibility |
 | [J-class](J-class.md) | `class` / `interface` / `inherits` |
 | [J-struct](J-struct.md) | `struct` / `fix struct`, construct, copy / `==` |
+| [J-enum](J-enum.md) | `enum`, `.value`, same-enum `==`, naming warning |
 | [J-library](J-library.md) | external packages, `as` alias, generics on returns |
 | [J-errors](J-errors.md) | decode common transpile messages |
 

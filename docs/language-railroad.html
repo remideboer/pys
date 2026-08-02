@@ -389,10 +389,10 @@
     {
       id: 'declaration',
       title: 'declaration',
-      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | interface_decl ;',
+      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | enum_decl | interface_decl ;',
       node: Choice(
         N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'),
-        N('function_decl'), N('class_decl'), N('interface_decl')
+        N('function_decl'), N('class_decl'), N('struct_decl'), N('enum_decl'), N('interface_decl')
       )
     },
     {
@@ -426,6 +426,55 @@
         Opt(Seq(Choice(T('inherits'), T('super')), N('identifier'))),
         Opt(Seq(T('implements'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         N('class_body')
+      )
+    },
+    {
+      id: 'struct_decl',
+      title: 'struct_decl',
+      ebnf: '[ top_visibility ] [ "fix" ] "struct" identifier [ type_params ] "{" { struct_field_decl } "}" ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        Opt(T('fix')),
+        T('struct'),
+        N('identifier'),
+        Opt(N('type_params')),
+        T('{'),
+        Star(N('struct_field_decl')),
+        T('}')
+      )
+    },
+    {
+      id: 'struct_field_decl',
+      title: 'struct_field_decl',
+      ebnf: '[ "fix" ] type_name identifier [ "=" expression ] ;',
+      node: Seq(
+        Opt(T('fix')),
+        N('type_name'),
+        N('identifier'),
+        Opt(Seq(T('='), N('expression')))
+      )
+    },
+    {
+      id: 'enum_decl',
+      title: 'enum_decl',
+      ebnf: '[ top_visibility ] "enum" identifier "{" enum_member { enum_member } "}" ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        T('enum'),
+        N('identifier'),
+        T('{'),
+        N('enum_member'),
+        Star(N('enum_member')),
+        T('}')
+      )
+    },
+    {
+      id: 'enum_member',
+      title: 'enum_member',
+      ebnf: 'identifier [ "=" ( integer | string_literal ) ] ;',
+      node: Seq(
+        N('identifier'),
+        Opt(Seq(T('='), Choice(N('integer'), N('string_literal'))))
       )
     },
     {

@@ -16,6 +16,7 @@ _CONCURRENCY_PREAMBLE = CONCURRENCY_PREAMBLE
 __all__ = [
     "ModuleInfo",
     "TranspileError",
+    "TranspileWarning",
     "transpile",
     "transpile_path",
     "transpile_with_modules",
@@ -56,6 +57,49 @@ class TranspileError(ValueError):
         if parts:
             return f"{base} ({', '.join(parts)})"
         return base
+
+
+class TranspileWarning:
+    """Non-fatal diagnostic collected during analysis (does not abort compile)."""
+
+    def __init__(
+        self,
+        message: str,
+        line_number: int | None = None,
+        column: int | None = None,
+        code_line: str | None = None,
+        *,
+        code: str | None = None,
+        suggested_fix: str | None = None,
+        tips: list[str] | None = None,
+    ) -> None:
+        self.message = message
+        self.line_number = line_number
+        self.column = column
+        self.code_line = code_line
+        self.code = code
+        self.suggested_fix = suggested_fix
+        self.tips = tips or []
+
+    def __str__(self) -> str:
+        parts: list[str] = []
+        if self.line_number is not None:
+            parts.append(f"line {self.line_number}")
+        if self.column is not None:
+            parts.append(f"column {self.column}")
+        loc = f" ({', '.join(parts)})" if parts else ""
+        return f"warning: {self.message}{loc}"
+
+    def to_dict(self) -> dict:
+        return {
+            "message": self.message,
+            "line": self.line_number,
+            "column": self.column,
+            "code_line": self.code_line,
+            "code": self.code,
+            "suggested_fix": self.suggested_fix,
+            "tips": list(self.tips),
+        }
 
 
 def transpile(

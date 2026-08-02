@@ -1,0 +1,33 @@
+# Enums: closed nominal sets (implicit auto, explicit int / string).
+
+enum HttpCategory {
+    INFORMATIONAL
+    SUCCESS
+    REDIRECTION
+    CLIENT_ERROR
+    SERVER_ERROR
+}
+
+enum HttpStatus {
+    OK = 200
+    CREATED = 201
+    ACCEPTED = 202
+    NO_CONTENT = 204
+    MOVED_PERMANENTLY = 301
+    FOUND = 302
+    SEE_OTHER = 303
+    NOT_MODIFIED = 304
+}
+
+enum Method {
+    GET = "GET"
+    POST = "POST"
+}
+
+HttpStatus status = HttpStatus.OK
+print(status == HttpStatus.OK)
+print(status.value)
+print(Method.GET.value)
+
+HttpCategory cat = HttpCategory.SUCCESS
+print(cat == HttpCategory.SUCCESS)

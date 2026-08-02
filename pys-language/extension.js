@@ -9,7 +9,7 @@ const {
 } = require('./ide-process');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'interface',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'true', 'false', 'null', 'print', 'all', 'sealed',
@@ -19,7 +19,7 @@ const PYS_KEYWORDS = [
 const PYS_TYPES = ['int', 'float', 'char', 'string', 'bool'];
 
 const PYS_MD_KEYWORDS = new Set([
-  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'interface',
+  'if', 'else', 'unless', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface',
   'implements', 'inherits', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'print', 'all', 'sealed',
@@ -122,6 +122,7 @@ function activate(context) {
   });
 
   const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
+  const warningMeta = new Map(); // `${uri}:${line}:${code}` -> warning
 
   const mainStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   mainStatus.command = 'pys.runMain';
@@ -233,6 +234,29 @@ function activate(context) {
     return diagnostic;
   }
 
+  function createWarningDiagnostic(warning, document) {
+    const line = Math.max(Number(warning.line || 1) - 1, 0);
+    const column = Math.max(Number(warning.column || 1) - 1, 0);
+    const lineText = document.lineAt(line).text;
+    const rest = lineText.slice(column);
+    const word = rest.match(/^[A-Za-z_]\w*/);
+    const endCol = word ? column + word[0].length : Math.min(column + 1, lineText.length);
+    let message = warning.message || 'PYS warning';
+    if (warning.tips && warning.tips.length) {
+      message = `${message}\n${warning.tips.map((tip) => `Tip: ${tip}`).join('\n')}`;
+    }
+    const diagnostic = new vscode.Diagnostic(
+      new vscode.Range(new vscode.Position(line, column), new vscode.Position(line, endCol)),
+      message,
+      vscode.DiagnosticSeverity.Warning,
+    );
+    diagnostic.source = 'PYS';
+    diagnostic.code = warning.code || 'pys.warning';
+    const key = `${document.uri.toString()}:${warning.line}:${diagnostic.code}`;
+    warningMeta.set(key, warning);
+    return diagnostic;
+  }
+
   async function validateDocument(document) {
     if (document.languageId !== 'pys' || document.uri.scheme !== 'file') {
       diagnosticCollection.delete(document.uri);
@@ -274,14 +298,22 @@ function activate(context) {
         return;
       }
       const diagnostics = [];
-      // Clear stale hint metadata for this document
+      // Clear stale hint/warning metadata for this document
       for (const key of [...hintMeta.keys()]) {
         if (key.startsWith(`${document.uri.toString()}:`)) {
           hintMeta.delete(key);
         }
       }
+      for (const key of [...warningMeta.keys()]) {
+        if (key.startsWith(`${document.uri.toString()}:`)) {
+          warningMeta.delete(key);
+        }
+      }
       if (!parsed.ok && parsed.error) {
         diagnostics.push(createDiagnosticFromError(parsed.error, document));
+      }
+      for (const warning of parsed.warnings || []) {
+        diagnostics.push(createWarningDiagnostic(warning, document));
       }
       for (const hint of parsed.hints || []) {
         diagnostics.push(createHintDiagnostic(hint, document));
@@ -377,6 +409,7 @@ function activate(context) {
         implements: 'Class implements interface(s): `class Car implements Startable { ... }`',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
         struct: 'Value type (fields only): `package struct Damage { int amount }`\nConstruct with `Damage(20)` / `Damage(amount=20)`. Fields are always public; use `global`/`package`/`module` on the struct. Copied on assign/call.',
+        enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         this: 'Current instance reference (becomes `self` in Python)',
@@ -652,6 +685,27 @@ function activate(context) {
           fix.edit.replace(document.uri, line.range, suggested);
           actions.push(fix);
         }
+      }
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.enum-naming') {
+          continue;
+        }
+        const key = `${document.uri.toString()}:${diagnostic.range.start.line + 1}:${diagnostic.code}`;
+        const warning = warningMeta.get(key);
+        const suggested = warning && warning.suggested_fix;
+        if (!suggested) {
+          continue;
+        }
+        const action = new vscode.CodeAction(
+          `Rename to ${suggested}`,
+          vscode.CodeActionKind.QuickFix,
+        );
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        action.edit = new vscode.WorkspaceEdit();
+        action.edit.replace(document.uri, diagnostic.range, suggested);
+        actions.push(action);
       }
 
       for (const diagnostic of diagnostics) {

@@ -42,6 +42,7 @@ from ..ast_nodes import (
     ReturnStmt,
     SharedDecl,
     Slice,
+    EnumDef,
     StructDef,
     TaskDef,
     TasksBlock,
@@ -122,6 +123,7 @@ class _Emitter:
         self.needs_concurrency = False
         self.needs_dataclass = False
         self.needs_struct_copy = False
+        self.needs_enum = False
         self.shared_vars: set[str] = set()
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
@@ -166,6 +168,8 @@ class _Emitter:
             preamble.append("from array import array")
         if self.needs_dataclass:
             preamble.append("from dataclasses import dataclass")
+        if self.needs_enum:
+            preamble.append("import enum")
         if self.needs_struct_copy:
             preamble.extend(_STRUCT_COPY_HELPER.splitlines())
         out = preamble + self.lines
@@ -264,6 +268,8 @@ class _Emitter:
             self._class(stmt, indent)
         elif isinstance(stmt, StructDef):
             self._struct(stmt, indent)
+        elif isinstance(stmt, EnumDef):
+            self._enum(stmt, indent)
         elif isinstance(stmt, ExprStmt):
             self._emit(indent, self._expr(stmt.expr))
         elif isinstance(stmt, Block):
@@ -421,6 +427,28 @@ class _Emitter:
             self._emit(indent + 1, "@abstractmethod")
             self._emit(indent + 1, f"def {m}(self):")
             self._emit(indent + 2, "pass")
+
+    def _enum(self, stmt: EnumDef, indent: int) -> None:
+        self.needs_enum = True
+        has_values = all(m.value is not None for m in stmt.members)
+        if has_values:
+            kinds = {
+                m.value.kind
+                for m in stmt.members
+                if isinstance(m.value, Literal)
+            }
+            if kinds == {"string"}:
+                base = "enum.StrEnum"
+            else:
+                base = "enum.IntEnum"
+        else:
+            base = "enum.Enum"
+        self._emit(indent, f"class {stmt.name}({base}):")
+        for m in stmt.members:
+            if m.value is None:
+                self._emit(indent + 1, f"{m.name} = enum.auto()")
+            else:
+                self._emit(indent + 1, f"{m.name} = {self._expr(m.value)}")
 
     def _struct(self, stmt: StructDef, indent: int) -> None:
         self.needs_dataclass = True

@@ -116,6 +116,26 @@
     ],
     "description": "Immutable PYS struct (all fields assign-once)"
   },
+  "Enum": {
+    "prefix": "enum",
+    "body": [
+      "${1|package,global,module|} enum ${2:Name} {",
+      "\t${3:MEMBER}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS enum (implicit auto values)"
+  },
+  "Enum explicit": {
+    "prefix": "enumx",
+    "body": [
+      "enum ${1:Name} {",
+      "\t${2:MEMBER} = ${3:0}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS enum with explicit int/string values"
+  },
   "Subclass": {
     "prefix": "inherits",
     "body": [
