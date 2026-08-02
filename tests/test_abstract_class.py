@@ -31,15 +31,18 @@ def test_example_abstract_list_emit_is_valid_python() -> None:
     ast.parse(py)
     assert "from abc import ABC, abstractmethod" in py
     assert "class AbstractList(ABC):" in py
+    assert "class AbstractCountedList(AbstractList, ABC):" in py
     assert "@abstractmethod" in py
     assert "def get(self, index):" in py
     assert "def add(self, item):" in py
     # Decorators stay on abstract methods (not hoisted onto __init__).
     init_at = py.index("def __init__(self):")
-    get_at = py.index("def get(self, index):")
+    get_at = py.index("@abstractmethod\n    def get(self, index):")
     assert "@abstractmethod" not in py[:init_at]
-    assert "@abstractmethod" in py[init_at:get_at]
-    assert "class ArrayListPys(AbstractList):" in py
+    assert get_at > init_at
+    assert "class ArrayListPys(AbstractCountedList):" in py
+    assert "class LinkedListPys(AbstractCountedList):" in py
+    assert "def hasItem(list, item):" in py
 
 
 def test_abstract_list_runtime_behavior() -> None:
@@ -57,6 +60,14 @@ def test_abstract_list_runtime_behavior() -> None:
         "a",
         "True",
         "False",
+        "2",
+        "True",
+        "True",
+        "b",
+        "a",
+        "True",
+        "2",
+        "True",
         "True",
     ]
 

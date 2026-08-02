@@ -1,18 +1,23 @@
-# Abstract class: shared state + concrete methods + abstract variation points.
+# Abstract classes: owned state + concrete methods + abstract variation points.
+# Contrast with interface (no state/bodies) and trait (composition, not is-a).
+# Storage uses fixed slots / link nodes (no T[] yet) so the sample stays runnable.
 
+# --- Abstract base: shared size/modCount + template methods ---
+# isEmpty needs only size. contains calls abstract get() -- each subclass
+# supplies storage; the loop body is written once (template method).
 abstract class AbstractList {
     protected int size
+    protected int modCount
 
     public AbstractList() {
         this.size = 0
+        this.modCount = 0
     }
 
-    # Concrete: works from size alone.
     public bool isEmpty() {
         return this.size == 0
     }
 
-    # Template method: calls abstract get() — subclass supplies storage.
     public bool contains(string item) {
         loop (int i = 0, i < this.size, i++) {
             if (this.get(i) == item) {
@@ -22,12 +27,31 @@ abstract class AbstractList {
         return false
     }
 
+    # Variation points: no shared body possible across storage strategies.
     public abstract string get(int index)
     public abstract void add(string item)
 }
 
-# Contiguous storage (simplified array list).
-class ArrayListPys inherits AbstractList {
+# --- Intermediate abstract class: still not instantiable ---
+# Adds a concrete helper that subclasses inherit, but leaves get/add abstract.
+# Concrete classes must still implement every inherited abstract method.
+abstract class AbstractCountedList inherits AbstractList {
+    public AbstractCountedList() {
+        super()
+    }
+
+    # Shared bookkeeping used by both storage strategies after a successful add.
+    public void touch() {
+        this.modCount = this.modCount + 1
+    }
+
+    public int mutations() {
+        return this.modCount
+    }
+}
+
+# --- Storage 1: contiguous slots (simplified array list) ---
+class ArrayListPys inherits AbstractCountedList {
     private string item0
     private string item1
     private string item2
@@ -60,9 +84,75 @@ class ArrayListPys inherits AbstractList {
             this.item2 = item
         }
         this.size = this.size + 1
+        this.touch()
     }
 }
 
+# --- Link node for storage 2 (class, not struct: next may be unset until linked) ---
+class Link {
+    private string value
+    private Link next
+    private bool hasNext
+
+    public Link(string value) {
+        this.value = value
+        this.hasNext = false
+    }
+
+    public void setNext(Link next) {
+        this.next = next
+        this.hasNext = true
+    }
+
+    public string getValue() {
+        return this.value
+    }
+
+    public bool linked() {
+        return this.hasNext
+    }
+
+    public Link getNext() {
+        return this.next
+    }
+}
+
+# --- Storage 2: prepend linked list (O(n) get, O(1) add at head) ---
+class LinkedListPys inherits AbstractCountedList {
+    private Link head
+    private bool hasHead
+
+    public LinkedListPys() {
+        super()
+        this.hasHead = false
+    }
+
+    public string get(int index) {
+        Link cur = this.head
+        loop (int i = 0, i < index, i++) {
+            cur = cur.getNext()
+        }
+        return cur.getValue()
+    }
+
+    public void add(string item) {
+        Link node = Link(item)
+        if (this.hasHead) {
+            node.setNext(this.head)
+        }
+        this.head = node
+        this.hasHead = true
+        this.size = this.size + 1
+        this.touch()
+    }
+}
+
+# --- Polymorphic helper: static type is the abstract class ---
+function bool hasItem(AbstractList list, string item) {
+    return list.contains(item)
+}
+
+# --- Drive both strategies through AbstractList / AbstractCountedList ---
 ArrayListPys xs = ArrayListPys()
 print(xs.isEmpty())  # true
 xs.add("a")
@@ -71,7 +161,24 @@ print(xs.isEmpty())  # false
 print(xs.get(0))  # a
 print(xs.contains("b"))  # true
 print(xs.contains("z"))  # false
+print(xs.mutations())  # 2
 
-# Polymorphic binding: static type is the abstract class.
+# Polymorphic binding + free function taking AbstractList.
 AbstractList view = xs
 print(view.contains("a"))  # true
+print(hasItem(view, "b"))  # true
+
+# Linked list: add prepends, so get(0) is the last inserted item.
+LinkedListPys ys = LinkedListPys()
+ys.add("a")
+ys.add("b")
+print(ys.get(0))  # b
+print(ys.get(1))  # a
+print(hasItem(ys, "a"))  # true
+print(ys.mutations())  # 2
+
+# Same template method, different storage -- both are AbstractCountedList.
+AbstractCountedList left = xs
+AbstractCountedList right = ys
+print(left.contains("a"))  # true
+print(right.contains("b"))  # true

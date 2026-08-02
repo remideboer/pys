@@ -31,7 +31,8 @@ hoisted them before all methods.
 
 ### Evidence
 
-`tests/test_abstract_class.py`; `examples/abstract_list.pys` with
+`tests/test_abstract_class.py`; `examples/abstract_list.pys` (base + intermediate
+abstract class, two storage strategies, polymorphic helper, comments) with
 workspace-isolated `run_source` (CER-001 §4).
 
 ## Trade-offs

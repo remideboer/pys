@@ -14,9 +14,10 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 3. **Tooling surface** — Lexer/parser/sem/emit (as applicable), plus IDE: highlighting, go-to on the symbols users navigate, hover/completions/snippets where the feature introduces keywords or types — at least parity with similar existing features (e.g. class).
 4. **Diagnostics maturity** — When a feature emits diagnostics: **Error** and/or **Warning** as appropriate, actionable **tips**, and **quick fixes** when a `suggested_fix` / edit is available (analyzer JSON + IDE CodeAction). Do not ship a warning-only rule without IDE Warning severity + tip/quick-fix plumbing.
 5. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
-6. **Railroad sync** — `docs/language-railroad.html` stays in sync with `docs/language.ebnf` whenever grammar/features change (same change set; the HTML is the navigable EBNF view, not an optional extra).
-7. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
-8. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
+6. **Teaching examples** — Feature examples under `examples/` (and requirement worked samples when present) must be **elaborate enough to illustrate all or most aspects and variations** of the feature, not a single minimal happy path. Prefer several short, labeled sections over one opaque blob. Include **enough comments** that a reader can recover the teaching intent (what is being shown, why this form, expected print outcome where useful) without reading the ADR/CER. When an example still misses a major variation after the feature lands, expand it in the same maturity push (or the immediate follow-up commit), matching the style of `examples/traits.pys` / `examples/switch.pys`.
+7. **Railroad sync** — `docs/language-railroad.html` stays in sync with `docs/language.ebnf` whenever grammar/features change (same change set; the HTML is the navigable EBNF view, not an optional extra).
+8. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
+9. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
 
 ## How to work
 
@@ -30,5 +31,6 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 ❌ “Structs are implemented” after parse+emit only, with IDE/docs/field navigation still open
 ❌ EBNF updated but language-railroad.html still missing the new productions
 ❌ Closing a plan todo as done while listing “optional later” gaps that block teaching use
-✅ “Implemented” only when language + tests + IDE parity + docs + railroad + CER/ADR (+ CI) are in place
+❌ Shipping examples/foo.pys that only demos one happy path while the feature has several forms
+✅ “Implemented” only when language + tests + IDE parity + docs + railroad + CER/ADR + teaching examples (+ CI) are in place
 ```
