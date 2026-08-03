@@ -37,13 +37,14 @@ teaching form (not the performant array path).
 - Sem checks nested literals; types register as `elem` + `[]` * rank.
 - Outer ranks are Python lists of nested arrays (stdlib `array.array` cannot
   hold object rows); leaf numeric/bool storage remains `array.array`.
-- Slot assigns of nested `{…}` / `[…]` re-emit through the array path.
+- Foreach binders may use array types: `loop (int[] row in grid)`.
 
 ### Evidence
 
 `tests/test_multidim_arrays.py`; existing 1D array tests still green.
-Showcase: [`examples/arrays.pys`](../../examples/arrays.pys) (also a short
-section in `examples/main.pys`).
+Showcase: [`examples/arrays.pys`](../../examples/arrays.pys) (nested
+`loop (int[] row in …)` / indexed loops; also a short section in
+`examples/main.pys`).
 
 ## Trade-offs
 

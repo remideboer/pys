@@ -194,6 +194,16 @@ print(arr[1:6:2])
 numbers.loop(print)           # → list(map(print, numbers))
 ```
 
+Nested ranks use nested `loop` (typed array binders allowed):
+
+```pys
+loop (int[] row in myNumbers) {
+    loop (int cell in row) {
+        print(cell)
+    }
+}
+```
+
 Prefer `list<T>` / `tuple<…>` when working with library return values (e.g. DB
 rows). Prefer `T[]` / `T[][]` when teaching array ideas.
 

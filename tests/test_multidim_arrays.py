@@ -72,3 +72,17 @@ def test_assign_nested_literal_into_slot_uses_array_array() -> None:
     assert "array('i', [1, 2])" in py
     assert "array('i', [3, 4])" in py
     assert "arr[0] = [[" not in py
+
+
+def test_nested_foreach_typed_array_binder() -> None:
+    """Given int[][] , when loop (int[] row in …), then emit nested for-loops."""
+    py = transpile(
+        "int[][] g = { {1, 2}, {3, 4} }\n"
+        "loop (int[] row in g) {\n"
+        "    loop (int x in row) {\n"
+        "        print(x)\n"
+        "    }\n"
+        "}\n"
+    )
+    assert "for " in py
+    assert "print(" in py

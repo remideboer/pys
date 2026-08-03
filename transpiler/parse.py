@@ -2562,6 +2562,19 @@ def _parse_loop(p: _Tok):
                 var_type = _parse_type_name(p)
             elif p.at_kw(*_TYPES):
                 var_type = p.eat(TokenKind.KEYWORD).text
+                # Multi-dim element binders: `int[] row in grid`, `int[][] plane in cubes`
+                if p.at(TokenKind.LBRACK):
+                    dims = _parse_array_dims(p)
+                    if any(d is not None for d in dims):
+                        sized = "".join("[]" if d is None else f"[{d}]" for d in dims)
+                        unsized = "[]" * len(dims)
+                        raise FatalParseError(
+                            f"Sized array type `{var_type}{sized}` is not valid as a loop binder. "
+                            f"Write `loop ({var_type}{unsized} name in …)`.",
+                            p.cur().line,
+                            p.cur().column,
+                        )
+                    var_type = var_type + ("[]" * len(dims))
         var = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat_kw("in")
         it = _parse_expression(p)

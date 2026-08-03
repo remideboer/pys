@@ -2,18 +2,37 @@
 
 # --- 1D ---
 int[] numbers = [1, 2, 3, 4, 5]
-int[] primes = [2, 3, 5]  # length 3 from the initializer
+int[] primes = [2, 3, 5]  # length from the initializer
 print(numbers[0])
 print(primes[2])
+
+loop (int n in numbers) {
+    print(n)
+}
 
 # --- 2D nested brace initializer (Java-style) ---
 int[][] myNumbers = { {1, 4, 2}, {3, 6, 8} }
 print(myNumbers[0][1])  # 4
 print(myNumbers[1][2])  # 8
 
+# nested foreach: outer rows are int[], cells are int
+loop (int[] row in myNumbers) {
+    loop (int cell in row) {
+        print(cell)
+        
+    }
+}
+
 # --- 2D nested bracket initializer ---
 int[][] grid = [[9, 8, 7], [6, 5, 4]]
 print(grid[1][0])  # 6
+
+# indexed nested loops over ranks
+loop (int i = 0, i < 2, i++) {
+    loop (int j = 0, j < 3, j++) {
+        print(grid[i][j])
+    }
+}
 
 # --- Allocate ranks (no `new`): outer size, then fill a slot ---
 int[][][] cubes = int[3][][]
@@ -23,7 +42,24 @@ cubes[1][0][1] = 42
 print(cubes[0][1][0])  # 3
 print(cubes[1][0][1])  # 42
 
+# foreach over a filled plane (skip null slots)
+loop (int[][] plane in cubes) {
+    if (plane != null) {
+        loop (int[] row in plane) {
+            loop (int cell in row) {
+                print(cell)
+            }
+        }
+    }
+}
+
 # --- Fully sized 2D alloc (zero-filled rows) ---
 int[][] zeros = int[2][3]
 zeros[0][2] = 7
 print(zeros[0][2])  # 7
+
+loop (int[] row in zeros) {
+    loop (int cell in row) {
+        print(cell)
+    }
+}
