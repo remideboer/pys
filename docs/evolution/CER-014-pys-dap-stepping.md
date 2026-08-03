@@ -56,6 +56,10 @@ Follow-up maturity: verified gutter glyphs, stop-on-entry, Variables/Watch names
   while paused (`InlineValueText`); only names present in the current frame’s
   Locals/Args scopes (not Globals/Builtins); `pys.debug.inlineValues`.
 - Extension **0.0.54** (Map scope filter fix; was 0.0.53 empty inline values).
+- Extension **0.0.55**: `remapVariables` applies pysmap `names` **before**
+  `hidePrefixes`, so brace-scoped `_pys_bN_*` locals (CER-015) display as
+  their PYS names in Variables and inline values (e.g. loop counter `i` on
+  the `loop` header line).
 
 ### Post-behavior (logpoints)
 

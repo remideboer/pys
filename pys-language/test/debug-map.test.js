@@ -155,6 +155,45 @@ test('remapVariables renames _c_ captures and hides runtime helpers', () => {
   );
 });
 
+test('remapVariables renames brace-scoped _pys_b locals before hidePrefixes', () => {
+  // CER-015: loop binders emit as _pys_bN_*; hidePrefixes is `_pys_` for helpers.
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    py: PY,
+    lines: [],
+    names: { _pys_b1_i: 'i' },
+    hidePrefixes: ['_pys_', '__pys_', '_Pys'],
+  });
+  const vars = remapVariables(reg, [
+    { name: '_pys_b1_i', value: '2', variablesReference: 0 },
+    { name: '_pys_tg_0', value: '<TaskGroup>', variablesReference: 1 },
+  ]);
+  assert.deepEqual(
+    vars.map((v) => ({ name: v.name, value: v.value })),
+    [{ name: 'i', value: '2' }],
+  );
+});
+
+test('collectInlineValueSites finds loop binder on header line', () => {
+  const src = [
+    'loop (int i = 0, i < 3, i++) {',
+    '    print(i)',
+    '}',
+  ].join('\n');
+  const sites = collectInlineValueSites(src, 2, {
+    keywords: ['loop', 'print'],
+    types: ['int'],
+  });
+  // One site per name per line (deduped); header + body both see `i`.
+  assert.deepEqual(
+    sites.map((s) => ({ line: s.line, name: s.name })),
+    [
+      { line: 0, name: 'i' },
+      { line: 1, name: 'i' },
+    ],
+  );
+});
 test('rewriteEvaluateExpression maps bare PYS name to emitted', () => {
   const reg = registryFromSidecar({
     version: 1,

@@ -244,15 +244,17 @@ function remapVariables(registry, variables) {
       out.push(v);
       continue;
     }
-    if (shouldHideVariableName(v.name, hidePrefixes)) {
-      continue;
-    }
+    // Prefer pysmap `names` before hidePrefixes — brace-scoped locals are
+    // emitted as `_pys_bN_*` (CER-015) but must still display as the PYS name.
     const display = names[v.name];
     if (display) {
       out.push({ ...v, name: display });
-    } else {
-      out.push(v);
+      continue;
     }
+    if (shouldHideVariableName(v.name, hidePrefixes)) {
+      continue;
+    }
+    out.push(v);
   }
   return out;
 }

@@ -35,6 +35,8 @@ showed that leaked local — the defect was language/emit, not DAP.
   foreach / for-range binders exist only in the nested env.
 - Emit mangles brace-local names to `_pys_bN_<name>`, records `debug_names` for
   DAP display, and applies renames in expressions and interpolated strings.
+- DAP: pysmap `names` must win over `hidePrefixes` (`_pys_`), otherwise
+  Variables/inline values drop brace locals (CER-014 / extension 0.0.55).
 - Lambda capture defaults use the current outer rename (`_c_i=_pys_b1_i`).
 - `docs/LANGUAGE.md` documents block-scoped binders / brace locals.
 
