@@ -1,39 +1,58 @@
 # Binary / hex literals, width aliases, and bitwise ops.
 
+# --- Binary literal (0b) ---
 int i1 = 0b1010
-print(i1)
+print(i1)  # 10
 
+# --- Binary literal with digit separators (_); byte width ---
 byte b1 = 0b1011_1101
-print(b1)
+print(b1)  # 189
 
 byte b2 = 0b0100_0100
-print(b2)
+print(b2)  # 68
 
+# --- Hex literal (0x); nibble width ---
 nibble n1 = 0xA
-print(n1)
+print(n1)  # 10
 
+# --- Hex literal; int16 width ---
 int16 w1 = 0xFFFF
-print(w1)
+print(w1)  # 65535
 
+# --- Hex literal with separators; int32 width ---
 int32 i2 = 0xFFFF_FFFF
-print(i2)
+print(i2)  # 4294967295
 
+# --- Hex literal; int64 width ---
 int64 i3 = 0xFFFF_FFFF_FFFF_FFFF
-print(i3)
+print(i3)  # 18446744073709551615
 
+# --- Hex literal; dword width ---
 dword d1 = 0xFFFF_FFFF
-print(d1)
+print(d1)  # 4294967295
 
-print(0b1010 & 0b0101)
-print(0b1010 | 0b0101)
-print(0b1010 ^ 0b0101)
-print(0b1010 xor 0b0101)
-print(~0b1010)
-print(0b1010 << 1)
-print(0b1010 shift left 1)
-print(0b1010 >> 1)
-print(0b1010 shift right 1)
+# --- Bitwise AND (&) ---
+print(0b1010 & 0b0101)  # 0
 
-print(0b1010 + 0b0101)
-print(0b1010 // 0b0010)
-print(2 ** 3)
+# --- Bitwise OR (|) ---
+print(0b1010 | 0b0101)  # 15
+
+# --- Bitwise XOR (^ and xor) ---
+print(0b1010 ^ 0b0101)  # 15
+print(0b1010 xor 0b0101)  # 15
+
+# --- Bitwise NOT (~) ---
+print(~0b1010)  # -11
+
+# --- Left shift (<< and shift left) ---
+print(0b1010 << 1)  # 20
+print(0b1010 shift left 1)  # 20
+
+# --- Right shift (>> and shift right) ---
+print(0b1010 >> 1)  # 5
+print(0b1010 shift right 1)  # 5
+
+# --- Arithmetic still works on binary literals (+, //, **) ---
+print(0b1010 + 0b0101)  # 15
+print(0b1010 // 0b0010)  # 5
+print(2 ** 3)  # 8
