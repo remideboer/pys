@@ -131,13 +131,13 @@ tasks {
 }
 ```
 
-### 5. Deferred: `atomic` (placeholder for `docs/CONCURRENCY.md`)
+### 5. Delivered: `atomic` (see `docs/CONCURRENCY.md` / ADR-013)
 
-The `shared` capture rule above makes mutation of a captured variable *visible* in the source, but it does not by itself guarantee true atomicity under concurrent access — two tasks both executing `counter += n` on the same `shared int counter` can still race, since `+=` is not an indivisible operation. This is a separate, orthogonal concern from lambda capture syntax and is deferred to a future revision of `docs/CONCURRENCY.md`, to be specified there rather than folded into the lambda grammar. Placeholder scope for that future work:
-
-- An `atomic` type qualifier (e.g. `atomic int counter`) guaranteeing indivisible read-modify-write for its declared compound operators (`+=`, `-=`, `++`, `--`).
-- Explicit documentation that `shared` alone is a *visibility* guarantee (the mutation is declared, not hidden), not a *safety* guarantee (the mutation is not automatically race-free) — this distinction must be taught explicitly, since conflating the two is a common source of concurrency bugs in other languages' `volatile`/`shared`-style keywords (e.g. Java's `volatile` does not make `counter++` atomic either).
-
+`shared` makes mutation of a captured variable *visible* in the source, but it
+does not by itself guarantee true atomicity under concurrent access. That
+concern is specified in [`requirements/atomic.md`](atomic.md) and delivered as
+`atomic` ([ADR-013](../docs/adr/ADR-013-atomic.md)): indivisible `+=`/`-=`/`++`/`--`,
+`get` / `compareAndSet`, with `shared` kept as the visibility qualifier.
 ### 6. Cross-language design comparison (rationale for the capture rule)
 
 | Language | Capture pitfall | Consequence | PYS's answer |

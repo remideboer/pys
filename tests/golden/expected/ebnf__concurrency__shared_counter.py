@@ -19,6 +19,34 @@ class _PysShared:
             self.value -= delta
             return self.value
 
+class _PysAtomic:
+    """Lock-backed indivisible get / set / iadd / isub / compareAndSet."""
+    __slots__ = ("_value", "_lock")
+    def __init__(self, value):
+        self._value = value
+        self._lock = _PysLock()
+    def get(self):
+        with self._lock:
+            return self._value
+    def set(self, value):
+        with self._lock:
+            self._value = value
+            return value
+    def iadd(self, delta):
+        with self._lock:
+            self._value += delta
+            return self._value
+    def isub(self, delta):
+        with self._lock:
+            self._value -= delta
+            return self._value
+    def compareAndSet(self, expected, new_value):
+        with self._lock:
+            if self._value == expected:
+                self._value = new_value
+                return True
+            return False
+
 def _pys_await(value):
     if isinstance(value, Future):
         return value.result()

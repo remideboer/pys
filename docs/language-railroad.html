@@ -396,9 +396,9 @@
     {
       id: 'declaration',
       title: 'declaration',
-      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | data_decl | entity_decl | enum_decl | interface_decl | trait_decl ;',
+      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | atomic_decl | function_decl | class_decl | struct_decl | data_decl | entity_decl | enum_decl | interface_decl | trait_decl ;',
       node: Choice(
-        N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'),
+        N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'), N('atomic_decl'),
         N('function_decl'), N('class_decl'), N('struct_decl'), N('data_decl'),
         N('entity_decl'), N('enum_decl'), N('interface_decl'), N('trait_decl')
       )
@@ -752,6 +752,18 @@
       title: 'shared_decl',
       ebnf: '"shared" type_name identifier "=" expression ;',
       node: Seq(T('shared'), N('type_name'), N('identifier'), T('='), N('expression'))
+    },
+    {
+      id: 'atomic_decl',
+      title: 'atomic_decl',
+      ebnf: '"atomic" atomic_primitive identifier "=" expression ;',
+      node: Seq(T('atomic'), N('atomic_primitive'), N('identifier'), T('='), N('expression'))
+    },
+    {
+      id: 'atomic_primitive',
+      title: 'atomic_primitive',
+      ebnf: '"int" | "int16" | "int32" | "int64" | "dword" | "bool" ;',
+      node: Choice(T('int'), T('int16'), T('int32'), T('int64'), T('dword'), T('bool'))
     },
     {
       id: 'tasks_stmt',

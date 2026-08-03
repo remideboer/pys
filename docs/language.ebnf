@@ -118,6 +118,7 @@ declaration      = var_decl
                  | const_decl
                  | fix_decl
                  | shared_decl
+                 | atomic_decl
                  | function_decl
                  | class_decl
                  | struct_decl
@@ -139,6 +140,10 @@ fix_decl         = [ top_visibility ] , "fix" , ( primitive_type | named_type ) 
 
 (* shared: cross-task mutable binding (Policy B). See docs/CONCURRENCY.md *)
 shared_decl      = "shared" , type_name , identifier , "=" , expression ;
+
+(* atomic: implies shared; indivisible +=/-=/++/-- plus get/compareAndSet *)
+atomic_decl      = "atomic" , atomic_primitive , identifier , "=" , expression ;
+atomic_primitive = "int" | "int16" | "int32" | "int64" | "dword" | "bool" ;
 
 (* ------------------------- Functions ------------------------- *)
 
@@ -282,7 +287,7 @@ statement        = declaration_stmt
                  | "pass" ;
 (* task_stmt is not a free statement — only via tasks_item inside tasks_block. *)
 
-declaration_stmt = var_decl | const_decl | fix_decl | shared_decl ;
+declaration_stmt = var_decl | const_decl | fix_decl | shared_decl | atomic_decl ;
 
 assignment       = lvalue , "=" , expression
                  | lvalue , ( "+=" | "-=" | "*=" | "/=" | "%=" ) , expression
@@ -491,5 +496,5 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   int float char string bool byte nibble int16 int32 int64 dword
   list dict tuple set
   true false null
-  tasks task await shared
+  tasks task await shared atomic
 *)

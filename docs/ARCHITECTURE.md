@@ -94,7 +94,7 @@ flowchart TB
 | `sem.py` | Semantic checks on the AST (types, access, tasks, arrays, …) |
 | `emit/python.py` | Python text from AST |
 | `emit/overloads.py` | Post-pass arity dispatch for overloaded methods |
-| `concurrency.py` | Shared tasks/await/shared preamble |
+| `concurrency.py` | Shared tasks/await/shared/atomic preamble |
 | `imports.py` | AST-based `.pys` import resolution / visibility |
 | `deps.py` | `pys.deps` → `~/.pys/repository` |
 | `transpiler.py` | Public `transpile` / `run_source` / `TranspileError` |
@@ -126,7 +126,7 @@ flowchart TD
 
 1. **Lex** — Reject illegal tokens early (e.g. tabs).
 2. **Parse** — Prefer brace mode when `{`/`}` are present. Indent-mode (`then` / `func` / `repeat`) only when there are no braces. Failures raise `TranspileError` (no legacy fallback).
-3. **Sem** — Owns language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set.
+3. **Sem** — Owns language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared/atomic capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set.
 4. **Emit** — Walk AST to Python; inject concurrency preamble and ABC/array imports as needed; resolve `.pys` imports via `ImportResolver`; rewrite method overloads.
 
 ---
@@ -276,6 +276,7 @@ flowchart LR
   subgraph vscode [Editor]
     Lang["pys-language extension"]
     Run["PYS: Run File"]
+    Debug["PYS: Debug File"]
     Diag["diagnostics"]
   end
 
@@ -284,14 +285,17 @@ flowchart LR
   end
 
   Lang --> Run
+  Lang --> Debug
   Run --> Tx
-  Lang --> Diag
+  Debug --> Prep["prepare_debug maps"]
+  Prep --> Tx
+  Debug --> Dbgpy["debugpy on temp .py"]
   Diag --> Tx
-  Tx --> Out["temp Python + debug adapter"]
+  Prep --> Remap["DebugAdapterTracker remap to .pys"]
+  Dbgpy --> Remap
 ```
 
-The extension packages a copy of the transpiler (`npm run prepare`). Diagnostics and Run share the same front-end rules as `compile_pys` where possible; PYS source-level DAP stepping is deferred ([pipeline-migration.md](pipeline-migration.md) C2).
-
+The extension packages a copy of the transpiler (`npm run prepare`). Diagnostics and Run share the same front-end rules as `compile_pys` where possible. Debug prepares generated modules + line maps and remaps breakpoints/stack frames to `.pys` ([ADR-014](adr/ADR-014-pys-dap-stepping.md)).
 ---
 
 ## Extending the pipeline

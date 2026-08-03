@@ -51,6 +51,15 @@ npm run package          # VSIX only
 npm run package:elo      # VSIX + dist/pys-student-<version>.zip
 ```
 
+Contributor shortcut (from repo root, after `pip install -e .`):
+
+```powershell
+.\install-extension.bat            # Windows
+./install-extension.sh             # macOS/Linux
+pys install extension              # same via CLI
+pys install extension --no-build   # install newest existing VSIX only
+```
+
 Local Marketplace publish:
 
 ```powershell

@@ -5,6 +5,7 @@ from .ast_nodes import (
     ArrayDecl,
     ArrayLiteral,
     AssignStmt,
+    AtomicDecl,
     AugAssignStmt,
     AwaitExpr,
     BinaryOp,
@@ -74,6 +75,9 @@ _TYPES = frozenset(
         "int64",
         "dword",
     }
+)
+_ATOMIC_PRIMITIVES = frozenset(
+    {"int", "int16", "int32", "int64", "dword", "bool"}
 )
 _VIS = frozenset({"global", "package", "module"})
 _ROTATE_DEFERRED = (
@@ -509,6 +513,8 @@ def _parse_toplevel(p: _Tok):
         return _parse_trait(p)
     if p.at_kw("shared"):
         return _parse_shared(p)
+    if p.at_kw("atomic"):
+        return _parse_atomic(p)
     if p.at_kw("tasks"):
         return _parse_tasks(p)
     if p.at_kw("task"):
@@ -523,6 +529,15 @@ def _parse_toplevel(p: _Tok):
 def _parse_shared(p: _Tok) -> SharedDecl:
     sp = p.span()
     p.eat_kw("shared")
+    if p.at_kw("atomic"):
+        raise FatalParseError(
+            "`shared atomic` is redundant — write `atomic <type> name = …` "
+            "(`atomic` already implies shared for capture).",
+            p.cur().line,
+            p.cur().column,
+            code="pys.atomic-redundant",
+            tips=["Drop `shared` and use `atomic int counter = 0`."],
+        )
     dtype = ""
     if p.at_kw(*_TYPES) or p.at(TokenKind.IDENT):
         dtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
@@ -530,6 +545,46 @@ def _parse_shared(p: _Tok) -> SharedDecl:
     p.eat(TokenKind.OP, text="=")
     value = _parse_expression(p)
     return SharedDecl(span=sp, name=name, value=value, declare_type=dtype)
+
+
+def _parse_atomic(p: _Tok) -> AtomicDecl:
+    sp = p.span()
+    p.eat_kw("atomic")
+    if p.at_kw("shared"):
+        raise FatalParseError(
+            "`atomic shared` is redundant — write `atomic <type> name = …` "
+            "(`atomic` already implies shared for capture).",
+            p.cur().line,
+            p.cur().column,
+            code="pys.atomic-redundant",
+            tips=["Drop `shared` and use `atomic int counter = 0`."],
+        )
+    if not (p.at_kw(*_TYPES) or p.at(TokenKind.IDENT)):
+        raise FatalParseError(
+            "`atomic` requires a primitive type "
+            "(int, int16, int32, int64, dword, or bool).",
+            p.cur().line,
+            p.cur().column,
+            code="pys.atomic-type",
+            tips=["Example: `atomic int counter = 0`."],
+        )
+    dtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+    if dtype not in _ATOMIC_PRIMITIVES:
+        raise FatalParseError(
+            f"`atomic {dtype}` is not allowed — only int-like widths and bool "
+            f"(float/string are excluded).",
+            sp.line,
+            sp.column,
+            code="pys.atomic-type",
+            tips=[
+                "Use `atomic int …` (or int16/int32/int64/dword/bool).",
+                "For float accumulators, use an explicit compareAndSet loop.",
+            ],
+        )
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    p.eat(TokenKind.OP, text="=")
+    value = _parse_expression(p)
+    return AtomicDecl(span=sp, name=name, value=value, declare_type=dtype)
 
 
 def _parse_tasks(p: _Tok) -> TasksBlock:
@@ -1707,6 +1762,8 @@ def _parse_statement(p: _Tok):
         )
     if p.at_kw("shared"):
         return _parse_shared(p)
+    if p.at_kw("atomic"):
+        return _parse_atomic(p)
     if p.at_kw("var", "const", "fix", *_TYPES):
         return _parse_decl(p)
     # Typed named decl: Type name =  / Type<...> name =
@@ -1734,7 +1791,7 @@ def _parse_statement(p: _Tok):
         "if", "unless", "loop", "print", "return", "pass", "break", "continue", "else",
         "function", "class", "interface", "import",
     }):
-        if p.peek(1).text in {"=", "+=", "-=", "*=", "/=", "++", "--"}:
+        if p.peek(1).text in {"=", "+=", "-=", "*=", "/=", "%=", "++", "--"}:
             name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
             op = p.eat(TokenKind.OP).text
             if op in {"++", "--"}:
@@ -1743,7 +1800,7 @@ def _parse_statement(p: _Tok):
                 return AugAssignStmt(span=sp, name=name, op=op, value=_parse_expression(p))
             return AssignStmt(span=sp, name=name, value=_parse_expression(p))
     left = _parse_expression(p)
-    if p.at(TokenKind.OP) and p.cur().text in {"=", "+=", "-=", "*=", "/="}:
+    if p.at(TokenKind.OP) and p.cur().text in {"=", "+=", "-=", "*=", "/=", "%="}:
         op = p.eat(TokenKind.OP).text
         right = _parse_expression(p)
         lval = _expr_to_lvalue(left)

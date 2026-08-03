@@ -20,6 +20,7 @@ __all__ = [
     "transpile",
     "transpile_path",
     "transpile_with_modules",
+    "transpile_with_modules_and_maps",
     "run_source",
 ]
 
@@ -128,8 +129,21 @@ def transpile_with_modules(
 
     Returns a mapping of module stem -> Python source text.
     """
+    modules, _maps, _names = transpile_with_modules_and_maps(
+        source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
+    return modules
+
+
+def transpile_with_modules_and_maps(
+    source_path: Path,
+    *,
+    allow_runtime_introspection: bool = False,
+) -> tuple[dict[str, str], dict[str, list[dict[str, int]]], dict[str, dict[str, str]]]:
+    """Transpile entry + imports; return Python text, line maps, and debug names."""
     from .imports import discover_imported_modules
-    from .pipeline import compile_pys
+    from .pipeline import compile_pys_with_map
 
     source_path = source_path.resolve()
     text = source_path.read_text(encoding="utf-8")
@@ -137,22 +151,29 @@ def transpile_with_modules(
         source_path,
         allow_runtime_introspection=allow_runtime_introspection,
     )
-    modules = {
-        source_path.stem: compile_pys(
-            text,
-            target="python",
-            source_path=source_path,
-            allow_runtime_introspection=allow_runtime_introspection,
-        ),
-    }
+    modules: dict[str, str] = {}
+    maps: dict[str, list[dict[str, int]]] = {}
+    names: dict[str, dict[str, str]] = {}
+    py, line_map, debug_names = compile_pys_with_map(
+        text,
+        target="python",
+        source_path=source_path,
+        allow_runtime_introspection=allow_runtime_introspection,
+    )
+    modules[source_path.stem] = py
+    maps[source_path.stem] = line_map
+    names[source_path.stem] = debug_names
     for path in module_cache:
-        modules[path.stem] = compile_pys(
+        py, line_map, debug_names = compile_pys_with_map(
             path.read_text(encoding="utf-8"),
             target="python",
             source_path=path,
             allow_runtime_introspection=allow_runtime_introspection,
         )
-    return modules
+        modules[path.stem] = py
+        maps[path.stem] = line_map
+        names[path.stem] = debug_names
+    return modules, maps, names
 
 
 def transpile_path(source_path: Path, target_path: Path) -> None:

@@ -9,6 +9,7 @@ keywords = ["python", "transpiler", "education", "demo"]
 
 [project.scripts]
 python-transpiler = "transpiler.__main__:main"
+pys = "transpiler.__main__:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

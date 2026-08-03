@@ -214,6 +214,14 @@
     ],
     "description": "PYS lambda expression"
   },
+  "Atomic variable": {
+    "prefix": "atomic",
+    "body": [
+      "atomic ${1|int,int16,int32,int64,dword,bool|} ${2:counter} = ${3:0}",
+      "${0}"
+    ],
+    "description": "PYS atomic (indivisible RMW; implies shared for capture)"
+  },
   "Enum": {
     "prefix": "enum",
     "body": [

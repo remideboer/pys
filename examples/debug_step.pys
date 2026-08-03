@@ -1,0 +1,40 @@
+# Debug stepping (breakpoints on .pys)
+
+Teaching sample for **PYS: Debug File**. Set gutter breakpoints on the marked
+lines — Debug runs until it hits one (no stop-on-entry). Requires the Microsoft
+Python extension. Clear breakpoints via **PYS: Clear All Breakpoints**
+(context / gutter / tab).
+
+See [`tutorials/jit/J-debug.md`](../tutorials/jit/J-debug.md) and
+[`docs/adr/ADR-014-pys-dap-stepping.md`](../docs/adr/ADR-014-pys-dap-stepping.md).
+
+# --- Stop A: assignment ---
+int total = 0
+
+# --- Stop B: call into a helper ---
+function int bump(int n) {
+    # --- Stop C: Step Into lands here ---
+    return n + 1
+}
+
+total = bump(total)
+total = bump(total)
+
+# --- Stop D: print final ---
+print(total)  # 2
+
+# --- Variables: lambda capture shows as `hits` (not `_c_hits`) ---
+shared int hits = 0
+list<int> xs = [1, 2, 3]
+xs.loop(n => {
+    # Pause here: Locals should list `hits` and `n`
+    hits += 1
+    return n
+})
+print(hits)  # 3
+
+# Notes for teaching:
+# - Verified breakpoint glyphs stay on these .pys lines (not the temp .py).
+# - Step Over / Into / Out / Continue keep the editor on .pys when mapped.
+# - Shared/atomic values appear as wrapper objects (open `.value` / use .get()).
+# - Run (Ctrl+Shift+R) still executes without the debugger.

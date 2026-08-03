@@ -47,5 +47,7 @@ Each record then uses:
 | [CER-010](CER-010-interface-method-access.md) | Interface methods omit access modifiers | Language |
 | [CER-011](CER-011-data-and-entity.md) | `data` value objects and `entity` identity types | Language |
 | [CER-012](CER-012-lambdas.md) | Lambdas with by-value capture | Language |
+| [CER-013](CER-013-atomic.md) | Atomic qualifier (implies shared) | Language |
+| [CER-014](CER-014-pys-dap-stepping.md) | PYS source-level DAP stepping | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

@@ -35,21 +35,24 @@ loop (int i in [0, 1, 2]) {
 # Invoking callbacks prints 0, 1, 2 — not 2, 2, 2
 ```
 
-Mutating a captured name requires `shared`:
+Mutating a captured name requires `shared` or `atomic`:
 
 ```pys
 shared int counter = 0
 xs.loop(n => { counter += n; return n })
+
+atomic int hits = 0
+xs.loop(n => { hits += 1; return n })
 ```
 
-`shared` makes the mutation **visible** in source; it does **not** make `+=`
-atomic under concurrent tasks (`atomic` is deferred).
+`shared` makes the mutation **visible**; `atomic` also makes `+=` **indivisible**
+under concurrent tasks ([J-atomic](J-atomic.md)).
 
 ## Rules
 
 1. `lambda<P…, R>` — last type is return; `lambda<R>` = no parameters  
 2. Body: expression (implicit return) or `{ … }` with `return`  
-3. Captures read-only unless `shared`  
+3. Captures read-only unless `shared` or `atomic`  
 4. `arr.loop(fn)` → map, not filter  
 
 Full sample: [`examples/lambdas.pys`](../../examples/lambdas.pys).

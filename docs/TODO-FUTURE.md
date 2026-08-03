@@ -11,7 +11,7 @@ mark it done here.
 | [F-001](#f-001-bitwise-rotate) | Language / bitwise | Deferred | Rotate `<<<` / `>>>` and word forms |
 | [F-002](#f-002-enum-match-exhaustiveness) | Language / enums | Superseded | Was `match`; delivered as `switch` (ADR-008) |
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
-| [F-004](#f-004-pys-dap-stepping) | IDE / debug | Deferred | PYS source-level DAP stepping |
+| [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
 
 ---
 
@@ -69,7 +69,9 @@ Allow two members to share a value only via a **real language construct**
 
 | | |
 | --- | --- |
-| Status | Deferred |
+| Status | **Done** — [ADR-014](adr/ADR-014-pys-dap-stepping.md) / [CER-014](evolution/CER-014-pys-dap-stepping.md) |
 | Source | [ARCHITECTURE.md](ARCHITECTURE.md); [pipeline-migration.md](pipeline-migration.md) C2 |
 
 Debug adapter stepping mapped to `.pys` lines (not only generated Python).
+Delivered: emit line maps, `prepare_debug`, debugpy launch of generated program,
+`DebugAdapterTracker` remap, extension 0.0.47.

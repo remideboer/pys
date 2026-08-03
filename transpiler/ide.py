@@ -5,6 +5,7 @@ Uses the AST pipeline (parse + ImportResolver + compile_pys).
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -536,8 +537,133 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     return {"file": str(path), "line": line, "column": col, "kind": kind}
 
 
+def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
+    """Transpile entry + imports into ``out_dir`` with ``*.pysmap.json`` sidecars.
+
+    Run-class privilege: may use runtime introspection. Returns one JSON-ready
+    dict for the extension debug launch path.
+    """
+    from .imports import discover_imported_modules
+    from .transpiler import transpile_with_modules_and_maps
+
+    source_path = source_path.resolve()
+    workspace = workspace_root_from_env()
+    if workspace is not None:
+        contained = resolve_workspace_path(source_path, workspace)
+        if contained is None:
+            return {
+                "ok": False,
+                "error": {
+                    "message": "PYS file must resolve inside the workspace.",
+                    "line": None,
+                    "column": None,
+                },
+            }
+        source_path = contained
+
+    out_dir = out_dir.resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        modules, maps, names = transpile_with_modules_and_maps(
+            source_path,
+            allow_runtime_introspection=True,
+        )
+    except TranspileError as exc:
+        return {"ok": False, "error": _error_dict(exc)}
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": {"message": f"{type(exc).__name__}: {exc}"},
+        }
+
+    pys_paths: dict[str, Path] = {source_path.stem: source_path}
+    for path in discover_imported_modules(
+        source_path,
+        allow_runtime_introspection=True,
+    ):
+        pys_paths[path.stem] = path
+
+    map_files: dict[str, str] = {}
+    hide_prefixes = ["_pys_", "__pys_", "_Pys"]
+    for stem, python_text in modules.items():
+        py_path = out_dir / f"{stem}.py"
+        py_path.write_text(python_text, encoding="utf-8")
+        pys = pys_paths.get(stem)
+        sidecar = {
+            "version": 1,
+            "pys": str(pys.resolve()) if pys else "",
+            "py": str(py_path),
+            "lines": maps.get(stem, []),
+            "names": names.get(stem, {}),
+            "hidePrefixes": hide_prefixes,
+        }
+        map_path = out_dir / f"{stem}.pysmap.json"
+        map_path.write_text(json.dumps(sidecar), encoding="utf-8")
+        map_files[stem] = str(map_path)
+
+    # Same PYTHONPATH contract as run_source: temp modules first, then pys.deps sites.
+    from .deps import (
+        DepsError,
+        load_deps,
+        resolve_python_executable,
+        resolve_site_paths,
+    )
+
+    prepend_parts: list[str] = [str(out_dir)]
+    python_exe = sys.executable
+    try:
+        deps_config = load_deps(source_path, stop_at=workspace)
+        if deps_config is not None:
+            python_exe = resolve_python_executable(deps_config)
+            site_paths = resolve_site_paths(
+                deps_config,
+                build="run",
+                python=python_exe,
+                quiet=True,
+            )
+            prepend_parts.extend(str(p) for p in site_paths)
+    except DepsError as exc:
+        return {
+            "ok": False,
+            "error": {
+                "message": str(exc),
+                "line": None,
+                "column": None,
+            },
+        }
+
+    return {
+        "ok": True,
+        "main": str(out_dir / f"{source_path.stem}.py"),
+        "cwd": str(source_path.parent),
+        "maps": map_files,
+        "pythonpath_prepend": os.pathsep.join(prepend_parts),
+        "python": python_exe,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) >= 1 and argv[0] == "--prepare-debug":
+        if len(argv) < 3:
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "message": (
+                            "Usage: python -m transpiler.ide "
+                            "--prepare-debug <outdir> <file.pys>"
+                        ),
+                    }
+                )
+            )
+            return 2
+        out_dir = Path(argv[1])
+        path = Path(argv[2])
+        result = prepare_debug(path, out_dir)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 1
     if len(argv) < 1:
         print(json.dumps({"ok": False, "message": "Usage: python -m transpiler.ide <file.pys> [symbol]"}))
         return 2

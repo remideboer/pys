@@ -9,6 +9,7 @@ from .ast_nodes import (
     ArrayDecl,
     ArrayLiteral,
     AssignStmt,
+    AtomicDecl,
     AugAssignStmt,
     AwaitExpr,
     BinaryOp,
@@ -191,6 +192,7 @@ def analyze(
     _check_abstract_classes(module.body)
     _check_interfaces(module.body)
     _check_lambdas(module.body, types=types)
+    _check_atomics(module.body, types=types)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
     _check_class_member_modifiers(module.body)
@@ -329,6 +331,10 @@ def _check_width_ranges(body: list[Any], *, types: dict[str, str]) -> None:
                 col = stmt.span.column if stmt.span else 1
                 check_assign(stmt.declare_type, stmt.value, line, col)
             elif isinstance(stmt, SharedDecl):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                check_assign(stmt.declare_type, stmt.value, line, col)
+            elif isinstance(stmt, AtomicDecl):
                 line = stmt.span.line if stmt.span else 1
                 col = stmt.span.column if stmt.span else 1
                 check_assign(stmt.declare_type, stmt.value, line, col)
@@ -1139,6 +1145,10 @@ def _check_bindings(
             declared.add(stmt.name)
             if stmt.declare_type:
                 types[stmt.name] = stmt.declare_type
+        elif isinstance(stmt, AtomicDecl):
+            declared.add(stmt.name)
+            if stmt.declare_type:
+                types[stmt.name] = stmt.declare_type
         elif isinstance(stmt, StructDef):
             declared.add(stmt.name)
             types[stmt.name] = stmt.name
@@ -1481,6 +1491,42 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     class_parents: dict[str, str | None] = {}
     class_implements: dict[str, list[str]] = {}
     traits = _trait_map(body)
+    atomic_names: set[str] = set()
+
+    def _collect_atomics(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AtomicDecl):
+                atomic_names.add(stmt.name)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                _collect_atomics(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        _collect_atomics(m.body.statements)
+            elif isinstance(stmt, EntityDef):
+                for m in stmt.methods:
+                    if m.body:
+                        _collect_atomics(m.body.statements)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    _collect_atomics(stmt.then_body.statements)
+                if stmt.else_body:
+                    _collect_atomics(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                for case in stmt.cases:
+                    if case.body:
+                        _collect_atomics(case.body.statements)
+            elif isinstance(stmt, Block):
+                _collect_atomics(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    _collect_atomics(stmt.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        _collect_atomics(t.body.statements)
+
+    _collect_atomics(body)
 
     for stmt in body:
         if isinstance(stmt, InterfaceDef):
@@ -1648,6 +1694,9 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         column: int,
         code: str = "",
     ) -> None:
+        # Synthesized accessors on atomic variables (not class members).
+        if recv in atomic_names and member in {"get", "compareAndSet"}:
+            return
         recv_t = receiver_type(recv, local_types, current_class)
         if not recv_t:
             return
@@ -2773,6 +2822,16 @@ def _check_structs(
                         stmt.span.column if stmt.span else 1,
                         "null",
                     )
+            if isinstance(stmt, AtomicDecl):
+                base = _base_type_name(stmt.declare_type or "")
+                if base in struct_info:
+                    _transpile_error(
+                        f"`atomic` cannot be used with struct type {base} "
+                        f"(structs are identity-free value types).",
+                        stmt.span.line if stmt.span else 1,
+                        stmt.span.column if stmt.span else 1,
+                        f"atomic {stmt.declare_type}",
+                    )
             if isinstance(stmt, AssignStmt):
                 line = stmt.span.line if stmt.span else 1
                 col = stmt.span.column if stmt.span else 1
@@ -3708,12 +3767,15 @@ def _check_lambdas(body: list[Any], *, types: dict[str, str]) -> None:
         op = getattr(stmt, "op", "=")
         _transpile_error(
             f"Cannot mutate captured variable '{name}' inside lambda — "
-            f"declare it 'shared' if mutation across closures is intended.",
+            f"declare it 'shared' or 'atomic' if mutation across closures is intended.",
             line,
             col,
             f"{name}{op}" if op != "=" else f"{name} = ...",
             code="pys.lambda-capture",
-            tips=[f"Write `shared <type> {name} = …` at the outer scope."],
+            tips=[
+                f"Write `shared <type> {name} = …` or `atomic <type> {name} = …` "
+                f"at the outer scope."
+            ],
         )
 
     def walk_expr(
@@ -3798,6 +3860,10 @@ def _check_lambdas(body: list[Any], *, types: dict[str, str]) -> None:
         lambda_locals = set(lambda_locals or ())
         for stmt in stmts:
             if isinstance(stmt, SharedDecl):
+                declared.add(stmt.name)
+                shared.add(stmt.name)
+                continue
+            if isinstance(stmt, AtomicDecl):
                 declared.add(stmt.name)
                 shared.add(stmt.name)
                 continue
@@ -3915,6 +3981,191 @@ def _check_lambdas(body: list[Any], *, types: dict[str, str]) -> None:
     walk_stmts(body, declared=set(types), shared=set())
 
 
+_ATOMIC_FORBIDDEN_OPS = frozenset({"*=", "/=", "%="})
+_ATOMIC_METHODS = frozenset({"get", "compareAndSet"})
+
+
+def _check_atomics(body: list[Any], *, types: dict[str, str]) -> None:
+    """Reject non-guaranteed ops; validate get / compareAndSet; other members ban."""
+
+    atomic: set[str] = set()
+
+    def walk_expr(expr: Expr | None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call) and isinstance(expr.callee, Member):
+            mem = expr.callee
+            if isinstance(mem.object, Identifier) and mem.object.name in atomic:
+                line = expr.span.line if expr.span else (
+                    mem.span.line if mem.span else 1
+                )
+                col = expr.span.column if expr.span else (
+                    mem.span.column if mem.span else 1
+                )
+                if mem.name == "get":
+                    if expr.args:
+                        _transpile_error(
+                            "`get()` on an atomic variable takes no arguments.",
+                            line,
+                            col,
+                            f"{mem.object.name}.get(...)",
+                            code="pys.atomic-op",
+                            tips=["Write `name.get()` with an empty argument list."],
+                        )
+                elif mem.name == "compareAndSet":
+                    if len(expr.args) != 2:
+                        _transpile_error(
+                            "`compareAndSet` on an atomic variable requires "
+                            "exactly two arguments: expected and newValue.",
+                            line,
+                            col,
+                            f"{mem.object.name}.compareAndSet(...)",
+                            code="pys.atomic-op",
+                            tips=[
+                                "Write `name.compareAndSet(expected, newValue)` "
+                                "and retry in a loop when it returns false."
+                            ],
+                        )
+                else:
+                    _transpile_error(
+                        f"Atomic variable '{mem.object.name}' has no member "
+                        f"'{mem.name}'. Allowed: get(), compareAndSet(expected, newValue).",
+                        line,
+                        col,
+                        f"{mem.object.name}.{mem.name}",
+                        code="pys.atomic-op",
+                    )
+                for a in expr.args:
+                    if isinstance(a, KeywordArg):
+                        walk_expr(a.value)
+                    else:
+                        walk_expr(a)
+                walk_expr(mem.object)
+                return
+        if isinstance(expr, Member) and isinstance(expr.object, Identifier):
+            if expr.object.name in atomic and expr.name not in _ATOMIC_METHODS:
+                line = expr.span.line if expr.span else 1
+                col = expr.span.column if expr.span else 1
+                _transpile_error(
+                    f"Atomic variable '{expr.object.name}' has no member "
+                    f"'{expr.name}'. Allowed: get(), compareAndSet(expected, newValue).",
+                    line,
+                    col,
+                    f"{expr.object.name}.{expr.name}",
+                    code="pys.atomic-op",
+                )
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "callee",
+            "object",
+            "index",
+            "body",
+            "subject",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child)
+        args = getattr(expr, "args", None)
+        if isinstance(args, list):
+            for a in args:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value)
+                elif isinstance(a, Expr):
+                    walk_expr(a)
+        elems = getattr(expr, "elements", None)
+        if isinstance(elems, list):
+            for e in elems:
+                if isinstance(e, Expr):
+                    walk_expr(e)
+        if isinstance(expr, SwitchExpr):
+            for case in expr.cases:
+                walk_expr(case.value)
+        if isinstance(expr, LambdaExpr) and isinstance(expr.body, Block):
+            walk(expr.body.statements)
+
+    def walk(stmts: list[Any]) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AtomicDecl):
+                atomic.add(stmt.name)
+                walk_expr(stmt.value)
+                continue
+            if isinstance(stmt, AugAssignStmt) and _is_simple_name(stmt.name):
+                if stmt.name in atomic and stmt.op in _ATOMIC_FORBIDDEN_OPS:
+                    line = stmt.span.line if stmt.span else 1
+                    col = stmt.span.column if stmt.span else 1
+                    _transpile_error(
+                        f"Operator '{stmt.op}' is not allowed on atomic "
+                        f"'{stmt.name}' — multiply/divide/modulo are not "
+                        f"guaranteed indivisible. Use get() / compareAndSet "
+                        f"in a retry loop instead.",
+                        line,
+                        col,
+                        f"{stmt.name} {stmt.op}",
+                        code="pys.atomic-op",
+                        tips=[
+                            "Read with `name.get()`, then "
+                            "`name.compareAndSet(expected, newValue)` until it succeeds."
+                        ],
+                    )
+                walk_expr(stmt.value)
+            elif isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt)):
+                val = getattr(stmt, "value", None) or getattr(stmt, "expr", None)
+                walk_expr(val)
+            elif isinstance(stmt, FunctionDef) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, EntityDef):
+                # Identity fields are `fix` members; `atomic` cannot appear there.
+                # Belt-and-suspenders: reject if an identity key somehow collides
+                # with a nested atomic binding of the same name in methods — N/A.
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond)
+                if stmt.then_body:
+                    walk(stmt.then_body.statements)
+                if stmt.else_body:
+                    walk(stmt.else_body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject)
+                for case in stmt.cases:
+                    walk_expr(case.value)
+                    if case.body:
+                        walk(case.body.statements)
+            elif isinstance(stmt, Block):
+                walk(stmt.statements)
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(stmt, WhileStmt):
+                    walk_expr(stmt.cond)
+                elif isinstance(stmt, ForRangeStmt):
+                    walk_expr(stmt.start)
+                    walk_expr(stmt.stop)
+                elif isinstance(stmt, ForEachStmt):
+                    walk_expr(stmt.iterable)
+                elif isinstance(stmt, RepeatStmt):
+                    walk_expr(stmt.count)
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+
+    walk(body)
+    _ = types  # reserved for future typed CAS arg checks
+
+
 def _check_shared_capture(body: list[Any]) -> None:
     """Policy B: outer captures are read-only inside tasks unless shared."""
 
@@ -3934,6 +4185,10 @@ def _check_shared_capture(body: list[Any]) -> None:
                 declared.add(stmt.name)
                 shared.add(stmt.name)
                 continue
+            if isinstance(stmt, AtomicDecl):
+                declared.add(stmt.name)
+                shared.add(stmt.name)
+                continue
             if isinstance(stmt, AssignStmt):
                 if stmt.declare_type or stmt.is_const or stmt.is_fix:
                     declared.add(stmt.name)
@@ -3946,7 +4201,7 @@ def _check_shared_capture(body: list[Any]) -> None:
                         col = stmt.span.column if stmt.span else 1
                         _transpile_error(
                             f"Cannot assign to '{name}' inside task; captured variables are read-only. "
-                            f"Declare it `shared` to allow cross-task mutation.",
+                            f"Declare it `shared` or `atomic` to allow cross-task mutation.",
                             line,
                             col,
                             f"{name} = ...",
@@ -3959,7 +4214,7 @@ def _check_shared_capture(body: list[Any]) -> None:
                         col = stmt.span.column if stmt.span else 1
                         _transpile_error(
                             f"Cannot assign to '{name}' inside task; captured variables are read-only. "
-                            f"Declare it `shared` to allow cross-task mutation.",
+                            f"Declare it `shared` or `atomic` to allow cross-task mutation.",
                             line,
                             col,
                             f"{name}{stmt.op}",

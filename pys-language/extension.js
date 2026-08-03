@@ -1,19 +1,35 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const {
   buildWorkspaceIdeProcessSpec,
   buildRunEnv,
   resolveWorkspaceFile,
   runJsonProcess,
 } = require('./ide-process');
+const {
+  loadMapRegistry,
+  remapSetBreakpointsArgs,
+  remapSetBreakpointsResponse,
+  remapBreakpoint,
+  remapStackFrames,
+  remapVariables,
+  rewriteEvaluateExpression,
+} = require('./debug-map');
+
+const PYS_DEBUG_SESSION_NAME = 'Debug PYS';
+/** @type {Map<string, { dir: string, registry: object }>} */
+const pysDebugSessions = new Map();
+/** @type {{ dir: string, registry: object } | null} */
+let pendingPysDebug = null;
 
 const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'lambda', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic',
 ];
 
 const PYS_TYPES = [
@@ -26,7 +42,7 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic',
 ]);
 const PYS_MD_TYPES = new Set([
   'int', 'float', 'char', 'string', 'bool', 'void',
@@ -419,7 +435,7 @@ function activate(context) {
         data: 'Immutable value object: `data Money { int amountCents\n  string currency }`\nStructural `==` over all fields; fields implicitly fix. No methods/inherits/uses.',
         entity: 'Identity-keyed type: `entity Customer identity(customerId) { private fix int customerId … }`\n`==` uses identity fields only. Root needs `identity(...)`; keys must be `fix`. May inherit another entity.',
         identity: 'Entity key clause: `entity Name identity(id, …) { … }`.\nRoot entities require it; derived entities may omit (share parent keys) or append local fix fields.',
-        lambda: 'Function type / keyword: `lambda<int, bool> isEven = n => n % 2 == 0`.\nCapture by value; captured names read-only unless `shared`. Body: `=> expr` or `=> { … }`.',
+        lambda: 'Function type / keyword: `lambda<int, bool> isEven = n => n % 2 == 0`.\nCapture by value; captured names read-only unless `shared` or `atomic`. Body: `=> expr` or `=> { … }`.',
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
         uses: 'Compose traits onto a class: `class Product uses Printable, Comparable { … }`\nPlaced after `inherits` and before `implements`.',
@@ -447,7 +463,8 @@ function activate(context) {
         tasks: 'Structured concurrency group: `tasks { task { … } }`. Leaving the block waits for all children.',
         task: 'One concurrent unit inside `tasks`. Named: `task ready { return 1 }` then `await ready` in a sibling.',
         await: 'Wait until a value is ready (named task handle / future). Only inside a `task` body.',
-        shared: 'Cross-task mutable cell: `shared int counter = 0`. Outer captures are otherwise read-only inside tasks.',
+        shared: 'Visibility of cross-task mutation: `shared int counter = 0`. Does **not** make `+=` race-free — use `atomic` for indivisible RMW.',
+        atomic: 'Indivisible RMW cell: `atomic int counter = 0`.\nImplies shared for capture. Ops: `+=`/`-=`/`++`/`--`, `get()`, `compareAndSet(expected, new)`. Rejects `*=`/`/=`/`%=`.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type. Literals: `10`, `0b1010`, `0xFF` (optional `_` separators).',
         float: 'Floating-point type',
@@ -957,18 +974,204 @@ function activate(context) {
       vscode.window.showErrorMessage('PYS file left the workspace before execution.');
       return;
     }
-    // Runs via the Python debugger on generated code — not PYS source stepping.
-    vscode.debug.startDebugging(undefined, {
-      name: 'Run .pys file',
+
+    const pythonExt = vscode.extensions.getExtension('ms-python.python');
+    if (!pythonExt) {
+      vscode.window.showErrorMessage(
+        'Install the Microsoft Python extension to debug PYS (source-level stepping uses debugpy).',
+      );
+      return;
+    }
+    if (!pythonExt.isActive) {
+      await pythonExt.activate();
+    }
+
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pys-debug-'));
+    const pythonExecutable = getPythonExecutable();
+    const env = buildRunEnv(bundled, workspace.uri.fsPath);
+    let prepared;
+    try {
+      prepared = await runJsonProcess(
+        pythonExecutable,
+        ['-m', 'transpiler.ide', '--prepare-debug', outDir, filePath],
+        { cwd: path.dirname(filePath), env },
+        { timeoutMs: 60_000 },
+      );
+    } catch (error) {
+      try {
+        fs.rmSync(outDir, { recursive: true, force: true });
+      } catch (_err) {
+        /* ignore */
+      }
+      vscode.window.showErrorMessage(
+        `Failed to prepare PYS debug session: ${error && error.message ? error.message : error}`,
+      );
+      return;
+    }
+    if (!prepared || !prepared.ok) {
+      try {
+        fs.rmSync(outDir, { recursive: true, force: true });
+      } catch (_err) {
+        /* ignore */
+      }
+      const msg =
+        (prepared && prepared.error && prepared.error.message) ||
+        (prepared && prepared.message) ||
+        'prepare_debug failed';
+      vscode.window.showErrorMessage(`Cannot debug PYS: ${msg}`);
+      return;
+    }
+
+    const registry = loadMapRegistry(prepared.maps || {});
+    const runEnv = buildRunEnv(bundled, workspace.uri.fsPath);
+    const prepend = prepared.pythonpath_prepend;
+    if (prepend) {
+      const existing = runEnv.PYTHONPATH || '';
+      runEnv.PYTHONPATH = existing
+        ? `${prepend}${path.delimiter}${existing}`
+        : prepend;
+    }
+
+    pendingPysDebug = { dir: outDir, registry, bpReqPysBySeq: new Map() };
+    const launchConfig = {
+      name: PYS_DEBUG_SESSION_NAME,
       type: 'python',
       request: 'launch',
-      module: 'transpiler',
-      args: ['run', filePath],
-      cwd: path.dirname(filePath),
-      env: buildRunEnv(bundled, workspace.uri.fsPath),
+      program: prepared.main,
+      cwd: prepared.cwd || path.dirname(filePath),
+      env: runEnv,
       console: 'integratedTerminal',
-    });
+      // Student program is the launch target (not `transpiler run` subprocess).
+      // Halt only at user breakpoints — do not stop on the first top-level line.
+      justMyCode: false,
+      stopOnEntry: false,
+    };
+    // Prefer deps-resolved interpreter (same as Run) when prepare_debug returns it.
+    if (prepared.python) {
+      launchConfig.python = prepared.python;
+    }
+    const started = await vscode.debug.startDebugging(workspace, launchConfig);
+    if (!started) {
+      pendingPysDebug = null;
+      try {
+        fs.rmSync(outDir, { recursive: true, force: true });
+      } catch (_err) {
+        /* ignore */
+      }
+    }
   }
+
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterTrackerFactory('python', {
+      createDebugAdapterTracker(session) {
+        if (session.name !== PYS_DEBUG_SESSION_NAME) {
+          return {};
+        }
+        if (pendingPysDebug) {
+          if (!pendingPysDebug.bpReqPysBySeq) {
+            pendingPysDebug.bpReqPysBySeq = new Map();
+          }
+          pysDebugSessions.set(session.id, pendingPysDebug);
+          pendingPysDebug = null;
+        }
+        return {
+          onWillReceiveMessage(message) {
+            const entry = pysDebugSessions.get(session.id);
+            if (!entry || !message) {
+              return;
+            }
+            if (message.command === 'setBreakpoints' && message.arguments) {
+              const src = message.arguments.source && message.arguments.source.path;
+              if (src && String(src).toLowerCase().endsWith('.pys')) {
+                entry.bpReqPysBySeq.set(message.seq, src);
+              }
+              message.arguments = remapSetBreakpointsArgs(
+                entry.registry,
+                message.arguments,
+              );
+            }
+            if (message.command === 'evaluate' && message.arguments) {
+              const expr = message.arguments.expression;
+              const rewritten = rewriteEvaluateExpression(entry.registry, expr);
+              if (rewritten !== expr) {
+                message.arguments = {
+                  ...message.arguments,
+                  expression: rewritten,
+                };
+              }
+            }
+          },
+          onDidSendMessage(message) {
+            const entry = pysDebugSessions.get(session.id);
+            if (!entry || !message) {
+              return;
+            }
+            if (
+              message.type === 'response' &&
+              message.command === 'stackTrace' &&
+              message.body &&
+              message.body.stackFrames
+            ) {
+              message.body.stackFrames = remapStackFrames(
+                entry.registry,
+                message.body.stackFrames,
+              );
+            }
+            if (
+              message.type === 'response' &&
+              message.command === 'setBreakpoints' &&
+              message.body
+            ) {
+              const pysPath = entry.bpReqPysBySeq.get(message.request_seq);
+              entry.bpReqPysBySeq.delete(message.request_seq);
+              message.body = remapSetBreakpointsResponse(
+                entry.registry,
+                message.body,
+                pysPath,
+              );
+            }
+            if (
+              message.type === 'event' &&
+              message.event === 'breakpoint' &&
+              message.body &&
+              message.body.breakpoint
+            ) {
+              message.body.breakpoint = remapBreakpoint(
+                entry.registry,
+                message.body.breakpoint,
+              );
+            }
+            if (
+              message.type === 'response' &&
+              message.command === 'variables' &&
+              message.body &&
+              message.body.variables
+            ) {
+              message.body.variables = remapVariables(
+                entry.registry,
+                message.body.variables,
+              );
+            }
+          },
+        };
+      },
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidTerminateDebugSession((session) => {
+      const entry = pysDebugSessions.get(session.id);
+      if (!entry) {
+        return;
+      }
+      pysDebugSessions.delete(session.id);
+      try {
+        fs.rmSync(entry.dir, { recursive: true, force: true });
+      } catch (_err) {
+        /* ignore */
+      }
+    }),
+  );
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
     await runPysFile(resolveTargetPysFile(file));
@@ -976,6 +1179,27 @@ function activate(context) {
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
     await debugPysFile(resolveTargetPysFile(file));
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.clearAllBreakpoints', async () => {
+    const all = vscode.debug.breakpoints;
+    if (!all.length) {
+      vscode.window.showInformationMessage('No breakpoints to clear.');
+      return;
+    }
+    const pysBps = all.filter((bp) => {
+      if (bp instanceof vscode.SourceBreakpoint) {
+        return bp.location.uri.fsPath.toLowerCase().endsWith('.pys');
+      }
+      return false;
+    });
+    // Prefer clearing .pys breakpoints; if none, clear all (common IDE “clear all”).
+    const toRemove = pysBps.length ? pysBps : all;
+    vscode.debug.removeBreakpoints(toRemove);
+    vscode.window.setStatusBarMessage(
+      `Cleared ${toRemove.length} breakpoint${toRemove.length === 1 ? '' : 's'}`,
+      2500,
+    );
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.runMain', async () => {

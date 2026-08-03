@@ -44,6 +44,7 @@ from ..ast_nodes import (
     RepeatStmt,
     ReturnStmt,
     SharedDecl,
+    AtomicDecl,
     Slice,
     EnumDef,
     StructDef,
@@ -105,13 +106,57 @@ _BINOP_PREC = {
 
 
 def emit(module: Module, *, source_path: Path | None = None) -> str:
-    ast_out = _Emitter(
+    text, _maps, _names = emit_with_map(module, source_path=source_path)
+    return text
+
+
+def emit_with_map(
+    module: Module, *, source_path: Path | None = None
+) -> tuple[str, list[dict[str, int]], dict[str, str]]:
+    """Emit Python, a statement-level line map, and debug display names.
+
+    Each map entry is ``{"py": <1-based python line>, "pys": <1-based .pys line>}``.
+    ``names`` maps emitted locals (e.g. ``_c_hits``) → PYS display names (``hits``).
+    """
+    emitter = _Emitter(
         source=module.source,
         source_path=source_path,
-    ).emit_module(module)
+    )
+    raw_text, origins = emitter.emit_module_with_origins(module)
     from .overloads import rewrite_overloaded_methods
 
-    return rewrite_overloaded_methods(ast_out)
+    rewritten = rewrite_overloaded_methods(raw_text)
+    line_map = _transfer_line_origins(
+        raw_text.splitlines(),
+        rewritten.splitlines(),
+        origins,
+    )
+    return rewritten, line_map, dict(emitter.debug_names)
+
+
+def _transfer_line_origins(
+    old_lines: list[str],
+    new_lines: list[str],
+    origins: list[int | None],
+) -> list[dict[str, int]]:
+    """Move pys line origins across a post-pass that may insert/delete lines."""
+    entries: list[dict[str, int]] = []
+    if len(old_lines) == len(new_lines):
+        for i, orig in enumerate(origins):
+            if orig is not None:
+                entries.append({"py": i + 1, "pys": orig})
+        return entries
+    j = 0
+    for i, nl in enumerate(new_lines):
+        while j < len(old_lines) and old_lines[j] != nl:
+            j += 1
+        if j >= len(old_lines):
+            break
+        orig = origins[j] if j < len(origins) else None
+        if orig is not None:
+            entries.append({"py": i + 1, "pys": orig})
+        j += 1
+    return entries
 
 
 def _pys_import_line(stmt: ImportStmt) -> str:
@@ -151,6 +196,7 @@ class _Emitter:
         self.needs_struct_copy = False
         self.needs_enum = False
         self.shared_vars: set[str] = set()
+        self.atomic_vars: set[str] = set()
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
         self.var_types: dict[str, str] = {}  # name -> PYS type (for struct copy)
@@ -163,6 +209,9 @@ class _Emitter:
         self.lambda_serial = 0
         self._expr_indent = 0
         self._lambda_rename: dict[str, str] = {}
+        self._current_pys_line: int | None = None
+        self.line_origins: list[int | None] = []
+        self.debug_names: dict[str, str] = {}  # emitted local -> PYS display name
         self._import_resolver = None
         if source_path is not None:
             from .. import imports as imports_mod
@@ -170,6 +219,13 @@ class _Emitter:
             self._import_resolver = imports_mod.make_resolver(source, source_path)
 
     def emit_module(self, module: Module) -> str:
+        text, _origins = self.emit_module_with_origins(module)
+        return text
+
+    def emit_module_with_origins(self, module: Module) -> tuple[str, list[int | None]]:
+        self.lines = []
+        self.line_origins = []
+        self.debug_names = {}
         self.struct_names = {
             s.name for s in module.body if isinstance(s, (StructDef, DataDef))
         }
@@ -212,25 +268,35 @@ class _Emitter:
         if self.needs_struct_copy:
             preamble.extend(_STRUCT_COPY_HELPER.splitlines())
         out = preamble + self.lines
-        return "\n".join(out) + ("\n" if out else "")
+        origins: list[int | None] = [None] * len(preamble) + list(self.line_origins)
+        return "\n".join(out) + ("\n" if out else ""), origins
+
+    def _append_raw(self, text: str, *, pys_line: int | None | object = ...) -> None:
+        if pys_line is ...:
+            pys_line = self._current_pys_line
+        self.lines.append(text)
+        self.line_origins.append(pys_line)  # type: ignore[arg-type]
 
     def _emit(self, indent: int, text: str) -> None:
-        self.lines.append(("    " * indent) + text)
+        self._append_raw(("    " * indent) + text)
 
     def _stmt(self, stmt, indent: int) -> None:
-        prev = self._expr_indent
+        prev_indent = self._expr_indent
+        prev_line = self._current_pys_line
         self._expr_indent = indent
+        self._current_pys_line = stmt.span.line if getattr(stmt, "span", None) else None
         try:
             self._stmt_inner(stmt, indent)
         finally:
-            self._expr_indent = prev
+            self._expr_indent = prev_indent
+            self._current_pys_line = prev_line
 
     def _stmt_inner(self, stmt, indent: int) -> None:
         if isinstance(stmt, BlankStmt):
-            self.lines.append("")
+            self._append_raw("", pys_line=None)
         elif isinstance(stmt, CommentStmt):
             # Comments are always column-0 in legacy output (stripped lines).
-            self.lines.append(stmt.text)
+            self._append_raw(stmt.text)
         elif isinstance(stmt, PrintStmt):
             self._emit(indent, f"print({self._expr(stmt.value)})")
         elif isinstance(stmt, AssignStmt):
@@ -240,7 +306,8 @@ class _Emitter:
         elif isinstance(stmt, AugAssignStmt):
             name = self._lambda_rename.get(stmt.name, stmt.name)
             shared = stmt.name in self.shared_vars
-            if shared:
+            atomic = stmt.name in self.atomic_vars
+            if shared or atomic:
                 if stmt.op == "++":
                     self._emit(indent, f"{name}.iadd(1)")
                 elif stmt.op == "--":
@@ -249,6 +316,12 @@ class _Emitter:
                     self._emit(indent, f"{name}.iadd({self._expr(stmt.value)})")
                 elif stmt.op == "-=":
                     self._emit(indent, f"{name}.isub({self._expr(stmt.value)})")
+                elif atomic:
+                    # Sem rejects *=/=%= on atomics; defensive fallback.
+                    self._emit(
+                        indent,
+                        f"{name}.set({name}.get() {stmt.op[0]} {self._expr(stmt.value)})",
+                    )
                 else:
                     self._emit(
                         indent,
@@ -264,6 +337,10 @@ class _Emitter:
             self.needs_concurrency = True
             self.shared_vars.add(stmt.name)
             self._emit(indent, f"{stmt.name} = _PysShared({self._expr(stmt.value)})")
+        elif isinstance(stmt, AtomicDecl):
+            self.needs_concurrency = True
+            self.atomic_vars.add(stmt.name)
+            self._emit(indent, f"{stmt.name} = _PysAtomic({self._expr(stmt.value)})")
         elif isinstance(stmt, TasksBlock):
             self._tasks(stmt, indent)
         elif isinstance(stmt, ReturnStmt):
@@ -382,6 +459,10 @@ class _Emitter:
         else:
             value = self._expr(stmt.value)
         if "." not in stmt.name and stmt.name in self.shared_vars:
+            lhs = self._lambda_rename.get(stmt.name, stmt.name)
+            self._emit(indent, f"{lhs}.set({value})")
+            return
+        if "." not in stmt.name and stmt.name in self.atomic_vars:
             lhs = self._lambda_rename.get(stmt.name, stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
             return
@@ -642,13 +723,13 @@ class _Emitter:
         first_method = True
         for i, m in enumerate(stmt.methods):
             if (not first_method or i > 0) and self.lines and self.lines[-1] != "":
-                self.lines.append("")
+                self._append_raw("", pys_line=None)
             first_method = False
             self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
         keys = self._entity_identity_keys(stmt)
         if keys:
             if not first_method and self.lines and self.lines[-1] != "":
-                self.lines.append("")
+                self._append_raw("", pys_line=None)
             key_tuple = ", ".join(f"self.{k}" for k in keys)
             other_tuple = ", ".join(f"other.{k}" for k in keys)
             self._emit(indent + 1, "def __eq__(self, other):")
@@ -706,17 +787,17 @@ class _Emitter:
         first_method = True
         for mangled, m in mangled_methods:
             if not first_method and self.lines and self.lines[-1] != "":
-                self.lines.append("")
+                self._append_raw("", pys_line=None)
             first_method = False
             self._method(m, indent + 1, inject_super=False, emit_name=mangled)
         for i, m in enumerate(stmt.methods):
             if (not first_method or i > 0) and self.lines and self.lines[-1] != "":
-                self.lines.append("")
+                self._append_raw("", pys_line=None)
             first_method = False
             self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
         for m in flat_methods:
             if not first_method and self.lines and self.lines[-1] != "":
-                self.lines.append("")
+                self._append_raw("", pys_line=None)
             first_method = False
             self._method(m, indent + 1, inject_super=False)
 
@@ -880,6 +961,8 @@ class _Emitter:
             name = self._lambda_rename.get(expr.name, expr.name)
             if expr.name in self.shared_vars:
                 return f"{name}.value"
+            if expr.name in self.atomic_vars:
+                return f"{name}.get()"
             return name
         if isinstance(expr, AwaitExpr):
             return self._await(expr)
@@ -902,6 +985,18 @@ class _Emitter:
                 right = f"({right})"
             return f"{left} {expr.op} {right}"
         if isinstance(expr, Call):
+            # Atomic synthesized accessors: avoid Identifier → .get() on the receiver.
+            if (
+                isinstance(expr.callee, Member)
+                and isinstance(expr.callee.object, Identifier)
+                and expr.callee.object.name in self.atomic_vars
+                and expr.callee.name in {"get", "compareAndSet"}
+            ):
+                recv = self._lambda_rename.get(
+                    expr.callee.object.name, expr.callee.object.name
+                )
+                args = ", ".join(self._call_arg(a) for a in expr.args)
+                return f"{recv}.{expr.callee.name}({args})"
             # TraitName.method(this, …) → self._TraitName_method(…)
             if (
                 isinstance(expr.callee, Member)
@@ -1020,6 +1115,9 @@ class _Emitter:
                     s.declare_type or s.is_const or s.is_fix
                 ):
                     params.add(s.name)
+                elif "." not in s.name and s.name not in params:
+                    # Outer capture mutated inside the lambda (shared/atomic).
+                    used.add(s.name)
                 walk_expr(s.value)
             elif isinstance(s, (PrintStmt, ReturnStmt)):
                 walk_expr(s.value)
@@ -1060,6 +1158,8 @@ class _Emitter:
         self.lambda_serial += 1
         frees = self._lambda_free_names(expr)
         rename = {f: f"_c_{f}" for f in frees}
+        for free, emitted in rename.items():
+            self.debug_names[emitted] = free
         parts = list(expr.params)
         for f in frees:
             parts.append(f"{rename[f]}={f}")

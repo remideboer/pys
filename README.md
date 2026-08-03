@@ -39,8 +39,15 @@ Full rationale (Java/C#/Hibernate counterexamples + sources):
 
 Python and older JS close over **bindings** (late-binding / shared loop vars).
 PYS lambdas capture **values at creation**; captured names are read-only unless
-`shared` (same visibility rule as `tasks`). Sample:
+`shared` or `atomic` (same visibility rule as `tasks`). Sample:
 [`examples/lambdas.pys`](examples/lambdas.pys). JIT: [`tutorials/jit/J-lambda.md`](tutorials/jit/J-lambda.md).
+
+## Why `atomic` exists next to `shared`
+
+`shared` declares cross-task mutation (visibility). It does **not** make
+`counter = counter + 1` race-free. Use `atomic` for indivisible `+=` / CAS.
+Sample: [`examples/atomic.pys`](examples/atomic.pys). Guide:
+[`docs/CONCURRENCY.md`](docs/CONCURRENCY.md). JIT: [`tutorials/jit/J-atomic.md`](tutorials/jit/J-atomic.md).
 
 ## Getting Started
 
@@ -62,9 +69,19 @@ Maintainers: [`pys-language/PUBLISH.md`](pys-language/PUBLISH.md) (Marketplace +
 
 ```bash
 python -m pip install -e .
+./install-extension.bat          # Windows: package + install latest VSIX
+./install-extension.sh           # macOS/Linux
+# or: pys install extension
+#     python -m transpiler install extension
+#     ./install-extension.bat --no-build
+#     ./install-extension.bat --editor cursor
+#     ./install-extension.bat --no-reload
+```
+
+```bash
 cd pys-language
 npm run prepare          # copies transpiler into bundled/
-npm run package          # builds pys-language-*.vsix
+npm run package          # builds pys-language-*.vsix (also done by install-extension)
 ```
 
 F5 from `pys-language` after `npm run prepare`. Diagnostics still use a workspace
@@ -159,7 +176,11 @@ Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File
 editor Run controls — no workspace `.vscode/run_pys.py` required.
 
 - Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
-- Debug uses the Python debugger on the run path (not PYS source stepping yet).
+- Debug prepares generated Python + line maps, launches debugpy on the program,
+  and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
+  Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
+  context / gutter / tab. Requires the Microsoft Python extension.
+  Sample: [`examples/debug_step.pys`](examples/debug_step.pys).
 - Third-party imports resolve through `pys.deps` / `~/.pys/repository` on Run.
 
 ## Language Features

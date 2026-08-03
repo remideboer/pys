@@ -26,6 +26,7 @@ teaching samples.
 - Capture SA (`pys.lambda-capture`); foreach vars frozen like C-style counters.
 - Emit `def _pys_lam_N(... , _c_free=free)` for by-value snapshots.
 - Docs/IDE 0.0.45; `examples/lambdas.pys` (DoD elaborate + Python pitfall contrast).
+- ~~`atomic` deferred~~ — delivered in [CER-013](CER-013-atomic.md) / ADR-013.
 
 ### Evidence
 
@@ -34,4 +35,4 @@ teaching samples.
 ## Trade-offs
 
 - Expression-body `print(i)` becomes `return print(...)` in Python (harmless).
-- `atomic` not implemented — `shared` remains visibility-only.
+- Capture mutation escape hatches: `shared` (visibility) and `atomic` (indivisible RMW).

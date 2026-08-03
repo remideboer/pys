@@ -200,6 +200,21 @@
           }
         },
         {
+          "name": "meta.atomic.declaration.pys",
+          "match": "\\b(atomic)\\s+(int|int16|int32|int64|dword|bool)\\s+([A-Za-z_]\\w*)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "storage.type.pys"
+            },
+            "3": {
+              "name": "variable.other.pys"
+            }
+          }
+        },
+        {
           "name": "meta.tasks.declaration.pys",
           "match": "\\b(tasks)\\b",
           "captures": {
@@ -449,7 +464,7 @@
         },
         {
           "name": "meta.typed.declaration.pys",
-          "match": "\\b(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|tasks\\b|task\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
+          "match": "\\b(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.type.pys"
@@ -468,7 +483,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed|abstract|shared)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed|abstract|shared|atomic)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",
@@ -480,7 +495,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|data|entity|identity|lambda|enum|interface|trait|implements|inherits|uses|requires|return|repeat|times|import|from|all|break|continue|pass|unless|switch|case|default|not|and|or|xor|shift|this|super|tasks|task|await)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|data|entity|identity|lambda|enum|interface|trait|implements|inherits|uses|requires|return|repeat|times|import|from|all|break|continue|pass|unless|switch|case|default|not|and|or|xor|shift|this|super|tasks|task|await|atomic)\\b"
         }
       ]
     },

@@ -27,6 +27,32 @@ def main() -> None:
         help="Path to pys.deps (default: ./pys.deps)",
     )
 
+    install_parser = subparsers.add_parser(
+        "install",
+        help="Install local PYS tooling (contributor helpers)",
+    )
+    install_sub = install_parser.add_subparsers(dest="install_target", required=True)
+    ext_parser = install_sub.add_parser(
+        "extension",
+        help="Build and install the latest pys-language VSIX into Cursor/VS Code",
+    )
+    ext_parser.add_argument(
+        "--no-build",
+        action="store_true",
+        help="Skip npm run package; install the newest existing VSIX only",
+    )
+    ext_parser.add_argument(
+        "--editor",
+        choices=("auto", "cursor", "code"),
+        default="auto",
+        help="Editor CLI (default: prefer cursor, then code)",
+    )
+    ext_parser.add_argument(
+        "--no-reload",
+        action="store_true",
+        help="Do not invoke Developer: Reload Window after install",
+    )
+
     args = parser.parse_args()
 
     if args.command == "transpile":
@@ -46,6 +72,26 @@ def main() -> None:
         except DepsError as exc:
             parser.error(str(exc))
         print(f"Locked dependencies -> {lock_path}")
+    elif args.command == "install" and args.install_target == "extension":
+        import subprocess
+
+        from .ext_install import install_extension
+
+        try:
+            vsix = install_extension(
+                build=not args.no_build,
+                editor=args.editor,
+                reload=not args.no_reload,
+            )
+        except (FileNotFoundError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+            parser.error(str(exc))
+        print(f"Installed {vsix.name}")
+        if args.no_reload:
+            print("Reload the window (Developer: Reload Window) if needed.")
+        else:
+            print("If the window did not reload, run Developer: Reload Window.")
+    else:
+        parser.error(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":

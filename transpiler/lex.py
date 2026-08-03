@@ -111,6 +111,7 @@ KEYWORDS = frozenset(
         "task",
         "await",
         "shared",
+        "atomic",
         "in",
         "as",
     }

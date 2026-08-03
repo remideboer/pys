@@ -1,29 +1,38 @@
 # PYS concurrency model
 
-How `tasks`, `task`, `await`, and `shared` work together.
+How `tasks`, `task`, `await`, `shared`, and `atomic` work together.
+
+This document has two layers:
+
+1. **Language contract** — target-independent observable rules (visibility vs
+   indivisible RMW, capture, DAG awaits).
+2. **Reference emitter notes** — how the Python backend (`emit/python.py` +
+   `concurrency.py`) satisfies that contract today.
 
 Runnable showcase:
 
 ```bash
 python -m transpiler run examples/concurrency/main.pys
+python -m transpiler run examples/atomic.pys
 ```
 
 Formal grammar: [`language.ebnf`](language.ebnf) · language overview: [`LANGUAGE.md`](LANGUAGE.md) · railroad: [`language-railroad.html`](language-railroad.html)
 
 ---
 
-## Mental model (four words)
+## Mental model (five words)
 
 | Keyword | Role |
 |---------|------|
 | **`task`** | One concurrent unit of work (optional name + parameters) |
 | **`tasks`** | A **group** of tasks that run together; leaving the block **waits for all** |
 | **`await`** | **Wait until** this value is ready (`await name` or `await name(args)`) |
-| **`shared`** | This variable **may be mutated** by more than one task |
+| **`shared`** | This variable **may be mutated** by more than one task (**visibility**, not safety) |
+| **`atomic`** | Cross-task cell with **indivisible** `+=`/`-=`/`++`/`--`, `get`, `compareAndSet` (implies shared for capture) |
 
 **Inputs:** pass **parameters** (`task work(int n) { … }` then `await work(3)`).  
 **Outputs:** `return` then `await`.  
-Do **not** feed tasks through outer captures — that becomes spaghetti. Captures stay for rare read-only constants; mutation uses `shared`.
+Do **not** feed tasks through outer captures — that becomes spaghetti. Captures stay for rare read-only constants; mutation uses `shared` or `atomic`.
 
 There is no `async function` coloring and no `import threading`. Stay on these keywords.
 
@@ -285,7 +294,8 @@ cross-task mutation.
 | Capture kind | Read | Write |
 |--------------|------|-------|
 | Ordinary outer local (`int x = …`) | yes | **no** (transpile error) |
-| `shared` outer (`shared int x = …`) | yes | **yes** |
+| `shared` outer (`shared int x = …`) | yes | **yes** (visibility only) |
+| `atomic` outer (`atomic int x = …`) | yes | **yes** + indivisible RMW ops |
 | Local declared inside the task | yes | yes |
 
 ### Read-only capture (default)
@@ -305,9 +315,9 @@ tasks {
 Error message shape:
 
 > Cannot assign to `'seed'` inside task; captured variables are read-only.  
-> Declare it `shared` to allow cross-task mutation.
+> Declare it `shared` or `atomic` to allow cross-task mutation.
 
-### `shared` — intentional cross-task mutation
+### `shared` — visibility of cross-task mutation
 
 ```pys
 shared int counter = 0
@@ -319,22 +329,65 @@ tasks {
     task {
         counter = counter + 1
     }
-    task {
-        counter = counter + 1
-    }
 }
-print(counter)    # 3
+print(counter)
 ```
 
 `shared` is visible in the source on purpose: mutation across tasks is never tribal knowledge.
 
-Under the hood, `shared` values use a locked cell so single read-modify-write updates are safe. Still prefer **small critical updates**; don’t treat `shared` as a substitute for clear data flow.
+**Language contract:** `shared` is a *visibility* qualifier — the mutation is declared, not hidden. It does **not** make `counter = counter + 1` (or even `+=`) race-free under concurrent tasks. That is the same teaching trap as Java `volatile` vs true atomics.
+
+### `atomic` — indivisible RMW (implies shared for capture)
+
+```pys
+atomic int counter = 0
+
+tasks {
+    task {
+        loop (int i = 0, i < 1000, i++) {
+            counter += 1
+        }
+    }
+    task {
+        loop (int i = 0, i < 1000, i++) {
+            counter += 1
+        }
+    }
+}
+print(counter)  # deterministically 2000
+```
+
+| Allowed on `atomic` | Rejected |
+|---------------------|----------|
+| `+=`, `-=`, `++`, `--`, plain `=` | `*=`, `/=`, `%=` |
+| `get()`, `compareAndSet(expected, new)` | redundant `shared atomic` / `atomic shared` |
+
+Primitives: `int`, `int16`, `int32`, `int64`, `dword`, `bool` (no float/string).
+
+CAS sample (while form):
+
+```pys
+atomic int highScore = 0
+function void reportScore(int candidate) {
+    bool done = false
+    loop (!done) {
+        int current = highScore.get()
+        if (candidate <= current) {
+            done = true
+        } else {
+            done = highScore.compareAndSet(current, candidate)
+        }
+    }
+}
+```
+
+DoD sample: [`examples/atomic.pys`](../examples/atomic.pys) · JIT: [`J-atomic`](../tutorials/jit/J-atomic.md).
 
 ### Mixing read-only + shared
 
 ```pys
 string tag = "batch"     # read-only in tasks
-shared int hits = 0      # mutable in tasks
+shared int hits = 0      # mutable in tasks (visibility)
 
 tasks {
     task {
@@ -419,9 +472,10 @@ print(seen)    # 2
 |-------|-----|
 | `task { }` outside `tasks` | Illegal — no owning group |
 | `await` outside a `task` | Illegal — nowhere to suspend |
-| Assigning to a non-`shared` outer name | Capture is read-only |
+| Assigning to a non-`shared`/`atomic` outer name | Capture is read-only |
 | `import threading` / `asyncio` for this | Language keywords are the API |
 | Await cycles (`a`↔`b`, or `await` self) | **Rejected** at transpile time (`pys.await-cycle`) |
+| Treating `shared` as race-free | Visibility only — use `atomic` for indivisible RMW |
 
 There is **no** public `run()` / `start()` pair. Lifetime is the `tasks` block; results are `return` + `await`.
 
@@ -454,13 +508,20 @@ tasks {
     }
 }
 
-# Explicit shared mutation (not for ordinary inputs)
+# Explicit shared mutation (visibility; not race-free by itself)
 shared int n = 0
 tasks {
     task bump(int d) { n = n + d }
     task {
         int ignored = await bump(1)
     }
+}
+
+# Atomic RMW (indivisible +=)
+atomic int hits = 0
+tasks {
+    task { hits += 1 }
+    task { hits += 1 }
 }
 ```
 
@@ -476,13 +537,39 @@ tasks {
 | [`shared_state.pys`](../examples/concurrency/shared_state.pys) | `shared` + parameterized bumps |
 | [`pipeline.pys`](../examples/concurrency/pipeline.pys) | Stages, mixed await + shared |
 | [`more.pys`](../examples/concurrency/more.pys) | Many workers, phased groups |
+| [`examples/atomic.pys`](../examples/atomic.pys) | Race teaching + `atomic` / CAS / lambda |
 
 ```bash
 python -m transpiler run examples/concurrency/main.pys
+python -m transpiler run examples/atomic.pys
 ```
 
 ---
 
-## Runtime note (implementation)
+## Language contract vs reference emitter
 
-The transpiler lowers `tasks`/`task` to a thread-pool join and `shared` to a locked cell. That is an implementation detail: write PYS with `tasks` / `task` / `await` / `shared`, not with Python’s threading or asyncio APIs.
+### Language contract (target-independent)
+
+- `tasks` / `task` / `await` structured lifetime and DAG awaits (already in EBNF).
+- Capture: outer names read-only unless `shared` or `atomic`.
+- `shared`: mutation is **declared** across tasks — not a race-freedom guarantee.
+- `atomic`: `+=`/`-=`/`++`/`--` and plain `=` are indivisible w.r.t. other tasks;
+  `get` / `compareAndSet` for non-RMW patterns; `*=`/`/=`/`%=` rejected;
+  implies shared for capture (no `shared atomic`).
+
+Emitters may use hardware atomics, locks, or (on a cooperative single-threaded
+target) rely on no preemption between `await` points — as long as the contract
+holds.
+
+### Reference emitter notes (Python)
+
+Today’s Python backend uses `ThreadPoolExecutor` for `tasks`, `_PysShared` for
+`shared`, and `_PysAtomic` for `atomic` (lock-backed `get` / `set` / `iadd` /
+`isub` / `compareAndSet`). Identifier reads on atomics become `.get()`.
+
+`_PysShared` also locks `+=` / `set` for practicality, but **`shared_counter =
+shared_counter + 1` can still lose updates** (unlocked `.value` read + locked
+`set`). That is the intentional teaching race before introducing `atomic`.
+
+Write PYS with `tasks` / `task` / `await` / `shared` / `atomic`, not with
+Python’s threading or asyncio APIs.

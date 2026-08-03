@@ -40,7 +40,7 @@ Typical procedural statements:
 
 | Form | Role |
 |------|------|
-| Declarations | Bind names (`int x = 1`, `var`, `const`, `fix`, `shared`) |
+| Declarations | Bind names (`int x = 1`, `var`, `const`, `fix`, `shared`, `atomic`) |
 | Assignment | `x = …`, `x += 1`, `x++` / `x--` |
 | Expression statement | Call a function or method |
 | `print` / `return` | Output / leave a function |
@@ -614,14 +614,15 @@ Rules:
 1. Forms: `n => expr`, `(params) => expr`, `(params) => { … }`, `() => …`
 2. Param types may be omitted when the target type is `lambda<…>`
 3. **Capture by value** at creation; captured names are read-only unless
-   `shared` (same model as `tasks`)
+   `shared` or `atomic` (same model as `tasks`)
 4. Foreach / C-style loop variables are immutable per iteration — each lambda
    in a loop gets its own captured value (no Python late-binding bug)
 5. `name.loop(fn)` still maps: `list(map(fn, name))`
 
 See [`examples/lambdas.pys`](../examples/lambdas.pys) and JIT
-[`J-lambda`](../tutorials/jit/J-lambda.md). `atomic` (race-free `+=`) is
-deferred — `shared` is visibility, not atomicity ([CONCURRENCY](CONCURRENCY.md)).
+[`J-lambda`](../tutorials/jit/J-lambda.md). For race-free `+=` across tasks,
+use [`atomic`](#11-concurrency-tasks--task--await--shared--atomic)
+([CONCURRENCY](CONCURRENCY.md), [J-atomic](../tutorials/jit/J-atomic.md)).
 
 ### Enums
 
@@ -774,7 +775,7 @@ Tuple / list indexes keep their element types, so `#s{row[0]}` fails if
 
 ---
 
-## 11. Concurrency (`tasks` / `task` / `await` / `shared`)
+## 11. Concurrency (`tasks` / `task` / `await` / `shared` / `atomic`)
 
 **Full guide with examples:** [`CONCURRENCY.md`](CONCURRENCY.md)
 
@@ -787,7 +788,8 @@ isolate memory.
 | `task { … }` | One concurrent unit (must be inside `tasks`) |
 | `tasks { … }` | Group; leaving the block waits for all |
 | `await expr` | Wait until ready (only inside a `task`) |
-| `shared` | Outer name may be mutated across tasks |
+| `shared` | Outer name may be mutated across tasks (**visibility**, not race-freedom) |
+| `atomic` | Indivisible `+=`/`-=`/`++`/`--` / `get` / `compareAndSet` (implies shared) |
 
 ```pys
 tasks {
@@ -799,11 +801,18 @@ tasks {
         print(s)
     }
 }
+
+atomic int counter = 0
+tasks {
+    task { counter += 1 }
+    task { counter += 1 }
+}
 ```
 
-Outer locals are **read-only** inside a task unless declared `shared`.  
-Prefer **parameters** for inputs. Await edges in a group must form a **DAG** —
-cycles are **rejected** (`pys.await-cycle`). Runnable suite: `examples/concurrency/main.pys`.
+Outer locals are **read-only** inside a task unless declared `shared` or
+`atomic`. Prefer **parameters** for inputs. Await edges in a group must form a
+**DAG** — cycles are **rejected** (`pys.await-cycle`). Runnable suite:
+`examples/concurrency/main.pys`; atomic DoD: `examples/atomic.pys`.
 
 ---
 
@@ -848,7 +857,7 @@ For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
 |------|------|
 | `docs/language.ebnf` | Formal EBNF (includes concurrency) |
 | `docs/language-railroad.html` | Railroad diagram visuals |
-| `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` guide |
+| `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` / `atomic` guide |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
 | `examples/main.pys` | Dense feature showcase (not the curriculum path) |
 | `examples/classes.pys` | Classes: fields, ctors, inherits, sealed |

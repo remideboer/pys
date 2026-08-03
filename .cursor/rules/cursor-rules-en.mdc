@@ -1,0 +1,61 @@
+---
+description: Production-ready development standards — testing, BDD, incremental delivery, SOLID, ISO/IEC 25010
+alwaysApply: true
+---
+
+# Engineering Ruleset
+
+## 1. Incremental delivery
+- Split every task into the smallest possible working increment (max ~1 behavior/feature per commit).
+- Each increment must: compile, pass all tests, and be independently mergeable.
+- No speculative functionality (YAGNI). No half-finished abstractions.
+- When scope is unclear: implement the narrowest path that satisfies the tested behavior; report extension options instead of pre-building them.
+
+## 2. Behavior Driven Development
+- Describe new behavior as a Given/When/Then scenario before writing production code.
+- Scenarios are the source of truth for acceptance criteria; test names reference the scenario.
+- Per scenario: red (failing test) → green (minimal implementation) → refactor.
+- Domain language in scenarios and code must be consistent (ubiquitous language, DDD-style).
+
+## 3. Testing
+- Test pyramid: many unit tests, fewer integration tests, a small number of end-to-end/acceptance tests.
+- Every public function/method with non-trivial behavior gets at minimum: happy path, edge case, and failure/error case.
+- No test may depend on execution order or shared mutable state.
+- Mock/stub only at system boundaries (I/O, network, time, randomness) — never mock own domain logic.
+- Regression: every bug fix starts with a failing test that reproduces the defect.
+- Coverage is a signal, not a target: report it, don't optimize blindly toward 100%.
+
+## 4. SOLID & architecture
+- Single Responsibility: each class/module has one reason to change.
+- Open/Closed: extend via new implementations, not by modifying existing, tested code.
+- Liskov Substitution: subtypes must be contractually substitutable (no weakened postconditions/strengthened preconditions).
+- Interface Segregation: small, client-specific interfaces over broad general-purpose ones.
+- Dependency Inversion: depend on abstractions, use injection instead of hard-coded concrete types.
+- Separate layers: domain logic contains no framework, UI, or infrastructure code.
+- Explicit error handling; no silent failures, no broad catch-all without recovery action or logging.
+
+## 5. ISO/IEC 25010 — quality characteristics
+Explicitly check every change against:
+- **Functional suitability**: correctness, completeness, appropriateness relative to the requirement.
+- **Performance efficiency**: time behavior, resource use, capacity — no unnecessary O(n²) where O(n) is feasible, no untested N+1 queries.
+- **Compatibility**: co-existence with other components, interoperability via documented interfaces.
+- **Usability (API/DX)**: understandable, consistent public interfaces; error messages are actionable.
+- **Reliability**: fault tolerance, recoverability; degrade gracefully when dependencies fail.
+- **Security**: input validation, least privilege, no secrets in code, check dependencies for known vulnerabilities.
+- **Maintainability**: modularity, testability, readability; keep cyclomatic complexity low.
+- **Portability**: no undocumented platform/environment dependencies.
+
+For every PR/increment: briefly state which characteristics are relevant and how they were satisfied.
+
+## 6. Validation & verification
+- **Verification** ("are we building it right"): static checks (linting, type-checking), tests, code review against these rules.
+- **Validation** ("are we building the right thing"): check against the BDD scenario/acceptance criterion before an increment counts as done.
+- Never mark an increment "done" without explicitly performing both steps.
+- Static analysis / linter / type-checker must be clean before commit.
+
+## 7. Workflow within Cursor
+- For a new task, present the BDD scenario and the smallest increment plan first; don't wait for approval unless scope is genuinely ambiguous.
+- Generate test and implementation together — never implementation without its corresponding test in the same step.
+- Refactor only within a green test suite; commit refactors separately from behavior changes.
+- When touching existing code: existing tests must keep passing, unless the scenario deliberately changes them (state this explicitly).
+- Document assumptions inline (briefly) when a requirement is underspecified; only ask for clarification on genuinely blocking ambiguity.

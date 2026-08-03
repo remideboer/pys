@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.45",
+  "version": "0.0.50",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -70,6 +70,11 @@
           "light": "./icons/pys-logo.svg",
           "dark": "./icons/pys-logo.svg"
         }
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "pys"
       }
     ],
     "grammars": [
@@ -145,6 +150,12 @@
         "command": "pys.setAsMainFile",
         "title": "Set as Main File",
         "category": "PYS"
+      },
+      {
+        "command": "pys.clearAllBreakpoints",
+        "title": "Clear All Breakpoints",
+        "category": "PYS",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -180,6 +191,23 @@
           "command": "pys.runFile",
           "when": "resourceExtname == .pys && !isInDiffEditor",
           "group": "navigation@101"
+        },
+        {
+          "command": "pys.clearAllBreakpoints",
+          "when": "resourceExtname == .pys && !isInDiffEditor",
+          "group": "navigation@102"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "pys.clearAllBreakpoints",
+          "when": "resourceExtname == .pys",
+          "group": "debug@1"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys",
+          "group": "debug@2"
         }
       ],
       "editor/context": [
@@ -194,9 +222,26 @@
           "group": "navigation@2"
         },
         {
-          "command": "pys.setAsMainFile",
+          "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys",
           "group": "navigation@3"
+        },
+        {
+          "command": "pys.setAsMainFile",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "pys.clearAllBreakpoints",
+          "when": "resourceExtname == .pys",
+          "group": "debug@1"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys",
+          "group": "debug@2"
         }
       ],
       "explorer/context": [
@@ -219,6 +264,10 @@
         {
           "command": "pys.debugMain",
           "when": "pys.hasMainFile"
+        },
+        {
+          "command": "pys.clearAllBreakpoints",
+          "when": "resourceExtname == .pys || editorLangId == pys"
         }
       ]
     },
@@ -254,6 +303,7 @@
     "onCommand:pys.runMain",
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",
+    "onCommand:pys.clearAllBreakpoints",
     "onStartupFinished"
   ],
   "devDependencies": {

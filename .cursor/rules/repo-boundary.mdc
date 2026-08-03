@@ -1,0 +1,23 @@
+---
+description: Confine all file writes and edits to this repository only
+alwaysApply: true
+---
+
+# Repository boundary
+
+All file creates, edits, deletes, and moves must stay inside this workspace:
+
+`d:\projecten\python-transpiler` (and its subpaths).
+
+## Allowed outside the repo
+
+- **Read-only** inspection when a user traceback or path names an external file (diagnose only)
+- Shell commands that **do not** write/change files outside the repo (e.g. `python -m pytest`)
+- `git push` / network to remotes the user asked for
+
+## Forbidden outside the repo
+
+- Writing, editing, deleting, or generating files (including `pys.deps`, `pys.lock`, examples)
+- “Fixing” a user’s other project by mutating it — explain the steps; let them run the commands
+
+If an external project needs a lock or config change, give the exact commands and leave execution to the user.

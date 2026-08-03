@@ -261,6 +261,15 @@ class SharedDecl(Node):
 
 
 @dataclass
+class AtomicDecl(Node):
+    """`atomic int x = 0` — implies shared for capture; indivisible RMW ops."""
+
+    name: str = ""
+    value: Expr | None = None
+    declare_type: str = ""
+
+
+@dataclass
 class AwaitExpr(Expr):
     """`await name` or `await name(args)`."""
 

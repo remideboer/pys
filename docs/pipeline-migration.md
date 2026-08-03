@@ -38,7 +38,7 @@ Check items off as they land; keep the suite green after each step.
 ## C. Later backends / IDE
 
 - [ ] **C1.** Java / C# emitters under `emit/`
-- [ ] **C2.** PYS step-through debug (DAP)
+- [x] **C2.** PYS step-through debug (DAP) — [ADR-014](adr/ADR-014-pys-dap-stepping.md)
 - [x] **C3.** Extension diagnostics from the new pipeline (`ide.analyze_file` uses compile_pys + AST + ImportResolver)
 - [x] **C4.** Delete legacy `Parser` class from `transpiler.py` (public API is transpile/run only). `language_spec.py` remains for emit helpers + `translate_line` tests — not on the compile path.
 

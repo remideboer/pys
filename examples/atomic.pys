@@ -1,0 +1,74 @@
+# Atomic qualifier: shared visibility is not enough for safe RMW across tasks.
+# `atomic` implies shared for capture and makes +=/-=/++/-- / get / compareAndSet
+# indivisible. See docs/CONCURRENCY.md and tutorials/jit/J-atomic.md.
+
+# --- Teaching race: unlocked read + locked set can lose updates ---
+# Under the language contract, `shared` only allows cross-task mutation;
+# `shared_counter = shared_counter + 1` is still a classic lost-update race
+# (read and write are separate). Do not assert a final value here.
+shared int shared_counter = 0
+tasks {
+    task {
+        loop (int i = 0, i < 200, i++) {
+            shared_counter = shared_counter + 1
+        }
+    }
+    task {
+        loop (int i = 0, i < 200, i++) {
+            shared_counter = shared_counter + 1
+        }
+    }
+}
+print(shared_counter)  # often < 400 under real interleaving; not guaranteed
+
+# --- Safe: atomic += is indivisible → deterministic 2000 ---
+atomic int counter = 0
+tasks {
+    task {
+        loop (int i = 0, i < 1000, i++) {
+            counter += 1
+        }
+    }
+    task {
+        loop (int i = 0, i < 1000, i++) {
+            counter += 1
+        }
+    }
+}
+print(counter)  # 2000
+
+# --- compareAndSet retry loop (while form; no empty C-for step) ---
+atomic int highScore = 0
+
+function void reportScore(int candidate) {
+    bool done = false
+    loop (!done) {
+        int current = highScore.get()
+        if (candidate <= current) {
+            done = true
+        } else {
+            done = highScore.compareAndSet(current, candidate)
+        }
+    }
+}
+
+tasks {
+    task {
+        reportScore(10)
+        reportScore(30)
+    }
+    task {
+        reportScore(20)
+        reportScore(40)
+    }
+}
+print(highScore)  # 40
+
+# --- Lambda capture: atomic counts as mutable (like shared) ---
+atomic int hits = 0
+list<int> xs = [1, 2, 3, 4, 5]
+xs.loop(n => {
+    hits += 1
+    return n
+})
+print(hits)  # 5
