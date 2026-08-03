@@ -1,0 +1,15 @@
+# examples/concurrency/http/http_client.pys
+#
+# Shared HTTPS helper for this package folder only (`package` visibility).
+# Callers: open_meteo.pys, down_status.pys. Not exported globally.
+
+import json
+import urllib.request
+
+# package: siblings in http/ may import this; files outside the folder may not.
+package function dict httpGetJson(string url) {
+    # urlopen blocks the calling *task* until the body arrives. Other tasks in
+    # the same `tasks { }` group can keep progressing (overlapping I/O wait).
+    string body = urllib.request.urlopen(url).read().decode("utf-8")
+    return json.loads(body)
+}

@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ACCEPTANCE = [
     ROOT / "examples" / "main.pys",
     ROOT / "examples" / "concurrency" / "main.pys",
+    ROOT / "examples" / "concurrency" / "http" / "http_main.pys",
     ROOT / "examples" / "gui" / "pokemontcg" / "main.pys",
 ]
 

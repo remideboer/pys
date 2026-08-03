@@ -867,6 +867,6 @@ For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
 | `examples/classes.pys` | Classes: fields, ctors, inherits, sealed |
 | `examples/interfaces.pys` | Interfaces + implements (vehicle domain) |
 | `examples/abstract_classes.pys` | Abstract classes / template method |
-| `examples/concurrency/` | Concurrency showcase package |
+| `examples/concurrency/` | Concurrency showcase (`main.pys` offline; `http/http_main.pys` live HTTPS package) |
 | `transpiler/language_spec.py` | Line translation rules |
 | `pys.deps` | External Python dependencies (not language syntax) |

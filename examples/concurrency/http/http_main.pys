@@ -1,0 +1,65 @@
+# examples/concurrency/http/http_main.pys
+#
+# Package entry for live HTTPS concurrency demos.
+# Imports only the package-scoped demos it runs (least privilege on the
+# import surface). Helpers stay module-private inside sibling files.
+#
+# Run:
+#   python -m transpiler run examples/concurrency/http/http_main.pys
+#
+# APIs:
+#   Open-Meteo  https://open-meteo.com/                 (CC BY 4.0)
+#   DownStatus  https://isitdownstatus.com/en/api-docs  (free JSON, no key)
+
+import demo_one_city, demo_parallel_cities, demo_sequential_cities, demo_compare_wall_times, demo_geocode_then_forecast, demo_await_fetch_template from open_meteo
+import demo_list_top10, demo_parallel_top10_status, demo_sequential_top10_status, demo_compare_top10_wall_times, demo_await_status_template, demo_ongoing_outages from down_status
+
+print("========== PYS concurrency + live HTTP ==========")
+print("Package: examples/concurrency/http/  (package visibility; no global exports)")
+print("")
+
+print("---------- Open-Meteo weather ----------")
+print("Data: Open-Meteo.com - CC BY 4.0")
+print("")
+
+demo_one_city()
+print("")
+
+demo_parallel_cities()
+print("")
+
+demo_sequential_cities()
+print("")
+
+demo_compare_wall_times()
+print("")
+
+demo_geocode_then_forecast()
+print("")
+
+demo_await_fetch_template()
+print("")
+
+print("---------- DownStatus top-10 services ----------")
+print("API: https://isitdownstatus.com/en/api-docs")
+print("")
+
+demo_list_top10()
+print("")
+
+demo_parallel_top10_status()
+print("")
+
+demo_sequential_top10_status()
+print("")
+
+demo_compare_top10_wall_times()
+print("")
+
+demo_await_status_template()
+print("")
+
+demo_ongoing_outages()
+print("")
+
+print("========== live HTTP examples done ==========")

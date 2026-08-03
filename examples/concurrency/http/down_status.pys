@@ -1,0 +1,286 @@
+# examples/concurrency/http/down_status.pys
+#
+# DownStatus HTTPS demos for the http/ package
+# (https://isitdownstatus.com/en/api-docs - free JSON, no API key).
+#
+# Visibility (least privilege)
+# ----------------------------
+# - Helpers / API const: module-private (default) - only this file.
+# - Demos: `package` - callable from http_main.pys in the same folder.
+# - Shared GET: imported from http_client (`package` there).
+#
+# Endpoints: /services?limit=10, /status/:slug, /outages?status=ongoing
+#
+# Run (needs network):
+#   python -m transpiler run examples/concurrency/http/http_main.pys
+
+import time
+import httpGetJson from http_client
+
+const string API = "https://isitdownstatus.com/api/v1"
+const int TOP_N = 10
+
+
+function string formatService(dict row) {
+    string name = str(row["name"])
+    string slug = str(row["slug"])
+    string status = str(row["status"])
+    string r1h = str(row["report_count_1h"])
+    string r24 = str(row["report_count_24h"])
+    string official = "none"
+    if (row["official_indicator"] != null) {
+        official = str(row["official_indicator"])
+    }
+    return name + " [" + slug + "]  status=" + status + "  reports_1h=" + r1h + "  reports_24h=" + r24 + "  official=" + official
+}
+
+
+function list fetchTopServices(int limit) {
+    string url = API + "/services?limit=" + str(limit)
+    dict payload = httpGetJson(url)
+    list rows = payload["data"]
+    return rows
+}
+
+
+function dict fetchStatus(string slug) {
+    dict payload = httpGetJson(API + "/status/" + slug)
+    return payload["data"]
+}
+
+
+function string summarizeSlug(string slug) {
+    dict row = fetchStatus(slug)
+    return formatService(row)
+}
+
+
+# ── package demos (entry: http_main.pys) ────────────────────────────────────
+
+package function demo_list_top10() {
+    print("--- demo_list_top10 (GET /services?limit=10) ---")
+    print("One request returns the top-10 service rows from DownStatus.")
+    list rows = fetchTopServices(TOP_N)
+    print("received rows:")
+    print(len(rows))
+    loop (dict row in rows) {
+        print(formatService(row))
+    }
+}
+
+
+package function demo_parallel_top10_status() {
+    print("--- demo_parallel_top10_status (overlapping /status/:slug) ---")
+    print("Stage A: fetch the top-10 list (read-only outer list).")
+    print("Stage B: ten auto-started tasks each GET /status/<slug>.")
+    print("Completion order follows network latency, not list order.")
+
+    list rows = fetchTopServices(TOP_N)
+    int n = len(rows)
+    print("top list size:")
+    print(n)
+    if (n < TOP_N) {
+        print("API returned fewer than 10 - parallel demo needs 10 rows; skipping.")
+        return
+    }
+
+    shared int done = 0
+    float t0 = time.time()
+
+    tasks {
+        task {
+            string slug = rows[0]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[1]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[2]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[3]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[4]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[5]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[6]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[7]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[8]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string slug = rows[9]["slug"]
+            string line = summarizeSlug(slug)
+            print("done: #s{line}")
+            done = done + 1
+        }
+    }
+
+    float elapsed = time.time() - t0
+    print("finished status refreshes:")
+    print(done)
+    print("parallel wall time ~ #f{elapsed} s  (expect ~ slowest single GET)")
+}
+
+
+package function demo_sequential_top10_status() {
+    print("--- demo_sequential_top10_status (one /status after another) ---")
+    list rows = fetchTopServices(TOP_N)
+    int n = len(rows)
+    if (n < 1) {
+        print("empty top list")
+        return
+    }
+
+    float t0 = time.time()
+    tasks {
+        task {
+            loop (dict row in rows) {
+                string slug = row["slug"]
+                print(summarizeSlug(slug))
+            }
+        }
+    }
+    float elapsed = time.time() - t0
+    print("sequential wall time ~ #f{elapsed} s  (expect ~ sum of GETs)")
+}
+
+
+package function demo_compare_top10_wall_times() {
+    print("--- demo_compare_top10_wall_times ---")
+    list rows = fetchTopServices(TOP_N)
+    if (len(rows) < TOP_N) {
+        print("need 10 rows for fair compare; skipping.")
+        return
+    }
+
+    float seq0 = time.time()
+    tasks {
+        task {
+            loop (dict row in rows) {
+                string ignored = summarizeSlug(row["slug"])
+            }
+        }
+    }
+    float seqDt = time.time() - seq0
+
+    float par0 = time.time()
+    tasks {
+        task {
+            string ignored = summarizeSlug(rows[0]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[1]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[2]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[3]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[4]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[5]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[6]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[7]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[8]["slug"])
+        }
+        task {
+            string ignored = summarizeSlug(rows[9]["slug"])
+        }
+    }
+    float parDt = time.time() - par0
+
+    print("sequential ~ #f{seqDt} s")
+    print("parallel   ~ #f{parDt} s")
+    print("Parallel should usually beat the sum when the CDN/API has latency.")
+}
+
+
+package function demo_await_status_template() {
+    print("--- demo_await_status_template (parameterized task) ---")
+    print("Useful when each status string must feed later logic.")
+    print("Awaits in one consumer start one-at-a-time (not overlapping).")
+
+    list rows = fetchTopServices(3)
+    if (len(rows) < 3) {
+        print("need at least 3 services; skipping.")
+        return
+    }
+
+    tasks {
+        task probe(string slug) {
+            return summarizeSlug(slug)
+        }
+        task {
+            string a = await probe(rows[0]["slug"])
+            print("awaited: #s{a}")
+            string b = await probe(rows[1]["slug"])
+            print("awaited: #s{b}")
+            string c = await probe(rows[2]["slug"])
+            print("awaited: #s{c}")
+        }
+    }
+}
+
+
+package function demo_ongoing_outages() {
+    print("--- demo_ongoing_outages (GET /outages?status=ongoing) ---")
+    dict payload = httpGetJson(API + "/outages?status=ongoing&limit=10")
+    list rows = payload["data"]
+    print("ongoing outage count:")
+    print(len(rows))
+    loop (dict row in rows) {
+        dict svc = row["service"]
+        string name = str(svc["name"])
+        string status = str(row["status"])
+        string desc = ""
+        if (row["description"] != null) {
+            desc = str(row["description"])
+        }
+        string source = str(row["source"])
+        print(name + "  status=" + status + "  source=" + source + "  " + desc)
+    }
+}

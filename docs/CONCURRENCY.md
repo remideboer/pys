@@ -13,6 +13,7 @@ Runnable showcase:
 
 ```bash
 python -m transpiler run examples/concurrency/main.pys
+python -m transpiler run examples/concurrency/http/http_main.pys  # Open-Meteo + DownStatus
 python -m transpiler run examples/atomic.pys
 ```
 
@@ -531,16 +532,18 @@ tasks {
 
 | File | Focus |
 |------|--------|
-| [`examples/concurrency/main.pys`](../examples/concurrency/main.pys) | Runs the full suite |
+| [`examples/concurrency/main.pys`](../examples/concurrency/main.pys) | Runs the full offline suite |
 | [`basics.pys`](../examples/concurrency/basics.pys) | Join, task parameters, task locals |
 | [`awaiting.pys`](../examples/concurrency/awaiting.pys) | `await`, parameterized fan-in / chain / args |
 | [`shared_state.pys`](../examples/concurrency/shared_state.pys) | `shared` + parameterized bumps |
 | [`pipeline.pys`](../examples/concurrency/pipeline.pys) | Stages, mixed await + shared |
 | [`more.pys`](../examples/concurrency/more.pys) | Many workers, phased groups |
+| [`http/`](../examples/concurrency/http/) (`http_main.pys`) | Live HTTPS package: Open-Meteo + DownStatus (package visibility) |
 | [`examples/atomic.pys`](../examples/atomic.pys) | Race teaching + `atomic` / CAS / lambda |
 
 ```bash
 python -m transpiler run examples/concurrency/main.pys
+python -m transpiler run examples/concurrency/http/http_main.pys   # needs network
 python -m transpiler run examples/atomic.pys
 ```
 

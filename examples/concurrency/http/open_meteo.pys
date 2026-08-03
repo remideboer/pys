@@ -1,0 +1,206 @@
+# examples/concurrency/http/open_meteo.pys
+#
+# Open-Meteo HTTPS demos for the http/ package
+# (https://open-meteo.com/ - no API key; data CC BY 4.0 - please attribute).
+#
+# Visibility (least privilege)
+# ----------------------------
+# - Helpers / sample coords: module-private (default) - only this file.
+# - Demos: `package` - callable from http_main.pys in the same folder.
+# - Shared GET: imported from http_client (`package` there).
+#
+# Run (needs network):
+#   python -m transpiler run examples/concurrency/http/http_main.pys
+
+import time
+import httpGetJson from http_client
+
+# module-private endpoints and sample cities
+const string FORECAST = "https://api.open-meteo.com/v1/forecast"
+const string GEOCODE = "https://geocoding-api.open-meteo.com/v1/search"
+const float AMS_LAT = 52.37
+const float AMS_LON = 4.89
+const float BER_LAT = 52.52
+const float BER_LON = 13.41
+const float TYO_LAT = 35.68
+const float TYO_LON = 139.65
+
+
+function string forecastUrl(float lat, float lon) {
+    string q = "?latitude=" + str(lat)
+    q = q + "&longitude=" + str(lon)
+    q = q + "&current=temperature_2m,weather_code,wind_speed_10m"
+    q = q + "&timezone=auto"
+    return FORECAST + q
+}
+
+
+function string formatCurrent(string city, dict payload) {
+    dict cur = payload["current"]
+    string temp = str(cur["temperature_2m"])
+    string wind = str(cur["wind_speed_10m"])
+    string code = str(cur["weather_code"])
+    string when = str(cur["time"])
+    return city + "  temp=" + temp + " C  wind=" + wind + " km/h  wmo=" + code + "  at " + when
+}
+
+
+function string fetchCityWeather(string city, float lat, float lon) {
+    dict payload = httpGetJson(forecastUrl(lat, lon))
+    return formatCurrent(city, payload)
+}
+
+
+function dict geocodeCity(string name) {
+    string url = GEOCODE + "?name=" + name + "&count=1&language=en&format=json"
+    dict payload = httpGetJson(url)
+    list hits = payload["results"]
+    return hits[0]
+}
+
+
+# ── package demos (entry: http_main.pys) ────────────────────────────────────
+
+package function demo_one_city() {
+    print("--- demo_one_city (single HTTPS GET) ---")
+    print("GET Amsterdam current weather from Open-Meteo...")
+    string line = fetchCityWeather("Amsterdam", AMS_LAT, AMS_LON)
+    print(line)
+    print("Attribution: Weather data by Open-Meteo.com (CC BY 4.0)")
+}
+
+
+package function demo_parallel_cities() {
+    print("--- demo_parallel_cities (overlapping network waits) ---")
+    print("Three auto-started tasks each issue one GET. Watch how completion")
+    print("order can vary - whichever response arrives first prints first.")
+
+    shared int done = 0
+    float t0 = time.time()
+
+    tasks {
+        task {
+            string line = fetchCityWeather("Amsterdam", AMS_LAT, AMS_LON)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string line = fetchCityWeather("Berlin", BER_LAT, BER_LON)
+            print("done: #s{line}")
+            done = done + 1
+        }
+        task {
+            string line = fetchCityWeather("Tokyo", TYO_LAT, TYO_LON)
+            print("done: #s{line}")
+            done = done + 1
+        }
+    }
+
+    float elapsed = time.time() - t0
+    print("finished cities:")
+    print(done)
+    print("parallel wall time ~ #f{elapsed} s  (expect ~ slowest single GET)")
+}
+
+
+package function demo_sequential_cities() {
+    print("--- demo_sequential_cities (one GET after another) ---")
+    print("One task performs three GETs in order - no overlapping wait.")
+
+    float t0 = time.time()
+    tasks {
+        task {
+            print(fetchCityWeather("Amsterdam", AMS_LAT, AMS_LON))
+            print(fetchCityWeather("Berlin", BER_LAT, BER_LON))
+            print(fetchCityWeather("Tokyo", TYO_LAT, TYO_LON))
+        }
+    }
+    float elapsed = time.time() - t0
+    print("sequential wall time ~ #f{elapsed} s  (expect ~ sum of three GETs)")
+}
+
+
+package function demo_compare_wall_times() {
+    print("--- demo_compare_wall_times ---")
+    print("Run sequential, then parallel, and print both durations.")
+    print("(Network jitter means numbers are indicative, not a micro-bench.)")
+
+    float seq0 = time.time()
+    tasks {
+        task {
+            string ignored1 = fetchCityWeather("Amsterdam", AMS_LAT, AMS_LON)
+            string ignored2 = fetchCityWeather("Berlin", BER_LAT, BER_LON)
+            string ignored3 = fetchCityWeather("Tokyo", TYO_LAT, TYO_LON)
+        }
+    }
+    float seqDt = time.time() - seq0
+
+    float par0 = time.time()
+    tasks {
+        task {
+            string ignored = fetchCityWeather("Amsterdam", AMS_LAT, AMS_LON)
+        }
+        task {
+            string ignored = fetchCityWeather("Berlin", BER_LAT, BER_LON)
+        }
+        task {
+            string ignored = fetchCityWeather("Tokyo", TYO_LAT, TYO_LON)
+        }
+    }
+    float parDt = time.time() - par0
+
+    print("sequential ~ #f{seqDt} s")
+    print("parallel   ~ #f{parDt} s")
+    print("Parallel should usually be closer to the slowest request, not the sum.")
+}
+
+
+package function demo_geocode_then_forecast() {
+    print("--- demo_geocode_then_forecast (per-city pipeline, parallel) ---")
+    print("Each task: geocode city name -> then forecast that lat/lon.")
+    print("Both cities run at once, so two geocodes and two forecasts overlap.")
+
+    shared int done = 0
+    tasks {
+        task {
+            dict hit = geocodeCity("Lisbon")
+            string city = hit["name"]
+            float lat = hit["latitude"]
+            float lon = hit["longitude"]
+            print("geocoded #s{city} -> lat=#f{lat} lon=#f{lon}")
+            print(fetchCityWeather(city, lat, lon))
+            done = done + 1
+        }
+        task {
+            dict hit = geocodeCity("Oslo")
+            string city = hit["name"]
+            float lat = hit["latitude"]
+            float lon = hit["longitude"]
+            print("geocoded #s{city} -> lat=#f{lat} lon=#f{lon}")
+            print(fetchCityWeather(city, lat, lon))
+            done = done + 1
+        }
+    }
+    print("pipelines finished:")
+    print(done)
+}
+
+
+package function demo_await_fetch_template() {
+    print("--- demo_await_fetch_template (parameterized task) ---")
+    print("Preferred inputs pattern: parameterized task fetch(city, lat, lon)")
+    print("Awaits inside one consumer are *sequential* - still useful when you")
+    print("need return values plugged into later logic.")
+
+    tasks {
+        task fetch(string city, float lat, float lon) {
+            return fetchCityWeather(city, lat, lon)
+        }
+        task {
+            string a = await fetch("Amsterdam", AMS_LAT, AMS_LON)
+            print("awaited: #s{a}")
+            string b = await fetch("Berlin", BER_LAT, BER_LON)
+            print("awaited: #s{b}")
+        }
+    }
+}
