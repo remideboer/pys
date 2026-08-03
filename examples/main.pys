@@ -1,11 +1,11 @@
 # ── Imports ──────────────────────────────────────────────
 import funcs
-import vehicles
+import interfaces
 import mysql.connector
 import tkinter as tk
 # also valid: import all from funcs.pys
 # also valid: import hello from funcs.pys
-# log() in vehicles.pys is module-private and NOT importable
+# log() in interfaces.pys is module-private and NOT importable
 
 MySQLConnection mydb = mysql.connector.connect(host="localhost", user="pys", password="123456789", database="combiteelt")
 
@@ -161,7 +161,7 @@ secret()
 greet("student")
 # internal_helper() would fail: it is module-private to funcs.pys
 
-# ── Vehicle classes (from vehicles.pys) ──────────────────
+# ── Vehicle classes (from interfaces.pys) ──────────────────
 Car car = Car("Toyota", "Corolla", 2020)
 car.start()
 car.move()

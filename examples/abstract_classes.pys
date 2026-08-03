@@ -1,6 +1,123 @@
-# Abstract classes: owned state + concrete methods + abstract variation points.
+# Abstract classes: toy forms first, then a fuller template-method sample.
 # Contrast with interface (no state/bodies) and trait (composition, not is-a).
-# Storage uses fixed slots / link nodes (no T[] yet) so the sample stays runnable.
+#
+# Litmus test used below: shared code must call a method that *varies* across
+# more than one concrete subclass. One subclass alone would not justify abstract.
+
+# --- Toy 1: shared hello(); two different name() strategies ---
+# Without a second greeter, NamedGreeter alone could own hello() — no abstract.
+# With two forms, hello() stays written once and dispatches via name().
+abstract class Greeter {
+    public Greeter() {
+    }
+
+    public string hello() {
+        return "hi " + this.name()
+    }
+
+    public abstract string name()
+}
+
+# Form A: plain personal name.
+class NamedGreeter inherits Greeter {
+    private string who
+
+    public NamedGreeter(string who) {
+        super()
+        this.who = who
+    }
+
+    public string name() {
+        return this.who
+    }
+}
+
+# Form B: title + name (different storage / formatting of "who am I").
+class TitledGreeter inherits Greeter {
+    private string title
+    private string who
+
+    public TitledGreeter(string title, string who) {
+        super()
+        this.title = title
+        this.who = who
+    }
+
+    public string name() {
+        return this.title + " " + this.who
+    }
+}
+
+NamedGreeter g = NamedGreeter("Ada")
+TitledGreeter t = TitledGreeter("Dr", "Ada")
+print(g.hello())  # hi Ada
+print(t.hello())  # hi Dr Ada
+
+# Same template, different subclasses — static type is Greeter.
+Greeter first = g
+Greeter second = t
+print(first.hello())  # hi Ada
+print(second.hello())  # hi Dr Ada
+
+# --- Toy 2: abstract void bump(); two step strategies ---
+# value() is shared; bump() must differ (plus-one vs plus-ten) or abstract is pointless.
+abstract class Counter {
+    protected int n
+
+    public Counter() {
+        this.n = 0
+    }
+
+    public int value() {
+        return this.n
+    }
+
+    public abstract void bump()
+}
+
+class PlusOne inherits Counter {
+    public PlusOne() {
+        super()
+    }
+
+    public void bump() {
+        this.n = this.n + 1
+    }
+}
+
+class PlusTen inherits Counter {
+    public PlusTen() {
+        super()
+    }
+
+    public void bump() {
+        this.n = this.n + 10
+    }
+}
+
+PlusOne c1 = PlusOne()
+PlusTen c10 = PlusTen()
+c1.bump()
+c1.bump()
+c10.bump()
+print(c1.value())  # 2
+print(c10.value())  # 10
+
+# Polymorphic: same Counter API, different bump implementations.
+Counter left = c1
+Counter right = c10
+left.bump()
+right.bump()
+print(left.value())  # 3
+print(right.value())  # 20
+
+# =============================================================================
+# Fuller sample: shared list state + two storage strategies
+# (fixed slots / link nodes — no T[] yet so the sample stays runnable)
+# Why abstract: contains()/isEmpty() are identical for every list; get()/add()
+# cannot be — array indexing vs link walking. One storage type alone would not
+# need AbstractList; two strategies make the shared template earn its keep.
+# =============================================================================
 
 # --- Abstract base: shared size/modCount + template methods ---
 # isEmpty needs only size. contains calls abstract get() -- each subclass
@@ -152,14 +269,14 @@ function bool hasItem(AbstractList list, string item) {
     return list.contains(item)
 }
 
-# --- Drive both strategies through AbstractList / AbstractCountedList ---
+# --- Drive both strategies: same contains(), different get()/add() ---
 ArrayListPys xs = ArrayListPys()
 print(xs.isEmpty())  # true
 xs.add("a")
 xs.add("b")
 print(xs.isEmpty())  # false
-print(xs.get(0))  # a
-print(xs.contains("b"))  # true
+print(xs.get(0))  # a  (index 0 = first appended)
+print(xs.contains("b"))  # true  -- template uses ArrayListPys.get
 print(xs.contains("z"))  # false
 print(xs.mutations())  # 2
 
@@ -174,11 +291,11 @@ ys.add("a")
 ys.add("b")
 print(ys.get(0))  # b
 print(ys.get(1))  # a
-print(hasItem(ys, "a"))  # true
+print(hasItem(ys, "a"))  # true -- same hasItem/contains, different get
 print(ys.mutations())  # 2
 
 # Same template method, different storage -- both are AbstractCountedList.
-AbstractCountedList left = xs
-AbstractCountedList right = ys
-print(left.contains("a"))  # true
-print(right.contains("b"))  # true
+AbstractCountedList listsA = xs
+AbstractCountedList listsB = ys
+print(listsA.contains("a"))  # true
+print(listsB.contains("b"))  # true

@@ -12,7 +12,8 @@ from transpiler.parse import parse_program_from_tokens
 ROOT = Path(__file__).resolve().parent.parent
 CORPUS = [
     ROOT / "examples" / "main.pys",
-    ROOT / "examples" / "vehicles.pys",
+    ROOT / "examples" / "interfaces.pys",
+    ROOT / "examples" / "classes.pys",
     ROOT / "examples" / "funcs.pys",
     ROOT / "examples" / "gui" / "pokemontcg" / "main.pys",
     ROOT / "examples" / "gui" / "PyQt" / "main.pys",

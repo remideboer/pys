@@ -1,0 +1,94 @@
+# Classes in general: fields, constructors, visibility, inherits, sealed.
+# For interfaces see examples/interfaces.pys; for abstract classes see
+# examples/abstract_classes.pys; for traits see examples/traits.pys.
+
+# --- Basic class: fields, constructor, this, public method ---
+class Person {
+    private string name
+
+    public Person(string name) {
+        this.name = name
+    }
+
+    public string label() {
+        return "Person:" + this.name
+    }
+
+    public string getName() {
+        return this.name
+    }
+}
+
+Person ada = Person("Ada")
+print(ada.label())  # Person:Ada
+print(ada.getName())  # Ada
+
+# --- Constructor with parameters (fields via this) ---
+# For this(...) ctor chaining across overloads, see Vehicle in interfaces.pys.
+class Point {
+    private int x
+    private int y
+
+    public Point(int x, int y) {
+        this.x = x
+        this.y = y
+    }
+
+    public string show() {
+        return "(" + this.x + "," + this.y + ")"
+    }
+}
+
+Point origin = Point(0, 0)
+Point p = Point(3, 4)
+print(origin.show())  # (0,0)
+print(p.show())  # (3,4)
+
+# --- Inheritance: protected field + super() + override ---
+class Animal {
+    protected string kind
+
+    public Animal(string kind) {
+        this.kind = kind
+    }
+
+    public string speak() {
+        return this.kind + " makes a sound"
+    }
+}
+
+class Dog inherits Animal {
+    private string name
+
+    public Dog(string name) {
+        super("dog")
+        this.name = name
+    }
+
+    public string speak() {
+        return this.name + " the " + this.kind + " says woof"
+    }
+}
+
+Dog rex = Dog("Rex")
+print(rex.speak())  # Rex the dog says woof
+
+# Polymorphic binding: static type is the parent class.
+Animal a = rex
+print(a.speak())  # Rex the dog says woof
+
+# --- Sealed class: usable, but no further inherits ---
+sealed class Unit {
+    private string id
+
+    public Unit(string id) {
+        this.id = id
+    }
+
+    public string tag() {
+        return "unit#" + this.id
+    }
+}
+
+Unit u = Unit("42")
+print(u.tag())  # unit#42

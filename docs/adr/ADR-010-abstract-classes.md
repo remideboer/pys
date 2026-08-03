@@ -32,7 +32,7 @@ types).
 
 - Distinct from `interface` (no fields/bodies) and `trait` (not a type).
 - IDE: keywords/`void`, hover, snippets; extension ≥ 0.0.42.
-- Pedagogy: JIT `J-abstract`; example `examples/abstract_list.pys`.
+- Pedagogy: JIT `J-abstract`; example `examples/abstract_classes.pys`.
 
 ## Rejected alternatives
 

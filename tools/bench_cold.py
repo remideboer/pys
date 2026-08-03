@@ -54,14 +54,14 @@ def main() -> int:
     # the IDE path, so measure it on the self-contained examples only.
     targets = [
         ROOT / "examples" / "main.pys",
-        ROOT / "examples" / "vehicles.pys",
+        ROOT / "examples" / "interfaces.pys",
         ROOT / "examples" / "funcs.pys",
     ] if args.ide else [
         ROOT / "examples" / "gui" / "pokemontcg" / "main.pys",
         ROOT / "examples" / "gui" / "pokemontcg" / "ui.pys",
         ROOT / "examples" / "gui" / "PyQt" / "main.pys",
         ROOT / "examples" / "main.pys",
-        ROOT / "examples" / "vehicles.pys",
+        ROOT / "examples" / "interfaces.pys",
     ]
 
     kind = "analyze_file" if args.ide else "compile"

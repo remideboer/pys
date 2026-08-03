@@ -17,7 +17,7 @@ packrat path — without flipping the default parser while packrat is slower.
 
 ### Baseline gate corpus
 
-`examples/main.pys`, `vehicles.pys`, `gui/pokemontcg/{main,ui}.pys`,
+`examples/main.pys`, `interfaces.pys`, `gui/pokemontcg/{main,ui}.pys`,
 `gui/PyQt/main.pys`.
 
 | Mode | After CER-002 | After this CER (RD default) |

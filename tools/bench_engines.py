@@ -10,7 +10,7 @@ from transpiler.pipeline import compile_pys
 
 FILES = [
     Path("examples/main.pys"),
-    Path("examples/vehicles.pys"),
+    Path("examples/interfaces.pys"),
     Path("examples/gui/pokemontcg/main.pys"),
     Path("examples/gui/pokemontcg/ui.pys"),
     Path("examples/gui/PyQt/main.pys"),

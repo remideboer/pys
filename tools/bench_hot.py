@@ -11,7 +11,7 @@ from transpiler.pipeline import compile_pys
 
 DEFAULT_FILES = [
     "examples/main.pys",
-    "examples/vehicles.pys",
+    "examples/interfaces.pys",
     "examples/gui/pokemontcg/main.pys",
     "examples/gui/pokemontcg/ui.pys",
     "examples/gui/PyQt/main.pys",

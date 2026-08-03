@@ -377,6 +377,7 @@ Rules:
 7. `abstract` marks a class that cannot be instantiated and may declare
    body-less `abstract` methods; mutually exclusive with `sealed`
 8. Optional type parameters: `class Pair<T, U> { … }`
+9. See `examples/classes.pys` for fields, constructors, `inherits`, and `sealed`
 
 ### Abstract classes
 
@@ -413,7 +414,7 @@ Rules:
 1. Abstract methods only inside `abstract class`; need access + `abstract` + return type
 2. `void` means no value: do not `return expr` (bare `return` is fine)
 3. Abstract classes **are** types (unlike traits) — usable for bindings / polymorphism
-4. See `examples/abstract_list.pys` and JIT [J-abstract](../tutorials/jit/J-abstract.md)
+4. See `examples/abstract_classes.pys` and JIT [J-abstract](../tutorials/jit/J-abstract.md)
 
 ### Traits
 
@@ -610,7 +611,7 @@ Applies to functions, classes, structs, enums, interfaces, and top-level `const`
 ## 8. Imports
 
 ```pys
-import vehicles                 # whole .pys module (same folder / discovery)
+import interfaces               # whole .pys module (same folder / discovery)
 import greet from toolbox       # one name
 import QApplication, QWidget from PyQt6.QtWidgets   # several names
 import all from toolbox         # all package/global exports
@@ -723,7 +724,7 @@ cycles are **rejected** (`pys.await-cycle`). Runnable suite: `examples/concurren
 ## 12. Quick example (dense)
 
 ```pys
-import vehicles
+import interfaces
 import mysql.connector
 import tkinter as tk
 
@@ -750,7 +751,8 @@ package class Car inherits Vehicle implements Drivable {
 }
 ```
 
-For a full walkthrough, see `examples/main.pys` and `examples/vehicles.pys`.
+For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
+`examples/interfaces.pys`.
 
 ---
 
@@ -763,6 +765,9 @@ For a full walkthrough, see `examples/main.pys` and `examples/vehicles.pys`.
 | `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` guide |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
 | `examples/main.pys` | Dense feature showcase (not the curriculum path) |
+| `examples/classes.pys` | Classes: fields, ctors, inherits, sealed |
+| `examples/interfaces.pys` | Interfaces + implements (vehicle domain) |
+| `examples/abstract_classes.pys` | Abstract classes / template method |
 | `examples/concurrency/` | Concurrency showcase package |
 | `transpiler/language_spec.py` | Line translation rules |
 | `pys.deps` | External Python dependencies (not language syntax) |

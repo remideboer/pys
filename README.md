@@ -158,7 +158,7 @@ for indentation when not using braces; tabs are illegal.
 
 ```pys
 import funcs                 # sibling .pys module (package/global exports)
-import vehicles
+import interfaces
 import math                  # Python stdlib — no pys.deps entry
 import tkinter as tk         # stdlib with alias
 # import all from funcs.pys
@@ -336,7 +336,8 @@ int product = multiply(5, 6)
 
 ### Classes, interfaces, inheritance
 
-See [`examples/vehicles.pys`](examples/vehicles.pys) and the vehicle section of
+See [`examples/classes.pys`](examples/classes.pys),
+[`examples/interfaces.pys`](examples/interfaces.pys), and the vehicle section of
 `examples/main.pys`:
 
 ```pys

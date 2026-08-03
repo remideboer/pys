@@ -1,7 +1,7 @@
-# module: vehicles.pys — vehicle class hierarchy
-# demonstrates interfaces, inheritance, and visibility modifiers
+# Interfaces: contracts without state or method bodies.
+# Vehicle domain shows implements, layered interfaces, and polymorphism.
 
-# ── Interfaces (package: importable from any file) ────────
+# --- Interfaces (package: importable from any file in the folder) ---
 package interface Drivable {
     public start()
     public move()
@@ -18,13 +18,13 @@ package interface Loadable {
     public int capacity()
 }
 
-# ── Base class ───────────────────────────────────────────
+# --- Base class implementing Drivable ---
 package class Vehicle implements Drivable {
     protected string make
     protected string model
     protected int year
 
-    # constructor chaining
+    # constructor chaining via this(...)
     public Vehicle(string make, string model) {
         this(make, model, 2024)
     }
@@ -48,7 +48,7 @@ package class Vehicle implements Drivable {
     }
 }
 
-# ── Car ──────────────────────────────────────────────────
+# --- Car: inherits Vehicle (still one interface via the parent) ---
 package class Car inherits Vehicle {
     public Car(string make, string model, int year) {
         super(make, model, year)
@@ -64,7 +64,7 @@ package class Car inherits Vehicle {
     }
 }
 
-# ── Truck: Vehicle + Loadable ────────────────────────────
+# --- Truck: Vehicle + Loadable ---
 package class Truck inherits Vehicle implements Loadable {
     private int maxLoad
 
@@ -86,7 +86,7 @@ package class Truck inherits Vehicle implements Loadable {
     }
 }
 
-# ── Plane: Vehicle + Flyable ────────────────────────────
+# --- Plane: Vehicle + Flyable ---
 package class Plane inherits Vehicle implements Flyable {
     private int altitude
 
@@ -110,7 +110,7 @@ package class Plane inherits Vehicle implements Flyable {
     }
 }
 
-# ── CargoPlane: Plane + Loadable (layered interfaces) ────
+# --- CargoPlane: Plane + Loadable (layered interfaces) ---
 package class CargoPlane inherits Plane implements Loadable {
     private int maxLoad
 
@@ -128,7 +128,7 @@ package class CargoPlane inherits Plane implements Loadable {
     }
 }
 
-# ── Ship: sealed — cannot be extended with inherits ─────
+# --- Ship: sealed — cannot be extended with inherits ---
 package sealed class Ship inherits Vehicle implements Loadable {
     private int maxLoad
 
@@ -148,5 +148,5 @@ package sealed class Ship inherits Vehicle implements Loadable {
 
 # module-private helper: not accessible outside this file
 function log(string msg) {
-    print("vehicles.log: {msg}")
+    print("interfaces.log: {msg}")
 }

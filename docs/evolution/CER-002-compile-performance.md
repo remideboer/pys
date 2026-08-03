@@ -29,7 +29,7 @@ behavior identical for authors, prefer simple caches over lexer rewrites.
 | `tools/bench_transpile.py` | Per-phase share + optional cProfile |
 | `tools/bench_fs_calls.py` | Pathlib resolve/stat/exists/read call sites during `analyze` |
 
-**Corpus for headlines:** `examples/main.pys`, `vehicles.pys`,
+**Corpus for headlines:** `examples/main.pys`, `interfaces.pys`,
 `gui/pokemontcg/{main,ui}.pys`, `gui/PyQt/main.pys`.
 
 | Mode | Before (`639ed2e~1`) | After (`639ed2e`) |

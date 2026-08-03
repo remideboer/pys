@@ -15,21 +15,22 @@ from transpiler.transpiler import TranspileError, run_source, transpile
 from transpiler.workspace import WORKSPACE_ROOT_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLE = ROOT / "examples" / "abstract_list.pys"
+EXAMPLE = ROOT / "examples" / "abstract_classes.pys"
 
 os.environ.setdefault("PYS_SUPPRESS_WARNINGS", "1")
 
 
-def test_example_abstract_list_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_example_abstract_classes_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert EXAMPLE.is_file()
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(EXAMPLE.parent))
     assert run_source(EXAMPLE) == 0
 
 
-def test_example_abstract_list_emit_is_valid_python() -> None:
+def test_example_abstract_classes_emit_is_valid_python() -> None:
     py = transpile(EXAMPLE.read_text(encoding="utf-8"))
     ast.parse(py)
     assert "from abc import ABC, abstractmethod" in py
+    assert "class Greeter(ABC):" in py
     assert "class AbstractList(ABC):" in py
     assert "class AbstractCountedList(AbstractList, ABC):" in py
     assert "@abstractmethod" in py
@@ -45,7 +46,7 @@ def test_example_abstract_list_emit_is_valid_python() -> None:
     assert "def hasItem(list, item):" in py
 
 
-def test_abstract_list_runtime_behavior() -> None:
+def test_abstract_classes_runtime_behavior() -> None:
     source = EXAMPLE.read_text(encoding="utf-8")
     py = transpile(source)
     with tempfile.TemporaryDirectory() as tmp:
@@ -55,6 +56,14 @@ def test_abstract_list_runtime_behavior() -> None:
             [sys.executable, str(path)], capture_output=True, text=True, check=True
         )
     assert proc.stdout.strip().splitlines() == [
+        "hi Ada",
+        "hi Dr Ada",
+        "hi Ada",
+        "hi Dr Ada",
+        "2",
+        "10",
+        "3",
+        "20",
         "True",
         "False",
         "a",
