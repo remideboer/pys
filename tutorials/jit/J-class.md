@@ -31,6 +31,7 @@ package class BigCart inherits Cart {
 3. No `function` keyword on methods — `public name(args) { … }` on classes  
 4. `inherits` one class; `implements` one or more interfaces  
 5. `this` / `super` for current / parent  
+6. **Member order** (const → fix → fields → ctor → methods): [J-member-order](J-member-order.md)
 
 Bag of fields with no behavior → use a [struct](J-struct.md), not a class.
 

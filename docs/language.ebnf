@@ -60,10 +60,13 @@ block_comment    = "##" , { character } , "/#" ;
 
 (* ------------------------- Program ------------------------- *)
 
-program          = { top_level } ;
+program          = { import_stmt } , { top_level } ;
 
-top_level        = import_stmt
-                 | declaration
+(* Imports must occupy a prefix of the file (blank/comment lines may
+   appear among them). After the first declaration or statement, further
+   import_stmt is a FatalParseError (educational diagnostic). *)
+
+top_level        = declaration
                  | statement ;
 
 (* ------------------------- Imports ------------------------- *)
@@ -174,18 +177,32 @@ class_decl       = [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , id
 
 type_params      = "<" , identifier , { "," , identifier } , ">" ;
 
-class_body       = "{" , { class_member } , "}" ;
+class_body       = "{" ,
+                   { const_field_decl } ,
+                   { fix_field_decl } ,
+                   { field_decl } ,
+                   { constructor_decl } ,
+                   { method_decl | abstract_method_decl } ,
+                   "}" ;
 
-class_member     = field_decl | method_decl | abstract_method_decl | constructor_decl ;
+(* Kind order is grammar-level (parse FatalParseError). Visibility is
+   unordered within a section. See requirements/enforced_ordering.md. *)
 
-field_decl       = member_access , type_name , identifier , [ "=" , expression ] ;
+const_field_decl = member_access , "const" , primitive_type , identifier ,
+                   "=" , expression ;
+fix_field_decl   = member_access , "fix" , type_name , identifier ,
+                   [ "=" , expression ] ;
+field_decl       = member_access , type_name , identifier ,
+                   [ "=" , expression ] ;
+(* field_decl is mutable only; const / fix occupy earlier sections. *)
 
 method_decl      = member_access , [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
 
 abstract_method_decl = member_access , "abstract" , return_type , identifier ,
                        "(" , [ parameter_list ] , ")" ;
-(* No block. Only legal inside an abstract class. *)
+(* No block. Only legal inside an abstract class. Abstract methods share
+   the method section (after constructors). *)
 
 constructor_decl = member_access , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
@@ -202,11 +219,17 @@ struct_decl      = [ top_visibility ] , [ "fix" ] , "struct" , identifier ,
    identity-free value types with an implicit canonical constructor
    `Name(args)` / `Name(field = expr, …)` (same call_suffix as classes). *)
 
-struct_body      = "{" , { struct_field_decl } , "}" ;
+struct_body      = "{" ,
+                   { fix_struct_field_decl } ,
+                   { struct_field_decl } ,
+                   "}" ;
 
-(* Fields are always public; top_visibility on struct_decl controls import access. *)
-struct_field_decl = [ "fix" ] , type_name , identifier ,
-                    [ "=" , expression ] ;
+(* Fields are always public; top_visibility on struct_decl controls import access.
+   Fix fields must precede mutable fields (same kind-order rule as classes). *)
+fix_struct_field_decl = "fix" , type_name , identifier ,
+                         [ "=" , expression ] ;
+struct_field_decl      = type_name , identifier ,
+                         [ "=" , expression ] ;
 
 (* ------------------------- Data types (Value Objects) ------------------------- *)
 
@@ -226,10 +249,18 @@ entity_decl       = [ top_visibility ] , "entity" , identifier ,
 (* Root entity: identity(...) mandatory. Derived: identity optional; when
    present, fields append after parent keys. No uses / implements. *)
 
-entity_body       = "{" , { entity_member } , "}" ;
-entity_member     = entity_field_decl | method_decl | constructor_decl ;
-entity_field_decl = member_access , [ "fix" ] , type_name , identifier ,
-                    [ "=" , expression ] ;
+entity_body       = "{" ,
+                    { identity_field_decl } ,
+                    { fix_field_decl } ,
+                    { field_decl } ,
+                    { constructor_decl } ,
+                    { method_decl } ,
+                    "}" ;
+(* Identity fields = those named in this entity's identity(...) clause;
+   they must lead. Other fix fields, then mutable, then constructors, then
+   methods. Visibility is unordered within a section. *)
+
+identity_field_decl = member_access , "fix" , type_name , identifier ;
 
 (* ------------------------- Enums ------------------------- *)
 
@@ -254,9 +285,8 @@ interface_method = [ return_type ] , identifier ,
 (* ------------------------- Traits ------------------------- *)
 
 trait_decl       = [ top_visibility ] , "trait" , identifier ,
-                   "{" , { trait_member } , "}" ;
-
-trait_member     = trait_method_decl | trait_requires ;
+                   "{" , { trait_requires } , { trait_method_decl } , "}" ;
+(* requires before methods — host dependencies visible first. *)
 
 trait_method_decl = [ return_type ] , identifier ,
                     "(" , [ parameter_list ] , ")" , block ;

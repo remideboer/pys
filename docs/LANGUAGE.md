@@ -15,8 +15,10 @@ Use **4 spaces** for indentation when not using braces; tabs are illegal.
 
 ## 1. Program structure (procedural)
 
-A `.pys` file is a sequence of top-level items: imports, declarations, and
-statements. Execution runs top to bottom, like a script.
+A `.pys` file is a sequence of top-level items. **All imports must appear
+first** (blank lines and comments may sit among them). After the first
+declaration or statement, a later `import` / `from … import` is a parse
+error — not a style warning. See [Enforced member ordering](#enforced-member-ordering).
 
 ```pys
 import math
@@ -368,21 +370,25 @@ package class BigCart inherits Cart {
 Rules:
 
 1. Members need an access modifier: `public` / `private` / `protected` / `module`
-2. Constructor name equals the class name
-3. One superclass via `inherits` (alias `super` in the header); zero or more
+2. **Member kind order** (parse-enforced): `const` fields → `fix` fields →
+   mutable fields → constructors → methods (including `abstract` methods).
+   Visibility is unordered within a section. See
+   [Enforced member ordering](#enforced-member-ordering).
+3. Constructor name equals the class name
+4. One superclass via `inherits` (alias `super` in the header); zero or more
    traits via `uses`; one or more interfaces via `implements`
-4. Header order: `inherits` → `uses` → `implements`
-5. `this` / `super` for current instance / parent. Subclass constructors that
+5. Header order: `inherits` → `uses` → `implements`
+6. `this` / `super` for current instance / parent. Subclass constructors that
    omit `super(...)` / `this(...)` get an implicit zero-arg `super()` at the
    start — write `super(args)` when the parent constructor needs arguments.
    Subclasses may call public members of a **library** parent (for example
    `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
    imported via `pys.deps` / the standard library.
-6. `sealed` may mark a class that should not be subclassed further
-7. `abstract` marks a class that cannot be instantiated and may declare
+7. `sealed` may mark a class that should not be subclassed further
+8. `abstract` marks a class that cannot be instantiated and may declare
    body-less `abstract` methods; mutually exclusive with `sealed`
-8. Optional type parameters: `class Pair<T, U> { … }`
-9. See `examples/classes.pys` for fields, constructors, `inherits`, and `sealed`
+9. Optional type parameters: `class Pair<T, U> { … }`
+10. See `examples/classes.pys` for fields, constructors, `inherits`, and `sealed`
 
 ### Abstract classes
 
@@ -450,10 +456,11 @@ Rules:
 
 1. Every `this.x` in a trait method must be listed in that trait's `requires`
    (or be another method of the same trait)
-2. The host class (or an ancestor) must supply each `requires` field/method
-3. If two used traits define the same method name, the class must override it;
+2. **Body order** (parse-enforced): all `requires` before any method
+3. The host class (or an ancestor) must supply each `requires` field/method
+4. If two used traits define the same method name, the class must override it;
    call `TraitName.method(this)` from the override to pick a side
-4. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)
+5. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)
 
 ### Polymorphism
 
@@ -516,15 +523,16 @@ Rules:
 1. Fields are always public — no per-field `public` / `private` / …; use
    `global` / `package` / `module` on the **struct** to control who can import
    the type
-2. Canonical constructor from field order — positional and/or named args
+2. **Field kind order** (parse-enforced): all `fix` fields before mutable fields
+3. Canonical constructor from field order — positional and/or named args
    (`Type(...)`, never `new`); fields with defaults must be trailing
-3. Pass-by-value: assignment, call arguments, and returns copy the instance
+4. Pass-by-value: assignment, call arguments, and returns copy the instance
    (nested struct fields are deep-copied)
-4. `==` is field-wise (not reference identity)
-5. No `shared <Struct>`; struct fields and struct bindings reject `null`
-6. IDE: type and field go-to, keyword highlighting, semantic type coloring,
+5. `==` is field-wise (not reference identity)
+6. No `shared <Struct>`; struct fields and struct bindings reject `null`
+7. IDE: type and field go-to, keyword highlighting, semantic type coloring,
    hover/snippets for `struct`
-7. Mutability matrix (also applies to nested paths like `o.inner.x`):
+8. Mutability matrix (also applies to nested paths like `o.inner.x`):
 
 | Declaration | Binding | Field `fix` | Field writes |
 |-------------|---------|--------------|--------------|
@@ -533,8 +541,8 @@ Rules:
 | `struct S` | `fix` | (any) | rejected |
 | `fix struct S` | (any) | (any) | rejected |
 
-8. Hashable only when the type is `fix struct` or every field is `fix`
-9. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
+9. Hashable only when the type is `fix struct` or every field is `fix`
+10. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
 
 **Struct vs `dict`:** same idea as a schema-fixed data bag (value equality, no
 methods), but nominal typing, fixed fields, no `null` fields, and optional
@@ -581,10 +589,12 @@ Rules (summary):
    `struct`; copy on assign/call/return; `==` / hash / string form over **all**
    fields; no `inherits` / `uses` / `implements` / hand `equals`
 2. **`entity`**: explicit ctor; fields need `member_access`; root requires
-   `identity(...)`; every identity field must be `fix`; `==` / hash / string
-   form over identity fields only (parent keys then local); may `inherits`
-   another **entity** (optional local `identity` appends to the parent key);
-   no `uses` / `implements`; hand `equals` / `hashCode` / `toString` rejected
+   `identity(...)`; every identity field must be `fix`; **body order**
+   (parse-enforced): identity fields → other `fix` → mutable → constructors →
+   methods; `==` / hash / string form over identity fields only (parent keys
+   then local); may `inherits` another **entity** (optional local `identity`
+   appends to the parent key); no `uses` / `implements`; hand `equals` /
+   `hashCode` / `toString` rejected
 3. Prefer **`struct`** for ad-hoc bags without a VO/Entity contract; **`data`**
    for immutable interchangeable values; **`entity`** for lifecycle rows;
    **`class`** for general OOP
@@ -701,6 +711,10 @@ Applies to functions, classes, structs, `data`, `entity`, enums, interfaces, and
 
 ## 8. Imports
 
+**Placement:** every `import` / `from … import` must sit in the import prefix
+at the top of the file (before any declaration or statement). Late imports are
+a parse error — see [Enforced member ordering](#enforced-member-ordering).
+
 ```pys
 import interfaces               # whole .pys module (same folder / discovery)
 import greet from toolbox       # one name
@@ -715,6 +729,31 @@ import mysql.connector          # package from pys.deps
   names are importable.
 - Python packages: stdlib or entries in `pys.deps` (see README). Alias `as` is
   for those packages.
+
+---
+
+## Enforced member ordering
+
+PYS rejects out-of-order **kinds** at parse time (educational `FatalParseError`),
+not as a linter warning. The axis is **kind** only — `public` / `private` / …
+may appear in any order within a section. Framing for teaching: *PYS enforces
+this because it is good practice everywhere; most other languages only
+recommend it.* Full rationale: [`requirements/enforced_ordering.md`](../requirements/enforced_ordering.md).
+JIT: [J-member-order](../tutorials/jit/J-member-order.md).
+
+| Body | Required kind order |
+|------|---------------------|
+| File (top level) | All imports → declarations / statements |
+| `class` | `const` fields → `fix` fields → mutable fields → constructors → methods (`abstract` included) |
+| `struct` | `fix` fields → mutable fields |
+| `trait` | `requires` → methods |
+| `entity` | Identity fields → other `fix` → mutable → constructors → methods |
+
+**Not enforced:** positional order of items inside `tasks { }` (DAG / `await`
+already structures dependency intent).
+
+Changing a member’s role (e.g. mutable → `fix`) means **relocating** it to
+the correct section — that relocation is intentional.
 
 ---
 

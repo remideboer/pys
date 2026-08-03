@@ -45,6 +45,7 @@ entity OrderLine inherits Order identity(lineNumber) {
 4. `==` / hash / string form use **identity fields only** (not overridable)  
 5. May `inherits` another **entity** only; no `uses` / `implements`  
 6. Non-key fields may change; key fields stay `fix`  
+7. **Body order**: identity fields → other `fix` → mutable → ctor → methods — [J-member-order](J-member-order.md)
 
 Lifecycle / row identity → **`entity`**. Immutable value → [`data`](J-data.md).
 General OOP → [`J-class`](J-class.md).

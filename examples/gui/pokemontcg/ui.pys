@@ -34,6 +34,86 @@ package class PokemonApp {
     private Entry newDeckEntry
     private list<string> deckNames
 
+    public PokemonApp(AppStore appStore) {
+        this.appStore = appStore
+        this.catalogIds = []
+        this.collectionIds = []
+        this.deckNames = []
+
+        this.root = tk.Tk()
+        this.root.title("PYS Pokemon TCG Demo")
+        this.root.geometry("900x560")
+
+        this.notebook = ttk.Notebook(this.root)
+        this.notebook.pack(fill="both", expand=True, padx=8, pady=8)
+
+        Frame catalogTab = ttk.Frame(this.notebook)
+        this.notebook.add(catalogTab, text="Catalog")
+        this.catalogLeft = ttk.Frame(catalogTab)
+        this.catalogLeft.pack(side="left", fill="both", expand=True)
+        this.catalogRight = ttk.Frame(catalogTab)
+        this.catalogRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.catalogLeft, text="Cards (TCGdex extract) — click a row for detail").pack(anchor="w")
+        this.catalogList = tk.Listbox(this.catalogLeft, width=40)
+        this.catalogList.pack(fill="both", expand=True)
+        this.catalogList.bind("<<ListboxSelect>>", this.onCatalogSelect)
+        ttk.Button(this.catalogLeft, text="Add to collection", command=this.addSelectedToCollection).pack(fill="x", pady=2)
+        this.catalogDetail = tk.Text(this.catalogRight, width=50, height=30)
+        this.catalogDetail.pack(fill="both", expand=True)
+
+        Frame collectionTab = ttk.Frame(this.notebook)
+        this.notebook.add(collectionTab, text="Collection")
+        this.collectionLeft = ttk.Frame(collectionTab)
+        this.collectionLeft.pack(side="left", fill="both", expand=True)
+        this.collectionRight = ttk.Frame(collectionTab)
+        this.collectionRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.collectionLeft, text="Owned cards — click a row for detail").pack(anchor="w")
+        this.collectionList = tk.Listbox(this.collectionLeft, width=40)
+        this.collectionList.pack(fill="both", expand=True)
+        this.collectionList.bind("<<ListboxSelect>>", this.onCollectionSelect)
+        Frame bumpRow = ttk.Frame(this.collectionLeft)
+        bumpRow.pack(fill="x")
+        ttk.Button(bumpRow, text="+1", command=this.onBumpPlus).pack(side="left", expand=True, fill="x")
+        ttk.Button(bumpRow, text="-1", command=this.onBumpMinus).pack(side="left", expand=True, fill="x")
+        ttk.Button(bumpRow, text="Remove", command=this.removeOwned).pack(side="left", expand=True, fill="x")
+        this.collectionDetail = tk.Text(this.collectionRight, width=50, height=18)
+        this.collectionDetail.pack(fill="both", expand=True)
+        ttk.Label(this.collectionRight, text="Stats by type").pack(anchor="w")
+        this.typeStatsBox = tk.Text(this.collectionRight, width=50, height=8)
+        this.typeStatsBox.pack(fill="both", expand=True)
+
+        Frame decksTab = ttk.Frame(this.notebook)
+        this.notebook.add(decksTab, text="Decks")
+        this.decksLeft = ttk.Frame(decksTab)
+        this.decksLeft.pack(side="left", fill="both", expand=True)
+        this.decksRight = ttk.Frame(decksTab)
+        this.decksRight.pack(side="right", fill="both", expand=True)
+        ttk.Label(this.decksLeft, text="Your decks — click a row for detail").pack(anchor="w")
+        this.deckList = tk.Listbox(this.decksLeft, width=40)
+        this.deckList.pack(fill="both", expand=True)
+        this.deckList.bind("<<ListboxSelect>>", this.onDeckSelect)
+        Frame newDeckRow = ttk.Frame(this.decksLeft)
+        newDeckRow.pack(fill="x", pady=4)
+        this.newDeckEntry = ttk.Entry(newDeckRow)
+        this.newDeckEntry.pack(side="left", fill="x", expand=True)
+        ttk.Button(newDeckRow, text="Create", command=this.createDeck).pack(side="left")
+        ttk.Button(this.decksLeft, text="Delete deck", command=this.deleteSelectedDeck).pack(fill="x")
+        ttk.Button(this.decksLeft, text="Add selected owned/catalog card", command=this.addOwnedToDeck).pack(fill="x")
+        ttk.Button(this.decksLeft, text="Remove selected deck card", command=this.removeCardFromDeck).pack(fill="x")
+        this.deckDetail = tk.Text(this.decksRight, width=50, height=8)
+        this.deckDetail.pack(fill="x")
+        ttk.Label(this.decksRight, text="Cards in deck").pack(anchor="w")
+        this.deckCards = tk.Listbox(this.decksRight, width=50)
+        this.deckCards.pack(fill="both", expand=True)
+
+        this.refreshCatalog()
+        this.refreshCollection()
+        this.refreshDecks()
+        if (len(this.catalogIds) > 0) {
+            this.catalogList.selection_set(0)
+            this.showCatalogDetail()
+        }
+    }
     public refreshCatalog() {
         this.catalogList.delete(0, "end")
         this.catalogIds = []
@@ -314,86 +394,5 @@ package class PokemonApp {
 
     public run() {
         this.root.mainloop()
-    }
-
-    public PokemonApp(AppStore appStore) {
-        this.appStore = appStore
-        this.catalogIds = []
-        this.collectionIds = []
-        this.deckNames = []
-
-        this.root = tk.Tk()
-        this.root.title("PYS Pokemon TCG Demo")
-        this.root.geometry("900x560")
-
-        this.notebook = ttk.Notebook(this.root)
-        this.notebook.pack(fill="both", expand=True, padx=8, pady=8)
-
-        Frame catalogTab = ttk.Frame(this.notebook)
-        this.notebook.add(catalogTab, text="Catalog")
-        this.catalogLeft = ttk.Frame(catalogTab)
-        this.catalogLeft.pack(side="left", fill="both", expand=True)
-        this.catalogRight = ttk.Frame(catalogTab)
-        this.catalogRight.pack(side="right", fill="both", expand=True)
-        ttk.Label(this.catalogLeft, text="Cards (TCGdex extract) — click a row for detail").pack(anchor="w")
-        this.catalogList = tk.Listbox(this.catalogLeft, width=40)
-        this.catalogList.pack(fill="both", expand=True)
-        this.catalogList.bind("<<ListboxSelect>>", this.onCatalogSelect)
-        ttk.Button(this.catalogLeft, text="Add to collection", command=this.addSelectedToCollection).pack(fill="x", pady=2)
-        this.catalogDetail = tk.Text(this.catalogRight, width=50, height=30)
-        this.catalogDetail.pack(fill="both", expand=True)
-
-        Frame collectionTab = ttk.Frame(this.notebook)
-        this.notebook.add(collectionTab, text="Collection")
-        this.collectionLeft = ttk.Frame(collectionTab)
-        this.collectionLeft.pack(side="left", fill="both", expand=True)
-        this.collectionRight = ttk.Frame(collectionTab)
-        this.collectionRight.pack(side="right", fill="both", expand=True)
-        ttk.Label(this.collectionLeft, text="Owned cards — click a row for detail").pack(anchor="w")
-        this.collectionList = tk.Listbox(this.collectionLeft, width=40)
-        this.collectionList.pack(fill="both", expand=True)
-        this.collectionList.bind("<<ListboxSelect>>", this.onCollectionSelect)
-        Frame bumpRow = ttk.Frame(this.collectionLeft)
-        bumpRow.pack(fill="x")
-        ttk.Button(bumpRow, text="+1", command=this.onBumpPlus).pack(side="left", expand=True, fill="x")
-        ttk.Button(bumpRow, text="-1", command=this.onBumpMinus).pack(side="left", expand=True, fill="x")
-        ttk.Button(bumpRow, text="Remove", command=this.removeOwned).pack(side="left", expand=True, fill="x")
-        this.collectionDetail = tk.Text(this.collectionRight, width=50, height=18)
-        this.collectionDetail.pack(fill="both", expand=True)
-        ttk.Label(this.collectionRight, text="Stats by type").pack(anchor="w")
-        this.typeStatsBox = tk.Text(this.collectionRight, width=50, height=8)
-        this.typeStatsBox.pack(fill="both", expand=True)
-
-        Frame decksTab = ttk.Frame(this.notebook)
-        this.notebook.add(decksTab, text="Decks")
-        this.decksLeft = ttk.Frame(decksTab)
-        this.decksLeft.pack(side="left", fill="both", expand=True)
-        this.decksRight = ttk.Frame(decksTab)
-        this.decksRight.pack(side="right", fill="both", expand=True)
-        ttk.Label(this.decksLeft, text="Your decks — click a row for detail").pack(anchor="w")
-        this.deckList = tk.Listbox(this.decksLeft, width=40)
-        this.deckList.pack(fill="both", expand=True)
-        this.deckList.bind("<<ListboxSelect>>", this.onDeckSelect)
-        Frame newDeckRow = ttk.Frame(this.decksLeft)
-        newDeckRow.pack(fill="x", pady=4)
-        this.newDeckEntry = ttk.Entry(newDeckRow)
-        this.newDeckEntry.pack(side="left", fill="x", expand=True)
-        ttk.Button(newDeckRow, text="Create", command=this.createDeck).pack(side="left")
-        ttk.Button(this.decksLeft, text="Delete deck", command=this.deleteSelectedDeck).pack(fill="x")
-        ttk.Button(this.decksLeft, text="Add selected owned/catalog card", command=this.addOwnedToDeck).pack(fill="x")
-        ttk.Button(this.decksLeft, text="Remove selected deck card", command=this.removeCardFromDeck).pack(fill="x")
-        this.deckDetail = tk.Text(this.decksRight, width=50, height=8)
-        this.deckDetail.pack(fill="x")
-        ttk.Label(this.decksRight, text="Cards in deck").pack(anchor="w")
-        this.deckCards = tk.Listbox(this.decksRight, width=50)
-        this.deckCards.pack(fill="both", expand=True)
-
-        this.refreshCatalog()
-        this.refreshCollection()
-        this.refreshDecks()
-        if (len(this.catalogIds) > 0) {
-            this.catalogList.selection_set(0)
-            this.showCatalogDetail()
-        }
     }
 }

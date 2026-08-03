@@ -315,6 +315,7 @@ class FieldDecl(Node):
     type_name: str = ""
     name: str = ""
     is_fix: bool = False
+    is_const: bool = False
     default: Expr | None = None
 
 

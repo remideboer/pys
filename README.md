@@ -49,6 +49,35 @@ PYS lambdas capture **values at creation**; captured names are read-only unless
 Sample: [`examples/atomic.pys`](examples/atomic.pys). Guide:
 [`docs/CONCURRENCY.md`](docs/CONCURRENCY.md). JIT: [`tutorials/jit/J-atomic.md`](tutorials/jit/J-atomic.md).
 
+## Why enforced member ordering?
+
+Java, C#, Kotlin, and PEP 8 **recommend** constants → fields → constructors →
+methods. PYS **rejects** out-of-order kinds at compile time (parse error with
+an educational message). Visibility stays free within a section.
+
+1. **Sweller / scanning load** — a fixed place for each kind means readers do
+   not scan the whole body to classify a declaration.
+2. **Make the implicit explicit** — same family as `requires` and
+   `identity(...)`: a habit experts already follow becomes a compiler rule.
+3. **Refactor = relocate** — promoting a field to `fix` (or adding a
+   constructor) means physically moving it to the right section.
+4. **Transferable habit** — *PYS enforces this because it is good practice
+   everywhere; most other languages only recommend it.* Carry the discipline
+   into Java/C#/Python even when those compilers stay silent.
+
+| Body | Order |
+|------|--------|
+| File | Imports first |
+| `class` | `const` → `fix` → fields → constructors → methods |
+| `struct` | `fix` → mutable |
+| `trait` | `requires` → methods |
+| `entity` | Identity fields → other `fix` → mutable → constructors → methods |
+
+Not applied inside `tasks { }` (DAG/`await` already structures intent). Spec:
+[`docs/LANGUAGE.md`](docs/LANGUAGE.md#enforced-member-ordering). JIT:
+[`tutorials/jit/J-member-order.md`](tutorials/jit/J-member-order.md). Habit
+model: [`tutorials/supportive/S7-order-as-habit.md`](tutorials/supportive/S7-order-as-habit.md).
+
 ## Getting Started
 
 ### Students — install the extension

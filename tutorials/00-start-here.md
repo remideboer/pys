@@ -23,6 +23,10 @@ That split is deliberate:
 
 Structs (value types): [J-struct](jit/J-struct.md), design contrast [S6](supportive/S6-struct-vs-dict.md).
 
+Member / import **kind order** (parse errors with educational messages):
+[J-member-order](jit/J-member-order.md), habit model [S7](supportive/S7-order-as-habit.md),
+drill [P-member-order](practice/P-member-order.md).
+
 ## Setup checklist
 
 - [ ] `python -m pip install -e .` from the repo root  

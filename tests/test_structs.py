@@ -208,8 +208,8 @@ print(u)
 def test_partial_fix_field_runtime_guard() -> None:
     source = """
 struct Mixed {
-    int amount
     fix string type
+    int amount
 }
 """
     py = transpile(source)
@@ -217,7 +217,7 @@ struct Mixed {
     assert "__setattr__" in py
     ns: dict = {}
     exec(py, ns)
-    m = ns["Mixed"](1, "fire")
+    m = ns["Mixed"]("fire", 1)
     m.amount = 2
     with pytest.raises(AttributeError, match="fix field"):
         m.type = "ice"

@@ -30,6 +30,7 @@ d1.amount = 21
 4. Assignment / call / return **copy** the value  
 5. `fix` on a field, binding, or `fix struct` freezes writes as documented in [LANGUAGE](../../docs/LANGUAGE.md)  
 6. `==` compares fields  
+7. **`fix` fields before mutable** — [J-member-order](J-member-order.md)
 
 Bag of fields without behavior → **struct**. Behavior / inheritance → **class** ([J-class](J-class.md)).  
 When to prefer `dict`: [S6](../supportive/S6-struct-vs-dict.md).

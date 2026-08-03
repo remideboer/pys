@@ -808,9 +808,26 @@ class _Emitter:
             self._emit(indent + 1, "pass")
             return
         for f in stmt.fields:
-            default = _default_value_for_type(f.type_name or "string")
-            self._emit(indent + 1, f"{f.name} = {default}")
+            if f.default is not None:
+                self._emit(indent + 1, f"{f.name} = {self._expr(f.default)}")
+            else:
+                default = _default_value_for_type(f.type_name or "string")
+                self._emit(indent + 1, f"{f.name} = {default}")
             self.var_kinds[f.name] = "string" if f.type_name == "string" else "number"
+        frozen = {f.name for f in stmt.fields if f.is_fix or f.is_const}
+        if frozen:
+            names = ", ".join(repr(n) for n in sorted(frozen))
+            self._emit(indent + 1, f"_pys_fix_fields = frozenset({{{names}}})")
+            self._emit(indent + 1, "def __setattr__(self, name, value):")
+            self._emit(
+                indent + 2,
+                "if name in type(self)._pys_fix_fields and name in self.__dict__:",
+            )
+            self._emit(
+                indent + 3,
+                'raise AttributeError(f"fix field {name!r} cannot be reassigned")',
+            )
+            self._emit(indent + 2, "object.__setattr__(self, name, value)")
         # Subclass ctors get an implicit super().__init__() when the body never
         # calls super(...) or this(...). Interface-only classes are unchanged.
         inject_super = bool(stmt.parent)

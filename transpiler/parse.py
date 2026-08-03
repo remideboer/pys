@@ -107,6 +107,83 @@ class FatalParseError(ParseError):
     """Semantic fault discovered while parsing; do not fall back to legacy."""
 
 
+# Member-kind phases for enforced ordering (CER / requirements/enforced_ordering.md).
+# Higher number = later section. Seeing an earlier kind after a later one is an error.
+_PHASE_STRUCT_FIX = 0
+_PHASE_STRUCT_FIELD = 1
+_PHASE_TRAIT_REQUIRES = 0
+_PHASE_TRAIT_METHOD = 1
+_PHASE_CLASS_CONST = 0
+_PHASE_CLASS_FIX = 1
+_PHASE_CLASS_FIELD = 2
+_PHASE_CLASS_CTOR = 3
+_PHASE_CLASS_METHOD = 4
+_PHASE_ENTITY_IDENTITY = 0
+_PHASE_ENTITY_FIX = 1
+_PHASE_ENTITY_FIELD = 2
+_PHASE_ENTITY_CTOR = 3
+_PHASE_ENTITY_METHOD = 4
+
+_MSG_IMPORT_AFTER = (
+    "Import statement found after other code. All imports must appear at the top "
+    "of the file, before any declaration or statement, so a reader sees the file's "
+    "full dependency surface before its content."
+)
+_MSG_METHOD_BEFORE_FIELDS = (
+    "Method '{name}' found before the fields/constructor section. PYS requires "
+    "class members in the order: const fields, fix fields, fields, constructors, "
+    "methods — this fixed order lets a reader find any member category without "
+    "scanning the whole class."
+)
+_MSG_FIELD_AFTER_CTOR = (
+    "Field '{name}' found after a constructor. Fields must be declared before any "
+    "constructor, so a reader sees the full state shape before the code that "
+    "initializes it."
+)
+_MSG_CONST_AFTER_FIELDS = (
+    "Constant '{name}' found after non-const fields. Constants must appear first, "
+    "since they represent fixed, class-wide facts rather than per-instance state."
+)
+_MSG_FIX_AFTER_MUTABLE = (
+    "Fix field '{name}' found after mutable fields. Fix fields must appear before "
+    "mutable fields, so immutable state is visible before per-instance mutable state."
+)
+_MSG_TRAIT_METHOD_BEFORE_REQUIRES = (
+    "Method '{name}' found before trait {trait}'s 'requires' section. Declare "
+    "everything the trait depends on its host for before defining methods that "
+    "rely on it, so the dependency is visible first."
+)
+_MSG_ENTITY_BEFORE_IDENTITY = (
+    "Field '{name}' found before identity field '{identity}'. An entity's identity "
+    "field(s) must be declared first, since they are the single most important "
+    "structural fact about the entity — its key."
+)
+
+
+def _require_member_phase(
+    p: "_Tok",
+    phase: list[int],
+    kind: int,
+    *,
+    message: str,
+    code: str,
+    tips: list[str] | None = None,
+) -> None:
+    """Advance ordered body phase, or raise FatalParseError if ``kind`` is too early."""
+    if kind < phase[0]:
+        raise FatalParseError(
+            message,
+            p.cur().line,
+            p.cur().column,
+            code=code,
+            tips=tips or [
+                "PYS enforces member kind order so readers find each category "
+                "without scanning the whole body."
+            ],
+        )
+    phase[0] = kind
+
+
 _PACKRAT_FAIL = object()
 
 
@@ -323,8 +400,32 @@ def _parse_brace_module_rd(
 ) -> Module:
     p = _Tok(tokens, packrat=packrat)
     body: list = []
+    seen_non_import = False
     try:
         while not p.done():
+            if p.at(TokenKind.BLANK):
+                t = p.eat(TokenKind.BLANK)
+                body.append(BlankStmt(span=Span(t.line, t.column)))
+                continue
+            if p.at(TokenKind.COMMENT):
+                t = p.eat(TokenKind.COMMENT)
+                body.append(CommentStmt(span=Span(t.line, t.column), text=t.text))
+                continue
+            if p.at_kw("import", "from"):
+                if seen_non_import:
+                    raise FatalParseError(
+                        _MSG_IMPORT_AFTER,
+                        p.cur().line,
+                        p.cur().column,
+                        code="pys.order-import",
+                        tips=[
+                            "Move every `import` / `import … from …` to the top of the file, "
+                            "before declarations and statements."
+                        ],
+                    )
+                body.append(_parse_toplevel(p))
+                continue
+            seen_non_import = True
             body.append(_parse_toplevel(p))
     except FatalParseError as exc:
         from .transpiler import TranspileError
@@ -655,9 +756,14 @@ def _parse_import(p: _Tok) -> ImportStmt:
         mod = _parse_dotted_name(p)
         return ImportStmt(span=sp, kind="name_from", module=mod, name=names[0], names=names)
     if p.at_kw("from"):
-        # PYS `import Name from module` — but not if the next line is Python-style
-        # `from module import Name` (newlines are not statement separators in the token stream).
-        if p.peek(2).kind == TokenKind.KEYWORD and p.peek(2).text == "import":
+        # PYS `import Name from module` vs adjacent Python-style `from module import Name`
+        # (newlines are not statement separators in the token stream). Prefer PYS when the
+        # look-ahead is `from mod import Name from …` (back-to-back name_from imports).
+        if (
+            p.peek(2).kind == TokenKind.KEYWORD
+            and p.peek(2).text == "import"
+            and not _peek_pys_name_from_then_from(p)
+        ):
             return ImportStmt(span=sp, kind="module", module=first)
         p.eat_kw("from")
         mod = _parse_dotted_name(p)
@@ -674,6 +780,44 @@ def _parse_import(p: _Tok) -> ImportStmt:
         alias = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         return ImportStmt(span=sp, kind="as", module=mod, alias=alias)
     return ImportStmt(span=sp, kind="module", module=mod)
+
+
+def _peek_pys_name_from_then_from(p: _Tok) -> bool:
+    """True when at ``from`` the stream is ``from mod import name[,…] from`` (PYS)."""
+    i = 0
+    t0 = p.peek(i)
+    if not (t0.kind == TokenKind.KEYWORD and t0.text == "from"):
+        return False
+    i += 1
+    # Skip a simple dotted module ref (path prefixes are rare in this ambiguity).
+    t = p.peek(i)
+    if t.kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+        return False
+    i += 1
+    while p.peek(i).kind == TokenKind.DOT:
+        i += 1
+        t = p.peek(i)
+        if t.kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+            return False
+        i += 1
+        if t.text == "pys":
+            break
+    t = p.peek(i)
+    if not (t.kind == TokenKind.KEYWORD and t.text == "import"):
+        return False
+    i += 1
+    t = p.peek(i)
+    if t.kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+        return False
+    i += 1
+    while p.peek(i).kind == TokenKind.COMMA:
+        i += 1
+        t = p.peek(i)
+        if t.kind not in {TokenKind.IDENT, TokenKind.KEYWORD}:
+            return False
+        i += 1
+    t = p.peek(i)
+    return t.kind == TokenKind.KEYWORD and t.text == "from"
 
 
 def _parse_from_import(p: _Tok) -> ImportStmt:
@@ -968,6 +1112,7 @@ def _parse_struct(
         )
     p.eat(TokenKind.LBRACE)
     fields: list[StructField] = []
+    phase = [_PHASE_STRUCT_FIX]
     while not p.at(TokenKind.RBRACE):
         if p.at(TokenKind.BLANK):
             p.eat(TokenKind.BLANK)
@@ -999,6 +1144,22 @@ def _parse_struct(
             p.eat_kw("fix")
         type_name = _parse_type_name(p)
         fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        if is_fix:
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_STRUCT_FIX,
+                message=_MSG_FIX_AFTER_MUTABLE.format(name=fname),
+                code="pys.order-fix-after-mutable",
+            )
+        else:
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_STRUCT_FIELD,
+                message=_MSG_FIX_AFTER_MUTABLE.format(name=fname),
+                code="pys.order-fix-after-mutable",
+            )
         default = None
         if p.at(TokenKind.OP, text="="):
             p.eat(TokenKind.OP, text="=")
@@ -1141,6 +1302,9 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
     p.eat(TokenKind.LBRACE)
     fields: list[FieldDecl] = []
     methods: list[MethodDef] = []
+    identity_set = set(identity)
+    phase = [_PHASE_ENTITY_IDENTITY]
+    pending_identity = set(identity)
     while not p.at(TokenKind.RBRACE):
         if p.at(TokenKind.BLANK):
             p.eat(TokenKind.BLANK)
@@ -1169,6 +1333,13 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     p.cur().column,
                 )
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_ENTITY_CTOR,
+                message=_MSG_METHOD_BEFORE_FIELDS.format(name=name),
+                code="pys.order-entity-ctor",
+            )
             p.eat(TokenKind.LPAREN)
             params: list[tuple[str, str]] = []
             if not p.at(TokenKind.RPAREN):
@@ -1230,6 +1401,13 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     member_sp.line,
                     member_sp.column,
                 )
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_ENTITY_METHOD,
+                message=_MSG_METHOD_BEFORE_FIELDS.format(name=mname),
+                code="pys.order-entity-method",
+            )
             p.eat(TokenKind.LPAREN)
             params = []
             if not p.at(TokenKind.RPAREN):
@@ -1263,6 +1441,62 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     f"Entity field '{mname}' requires a type.",
                     member_sp.line,
                     member_sp.column,
+                )
+            is_identity = mname in identity_set
+            if is_identity:
+                _require_member_phase(
+                    p,
+                    phase,
+                    _PHASE_ENTITY_IDENTITY,
+                    message=_MSG_ENTITY_BEFORE_IDENTITY.format(
+                        name=mname,
+                        identity=next(iter(pending_identity), mname),
+                    ),
+                    code="pys.order-entity-identity",
+                )
+                pending_identity.discard(mname)
+            elif is_fix:
+                # Non-identity fix after identity section (or when no identity keys left).
+                if pending_identity and phase[0] <= _PHASE_ENTITY_IDENTITY:
+                    raise FatalParseError(
+                        _MSG_ENTITY_BEFORE_IDENTITY.format(
+                            name=mname,
+                            identity=next(iter(pending_identity)),
+                        ),
+                        p.cur().line,
+                        p.cur().column,
+                        code="pys.order-entity-identity",
+                        tips=[
+                            "Declare every identity(...) field first, then other fix fields."
+                        ],
+                    )
+                _require_member_phase(
+                    p,
+                    phase,
+                    _PHASE_ENTITY_FIX,
+                    message=_MSG_FIELD_AFTER_CTOR.format(name=mname),
+                    code="pys.order-entity-fix",
+                )
+            else:
+                if pending_identity and phase[0] <= _PHASE_ENTITY_IDENTITY:
+                    raise FatalParseError(
+                        _MSG_ENTITY_BEFORE_IDENTITY.format(
+                            name=mname,
+                            identity=next(iter(pending_identity)),
+                        ),
+                        p.cur().line,
+                        p.cur().column,
+                        code="pys.order-entity-identity",
+                        tips=[
+                            "Declare every identity(...) field first, then other fields."
+                        ],
+                    )
+                _require_member_phase(
+                    p,
+                    phase,
+                    _PHASE_ENTITY_FIELD,
+                    message=_MSG_FIELD_AFTER_CTOR.format(name=mname),
+                    code="pys.order-entity-field",
                 )
             default = None
             if p.at(TokenKind.OP, text="="):
@@ -1387,6 +1621,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
     p.eat(TokenKind.LBRACE)
     fields: list[FieldDecl] = []
     methods: list[MethodDef] = []
+    phase = [_PHASE_CLASS_CONST]
     while not p.at(TokenKind.RBRACE):
         if p.at(TokenKind.BLANK):
             p.eat(TokenKind.BLANK)
@@ -1412,6 +1647,80 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 p.cur().line,
                 p.cur().column,
             )
+        # const field: access const primitive name = expr
+        if p.at_kw("const"):
+            if not access:
+                raise FatalParseError(
+                    "Class fields require an access modifier "
+                    "(e.g. `public const int MAX = 10`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat_kw("const")
+            type_name = _parse_type_name(p)
+            fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_CONST,
+                message=_MSG_CONST_AFTER_FIELDS.format(name=fname),
+                code="pys.order-const-field",
+            )
+            p.eat(TokenKind.OP, text="=")
+            default = _parse_expression(p)
+            fields.append(
+                FieldDecl(
+                    span=member_sp,
+                    access=access,
+                    type_name=type_name,
+                    name=fname,
+                    is_const=True,
+                    default=default,
+                )
+            )
+            continue
+        # fix field: access fix type name [= expr]
+        if p.at_kw("fix"):
+            if not access:
+                raise FatalParseError(
+                    "Class fields require an access modifier "
+                    "(e.g. `private fix int id`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat_kw("fix")
+            type_name = _parse_type_name(p)
+            if p.at(TokenKind.LBRACK):
+                p.eat(TokenKind.LBRACK)
+                p.eat(TokenKind.RBRACK)
+                type_name += "[]"
+            fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_FIX,
+                message=(
+                    _MSG_FIX_AFTER_MUTABLE.format(name=fname)
+                    if phase[0] == _PHASE_CLASS_FIELD
+                    else _MSG_FIELD_AFTER_CTOR.format(name=fname)
+                ),
+                code="pys.order-fix-field",
+            )
+            default = None
+            if p.at(TokenKind.OP, text="="):
+                p.eat(TokenKind.OP, text="=")
+                default = _parse_expression(p)
+            fields.append(
+                FieldDecl(
+                    span=member_sp,
+                    access=access,
+                    type_name=type_name,
+                    name=fname,
+                    is_fix=True,
+                    default=default,
+                )
+            )
+            continue
         # Abstract method: access abstract ReturnType name(params) — no body.
         if p.at_kw("abstract"):
             p.eat_kw("abstract")
@@ -1428,6 +1737,13 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 p.eat(TokenKind.RBRACK)
                 ret += "[]"
             mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_METHOD,
+                message=_MSG_METHOD_BEFORE_FIELDS.format(name=mname),
+                code="pys.order-method",
+            )
             p.eat(TokenKind.LPAREN)
             params: list[tuple[str, str]] = []
             if not p.at(TokenKind.RPAREN):
@@ -1458,6 +1774,13 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         # constructor
         if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
             p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_CTOR,
+                message=_MSG_METHOD_BEFORE_FIELDS.format(name=name),
+                code="pys.order-ctor",
+            )
             p.eat(TokenKind.LPAREN)
             params = []
             if not p.at(TokenKind.RPAREN):
@@ -1503,6 +1826,13 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                     type_name += "[]"
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         if p.at(TokenKind.LPAREN):
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_METHOD,
+                message=_MSG_METHOD_BEFORE_FIELDS.format(name=mname),
+                code="pys.order-method",
+            )
             p.eat(TokenKind.LPAREN)
             params = []
             if not p.at(TokenKind.RPAREN):
@@ -1524,7 +1854,26 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                 )
             )
         else:
-            fields.append(FieldDecl(span=member_sp, access=access, type_name=type_name, name=mname))
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_CLASS_FIELD,
+                message=_MSG_FIELD_AFTER_CTOR.format(name=mname),
+                code="pys.order-field-after-ctor",
+            )
+            default = None
+            if p.at(TokenKind.OP, text="="):
+                p.eat(TokenKind.OP, text="=")
+                default = _parse_expression(p)
+            fields.append(
+                FieldDecl(
+                    span=member_sp,
+                    access=access,
+                    type_name=type_name,
+                    name=mname,
+                    default=default,
+                )
+            )
     p.eat(TokenKind.RBRACE)
     return ClassDef(
         span=sp,
@@ -1548,6 +1897,7 @@ def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
     p.eat(TokenKind.LBRACE)
     requires: list[TraitRequire] = []
     methods: list[MethodDef] = []
+    phase = [_PHASE_TRAIT_REQUIRES]
     while not p.at(TokenKind.RBRACE):
         if p.at(TokenKind.BLANK):
             p.eat(TokenKind.BLANK)
@@ -1566,6 +1916,15 @@ def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
             p.eat_kw("requires")
             req_type = _parse_type_name(p)
             req_name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            _require_member_phase(
+                p,
+                phase,
+                _PHASE_TRAIT_REQUIRES,
+                message=_MSG_TRAIT_METHOD_BEFORE_REQUIRES.format(
+                    name=req_name, trait=name
+                ),
+                code="pys.order-trait-requires",
+            )
             if p.at(TokenKind.LPAREN):
                 p.eat(TokenKind.LPAREN)
                 params: list[tuple[str, str]] = []
@@ -1619,6 +1978,13 @@ def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
                 p.cur().line,
                 p.cur().column,
             )
+        _require_member_phase(
+            p,
+            phase,
+            _PHASE_TRAIT_METHOD,
+            message=_MSG_TRAIT_METHOD_BEFORE_REQUIRES.format(name=mname, trait=name),
+            code="pys.order-trait-requires",
+        )
         p.eat(TokenKind.LPAREN)
         params = []
         if not p.at(TokenKind.RPAREN):

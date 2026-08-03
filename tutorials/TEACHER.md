@@ -20,6 +20,7 @@ Scaffolding inside each task class fades: **worked → completion → convention
 | Copies worked example blindly | Ask for a 60-second oral walkthrough before B |
 | Stuck on conventional brief | Offer a *completion* variant, don’t restart at A unless lost |
 | Flaky `#s` / `#i` | Part-task drill, 5 minutes, then return to task |
+| Order diagnostics (`pys.order-*`, method before fields, late import) | [J-member-order](jit/J-member-order.md); habit framing [S7](supportive/S7-order-as-habit.md) — do not claim Java/C# will reject |
 
 ## Assessment (product criteria)
 
