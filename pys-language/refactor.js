@@ -1,5 +1,7 @@
 /**
- * Educational refactoring: plan via IDE process, preview, apply WorkspaceEdit.
+ * Educational refactoring: plan via IDE process, centered modal preview/input, apply WorkspaceEdit.
+ *
+ * Editor context is captured *before* any webview modal (panels replace the Active tab).
  */
 const vscode = require('vscode');
 const {
@@ -7,6 +9,11 @@ const {
   resolveWorkspaceFile,
   runJsonProcess,
 } = require('./ide-process');
+const {
+  captureEditor,
+  showModalInput,
+  showModalPreview,
+} = require('./refactor-modal');
 
 const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 
@@ -38,58 +45,69 @@ function registerRefactoring(context, deps = {}) {
     }
   }
 
+  function posArgs(position) {
+    return [
+      '--line',
+      String(position.line + 1),
+      '--column',
+      String(position.character + 1),
+    ];
+  }
+
   /**
+   * @param {vscode.TextDocument} document
    * @param {object} plan
+   * @param {ReturnType<typeof captureEditor>} editorSnap
    */
-  async function previewAndApply(plan) {
+  async function previewAndApply(document, plan, editorSnap) {
     if (!plan) {
       return;
     }
     const title = plan.title || plan.catalog_id || 'Refactor';
-    const why = plan.why ? `\n\nWhy: ${plan.why}` : '';
     const summary = plan.summary || '';
-    if (plan.conflicts && plan.conflicts.length) {
-      const hard = plan.conflicts.filter((c) => !c.soft);
-      const lines = plan.conflicts.map(
-        (c) => `- ${c.message}${c.file ? ` (${c.file}:${c.line})` : ''}`,
-      );
-      if (hard.length && !plan.ok) {
-        await vscode.window.showErrorMessage(
-          `${title} blocked:\n${lines.join('\n')}${why}`,
-          { modal: true },
-        );
-        return;
-      }
-      const pick = await vscode.window.showWarningMessage(
-        `${title}: ${plan.conflicts.length} conflict(s).\n${summary}${why}\n\n${lines.join('\n')}`,
-        { modal: true },
-        'Refactor Anyway',
-        'Cancel',
-      );
-      if (pick !== 'Refactor Anyway') {
-        return;
-      }
-    }
+    const why = plan.why || '';
+    const conflicts = plan.conflicts || [];
+    const hard = conflicts.filter((c) => !c.soft);
+    const hardBlocked = hard.length > 0 && !plan.ok;
     const edits = plan.edits || [];
-    if (!edits.length) {
-      vscode.window.showInformationMessage(`${title}: nothing to change.`);
+
+    if (!hardBlocked && !edits.length) {
+      await showModalPreview(
+        context,
+        {
+          title,
+          summary: plan.message || 'Nothing to change.',
+          why,
+          conflicts,
+          edits: [],
+          hardBlocked: true,
+        },
+        editorSnap,
+      );
       return;
     }
-    const items = edits.map((e, i) => ({
-      label: e.label || `${e.kind} ${e.file}:${e.line}`,
-      description: e.optional ? 'optional' : '',
-      picked: !e.optional,
-      editIndex: i,
-    }));
-    const chosen = await vscode.window.showQuickPick(items, {
-      canPickMany: true,
-      title: `${title} — preview edits (${summary})`,
-      placeHolder: 'Uncheck sites to exclude, then Accept',
-    });
-    if (!chosen || !chosen.length) {
+
+    const chosen = await showModalPreview(
+      context,
+      {
+        title,
+        summary,
+        why,
+        conflicts,
+        edits,
+        hardBlocked,
+      },
+      editorSnap,
+    );
+    if (chosen === null || hardBlocked) {
       return;
     }
-    const selected = new Set(chosen.map((c) => c.editIndex));
+    if (!chosen.length) {
+      vscode.window.showWarningMessage(`${title}: no edit sites selected.`);
+      return;
+    }
+
+    const selected = new Set(chosen.map(Number));
     const we = new vscode.WorkspaceEdit();
     for (let i = 0; i < edits.length; i++) {
       if (!selected.has(i)) {
@@ -109,18 +127,183 @@ function registerRefactoring(context, deps = {}) {
       }
     }
     const ok = await vscode.workspace.applyEdit(we);
-    if (ok) {
-      vscode.window.showInformationMessage(`${title} applied. ${plan.why ? 'Tip: ' + plan.why.slice(0, 120) : ''}`);
+    if (!ok) {
+      vscode.window.showErrorMessage(`${title}: apply failed (WorkspaceEdit rejected).`);
+      return;
     }
+    // Ensure the edited document is visible and saved-enough to see changes.
+    try {
+      await vscode.window.showTextDocument(document.uri, {
+        viewColumn: editorSnap?.viewColumn || vscode.ViewColumn.Active,
+        preview: false,
+      });
+    } catch (_e) {
+      // ignore
+    }
+    vscode.window.showInformationMessage(
+      `${title} applied.${why ? ` Tip: ${why.slice(0, 120)}` : ''}`,
+    );
   }
 
-  function posArgs(document, position) {
-    return [
-      '--line',
-      String(position.line + 1),
-      '--column',
-      String(position.character + 1),
-    ];
+  /**
+   * @param {string} op
+   * @param {vscode.TextDocument} document
+   * @param {vscode.Selection} selection
+   * @param {ReturnType<typeof captureEditor>} editorSnap
+   * @param {(doc: vscode.TextDocument, sel: vscode.Selection) => string[] | Promise<string[]|null>} extraBuilder
+   */
+  async function runOp(op, document, selection, editorSnap, extraBuilder) {
+    const extra = await extraBuilder(document, selection);
+    if (extra === null) {
+      return;
+    }
+    const plan = await callRefactorPlan(document, op, extra);
+    await previewAndApply(document, plan, editorSnap);
+  }
+
+  function requirePysEditor() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== 'pys') {
+      vscode.window.showErrorMessage('PYS refactor: open a .pys editor tab first.');
+      return null;
+    }
+    return editor;
+  }
+
+  const commands = [
+    ['pys.refactor.rename', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      const word = editor.document.getWordRangeAtPosition(editor.selection.active);
+      const current = word ? editor.document.getText(word) : '';
+      const name = await showModalInput(
+        context,
+        {
+          title: 'Rename Symbol',
+          prompt: 'New name (binding-aware — only this declaration’s references change)',
+          value: current,
+          placeholder: 'identifier',
+        },
+        snap,
+      );
+      if (name === null || !String(name).trim()) {
+        return;
+      }
+      await runOp('rename', editor.document, editor.selection, snap, async (_doc, sel) => [
+        ...posArgs(sel.active),
+        '--new-name',
+        String(name).trim(),
+      ]);
+    }],
+    ['pys.refactor.extractVariable', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      const name = await showModalInput(
+        context,
+        {
+          title: 'Extract Variable',
+          prompt: 'Name for the new local',
+          value: 'extracted',
+        },
+        snap,
+      );
+      if (name === null || !String(name).trim()) {
+        return;
+      }
+      await runOp('extract-variable', editor.document, editor.selection, snap, async (_doc, sel) => [
+        '--start-line', String(sel.start.line + 1),
+        '--start-column', String(sel.start.character + 1),
+        '--end-line', String(sel.end.line + 1),
+        '--end-column', String(sel.end.character + 1),
+        '--new-name', String(name).trim(),
+      ]);
+    }],
+    ['pys.refactor.extractFunction', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      const name = await showModalInput(
+        context,
+        {
+          title: 'Extract Function',
+          prompt: 'Name for the new function or method',
+          value: 'extracted',
+        },
+        snap,
+      );
+      if (name === null || !String(name).trim()) {
+        return;
+      }
+      await runOp('extract-function', editor.document, editor.selection, snap, async (_doc, sel) => [
+        '--start-line', String(sel.start.line + 1),
+        '--end-line', String(sel.end.line + 1),
+        '--new-name', String(name).trim(),
+      ]);
+    }],
+    ['pys.refactor.inlineVariable', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      await runOp('inline-variable', editor.document, editor.selection, snap, async (_doc, sel) =>
+        posArgs(sel.active),
+      );
+    }],
+    ['pys.refactor.inlineFunction', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      await runOp('inline-function', editor.document, editor.selection, snap, async (_doc, sel) =>
+        posArgs(sel.active),
+      );
+    }],
+    ['pys.refactor.safeDelete', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      await runOp('safe-delete', editor.document, editor.selection, snap, async (_doc, sel) =>
+        posArgs(sel.active),
+      );
+    }],
+    ['pys.refactor.introduceParameter', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      const param = await showModalInput(
+        context,
+        {
+          title: 'Introduce Parameter',
+          prompt: 'Parameter name',
+          value: 'param',
+        },
+        snap,
+      );
+      if (param === null || !String(param).trim()) {
+        return;
+      }
+      const ptype = await showModalInput(
+        context,
+        {
+          title: 'Introduce Parameter',
+          prompt: 'Parameter type',
+          value: 'int',
+        },
+        snap,
+      );
+      if (ptype === null) {
+        return;
+      }
+      await runOp('introduce-parameter', editor.document, editor.selection, snap, async (_doc, sel) => [
+        ...posArgs(sel.active),
+        '--param-name', String(param).trim(),
+        '--param-type', String(ptype).trim() || 'int',
+      ]);
+    }],
+  ];
+
+  for (const [id, fn] of commands) {
+    context.subscriptions.push(vscode.commands.registerCommand(id, fn));
   }
 
   context.subscriptions.push(
@@ -134,7 +317,7 @@ function registerRefactoring(context, deps = {}) {
       },
       async provideRenameEdits(document, position, newName) {
         const plan = await callRefactorPlan(document, 'rename', [
-          ...posArgs(document, position),
+          ...posArgs(position),
           '--new-name',
           newName,
         ]);
@@ -157,70 +340,6 @@ function registerRefactoring(context, deps = {}) {
       },
     }),
   );
-
-  async function runOp(op, extraBuilder) {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.languageId !== 'pys') {
-      return;
-    }
-    const doc = editor.document;
-    const sel = editor.selection;
-    const extra = extraBuilder(doc, sel);
-    const plan = await callRefactorPlan(doc, op, extra);
-    await previewAndApply(plan);
-  }
-
-  const commands = [
-    ['pys.refactor.rename', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) return;
-      await vscode.commands.executeCommand('editor.action.rename');
-    }],
-    ['pys.refactor.extractVariable', async () => {
-      await runOp('extract-variable', (doc, sel) => {
-        const name = 'extracted';
-        return [
-          '--start-line', String(sel.start.line + 1),
-          '--start-column', String(sel.start.character + 1),
-          '--end-line', String(sel.end.line + 1),
-          '--end-column', String(sel.end.character + 1),
-          '--new-name', name,
-        ];
-      });
-    }],
-    ['pys.refactor.extractFunction', async () => {
-      const name = await vscode.window.showInputBox({ prompt: 'New function name', value: 'extracted' });
-      if (!name) return;
-      await runOp('extract-function', (doc, sel) => [
-        '--start-line', String(sel.start.line + 1),
-        '--end-line', String(sel.end.line + 1),
-        '--new-name', name,
-      ]);
-    }],
-    ['pys.refactor.inlineVariable', async () => {
-      await runOp('inline-variable', (doc, sel) => posArgs(doc, sel.active));
-    }],
-    ['pys.refactor.inlineFunction', async () => {
-      await runOp('inline-function', (doc, sel) => posArgs(doc, sel.active));
-    }],
-    ['pys.refactor.safeDelete', async () => {
-      await runOp('safe-delete', (doc, sel) => posArgs(doc, sel.active));
-    }],
-    ['pys.refactor.introduceParameter', async () => {
-      const param = await vscode.window.showInputBox({ prompt: 'Parameter name', value: 'param' });
-      if (!param) return;
-      const ptype = await vscode.window.showInputBox({ prompt: 'Parameter type', value: 'int' });
-      await runOp('introduce-parameter', (doc, sel) => [
-        ...posArgs(doc, sel.active),
-        '--param-name', param,
-        '--param-type', ptype || 'int',
-      ]);
-    }],
-  ];
-
-  for (const [id, fn] of commands) {
-    context.subscriptions.push(vscode.commands.registerCommand(id, fn));
-  }
 
   const catalogDocs = {
     'extract-variable': new vscode.MarkdownString(
