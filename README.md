@@ -345,7 +345,7 @@ int[] numbers = [1, 2, 3, 4, 5]
 float[] floats = [1.1, 2.2, 3.3]
 string[] names = ["John", "Jane", "Jim"]
 bool[] flags = [true, false, true]
-int[3] primes = [2, 3, 5]           # length must match
+int[] primes = [2, 3, 5]            # length from the initializer
 
 numbers.loop(print)
 

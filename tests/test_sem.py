@@ -205,13 +205,13 @@ def test_sem_array_rejects_mixed_types() -> None:
         _analyze("int[] nums = [1, 2.5, 3]\n")
 
 
-def test_sem_array_rejects_overflow() -> None:
-    with pytest.raises(TranspileError, match="Array index out of bounds"):
-        _analyze("int[4] nums = [2, 3, 5, 8, 9]\n")
+def test_sem_sized_array_decl_rejected() -> None:
+    with pytest.raises(TranspileError, match="Sized array type|not valid on a declaration"):
+        _analyze("int[4] nums = [2, 3, 5, 8]\n")
 
 
-def test_sem_array_accepts_exact_size() -> None:
-    _analyze("int[4] nums = [2, 3, 5, 8]\n")
+def test_sem_unsized_array_ok() -> None:
+    _analyze("int[] nums = [2, 3, 5, 8]\n")
 
 
 def test_sem_class_requires_access_modifier() -> None:

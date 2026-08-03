@@ -1,0 +1,29 @@
+# Arrays: 1D and multi-dimensional (innermost storage is array.array).
+
+# --- 1D ---
+int[] numbers = [1, 2, 3, 4, 5]
+int[] primes = [2, 3, 5]  # length 3 from the initializer
+print(numbers[0])
+print(primes[2])
+
+# --- 2D nested brace initializer (Java-style) ---
+int[][] myNumbers = { {1, 4, 2}, {3, 6, 8} }
+print(myNumbers[0][1])  # 4
+print(myNumbers[1][2])  # 8
+
+# --- 2D nested bracket initializer ---
+int[][] grid = [[9, 8, 7], [6, 5, 4]]
+print(grid[1][0])  # 6
+
+# --- Allocate ranks (no `new`): outer size, then fill a slot ---
+int[][][] cubes = int[3][][]
+cubes[0] = { {1, 2}, {3, 4} }
+cubes[1] = int[2][2]
+cubes[1][0][1] = 42
+print(cubes[0][1][0])  # 3
+print(cubes[1][0][1])  # 42
+
+# --- Fully sized 2D alloc (zero-filled rows) ---
+int[][] zeros = int[2][3]
+zeros[0][2] = 7
+print(zeros[0][2])  # 7

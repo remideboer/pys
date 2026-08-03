@@ -90,8 +90,8 @@ float[] floats = [1.1, 2.2, 3.3]
 string[] names = ["John", "Jane", "Jim"]
 bool[] flags = [true, false, true]
 
-# sized array: length must match exactly
-int[3] primes = [2, 3, 5]
+# arrays: length comes from the initializer (no int[n] on the declaration)
+int[] primes = [2, 3, 5]
 
 # functional iteration
 numbers.loop(print)
@@ -102,6 +102,13 @@ print(arr[1:5])
 print(arr[3:])
 print(arr[:3])
 print(arr[1:6:2])
+
+# multi-dimensional (see also examples/arrays.pys)
+int[][] myNumbers = { {1, 4, 2}, {3, 6, 8} }
+print(myNumbers[0][1])
+int[][][] cubes = int[3][][]
+cubes[0] = { {10, 20}, {30, 40} }
+print(cubes[0][1][0])
 
 # ── Control flow ─────────────────────────────────────────
 # for loop (loop counter is immutable inside the body)

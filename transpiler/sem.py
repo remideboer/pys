@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .ast_nodes import (
+    ArrayAlloc,
     ArrayDecl,
     ArrayLiteral,
     AssignStmt,
@@ -1140,7 +1141,9 @@ def _check_bindings(
         elif isinstance(stmt, ArrayDecl):
             declared.add(stmt.name)
             if stmt.elem_type:
-                types[stmt.name] = f"{stmt.elem_type}[]"
+                dims = list(getattr(stmt, "dims", None) or [])
+                rank = len(dims) if dims else 1
+                types[stmt.name] = stmt.elem_type + ("[]" * rank)
         elif isinstance(stmt, SharedDecl):
             declared.add(stmt.name)
             if stmt.declare_type:
@@ -4474,57 +4477,127 @@ def _array_element_error(elem_type: str, expr: Expr) -> str:
     return f"Unsupported array element type '{elem_type}'."
 
 
+def _array_dims(stmt: ArrayDecl) -> list[int | None]:
+    dims = list(getattr(stmt, "dims", None) or [])
+    if dims:
+        return dims
+    return [stmt.size]
+
+
+def _check_array_init(
+    elem_type: str,
+    dims: list[int | None],
+    value: Expr | None,
+    *,
+    name: str,
+    line: int,
+    col: int,
+) -> None:
+    if value is None:
+        return
+    if isinstance(value, ArrayAlloc):
+        if value.elem_type and value.elem_type != elem_type:
+            _transpile_error(
+                f"Array '{name}' element type '{elem_type}' does not match allocation "
+                f"'{value.elem_type}'.",
+                line,
+                col,
+                f"{elem_type}{'[]' * len(dims)} {name}",
+            )
+        if len(value.dims) != len(dims):
+            _transpile_error(
+                f"Array '{name}' has rank {len(dims)} but allocation has rank {len(value.dims)}.",
+                line,
+                col,
+                f"{elem_type}{'[]' * len(dims)} {name}",
+            )
+        return
+
+    if not isinstance(value, ArrayLiteral):
+        _transpile_error(
+            f"Array '{name}' must be initialized with a list/brace literal or an allocation "
+            f"like `{elem_type}[n][]…`.",
+            line,
+            col,
+            f"{elem_type}{'[]' * len(dims)} {name}",
+        )
+        return
+
+    rank = len(dims)
+    expected = dims[0]
+    elems = list(value.elements)
+    if expected is not None and len(elems) != expected:
+        if len(elems) > expected:
+            _transpile_error(
+                "Array index out of bounds, trying to place a value outside the array "
+                f"(capacity {expected}, got {len(elems)} values).",
+                line,
+                col,
+                f"{elem_type}[{expected}]{'[]' * (rank - 1)} {name}",
+            )
+        else:
+            _transpile_error(
+                f"Array '{name}' expects exactly {expected} elements, got {len(elems)}.",
+                line,
+                col,
+                f"{elem_type}[{expected}]{'[]' * (rank - 1)} {name}",
+            )
+
+    if rank <= 1:
+        for el in elems:
+            if not _array_element_ok(elem_type, el):
+                _transpile_error(
+                    _array_element_error(elem_type, el),
+                    line,
+                    col,
+                    f"{elem_type}[] {name}",
+                )
+        return
+
+    for el in elems:
+        if not isinstance(el, ArrayLiteral):
+            _transpile_error(
+                f"Array '{name}' rank {rank} initializer expects nested array literals.",
+                line,
+                col,
+                f"{elem_type}{'[]' * rank} {name}",
+            )
+            continue
+        _check_array_init(
+            elem_type,
+            dims[1:],
+            el,
+            name=name,
+            line=line,
+            col=col,
+        )
+
+
 def _check_arrays(body: list[Any]) -> None:
     def walk(stmts: list[Any]) -> None:
         for stmt in stmts:
             if isinstance(stmt, ArrayDecl):
                 line = stmt.span.line if stmt.span else 1
                 col = stmt.span.column if stmt.span else 1
-                elems: list[Expr] = []
-                if isinstance(stmt.value, ArrayLiteral):
-                    elems = list(stmt.value.elements)
-                elif stmt.value is not None:
-                    _transpile_error(
-                        f"Array '{stmt.name}' must be initialized with a list literal like "
-                        f"`[{stmt.elem_type} values...]`.",
-                        line,
-                        col,
-                        f"{stmt.elem_type}[] {stmt.name}",
-                    )
-                if stmt.size is not None:
-                    if len(elems) > stmt.size:
-                        _transpile_error(
-                            "Array index out of bounds, trying to place a value outside the array "
-                            f"(capacity {stmt.size}, got {len(elems)} values).",
-                            line,
-                            col,
-                            f"{stmt.elem_type}[{stmt.size}] {stmt.name}",
-                        )
-                    if len(elems) != stmt.size:
-                        _transpile_error(
-                            f"Array '{stmt.name}' expects exactly {stmt.size} elements, got {len(elems)}.",
-                            line,
-                            col,
-                            f"{stmt.elem_type}[{stmt.size}] {stmt.name}",
-                        )
-                for el in elems:
-                    if not _array_element_ok(stmt.elem_type, el):
-                        _transpile_error(
-                            _array_element_error(stmt.elem_type, el),
-                            line,
-                            col,
-                            f"{stmt.elem_type}[] {stmt.name}",
-                        )
+                dims = _array_dims(stmt)
+                _check_array_init(
+                    stmt.elem_type,
+                    dims,
+                    stmt.value,
+                    name=stmt.name,
+                    line=line,
+                    col=col,
+                )
             elif isinstance(stmt, FunctionDef) and stmt.body:
                 walk(stmt.body.statements)
             elif isinstance(stmt, ClassDef):
                 for m in stmt.methods:
                     if m.body:
                         walk(m.body.statements)
-            elif isinstance(stmt, TasksBlock):
-                for t in stmt.tasks:
-                    if t.body:
-                        walk(t.body.statements)
+            elif isinstance(stmt, EntityDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
             elif isinstance(stmt, IfStmt):
                 if stmt.then_body:
                     walk(stmt.then_body.statements)
@@ -4532,9 +4605,22 @@ def _check_arrays(body: list[Any]) -> None:
                     walk(stmt.else_body.statements)
             elif isinstance(stmt, Block):
                 walk(stmt.statements)
-            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
-                if stmt.body:
-                    walk(stmt.body.statements)
+            elif isinstance(stmt, ForEachStmt) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, ForRangeStmt) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, WhileStmt) and stmt.body:
+                walk(stmt.body.statements)
+            elif isinstance(stmt, SwitchStmt):
+                for case in stmt.cases:
+                    if case.body:
+                        walk(case.body.statements)
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk(t.body.statements)
+            elif isinstance(stmt, RepeatStmt) and stmt.body:
+                walk(stmt.body.statements)
 
     walk(body)
 

@@ -114,6 +114,14 @@ class ArrayLiteral(Expr):
 
 
 @dataclass
+class ArrayAlloc(Expr):
+    """Allocate a (possibly multi-dimensional) array: ``int[3][][]``, ``int[2][3]``."""
+
+    elem_type: str = ""
+    dims: list[int | None] = field(default_factory=list)
+
+
+@dataclass
 class LambdaExpr(Expr):
     """Anonymous function: `(params) => expr|{…}` or `n => expr`."""
 
@@ -157,9 +165,15 @@ class AssignStmt(Node):
 class ArrayDecl(Node):
     elem_type: str = ""
     name: str = ""
-    size: int | None = None
+    size: int | None = None  # unused on decls (sized types rejected); kept for compat
+    dims: list[int | None] = field(default_factory=list)  # rank ≥ 1; all None on decls
     value: Expr | None = None
     name_span: Span | None = None
+
+    def rank(self) -> int:
+        if self.dims:
+            return len(self.dims)
+        return 1
 
 
 @dataclass

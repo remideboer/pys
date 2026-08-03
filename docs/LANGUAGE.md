@@ -149,9 +149,12 @@ int a = (int) f
 
 ## 3. Arrays
 
-Fixed-element arrays of primitives (and `string`) use `T[]` / `T[n]` syntax.
-They are meant as a teaching form for contiguous sequences (backed by
-`array.array` for numeric/bool primitives, and lists for strings).
+Fixed-element arrays of primitives (and `string`) use unsized `T[]` / `T[][]`…
+syntax. Length comes from the initializer (or from a right-hand-side allocation
+like `int[2][3]`). A sized type on the **declaration** (`int[3] xs = …`) is
+invalid. Innermost numeric/bool storage is `array.array` (Python lists only for
+`string` and for outer ranks that hold nested arrays). Prefer `list<T>` when
+you need library-shaped collections rather than array teaching.
 
 ```pys
 int[] numbers = [1, 2, 3, 4, 5]
@@ -159,13 +162,23 @@ float[] floats = [1.1, 2.2, 3.3]
 string[] names = ["John", "Jane", "Jim"]
 bool[] flags = [true, false, true]
 
-int[3] primes = [2, 3, 5]     # sized: length must match exactly
+int[] primes = [2, 3, 5]     # length 3 from the initializer
+
+# Multi-dimensional: nested [] or {} initializers (Java-style braces OK)
+int[][] myNumbers = { {1, 4, 2}, {3, 6, 8} }
+int[][] grid = [[1, 2], [3, 4]]
+
+# Allocate ranks (like Java `new int[3][][]` / `new int[2][3]`, without `new`)
+int[][][] arr = int[3][][]
+int[][] zeros = int[2][3]
+print(myNumbers[0][1])
 ```
 
 ### Indexing and slicing
 
-Index with `[i]`. Slices use `start:end` with an **inclusive** end index
-(adjusted when transpiling to Python). An optional step is allowed:
+Index with `[i]` (chain for higher ranks: `a[i][j]`). Slices use `start:end`
+with an **inclusive** end index (adjusted when transpiling to Python). An
+optional step is allowed:
 
 ```pys
 int[] arr = [1, 2, 3, 4, 5, 6, 7]
@@ -182,7 +195,7 @@ numbers.loop(print)           # → list(map(print, numbers))
 ```
 
 Prefer `list<T>` / `tuple<…>` when working with library return values (e.g. DB
-rows). Prefer `T[]` when teaching array ideas.
+rows). Prefer `T[]` / `T[][]` when teaching array ideas.
 
 ---
 

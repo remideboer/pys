@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 
 from ..ast_nodes import (
+    ArrayAlloc,
     ArrayDecl,
     ArrayLiteral,
     AssignStmt,
@@ -200,6 +201,7 @@ class _Emitter:
         self.tg_name: str | None = None
         self.var_kinds: dict[str, str] = {}  # name -> "string"|"number"|...
         self.var_types: dict[str, str] = {}  # name -> PYS type (for struct copy)
+        self.array_meta: dict[str, tuple[str, int]] = {}  # name -> (elem_type, rank)
         self.fn_return_types: dict[str, str] = {}
         self.struct_names: set[str] = set()
         self.struct_field_types: dict[str, dict[str, str]] = {}
@@ -476,29 +478,59 @@ class _Emitter:
         self.var_kinds[base] = kind
         if (
             "." not in stmt.name
+            and "[" not in stmt.name
             and self._brace_depth > 0
             and (stmt.declare_type or stmt.is_const or stmt.is_fix)
         ):
             self._bind_brace_local(stmt.name)
-        if "." not in stmt.name:
+        array_rhs = self._array_assign_value(stmt.name, stmt.value)
+        if "." not in stmt.name and "[" not in stmt.name:
             self._track_binding_type(stmt.name, stmt.declare_type, stmt.value)
-            value = self._maybe_copy_struct(stmt.value)
+            value = array_rhs if array_rhs is not None else self._maybe_copy_struct(stmt.value)
         else:
-            value = self._expr(stmt.value)
-        if "." not in stmt.name and stmt.name in self.shared_vars:
+            value = array_rhs if array_rhs is not None else self._expr(stmt.value)
+        if "." not in stmt.name and "[" not in stmt.name and stmt.name in self.shared_vars:
             lhs = self._lambda_rename.get(stmt.name, stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
             return
-        if "." not in stmt.name and stmt.name in self.atomic_vars:
+        if "." not in stmt.name and "[" not in stmt.name and stmt.name in self.atomic_vars:
             lhs = self._lambda_rename.get(stmt.name, stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
             return
-        lhs = (
-            self._lambda_rename.get(stmt.name, stmt.name)
-            if "." not in stmt.name
-            else stmt.name
-        )
+        if "[" in stmt.name:
+            lhs = stmt.name
+        else:
+            lhs = (
+                self._lambda_rename.get(stmt.name, stmt.name)
+                if "." not in stmt.name
+                else stmt.name
+            )
         self._emit(indent, f"{lhs} = {value}")
+
+    def _array_assign_value(self, lhs: str, value: Expr | None) -> str | None:
+        """Emit nested array.array when assigning a literal/alloc into an array slot."""
+        if value is None or not isinstance(value, (ArrayLiteral, ArrayAlloc)):
+            return None
+        meta = self._array_lvalue_remaining(lhs)
+        if meta is None:
+            return None
+        elem_type, rem_rank = meta
+        if rem_rank < 1:
+            return None
+        return self._array_value_py(elem_type, rem_rank, value)
+
+    def _array_lvalue_remaining(self, lhs: str) -> tuple[str, int] | None:
+        """For ``arr[i][j]``, return (elem_type, remaining_rank) using array_meta."""
+        m = re.match(r"^([A-Za-z_]\w*)((?:\[[^\]]+\])+)$", lhs)
+        if not m:
+            return None
+        root = m.group(1)
+        meta = self.array_meta.get(root)
+        if meta is None:
+            return None
+        elem_type, rank = meta
+        depth = m.group(2).count("[")
+        return elem_type, rank - depth
 
     @staticmethod
     def _base_type(type_name: str) -> str:
@@ -565,22 +597,74 @@ class _Emitter:
         if self._brace_depth > 0:
             name = self._bind_brace_local(stmt.name)
         self.var_kinds[stmt.name] = "array"
-        elems = stmt.value
-        if isinstance(elems, ArrayLiteral):
-            parts: list[str] = []
-            for e in elems.elements:
-                if isinstance(e, Literal) and e.kind == "bool":
-                    parts.append("1" if e.text == "true" else "0")
-                else:
-                    parts.append(self._expr(e))
-            inner = ", ".join(parts)
-            code = _ARRAY_TYPECODE.get(stmt.elem_type, "i")
-            if stmt.elem_type == "string":
-                self._emit(indent, f"{name} = [{inner}]")
+        dims = list(getattr(stmt, "dims", None) or [])
+        rank = len(dims) if dims else 1
+        self.array_meta[stmt.name] = (stmt.elem_type, rank)
+        self._emit(indent, f"{name} = {self._array_value_py(stmt.elem_type, rank, stmt.value)}")
+
+    def _array_leaf_py(self, elem_type: str, elements: list[Expr]) -> str:
+        parts: list[str] = []
+        for e in elements:
+            if isinstance(e, Literal) and e.kind == "bool":
+                parts.append("1" if e.text == "true" else "0")
             else:
-                self._emit(indent, f"{name} = array('{code}', [{inner}])")
+                parts.append(self._expr(e))
+        inner = ", ".join(parts)
+        if elem_type == "string":
+            return f"[{inner}]"
+        code = _ARRAY_TYPECODE.get(elem_type, "i")
+        return f"array('{code}', [{inner}])"
+
+    def _array_zero_leaf_py(self, elem_type: str, length: int) -> str:
+        if elem_type == "string":
+            return "[" + ", ".join('""' for _ in range(length)) + "]"
+        if elem_type == "float":
+            zeros = ", ".join("0.0" for _ in range(length))
+        elif elem_type == "bool":
+            zeros = ", ".join("0" for _ in range(length))
+        elif elem_type == "char":
+            zeros = ", ".join(repr("\0") for _ in range(length))
         else:
-            self._emit(indent, f"{name} = {self._expr(stmt.value)}")
+            zeros = ", ".join("0" for _ in range(length))
+        code = _ARRAY_TYPECODE.get(elem_type, "i")
+        return f"array('{code}', [{zeros}])"
+
+    def _array_alloc_py(self, elem_type: str, dims: list[int | None]) -> str:
+        if not dims:
+            return "None"
+        head, *tail = dims
+        if not tail:
+            if head is None:
+                if elem_type == "string":
+                    return "[]"
+                code = _ARRAY_TYPECODE.get(elem_type, "i")
+                self.needs_array = True
+                return f"array('{code}', [])"
+            self.needs_array = True
+            return self._array_zero_leaf_py(elem_type, head)
+        if head is None:
+            return "[]"
+        if all(d is None for d in tail):
+            return f"[None] * {head}"
+        inner = self._array_alloc_py(elem_type, tail)
+        return f"[{inner} for _ in range({head})]"
+
+    def _array_value_py(self, elem_type: str, rank: int, value: Expr | None) -> str:
+        if isinstance(value, ArrayAlloc):
+            self.needs_array = True
+            return self._array_alloc_py(value.elem_type or elem_type, list(value.dims))
+        if isinstance(value, ArrayLiteral):
+            if rank <= 1:
+                self.needs_array = True
+                return self._array_leaf_py(elem_type, list(value.elements))
+            parts = [
+                self._array_value_py(elem_type, rank - 1, el) for el in value.elements
+            ]
+            self.needs_array = True
+            return "[" + ", ".join(parts) + "]"
+        if value is None:
+            return "None"
+        return self._expr(value)
 
     def _import(self, stmt: ImportStmt, indent: int) -> None:
         if self._import_resolver is not None:
@@ -1134,6 +1218,9 @@ class _Emitter:
             return inner
         if isinstance(expr, ArrayLiteral):
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
+        if isinstance(expr, ArrayAlloc):
+            self.needs_array = True
+            return self._array_alloc_py(expr.elem_type, list(expr.dims))
         if isinstance(expr, SwitchExpr):
             return self._switch_expr(expr)
         if isinstance(expr, LambdaExpr):

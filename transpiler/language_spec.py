@@ -630,11 +630,7 @@ LANGUAGE.add_regex(
     r"(?P<type>int|float|char|string|bool)\[\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
     lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
 )
-LANGUAGE.add_regex(
-    "typed_array",
-    r"(?P<type>int|float|char|string|bool)\[(?P<size>\d+)\]\s+(?P<name>[A-Za-z_]\w*)\s*=\s*(?P<expr>.+)",
-    lambda match: f"{match.group('name')} = {_rewrite_plus_expr(match.group('expr').strip())}",
-)
+# Sized `T[n] name =` decls are rejected by the AST parser; keep no legacy rewrite.
 LANGUAGE.add_regex(
     "array_loop",
     r"(?P<array>[A-Za-z_]\w*)\s*\.\s*loop\s*\(\s*(?P<fn>[A-Za-z_]\w*)\s*\)",

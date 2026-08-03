@@ -53,5 +53,6 @@ Each record then uses:
 | [CER-016](CER-016-find-usages.md) | Find Usages for identifiers under cursor | IDE |
 | [CER-017](CER-017-enforced-ordering.md) | Grammar-level member / import kind ordering | Language |
 | [CER-018](CER-018-ide-refactoring.md) | Binding-aware refs + educational IDE refactoring | IDE |
+| [CER-019](CER-019-multidim-arrays.md) | Multi-dimensional `T[][]…` + nested init / alloc | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

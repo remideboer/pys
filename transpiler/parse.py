@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .ast_nodes import (
+    ArrayAlloc,
     ArrayDecl,
     ArrayLiteral,
     AssignStmt,
@@ -2042,6 +2043,45 @@ def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
     )
 
 
+_ARRAY_ELEM_TYPES = frozenset(
+    {
+        "int",
+        "float",
+        "char",
+        "string",
+        "bool",
+        "byte",
+        "nibble",
+        "int16",
+        "int32",
+        "int64",
+        "dword",
+    }
+)
+
+
+def _parse_array_dims(p: _Tok) -> list[int | None]:
+    """Parse one or more ``[]`` / ``[n]`` dimension suffixes."""
+    dims: list[int | None] = []
+    while p.at(TokenKind.LBRACK):
+        p.eat(TokenKind.LBRACK)
+        size: int | None = None
+        if p.at(TokenKind.INT):
+            size = int(p.eat(TokenKind.INT).text)
+        p.eat(TokenKind.RBRACK)
+        dims.append(size)
+    return dims
+
+
+def _parse_array_alloc(p: _Tok) -> ArrayAlloc:
+    sp = p.span()
+    elem = p.eat(TokenKind.KEYWORD).text
+    dims = _parse_array_dims(p)
+    if not dims:
+        raise ParseError("Array allocation requires at least one [] dimension", sp.line, sp.column)
+    return ArrayAlloc(span=sp, elem_type=elem, dims=dims)
+
+
 def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
     sp = p.span()
     is_const = is_fix = False
@@ -2055,26 +2095,36 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
     if p.at_kw("var"):
         p.eat_kw("var")
         dtype = "var"
+    elif p.at_kw(*_TYPES) and p.peek(1).kind == TokenKind.LBRACK:
+        dtype = p.eat(TokenKind.KEYWORD).text
+        dims = _parse_array_dims(p)
+        if any(d is not None for d in dims):
+            # Sizes belong on allocation expressions (`int[3][]`, `int[2][3]`),
+            # not on the declared type — length comes from the initializer.
+            sized = "".join("[]" if d is None else f"[{d}]" for d in dims)
+            unsized = "[]" * len(dims)
+            raise FatalParseError(
+                f"Sized array type `{dtype}{sized}` is not valid on a declaration. "
+                f"Write `{dtype}{unsized} name = …` and let the initializer set the length "
+                f"(use `{dtype}[n]…` only on the right-hand side to allocate).",
+                p.cur().line,
+                p.cur().column,
+            )
+        name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        name = name_tok.text
+        p.eat(TokenKind.OP, text="=")
+        value = _parse_expression(p)
+        return ArrayDecl(
+            span=sp,
+            elem_type=dtype,
+            name=name,
+            size=None,
+            dims=dims,
+            value=value,
+            name_span=p.token_span(name_tok),
+        )
     elif p.at_kw(*_TYPES):
         dtype = p.eat(TokenKind.KEYWORD).text
-        if p.at(TokenKind.LBRACK):
-            p.eat(TokenKind.LBRACK)
-            size = None
-            if p.at(TokenKind.INT):
-                size = int(p.eat(TokenKind.INT).text)
-            p.eat(TokenKind.RBRACK)
-            name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
-            name = name_tok.text
-            p.eat(TokenKind.OP, text="=")
-            value = _parse_expression(p)
-            return ArrayDecl(
-                span=sp,
-                elem_type=dtype,
-                name=name,
-                size=size,
-                value=value,
-                name_span=p.token_span(name_tok),
-            )
     elif (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and (
         (p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD} and p.peek(2).text == "=")
         or _at_generic_typed_decl(p)
@@ -2972,11 +3022,26 @@ def _parse_primary(p: _Tok) -> Expr:
                 elems.append(_parse_expression(p))
         p.eat(TokenKind.RBRACK)
         return ArrayLiteral(span=sp, elements=elems)
+    if p.at(TokenKind.LBRACE):
+        # Array / nested-array initializer in expression position: `{1, 2}` / `{{1},{2}}`.
+        p.eat(TokenKind.LBRACE)
+        elems = []
+        if not p.at(TokenKind.RBRACE):
+            elems.append(_parse_expression(p))
+            while p.at(TokenKind.COMMA):
+                p.eat(TokenKind.COMMA)
+                if p.at(TokenKind.RBRACE):
+                    break
+                elems.append(_parse_expression(p))
+        p.eat(TokenKind.RBRACE)
+        return ArrayLiteral(span=sp, elements=elems)
     if p.at(TokenKind.LPAREN):
         p.eat(TokenKind.LPAREN)
         e = _parse_expression(p)
         p.eat(TokenKind.RPAREN)
         return e
+    if p.at_kw(*_ARRAY_ELEM_TYPES) and p.peek(1).kind == TokenKind.LBRACK:
+        return _parse_array_alloc(p)
     if p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD):
         if p.cur().text == "new":
             raise FatalParseError(

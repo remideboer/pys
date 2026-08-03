@@ -537,14 +537,14 @@ string[] names = ["John", "Jane"]
     assert 'names = ["John", "Jane"]' in py
 
 
-def test_sized_array_rejects_overflow() -> None:
-    source = "int[4] nums = [2, 3, 5, 8, 9]\n"
-    with pytest.raises(TranspileError, match="Array index out of bounds"):
+def test_sized_array_decl_rejected() -> None:
+    source = "int[4] nums = [2, 3, 5, 8]\n"
+    with pytest.raises(TranspileError, match="Sized array type|not valid on a declaration"):
         transpile(source)
 
 
-def test_sized_array_exact_length() -> None:
-    assert transpile("int[4] nums = [2, 3, 5, 8]\n") == (
+def test_unsized_array_length_from_initializer() -> None:
+    assert transpile("int[] nums = [2, 3, 5, 8]\n") == (
         "from array import array\nnums = array('i', [2, 3, 5, 8])\n"
     )
 
