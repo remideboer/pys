@@ -135,6 +135,8 @@ function resolveMainFilePath() {
 }
 
 function activate(context) {
+  const { registerRefactoring } = require('./refactor');
+  registerRefactoring(context);
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
 
@@ -577,18 +579,22 @@ function activate(context) {
     provideDeclaration: provideSymbolLocation,
   }));
 
-  async function findSymbolUsages(document, symbol, token) {
+  async function findSymbolUsages(document, symbol, token, position) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace || !symbol) {
       return [];
     }
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const extra = ['--usages', symbol];
+    if (position) {
+      extra.push('--line', String(position.line + 1), '--column', String(position.character + 1));
+    }
     const spec = buildWorkspaceIdeProcessSpec(
       context.extensionPath,
       workspacePath,
       document.uri.fsPath,
-      ['--usages', symbol],
+      extra,
     );
     if (!spec) {
       return [];
@@ -607,8 +613,12 @@ function activate(context) {
           const uri = vscode.Uri.file(u.file);
           const line = Math.max((u.line || 1) - 1, 0);
           const column = Math.max((u.column || 1) - 1, 0);
-          const pos = new vscode.Position(line, column);
-          return new vscode.Location(uri, pos);
+          const endCol = Math.max((u.end_column || (u.column || 1) + 1) - 1, 0);
+          const range = new vscode.Range(
+            new vscode.Position(line, column),
+            new vscode.Position(line, endCol),
+          );
+          return new vscode.Location(uri, range);
         });
     } catch (_error) {
       return [];
@@ -621,7 +631,7 @@ function activate(context) {
       if (!symbol) {
         return [];
       }
-      return findSymbolUsages(document, symbol, token);
+      return findSymbolUsages(document, symbol, token, position);
     },
   }));
 

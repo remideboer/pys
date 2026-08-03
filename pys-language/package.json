@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.56",
+  "version": "0.0.57",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -173,6 +173,47 @@
         "title": "Find Usages",
         "category": "PYS",
         "icon": "$(references)"
+      },
+      {
+        "command": "pys.refactor.rename",
+        "title": "Rename Symbol",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.extractVariable",
+        "title": "Extract Variable",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.extractFunction",
+        "title": "Extract Function",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.inlineVariable",
+        "title": "Inline Variable",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.inlineFunction",
+        "title": "Inline Function",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.safeDelete",
+        "title": "Safe Delete",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.introduceParameter",
+        "title": "Introduce Parameter",
+        "category": "PYS Refactor"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "pys.refactor.submenu",
+        "label": "Refactor"
       }
     ],
     "menus": {
@@ -229,6 +270,11 @@
       ],
       "editor/context": [
         {
+          "submenu": "pys.refactor.submenu",
+          "when": "resourceExtname == .pys",
+          "group": "z_commands@0"
+        },
+        {
           "command": "pys.findUsages",
           "when": "resourceExtname == .pys",
           "group": "navigation@0"
@@ -257,6 +303,36 @@
           "command": "pys.setAsMainFile",
           "when": "resourceExtname == .pys",
           "group": "navigation@5"
+        }
+      ],
+      "pys.refactor.submenu": [
+        {
+          "command": "pys.refactor.rename",
+          "group": "1_modify@1"
+        },
+        {
+          "command": "pys.refactor.extractVariable",
+          "group": "1_modify@2"
+        },
+        {
+          "command": "pys.refactor.extractFunction",
+          "group": "1_modify@3"
+        },
+        {
+          "command": "pys.refactor.inlineVariable",
+          "group": "1_modify@4"
+        },
+        {
+          "command": "pys.refactor.inlineFunction",
+          "group": "1_modify@5"
+        },
+        {
+          "command": "pys.refactor.safeDelete",
+          "group": "1_modify@6"
+        },
+        {
+          "command": "pys.refactor.introduceParameter",
+          "group": "1_modify@7"
         }
       ],
       "editor/lineNumber/context": [

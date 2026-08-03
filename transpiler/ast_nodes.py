@@ -150,6 +150,7 @@ class AssignStmt(Node):
     is_const: bool = False
     is_fix: bool = False
     visibility: str = ""  # global|package|module for top-level const/fix exports
+    name_span: Span | None = None
 
 
 @dataclass
@@ -158,6 +159,7 @@ class ArrayDecl(Node):
     name: str = ""
     size: int | None = None
     value: Expr | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -165,6 +167,7 @@ class AugAssignStmt(Node):
     name: str = ""
     op: str = ""  # += etc or ++/--
     value: Expr | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -235,6 +238,7 @@ class ForRangeStmt(Node):
     start: Expr | None = None
     stop: Expr | None = None
     body: Block | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -243,6 +247,7 @@ class ForEachStmt(Node):
     var_type: str = ""
     iterable: Expr | None = None
     body: Block | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -258,6 +263,7 @@ class SharedDecl(Node):
     name: str = ""
     value: Expr | None = None
     declare_type: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -267,6 +273,7 @@ class AtomicDecl(Node):
     name: str = ""
     value: Expr | None = None
     declare_type: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -307,6 +314,7 @@ class FunctionDef(Node):
     body: Block | None = None
     visibility: str = ""
     return_type: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -317,6 +325,7 @@ class FieldDecl(Node):
     is_fix: bool = False
     is_const: bool = False
     default: Expr | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -326,6 +335,7 @@ class StructField(Node):
     name: str = ""
     is_fix: bool = False
     default: Expr | None = None
+    name_span: Span | None = None
 
 
 @dataclass
@@ -337,6 +347,7 @@ class StructDef(Node):
     visibility: str = ""
     type_params: list[str] = field(default_factory=list)
     type_fix: bool = False  # leading `fix struct`
+    name_span: Span | None = None
 
 
 @dataclass
@@ -346,6 +357,7 @@ class DataDef(Node):
     name: str = ""
     fields: list[StructField] = field(default_factory=list)
     visibility: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -358,12 +370,14 @@ class EntityDef(Node):
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
 class EnumMember(Node):
     name: str = ""
     value: Expr | None = None  # Literal int/string when explicit
+    name_span: Span | None = None
 
 
 @dataclass
@@ -373,6 +387,7 @@ class EnumDef(Node):
     name: str = ""
     members: list[EnumMember] = field(default_factory=list)
     visibility: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -385,6 +400,7 @@ class MethodDef(Node):
     is_constructor: bool = False
     is_abstract: bool = False
     return_type: str = ""
+    name_span: Span | None = None
 
 
 @dataclass
@@ -398,6 +414,7 @@ class ClassDef(Node):
     visibility: str = ""
     sealed: bool = False
     abstract: bool = False
+    name_span: Span | None = None
 
 
 @dataclass
@@ -406,6 +423,7 @@ class InterfaceDef(Node):
     methods: list[str] = field(default_factory=list)  # method names
     method_arities: dict[str, int] = field(default_factory=dict)
     visibility: str = ""
+    name_span: Span | None = None
 
 
 @dataclass

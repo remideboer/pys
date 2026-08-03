@@ -307,6 +307,18 @@ class _Tok:
         t = self.cur()
         return Span(t.line, t.column)
 
+    def token_span(self, t: Token | None = None) -> Span:
+        """Span covering one token (start + end column)."""
+        tok = t if t is not None else self.cur()
+        end_col = tok.column + max(len(tok.text), 1)
+        return Span(tok.line, tok.column, tok.line, end_col)
+
+    def close_span(self, start: Span, end_tok: Token | None = None) -> Span:
+        """Extend ``start`` through ``end_tok`` (default: previous token)."""
+        tok = end_tok if end_tok is not None else self.tokens[max(self.i - 1, 0)]
+        end_col = tok.column + max(len(tok.text), 1)
+        return Span(start.line, start.column, tok.line, end_col)
+
 
 def _gt_close_count(t: Token) -> int:
     """How many generic `>` this token closes (0 if not a closer)."""
@@ -976,7 +988,8 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
     rtype = ""
     if _looks_like_typed_name(p):
         rtype = _parse_type_name(p)
-    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+    name = name_tok.text
     p.eat(TokenKind.LPAREN)
     params: list[tuple[str, str]] = []
     if not p.at(TokenKind.RPAREN):
@@ -987,13 +1000,14 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
     p.eat(TokenKind.RPAREN)
     body = _parse_block(p)
     return FunctionDef(
-        span=sp,
+        span=p.close_span(sp),
         name=name,
         params=[n for _, n in params],
         param_types=[t for t, _ in params],
         body=body,
         visibility=visibility,
         return_type=rtype,
+        name_span=p.token_span(name_tok),
     )
 
 
@@ -2049,16 +2063,25 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
             if p.at(TokenKind.INT):
                 size = int(p.eat(TokenKind.INT).text)
             p.eat(TokenKind.RBRACK)
-            name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            name = name_tok.text
             p.eat(TokenKind.OP, text="=")
             value = _parse_expression(p)
-            return ArrayDecl(span=sp, elem_type=dtype, name=name, size=size, value=value)
+            return ArrayDecl(
+                span=sp,
+                elem_type=dtype,
+                name=name,
+                size=size,
+                value=value,
+                name_span=p.token_span(name_tok),
+            )
     elif (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and (
         (p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD} and p.peek(2).text == "=")
         or _at_generic_typed_decl(p)
     ):
         dtype = _parse_type_name(p)
-    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+    name = name_tok.text
     p.eat(TokenKind.OP, text="=")
     value = _parse_expression(p)
     return AssignStmt(
@@ -2069,6 +2092,7 @@ def _parse_decl(p: _Tok, visibility: str = "") -> AssignStmt | ArrayDecl:
         is_const=is_const,
         is_fix=is_fix,
         visibility=visibility,
+        name_span=p.token_span(name_tok),
     )
 
 
@@ -2220,8 +2244,8 @@ def _parse_block(p: _Tok) -> Block:
     stmts = []
     while not p.at(TokenKind.RBRACE):
         stmts.append(_parse_statement(p))
-    p.eat(TokenKind.RBRACE)
-    return Block(span=sp, statements=stmts)
+    end = p.eat(TokenKind.RBRACE)
+    return Block(span=p.close_span(sp, end), statements=stmts)
 
 
 def _parse_if(p: _Tok) -> IfStmt:
@@ -2961,6 +2985,6 @@ def _parse_primary(p: _Tok) -> Expr:
                 p.cur().line,
                 p.cur().column,
             )
-        name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
-        return Identifier(span=sp, name=name)
+        name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        return Identifier(span=p.token_span(name_tok), name=name_tok.text)
     raise ParseError(f"Unexpected token {p.cur().text!r}", p.cur().line, p.cur().column)

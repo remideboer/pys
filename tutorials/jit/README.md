@@ -23,6 +23,7 @@ Open a card **when a task step needs a form or fix**. Do not read the whole fold
 | [J-int-literals](J-int-literals.md) | `0b`/`0x`, width aliases, bitwise vs logical |
 | [J-library](J-library.md) | external packages, `as` alias, generics on returns |
 | [J-member-order](J-member-order.md) | kind order in class/struct/trait/entity; imports first |
+| [J-refactor](J-refactor.md) | Rename / Extract / Inline / Safe Delete / Introduce Parameter |
 | [J-errors](J-errors.md) | decode common transpile messages |
 
 After the card, return to the task immediately.

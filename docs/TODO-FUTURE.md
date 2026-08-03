@@ -12,6 +12,7 @@ mark it done here.
 | [F-002](#f-002-enum-match-exhaustiveness) | Language / enums | Superseded | Was `match`; delivered as `switch` (ADR-008) |
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
+| [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
 
 ---
 
@@ -75,3 +76,17 @@ Allow two members to share a value only via a **real language construct**
 Debug adapter stepping mapped to `.pys` lines (not only generated Python).
 Delivered: emit line maps, `prepare_debug`, debugpy launch of generated program,
 `DebugAdapterTracker` remap, extension 0.0.47.
+
+---
+
+## F-005: Full Fowler refactor catalog
+
+| | |
+| --- | --- |
+| Status | Deferred |
+| Source | [ADR-016](adr/ADR-016-ide-refactoring.md); https://refactoring.com/catalog/ |
+
+Educational core (Rename, Extract Variable/Function, Inline Variable/Function,
+Safe Delete, Introduce Parameter) shipped under ADR-016. Deferred examples:
+Change Signature, Move Function/Field, Extract Class, Replace Conditional with
+Polymorphism, and other catalog entries not in the core DoD.

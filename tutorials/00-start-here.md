@@ -27,6 +27,9 @@ Member / import **kind order** (parse errors with educational messages):
 [J-member-order](jit/J-member-order.md), habit model [S7](supportive/S7-order-as-habit.md),
 drill [P-member-order](practice/P-member-order.md).
 
+Refactoring (preview + binding-aware rename): [J-refactor](jit/J-refactor.md),
+[S8](supportive/S8-refactor-as-habit.md).
+
 ## Setup checklist
 
 - [ ] `python -m pip install -e .` from the repo root  

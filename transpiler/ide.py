@@ -537,50 +537,32 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     return {"file": str(path), "line": line, "column": col, "kind": kind}
 
 
-def find_usages(source_path: Path, symbol: str) -> list[dict[str, Any]]:
-    """Find identifier occurrences for Find Usages / ReferenceProvider.
+def find_usages(
+    source_path: Path,
+    symbol: str,
+    *,
+    line: int | None = None,
+    column: int | None = None,
+) -> list[dict[str, Any]]:
+    """Find binding-aware identifier occurrences for Find Usages / ReferenceProvider.
 
-    Searches ``.pys`` files in the same folder as ``source_path`` (package
-    scope). Uses the lexer so string/comment text is ignored. The last segment
-    of a dotted path is the match name (``HttpStatus.OK`` → ``OK``).
+    Prefer ``line`` + ``column`` (1-based) under the cursor so shadowed names
+    resolve to the correct declaration. ``symbol`` is used when position is
+    omitted (CLI) or as a fallback.
     """
-    from .lex import TokenKind, tokenize
+    from .lex import KEYWORDS
+    from .refactor.refs import find_references
 
     symbol = (symbol or "").strip()
-    if not symbol:
+    name = symbol.split(".")[-1] if symbol else ""
+    if name and (name in KEYWORDS or name in _PRIMITIVES):
         return []
-    name = symbol.split(".")[-1]
-    if not re.fullmatch(r"[A-Za-z_]\w*", name):
-        return []
-    # Skip language keywords / type names used as keywords — not useful as usages.
-    from .lex import KEYWORDS
-
-    if name in KEYWORDS or name in _PRIMITIVES:
-        return []
-
-    source_path = source_path.resolve()
-    folder = source_path.parent
-    files = sorted(folder.glob("*.pys"))
-    hits: list[dict[str, Any]] = []
-    for path in files:
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        try:
-            tokens = tokenize(text)
-        except Exception:
-            continue
-        for tok in tokens:
-            if tok.kind == TokenKind.IDENT and tok.text == name:
-                hits.append(
-                    {
-                        "file": str(path.resolve()),
-                        "line": tok.line,
-                        "column": tok.column,
-                    }
-                )
-    return hits
+    return find_references(
+        source_path,
+        symbol=symbol or None,
+        line=line,
+        column=column,
+    )
 
 
 def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
@@ -710,6 +692,8 @@ def main(argv: list[str] | None = None) -> int:
         result = prepare_debug(path, out_dir)
         print(json.dumps(result))
         return 0 if result.get("ok") else 1
+    if len(argv) >= 1 and argv[0] == "--refactor-plan":
+        return _cli_refactor_plan(argv[1:])
     if len(argv) < 1:
         print(
             json.dumps(
@@ -717,7 +701,8 @@ def main(argv: list[str] | None = None) -> int:
                     "ok": False,
                     "message": (
                         "Usage: python -m transpiler.ide <file.pys> [symbol] "
-                        "| <file.pys> --usages <symbol>"
+                        "| <file.pys> --usages <symbol> [--line N --column N] "
+                        "| --refactor-plan <op> <file.pys> ..."
                     ),
                 }
             )
@@ -726,7 +711,19 @@ def main(argv: list[str] | None = None) -> int:
     path = Path(argv[0])
     if len(argv) >= 3 and argv[1] == "--usages":
         symbol = argv[2]
-        usages = find_usages(path, symbol)
+        line = column = None
+        rest = argv[3:]
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--line" and i + 1 < len(rest):
+                line = int(rest[i + 1])
+                i += 2
+            elif rest[i] == "--column" and i + 1 < len(rest):
+                column = int(rest[i + 1])
+                i += 2
+            else:
+                i += 1
+        usages = find_usages(path, symbol, line=line, column=column)
         print(
             json.dumps(
                 {
@@ -760,6 +757,90 @@ def main(argv: list[str] | None = None) -> int:
         public = {k: v for k, v in result.items() if not k.startswith("_")}
         print(json.dumps(public))
     return 0 if result.get("ok") or len(argv) >= 2 else 1
+
+
+def _cli_refactor_plan(argv: list[str]) -> int:
+    """``--refactor-plan <op> <file.pys> [--line N --column N] [op-args…]``."""
+    from .refactor.plan import plan_to_dict
+
+    if len(argv) < 2:
+        print(json.dumps({"ok": False, "message": "Usage: --refactor-plan <op> <file.pys> ..."}))
+        return 2
+    op = argv[0]
+    path = Path(argv[1])
+    args = argv[2:]
+    opts: dict[str, str] = {}
+    i = 0
+    while i < len(args):
+        if args[i].startswith("--") and i + 1 < len(args):
+            opts[args[i][2:].replace("-", "_")] = args[i + 1]
+            i += 2
+        else:
+            i += 1
+    line = int(opts["line"]) if "line" in opts else None
+    column = int(opts["column"]) if "column" in opts else None
+    try:
+        if op == "rename":
+            from .refactor.rename import plan_rename
+
+            plan = plan_rename(
+                path,
+                line=line or 1,
+                column=column or 1,
+                new_name=opts.get("new_name", ""),
+            )
+        elif op == "extract-variable":
+            from .refactor.extract import plan_extract_variable
+
+            plan = plan_extract_variable(
+                path,
+                start_line=int(opts.get("start_line", line or 1)),
+                start_column=int(opts.get("start_column", column or 1)),
+                end_line=int(opts.get("end_line", line or 1)),
+                end_column=int(opts.get("end_column", column or 1)),
+                new_name=opts.get("new_name", "extracted"),
+                declare_type=opts.get("declare_type", "var"),
+            )
+        elif op == "extract-function":
+            from .refactor.extract import plan_extract_function
+
+            plan = plan_extract_function(
+                path,
+                start_line=int(opts.get("start_line", line or 1)),
+                end_line=int(opts.get("end_line", line or 1)),
+                new_name=opts.get("new_name", "extracted"),
+                visibility=opts.get("visibility", ""),
+            )
+        elif op == "inline-variable":
+            from .refactor.inline import plan_inline_variable
+
+            plan = plan_inline_variable(path, line=line or 1, column=column or 1)
+        elif op == "inline-function":
+            from .refactor.inline import plan_inline_function
+
+            plan = plan_inline_function(path, line=line or 1, column=column or 1)
+        elif op == "safe-delete":
+            from .refactor.safe_delete import plan_safe_delete
+
+            plan = plan_safe_delete(path, line=line or 1, column=column or 1)
+        elif op == "introduce-parameter":
+            from .refactor.introduce_parameter import plan_introduce_parameter
+
+            plan = plan_introduce_parameter(
+                path,
+                line=line or 1,
+                column=column or 1,
+                param_name=opts.get("param_name", "param"),
+                param_type=opts.get("param_type", "int"),
+            )
+        else:
+            print(json.dumps({"ok": False, "message": f"Unknown refactor op {op!r}"}))
+            return 2
+    except Exception as exc:
+        print(json.dumps({"ok": False, "message": f"{type(exc).__name__}: {exc}"}))
+        return 1
+    print(json.dumps(plan_to_dict(plan)))
+    return 0 if plan.ok else 1
 
 
 if __name__ == "__main__":
