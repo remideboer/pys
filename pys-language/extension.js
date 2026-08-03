@@ -16,6 +16,8 @@ const {
   remapStackFrames,
   remapVariables,
   rewriteEvaluateExpression,
+  collectInlineValueSites,
+  filterInlineValueSitesByScope,
 } = require('./debug-map');
 
 const PYS_DEBUG_SESSION_NAME = 'Debug PYS';
@@ -1061,6 +1063,110 @@ function activate(context) {
     }
   }
 
+  async function fetchFrameLocalValues(session, frameId) {
+    /** @type {Map<string, string>} */
+    const values = new Map();
+    if (!session || typeof frameId !== 'number') {
+      return values;
+    }
+    try {
+      const scopesResp = await session.customRequest('scopes', { frameId });
+      const scopes = (scopesResp && scopesResp.scopes) || [];
+      for (const scope of scopes) {
+        if (!scope || scope.expensive) {
+          continue;
+        }
+        const label = String(scope.name || '').toLowerCase();
+        // Locals / arguments only — not Globals / Builtins / Module.
+        if (
+          label.includes('global') ||
+          label.includes('builtin') ||
+          label.includes('module')
+        ) {
+          continue;
+        }
+        const varsResp = await session.customRequest('variables', {
+          variablesReference: scope.variablesReference,
+        });
+        for (const v of (varsResp && varsResp.variables) || []) {
+          if (!v || typeof v.name !== 'string' || typeof v.value !== 'string') {
+            continue;
+          }
+          if (shouldHideInlineName(v.name)) {
+            continue;
+          }
+          values.set(v.name, v.value);
+        }
+      }
+    } catch (_err) {
+      /* ignore — fall back to empty (no inline values) */
+    }
+    return values;
+  }
+
+  function shouldHideInlineName(name) {
+    return (
+      name.startsWith('_pys_') ||
+      name.startsWith('__pys_') ||
+      name.startsWith('_Pys') ||
+      name.startsWith('__')
+    );
+  }
+
+  function truncateInlineValue(text, max = 80) {
+    const s = String(text);
+    if (s.length <= max) {
+      return s;
+    }
+    return `${s.slice(0, max - 1)}…`;
+  }
+
+  context.subscriptions.push(
+    vscode.languages.registerInlineValuesProvider('pys', {
+      async provideInlineValues(document, viewPort, context) {
+        const cfg = vscode.workspace.getConfiguration('pys');
+        if (cfg.get('debug.inlineValues') === false) {
+          return [];
+        }
+        const session = vscode.debug.activeDebugSession;
+        if (!session || session.name !== PYS_DEBUG_SESSION_NAME) {
+          return [];
+        }
+        const localValues = await fetchFrameLocalValues(session, context.frameId);
+        if (!localValues.size) {
+          return [];
+        }
+        const stoppedLine0 = context.stoppedLocation.end.line;
+        const stoppedLine1 = stoppedLine0 + 1;
+        const skipTypes = [...PYS_TYPES, 'list', 'dict', 'tuple', 'set'];
+        let sites = collectInlineValueSites(document.getText(), stoppedLine1, {
+          keywords: PYS_KEYWORDS,
+          types: skipTypes,
+        });
+        sites = filterInlineValueSitesByScope(sites, localValues);
+        const start = viewPort.start.line;
+        const end = Math.min(viewPort.end.line, stoppedLine0);
+        const out = [];
+        for (const site of sites) {
+          if (site.line < start || site.line > end) {
+            continue;
+          }
+          const value = localValues.get(site.name);
+          if (value === undefined) {
+            continue;
+          }
+          out.push(
+            new vscode.InlineValueText(
+              new vscode.Range(site.line, site.column, site.line, site.column + site.length),
+              `${site.name}: ${truncateInlineValue(value)}`,
+            ),
+          );
+        }
+        return out;
+      },
+    }),
+  );
+
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterTrackerFactory('python', {
       createDebugAdapterTracker(session) {
@@ -1200,6 +1306,40 @@ function activate(context) {
       `Cleared ${toRemove.length} breakpoint${toRemove.length === 1 ? '' : 's'}`,
       2500,
     );
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.addLogpoint', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== 'pys') {
+      vscode.window.showErrorMessage('Open a .pys file to add a logpoint.');
+      return;
+    }
+    const line = editor.selection.active.line;
+    const selected = editor.document.getText(editor.selection).trim();
+    const prefill =
+      selected && /^[A-Za-z_][A-Za-z0-9_]*$/.test(selected) ? `${selected}={${selected}}` : '';
+    const message = await vscode.window.showInputBox({
+      title: 'PYS Logpoint',
+      prompt: 'Message logged to the Debug Console (no pause). Use {name} for values.',
+      placeHolder: 'total={total}',
+      value: prefill,
+      ignoreFocusOut: true,
+    });
+    if (message === undefined) {
+      return;
+    }
+    if (!String(message).trim()) {
+      vscode.window.showErrorMessage('Logpoint message cannot be empty.');
+      return;
+    }
+    const location = new vscode.Location(
+      editor.document.uri,
+      new vscode.Position(line, 0),
+    );
+    // SourceBreakpoint with logMessage = non-suspending logpoint (DAP / debugpy).
+    const bp = new vscode.SourceBreakpoint(location, true, undefined, undefined, message);
+    vscode.debug.addBreakpoints([bp]);
+    vscode.window.setStatusBarMessage(`Logpoint on line ${line + 1}`, 2500);
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.runMain', async () => {

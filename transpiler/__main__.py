@@ -47,11 +47,6 @@ def main() -> None:
         default="auto",
         help="Editor CLI (default: prefer cursor, then code)",
     )
-    ext_parser.add_argument(
-        "--no-reload",
-        action="store_true",
-        help="Do not invoke Developer: Reload Window after install",
-    )
 
     args = parser.parse_args()
 
@@ -81,15 +76,11 @@ def main() -> None:
             vsix = install_extension(
                 build=not args.no_build,
                 editor=args.editor,
-                reload=not args.no_reload,
             )
         except (FileNotFoundError, ValueError, OSError, subprocess.CalledProcessError) as exc:
             parser.error(str(exc))
         print(f"Installed {vsix.name}")
-        if args.no_reload:
-            print("Reload the window (Developer: Reload Window) if needed.")
-        else:
-            print("If the window did not reload, run Developer: Reload Window.")
+        print("Reload Cursor/VS Code from the Command Palette when ready.")
     else:
         parser.error(f"Unknown command: {args.command}")
 

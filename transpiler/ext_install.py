@@ -6,7 +6,6 @@ import os
 import re
 import shutil
 import subprocess
-import time
 from pathlib import Path
 
 _VSIX_RE = re.compile(r"^pys-language-(\d+)\.(\d+)\.(\d+)\.vsix$", re.IGNORECASE)
@@ -97,124 +96,19 @@ def install_vsix(vsix: Path, *, editor: str = "auto") -> list[str]:
     return cmd
 
 
-def _reload_window_windows() -> None:
-    # Command palette accepts the English command title (NLS resolvedLanguage is typically en).
-    script = r"""
-$ErrorActionPreference = 'Stop'
-$shell = New-Object -ComObject WScript.Shell
-$activated = $false
-foreach ($title in @('Cursor', 'Visual Studio Code')) {
-  if ($shell.AppActivate($title)) { $activated = $true; break }
-}
-if (-not $activated) {
-  # Fallback: any window title containing Cursor / Code
-  $procs = Get-Process | Where-Object { $_.MainWindowTitle -match 'Cursor|Visual Studio Code' }
-  foreach ($p in $procs) {
-    if ($shell.AppActivate($p.Id)) { $activated = $true; break }
-  }
-}
-if (-not $activated) { throw 'Could not activate Cursor/VS Code window' }
-Start-Sleep -Milliseconds 250
-$shell.SendKeys('^+p')
-Start-Sleep -Milliseconds 350
-$shell.SendKeys('Developer: Reload Window')
-Start-Sleep -Milliseconds 350
-$shell.SendKeys('{ENTER}')
-"""
-    subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-        check=True,
-    )
-
-
-def _reload_window_macos() -> None:
-    script = """
-tell application "System Events"
-  set appNames to {"Cursor", "Code", "Visual Studio Code"}
-  set target to missing value
-  repeat with n in appNames
-    if exists process n then
-      set target to n
-      exit repeat
-    end if
-  end repeat
-  if target is missing value then error "Cursor/VS Code not running"
-  tell process target
-    set frontmost to true
-    keystroke "p" using {command down, shift down}
-    delay 0.35
-    keystroke "Developer: Reload Window"
-    delay 0.35
-    key code 36
-  end tell
-end tell
-"""
-    subprocess.run(["osascript", "-e", script], check=True)
-
-
-def _reload_window_linux() -> None:
-    if not shutil.which("xdotool"):
-        raise FileNotFoundError(
-            "xdotool not found (needed to send Reload Window keys on Linux)."
-        )
-    # Prefer Cursor, then Code.
-    for name in ("Cursor", "code"):
-        search = subprocess.run(
-            ["xdotool", "search", "--name", name],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        window_ids = [w for w in search.stdout.split() if w]
-        if not window_ids:
-            continue
-        wid = window_ids[0]
-        subprocess.run(["xdotool", "windowactivate", "--sync", wid], check=True)
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+shift+p"], check=True)
-        time.sleep(0.35)
-        subprocess.run(["xdotool", "type", "--clearmodifiers", "Developer: Reload Window"], check=True)
-        time.sleep(0.35)
-        subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], check=True)
-        return
-    raise FileNotFoundError("No Cursor/VS Code window found for xdotool.")
-
-
-def reload_editor_window() -> None:
-    """Best-effort invoke ``Developer: Reload Window`` via the command palette."""
-    import sys
-
-    if os.name == "nt":
-        _reload_window_windows()
-    elif sys.platform == "darwin":
-        _reload_window_macos()
-    else:
-        _reload_window_linux()
-
-
 def install_extension(
     *,
     repo_root: Path | None = None,
     build: bool = True,
     editor: str = "auto",
-    reload: bool = True,
 ) -> Path:
     """Package (optional) and install the newest local ``pys-language-*.vsix``.
 
-    Returns the installed VSIX path.
+    Returns the installed VSIX path. Does not auto-reload the editor.
     """
     ext_dir = find_extension_dir(repo_root)
     if build:
         build_vsix(ext_dir)
     vsix = latest_vsix(ext_dir)
     install_vsix(vsix, editor=editor)
-    if reload:
-        try:
-            reload_editor_window()
-        except (FileNotFoundError, OSError, subprocess.CalledProcessError) as exc:
-            print(
-                f"Could not auto-reload the editor: {exc}\n"
-                "Run Developer: Reload Window manually.",
-                flush=True,
-            )
-            return vsix
     return vsix

@@ -8,8 +8,19 @@
 4. **PYS: Debug File** (`Ctrl+Shift+D`) or the Debug CodeLens.
 
 Debug runs until it **hits a breakpoint** (it does not stop at the first
-top-level line). Use **PYS: Clear All Breakpoints** from the editor context
-menu, line-number/gutter menu, or the editor tab menu/icon.
+top-level line). While paused, **inline values** appear at the end of lines
+(IntelliJ-style) for variables in scope — turn off with `pys.debug.inlineValues`
+if needed (and keep Cursor/VS Code `debug.inlineValues` on `auto` or `on`).
+
+**Logpoints** log to the Debug Console without pausing: gutter / context
+**PYS: Add Logpoint**, or VS Code **Add Logpoint**. Use `{name}` for values
+(e.g. `total={total}`). See [IntelliJ logpoints](https://www.jetbrains.com/help/idea/logpoints.html).
+
+Inline values only include names present in the current frame’s Locals (not
+globals / builtins / other functions’ identifiers).
+
+Use **PYS: Clear All Breakpoints** from the editor context menu, line-number/gutter
+menu, or the editor tab menu/icon.
 
 ## What happens
 

@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity); 2026-08-03 (halt at BP only; clear-all UX); 2026-08-03 (deps PYTHONPATH) |
+| Amended | 2026-08-03 (UX maturity); 2026-08-03 (halt at BP only; clear-all UX); 2026-08-03 (deps PYTHONPATH); 2026-08-03 (inline values); 2026-08-03 (logpoints) |
 | Code detail | [CER-014](../evolution/CER-014-pys-dap-stepping.md) |
 | Source | [TODO-FUTURE F-004](../TODO-FUTURE.md); [pipeline-migration C2](../pipeline-migration.md) |
 
@@ -37,11 +37,20 @@ There was also no `.pys` ↔ generated-Python line map.
    `hits`); hide `_pys_` / `__pys_` / `_Pys` helper clutter; bare Watch
    identifiers rewrite to emitted names. Shared/atomic cells still show as
    wrapper objects (no scalar unwrap).
-8. ADR-001 unchanged: Debug remains trusted-workspace / Run-class only.
+8. **Inline values:** `InlineValuesProvider` for language `pys` shows current
+   **in-scope** Locals/Args at end-of-line while paused (IntelliJ-style), by
+   reading the stopped frame’s scopes and filtering editor identifiers.
+   Toggle with `pys.debug.inlineValues` (default on). Ensure VS Code/Cursor
+   `debug.inlineValues` is `on` or `auto`.
+9. **Logpoints:** non-suspending breakpoints with DAP `logMessage` (debugpy).
+   `{expr}` uses PYS names in the UI; remapper rewrites identifiers to emitted
+   locals. **PYS: Add Logpoint** on gutter/context (diamond glyph); also VS Code
+   **Add Logpoint**. See [IntelliJ logpoints](https://www.jetbrains.com/help/idea/logpoints.html).
+10. ADR-001 unchanged: Debug remains trusted-workspace / Run-class only.
 
 ## Consequences
 
-- Extension ≥ 0.0.50; JIT `J-debug`; example `examples/debug_step.pys`.
+- Extension ≥ 0.0.54; JIT `J-debug`; example `examples/debug_step.pys`.
 - Requires the Microsoft Python extension at debug time.
 - Concurrency preamble / `_Pys*` frames may appear unmapped; task/thread
   debugging remains deferred.

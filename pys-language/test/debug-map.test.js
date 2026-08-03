@@ -11,6 +11,9 @@ const {
   remapStackFrames,
   remapVariables,
   rewriteEvaluateExpression,
+  rewriteLogMessageExpressions,
+  collectInlineValueSites,
+  filterInlineValueSitesByScope,
   normalizePathKey,
 } = require('../debug-map');
 
@@ -164,4 +167,83 @@ test('rewriteEvaluateExpression maps bare PYS name to emitted', () => {
   assert.equal(rewriteEvaluateExpression(reg, ' hits '), '_c_hits');
   assert.equal(rewriteEvaluateExpression(reg, 'hits + 1'), 'hits + 1');
   assert.equal(rewriteEvaluateExpression(reg, 'n'), 'n');
+});
+
+test('collectInlineValueSites finds vars up to stopped line', () => {
+  const src = [
+    'int total = 0',
+    'print("total")  # name in string ignored',
+    'total = bump(total)',
+    'print(total)',
+  ].join('\n');
+  const sites = collectInlineValueSites(src, 3, {
+    keywords: ['print'],
+    types: ['int'],
+  });
+  assert.deepEqual(
+    sites.map((s) => ({ line: s.line, name: s.name })),
+    [
+      { line: 0, name: 'total' },
+      { line: 2, name: 'total' },
+      { line: 2, name: 'bump' },
+    ],
+  );
+});
+
+test('filterInlineValueSitesByScope keeps only in-scope names', () => {
+  const sites = [
+    { line: 0, column: 4, length: 5, name: 'total' },
+    { line: 2, column: 0, length: 4, name: 'bump' },
+    { line: 2, column: 7, length: 5, name: 'total' },
+  ];
+  const filtered = filterInlineValueSitesByScope(sites, new Set(['total']));
+  assert.deepEqual(
+    filtered.map((s) => s.name),
+    ['total', 'total'],
+  );
+  assert.deepEqual(filterInlineValueSitesByScope(sites, new Set()), []);
+  // Map of name -> value (as returned by fetchFrameLocalValues) must use keys.
+  const asMap = new Map([
+    ['total', '1'],
+    ['other', '2'],
+  ]);
+  assert.deepEqual(
+    filterInlineValueSitesByScope(sites, asMap).map((s) => s.name),
+    ['total', 'total'],
+  );
+});
+
+test('rewriteLogMessageExpressions rewrites braced PYS names', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    py: PY,
+    lines: [{ py: 10, pys: 3 }],
+    names: { _c_hits: 'hits' },
+  });
+  assert.equal(
+    rewriteLogMessageExpressions(reg, 'hits={hits} n={n}'),
+    'hits={_c_hits} n={n}',
+  );
+  assert.equal(
+    rewriteLogMessageExpressions(reg, 'sum={hits + 1}'),
+    'sum={_c_hits + 1}',
+  );
+});
+
+test('remapSetBreakpointsArgs preserves and rewrites logMessage', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    py: PY,
+    lines: [{ py: 10, pys: 3 }],
+    names: { _c_hits: 'hits' },
+  });
+  const out = remapSetBreakpointsArgs(reg, {
+    source: { path: PYS, name: 'demo.pys' },
+    breakpoints: [{ line: 3, logMessage: 'hits={hits}' }],
+  });
+  assert.equal(out.source.path, PY);
+  assert.equal(out.breakpoints[0].line, 10);
+  assert.equal(out.breakpoints[0].logMessage, 'hits={_c_hits}');
 });

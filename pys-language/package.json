@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.50",
+  "version": "0.0.54",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -52,6 +52,11 @@
           "type": "boolean",
           "default": false,
           "description": "Show optional tips for using weakly typed Python library values in a typed way (for example typed loop variables)."
+        },
+        "pys.debug.inlineValues": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show current variable values inline in the .pys editor while debugging (IntelliJ-style)."
         }
       }
     },
@@ -156,6 +161,12 @@
         "title": "Clear All Breakpoints",
         "category": "PYS",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "pys.addLogpoint",
+        "title": "Add Logpoint",
+        "category": "PYS",
+        "icon": "$(debug-breakpoint-log)"
       }
     ],
     "menus": {
@@ -222,26 +233,36 @@
           "group": "navigation@2"
         },
         {
-          "command": "pys.clearAllBreakpoints",
+          "command": "pys.addLogpoint",
           "when": "resourceExtname == .pys",
           "group": "navigation@3"
         },
         {
-          "command": "pys.setAsMainFile",
+          "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys",
           "group": "navigation@4"
+        },
+        {
+          "command": "pys.setAsMainFile",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@5"
         }
       ],
       "editor/lineNumber/context": [
         {
-          "command": "pys.clearAllBreakpoints",
+          "command": "pys.addLogpoint",
           "when": "resourceExtname == .pys",
           "group": "debug@1"
         },
         {
-          "command": "pys.debugFile",
+          "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys",
           "group": "debug@2"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys",
+          "group": "debug@3"
         }
       ],
       "explorer/context": [
@@ -264,6 +285,10 @@
         {
           "command": "pys.debugMain",
           "when": "pys.hasMainFile"
+        },
+        {
+          "command": "pys.addLogpoint",
+          "when": "resourceExtname == .pys || editorLangId == pys"
         },
         {
           "command": "pys.clearAllBreakpoints",
@@ -304,6 +329,7 @@
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",
     "onCommand:pys.clearAllBreakpoints",
+    "onCommand:pys.addLogpoint",
     "onStartupFinished"
   ],
   "devDependencies": {

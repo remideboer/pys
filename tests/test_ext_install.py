@@ -94,7 +94,7 @@ def test_install_vsix_runs_editor(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert calls == [cmd]
 
 
-def test_install_extension_reloads_by_default(
+def test_install_extension_packages_and_installs(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     ext = tmp_path / "pys-language"
@@ -102,33 +102,6 @@ def test_install_extension_reloads_by_default(
     (ext / "package.json").write_text("{}", encoding="utf-8")
     vsix = ext / "pys-language-0.0.1.vsix"
     vsix.write_bytes(b"x")
-    reloads: list[bool] = []
     monkeypatch.setattr(ext_install, "build_vsix", lambda *_a, **_k: None)
     monkeypatch.setattr(ext_install, "install_vsix", lambda *_a, **_k: ["ok"])
-    monkeypatch.setattr(
-        ext_install,
-        "reload_editor_window",
-        lambda: reloads.append(True),
-    )
     assert ext_install.install_extension(repo_root=tmp_path, build=False) == vsix
-    assert reloads == [True]
-
-
-def test_install_extension_can_skip_reload(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    ext = tmp_path / "pys-language"
-    ext.mkdir()
-    (ext / "package.json").write_text("{}", encoding="utf-8")
-    vsix = ext / "pys-language-0.0.1.vsix"
-    vsix.write_bytes(b"x")
-    monkeypatch.setattr(ext_install, "install_vsix", lambda *_a, **_k: ["ok"])
-    monkeypatch.setattr(
-        ext_install,
-        "reload_editor_window",
-        lambda: (_ for _ in ()).throw(AssertionError("should skip")),
-    )
-    assert (
-        ext_install.install_extension(repo_root=tmp_path, build=False, reload=False)
-        == vsix
-    )

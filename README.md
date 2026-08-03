@@ -75,7 +75,6 @@ python -m pip install -e .
 #     python -m transpiler install extension
 #     ./install-extension.bat --no-build
 #     ./install-extension.bat --editor cursor
-#     ./install-extension.bat --no-reload
 ```
 
 ```bash

@@ -50,6 +50,20 @@ Follow-up maturity: verified gutter glyphs, stop-on-entry, Variables/Watch names
   (e.g. `mysql.connector`) that Run already finds.
 - Extension **0.0.50**.
 
+### Post-behavior (inline values)
+
+- `InlineValuesProvider` for `.pys` shows Locals as end-of-line ghost text
+  while paused (`InlineValueText`); only names present in the current frame’s
+  Locals/Args scopes (not Globals/Builtins); `pys.debug.inlineValues`.
+- Extension **0.0.54** (Map scope filter fix; was 0.0.53 empty inline values).
+
+### Post-behavior (logpoints)
+
+- DAP `logMessage` remapped with PYS→emitted identifier rewrite inside `{…}`.
+- `pys.addLogpoint` on gutter / editor context; messages go to Debug Console
+  without suspending (IntelliJ-style logpoints).
+- Extension **0.0.52**.
+
 ### Evidence
 
 `tests/test_line_map.py`; `tests/test_prepare_debug.py`;

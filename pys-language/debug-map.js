@@ -126,10 +126,11 @@ function remapSetBreakpointsArgs(registry, args) {
   }
   const breakpoints = (args.breakpoints || []).map((bp) => {
     const mapped = mapPysBreakpoint(registry, src, bp.line);
+    const logMessage = rewriteLogMessageExpressions(registry, bp.logMessage);
     if (!mapped) {
-      return bp;
+      return logMessage === bp.logMessage ? bp : { ...bp, logMessage };
     }
-    return { ...bp, line: mapped.pyLine };
+    return { ...bp, line: mapped.pyLine, logMessage };
   });
   return {
     ...args,
@@ -272,6 +273,100 @@ function rewriteEvaluateExpression(registry, expression) {
   return emitted || expression;
 }
 
+/**
+ * Rewrite identifiers inside an expression using the PYS→emitted name table.
+ * Used for logpoint `{...}` bodies (may be more than a bare name).
+ */
+function rewriteExpressionIdentifiers(registry, expression) {
+  if (typeof expression !== 'string' || !expression) {
+    return expression;
+  }
+  const map = registry.emittedByPys || {};
+  if (!Object.keys(map).length) {
+    return expression;
+  }
+  return expression.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (id) => map[id] || id);
+}
+
+/**
+ * Rewrite `{expr}` segments in a DAP logpoint message to emitted Python names.
+ * Plain text outside braces is unchanged. See VS Code / IntelliJ logpoints.
+ */
+function rewriteLogMessageExpressions(registry, logMessage) {
+  if (typeof logMessage !== 'string' || !logMessage) {
+    return logMessage;
+  }
+  return logMessage.replace(/\{([^{}]*)\}/g, (_, inner) => `{${rewriteExpressionIdentifiers(registry, inner)}}`);
+}
+
+/**
+ * Find identifier sites for inline debug values (IntelliJ-style end-of-line hints).
+ *
+ * @param {string} sourceText full document text
+ * @param {number} stoppedLine1Based inclusive max source line (1-based)
+ * @param {{ keywords?: string[], types?: string[] }} [options]
+ * @returns {{ line: number, column: number, length: number, name: string }[]}
+ *   line/column are 0-based (VS Code Range).
+ */
+function collectInlineValueSites(sourceText, stoppedLine1Based, options = {}) {
+  const skip = new Set([...(options.keywords || []), ...(options.types || [])]);
+  const lines = String(sourceText || '').split(/\r?\n/);
+  const maxLine = Math.min(lines.length, Math.max(0, Number(stoppedLine1Based) || 0));
+  const sites = [];
+  for (let i = 0; i < maxLine; i++) {
+    let line = lines[i];
+    const hash = line.indexOf('#');
+    if (hash >= 0) {
+      line = line.slice(0, hash);
+    }
+    // Blank out string literals so names inside quotes are ignored.
+    line = line.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, (m) => ' '.repeat(m.length));
+    const re = /[A-Za-z_][A-Za-z0-9_]*/g;
+    const seen = new Set();
+    let match;
+    while ((match = re.exec(line)) !== null) {
+      const name = match[0];
+      if (skip.has(name) || seen.has(name)) {
+        continue;
+      }
+      seen.add(name);
+      sites.push({
+        line: i,
+        column: match.index,
+        length: name.length,
+        name,
+      });
+    }
+  }
+  return sites;
+}
+
+/**
+ * Keep only identifier sites whose name is in the current frame scope set.
+ * @param {{ name: string }[]} sites
+ * @param {Set<string>|Map<string, unknown>|string[]} scopeNames
+ */
+function filterInlineValueSitesByScope(sites, scopeNames) {
+  if (!Array.isArray(sites) || !sites.length) {
+    return [];
+  }
+  let allowed;
+  if (scopeNames instanceof Set) {
+    allowed = scopeNames;
+  } else if (scopeNames instanceof Map) {
+    // Map default iteration yields [k,v] pairs — use .keys() explicitly.
+    allowed = new Set(scopeNames.keys());
+  } else if (Array.isArray(scopeNames)) {
+    allowed = new Set(scopeNames);
+  } else {
+    allowed = new Set();
+  }
+  if (!allowed.size) {
+    return [];
+  }
+  return sites.filter((s) => s && allowed.has(s.name));
+}
+
 module.exports = {
   DEFAULT_HIDE_PREFIXES,
   normalizePathKey,
@@ -285,4 +380,8 @@ module.exports = {
   shouldHideVariableName,
   remapVariables,
   rewriteEvaluateExpression,
+  rewriteExpressionIdentifiers,
+  rewriteLogMessageExpressions,
+  collectInlineValueSites,
+  filterInlineValueSitesByScope,
 };
