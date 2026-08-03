@@ -287,6 +287,10 @@ loop (tuple<string, string> row in rows) {
 }
 ```
 
+Loop binders and any variables declared inside `{ … }` are **block-scoped**:
+they do not exist after the closing brace. A later `int row = 0` is a new
+binding (Python emit mangles the inner name so it cannot leak).
+
 `break` and `continue` work inside loops.
 
 ---

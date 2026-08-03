@@ -49,5 +49,6 @@ Each record then uses:
 | [CER-012](CER-012-lambdas.md) | Lambdas with by-value capture | Language |
 | [CER-013](CER-013-atomic.md) | Atomic qualifier (implies shared) | Language |
 | [CER-014](CER-014-pys-dap-stepping.md) | PYS source-level DAP stepping | IDE |
+| [CER-015](CER-015-block-scope.md) | Brace `{ }` block scope (binders / locals) | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

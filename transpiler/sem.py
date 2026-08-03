@@ -1238,11 +1238,11 @@ def _check_bindings(
             if stmt.then_body:
                 _check_bindings(
                     stmt.then_body.statements,
-                    types=types,
-                    declared=declared,
-                    constants=constants,
-                    fixed=fixed,
-                    loop_counters=loop_counters,
+                    types=dict(types),
+                    declared=set(declared),
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=set(loop_counters),
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,
@@ -1251,11 +1251,11 @@ def _check_bindings(
             if stmt.else_body:
                 _check_bindings(
                     stmt.else_body.statements,
-                    types=types,
-                    declared=declared,
-                    constants=constants,
-                    fixed=fixed,
-                    loop_counters=loop_counters,
+                    types=dict(types),
+                    declared=set(declared),
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=set(loop_counters),
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,
@@ -1266,11 +1266,11 @@ def _check_bindings(
                 if case.body:
                     _check_bindings(
                         case.body.statements,
-                        types=types,
-                        declared=declared,
-                        constants=constants,
-                        fixed=fixed,
-                        loop_counters=loop_counters,
+                        types=dict(types),
+                        declared=set(declared),
+                        constants=set(constants),
+                        fixed=set(fixed),
+                        loop_counters=set(loop_counters),
                         class_parents=class_parents,
                         class_names=class_names,
                         class_implements=class_implements,
@@ -1279,46 +1279,49 @@ def _check_bindings(
         elif isinstance(stmt, Block):
             _check_bindings(
                 stmt.statements,
-                types=types,
-                declared=declared,
-                constants=constants,
-                fixed=fixed,
-                loop_counters=loop_counters,
+                types=dict(types),
+                declared=set(declared),
+                constants=set(constants),
+                fixed=set(fixed),
+                loop_counters=set(loop_counters),
                 class_parents=class_parents,
-            class_names=class_names,
-            class_implements=class_implements,
-            interfaces=interfaces,
+                class_names=class_names,
+                class_implements=class_implements,
+                interfaces=interfaces,
             )
         elif isinstance(stmt, ForRangeStmt):
-            declared.add(stmt.var)
-            nested = set(loop_counters) | {stmt.var}
+            # Loop binder is scoped to the loop body `{ }` only.
+            nested_declared = set(declared) | {stmt.var}
+            nested_types = dict(types)
+            nested_counters = set(loop_counters) | {stmt.var}
             if stmt.body:
                 _check_bindings(
                     stmt.body.statements,
-                    types=types,
-                    declared=declared,
-                    constants=constants,
-                    fixed=fixed,
-                    loop_counters=nested,
+                    types=nested_types,
+                    declared=nested_declared,
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=nested_counters,
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,
                     interfaces=interfaces,
                 )
         elif isinstance(stmt, ForEachStmt):
-            declared.add(stmt.var)
+            nested_declared = set(declared) | {stmt.var}
+            nested_types = dict(types)
             if stmt.var_type:
-                types[stmt.var] = stmt.var_type
+                nested_types[stmt.var] = stmt.var_type
             # Immutable per iteration (lambda.md §3 / classic closure capture).
-            nested = set(loop_counters) | {stmt.var}
+            nested_counters = set(loop_counters) | {stmt.var}
             if stmt.body:
                 _check_bindings(
                     stmt.body.statements,
-                    types=types,
-                    declared=declared,
-                    constants=constants,
-                    fixed=fixed,
-                    loop_counters=nested,
+                    types=nested_types,
+                    declared=nested_declared,
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=nested_counters,
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,
@@ -1328,11 +1331,11 @@ def _check_bindings(
             if stmt.body:
                 _check_bindings(
                     stmt.body.statements,
-                    types=types,
-                    declared=declared,
-                    constants=constants,
-                    fixed=fixed,
-                    loop_counters=loop_counters,
+                    types=dict(types),
+                    declared=set(declared),
+                    constants=set(constants),
+                    fixed=set(fixed),
+                    loop_counters=set(loop_counters),
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,

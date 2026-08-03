@@ -209,6 +209,8 @@ class _Emitter:
         self.lambda_serial = 0
         self._expr_indent = 0
         self._lambda_rename: dict[str, str] = {}
+        self._brace_depth = 0
+        self._scope_serial = 0
         self._current_pys_line: int | None = None
         self.line_origins: list[int | None] = []
         self.debug_names: dict[str, str] = {}  # emitted local -> PYS display name
@@ -226,6 +228,9 @@ class _Emitter:
         self.lines = []
         self.line_origins = []
         self.debug_names = {}
+        self._lambda_rename = {}
+        self._brace_depth = 0
+        self._scope_serial = 0
         self.struct_names = {
             s.name for s in module.body if isinstance(s, (StructDef, DataDef))
         }
@@ -336,11 +341,17 @@ class _Emitter:
         elif isinstance(stmt, SharedDecl):
             self.needs_concurrency = True
             self.shared_vars.add(stmt.name)
-            self._emit(indent, f"{stmt.name} = _PysShared({self._expr(stmt.value)})")
+            name = stmt.name
+            if self._brace_depth > 0:
+                name = self._bind_brace_local(stmt.name)
+            self._emit(indent, f"{name} = _PysShared({self._expr(stmt.value)})")
         elif isinstance(stmt, AtomicDecl):
             self.needs_concurrency = True
             self.atomic_vars.add(stmt.name)
-            self._emit(indent, f"{stmt.name} = _PysAtomic({self._expr(stmt.value)})")
+            name = stmt.name
+            if self._brace_depth > 0:
+                name = self._bind_brace_local(stmt.name)
+            self._emit(indent, f"{name} = _PysAtomic({self._expr(stmt.value)})")
         elif isinstance(stmt, TasksBlock):
             self._tasks(stmt, indent)
         elif isinstance(stmt, ReturnStmt):
@@ -364,19 +375,29 @@ class _Emitter:
             self._switch_stmt(stmt, indent)
         elif isinstance(stmt, WhileStmt):
             self._emit(indent, f"while {self._expr(stmt.cond)}:")
-            self._block(stmt.body, indent + 1)
+            self._block(stmt.body, indent + 1, brace_scope=True)
         elif isinstance(stmt, ForRangeStmt):
-            self._emit(
-                indent,
-                f"for {stmt.var} in range({self._expr(stmt.start)}, {self._expr(stmt.stop)}):",
+            start = self._expr(stmt.start)
+            stop = self._expr(stmt.stop)
+            self._scoped_loop_binder(
+                stmt.var,
+                iterable_code=f"{start}, {stop}",
+                body=stmt.body,
+                indent=indent,
+                kind="range",
             )
-            self._block(stmt.body, indent + 1)
         elif isinstance(stmt, ForEachStmt):
-            self._emit(indent, f"for {stmt.var} in {self._expr(stmt.iterable)}:")
-            self._block(stmt.body, indent + 1)
+            iterable = self._expr(stmt.iterable)
+            self._scoped_loop_binder(
+                stmt.var,
+                iterable_code=iterable,
+                body=stmt.body,
+                indent=indent,
+                kind="foreach",
+            )
         elif isinstance(stmt, RepeatStmt):
             self._emit(indent, f"for _ in range({self._expr(stmt.count)}):")
-            self._block(stmt.body, indent + 1)
+            self._block(stmt.body, indent + 1, brace_scope=True)
         elif isinstance(stmt, ImportStmt):
             self._import(stmt, indent)
         elif isinstance(stmt, FunctionDef):
@@ -453,6 +474,12 @@ class _Emitter:
             kind = "number" if stmt.declare_type != "bool" else "number"
         base = stmt.name.split(".")[-1]
         self.var_kinds[base] = kind
+        if (
+            "." not in stmt.name
+            and self._brace_depth > 0
+            and (stmt.declare_type or stmt.is_const or stmt.is_fix)
+        ):
+            self._bind_brace_local(stmt.name)
         if "." not in stmt.name:
             self._track_binding_type(stmt.name, stmt.declare_type, stmt.value)
             value = self._maybe_copy_struct(stmt.value)
@@ -534,6 +561,9 @@ class _Emitter:
 
     def _array_decl(self, stmt: ArrayDecl, indent: int) -> None:
         self.needs_array = True
+        name = stmt.name
+        if self._brace_depth > 0:
+            name = self._bind_brace_local(stmt.name)
         self.var_kinds[stmt.name] = "array"
         elems = stmt.value
         if isinstance(elems, ArrayLiteral):
@@ -546,11 +576,11 @@ class _Emitter:
             inner = ", ".join(parts)
             code = _ARRAY_TYPECODE.get(stmt.elem_type, "i")
             if stmt.elem_type == "string":
-                self._emit(indent, f"{stmt.name} = [{inner}]")
+                self._emit(indent, f"{name} = [{inner}]")
             else:
-                self._emit(indent, f"{stmt.name} = array('{code}', [{inner}])")
+                self._emit(indent, f"{name} = array('{code}', [{inner}])")
         else:
-            self._emit(indent, f"{stmt.name} = {self._expr(stmt.value)}")
+            self._emit(indent, f"{name} = {self._expr(stmt.value)}")
 
     def _import(self, stmt: ImportStmt, indent: int) -> None:
         if self._import_resolver is not None:
@@ -852,7 +882,7 @@ class _Emitter:
         else:
             head = f"if {cond}:" if first else f"elif {cond}:"
         self._emit(indent, head)
-        self._block(stmt.then_body, indent + 1)
+        self._block(stmt.then_body, indent + 1, brace_scope=True)
         if stmt.else_body is None:
             return
         # else if chain: else_body is Block with single IfStmt
@@ -864,7 +894,7 @@ class _Emitter:
             self._if(stmt.else_body.statements[0], indent, first=False)
             return
         self._emit(indent, "else:")
-        self._block(stmt.else_body, indent + 1)
+        self._block(stmt.else_body, indent + 1, brace_scope=True)
 
     def _switch_label_cmp(self, subject: str, label: Expr) -> str:
         return f"{subject} == {self._expr(label)}"
@@ -909,13 +939,13 @@ class _Emitter:
         for labels, body in groups:
             if labels is None:
                 self._emit(indent, "else:")
-                self._block(body, indent + 1)
+                self._block(body, indent + 1, brace_scope=True)
                 first = False
                 continue
             cond = self._switch_labels_cond(subject, labels)
             head = f"if {cond}:" if first else f"elif {cond}:"
             self._emit(indent, head)
-            self._block(body, indent + 1)
+            self._block(body, indent + 1, brace_scope=True)
             first = False
 
     def _switch_expr(self, expr: SwitchExpr) -> str:
@@ -940,12 +970,54 @@ class _Emitter:
                 result = f"({val} if {cond} else {result})"
         return result
 
-    def _block(self, block: Block | None, indent: int) -> None:
+    def _bind_brace_local(self, name: str) -> str:
+        """Mangle a name declared inside `{ }` so it cannot leak in Python."""
+        self._scope_serial += 1
+        mangled = f"_pys_b{self._scope_serial}_{name}"
+        self._lambda_rename = {**self._lambda_rename, name: mangled}
+        self.debug_names[mangled] = name
+        return mangled
+
+    def _block(self, block: Block | None, indent: int, *, brace_scope: bool = False) -> None:
         if block is None or not block.statements:
             self._emit(indent, "pass")
             return
-        for s in block.statements:
-            self._stmt(s, indent)
+        prev_rename = None
+        if brace_scope:
+            prev_rename = dict(self._lambda_rename)
+            self._brace_depth += 1
+        try:
+            for s in block.statements:
+                self._stmt(s, indent)
+        finally:
+            if brace_scope:
+                self._brace_depth -= 1
+                self._lambda_rename = prev_rename or {}
+
+    def _scoped_loop_binder(
+        self,
+        var: str,
+        *,
+        iterable_code: str,
+        body: Block | None,
+        indent: int,
+        kind: str = "foreach",
+    ) -> None:
+        """Emit a for-loop whose binder exists only inside the loop body scope."""
+        prev_rename = dict(self._lambda_rename)
+        self._brace_depth += 1
+        mangled = self._bind_brace_local(var)
+        if kind == "range":
+            self._emit(indent, f"for {mangled} in range({iterable_code}):")
+        else:
+            self._emit(indent, f"for {mangled} in {iterable_code}:")
+        if body is None or not body.statements:
+            self._emit(indent + 1, "pass")
+        else:
+            for s in body.statements:
+                self._stmt(s, indent + 1)
+        self._brace_depth -= 1
+        self._lambda_rename = prev_rename
 
     # ---- expressions ----
 
@@ -956,7 +1028,13 @@ class _Emitter:
             return self._literal(expr)
         if isinstance(expr, InterpolatedString):
             text = _translate_string_literal(expr.raw)
-            return re.sub(r"\bthis\b", "self", text)
+            text = re.sub(r"\bthis\b", "self", text)
+            if self._lambda_rename:
+                for pys_name, emitted in sorted(
+                    self._lambda_rename.items(), key=lambda kv: -len(kv[0])
+                ):
+                    text = re.sub(rf"\b{re.escape(pys_name)}\b", emitted, text)
+            return text
         if isinstance(expr, Identifier):
             name = self._lambda_rename.get(expr.name, expr.name)
             if expr.name in self.shared_vars:
@@ -1162,7 +1240,9 @@ class _Emitter:
             self.debug_names[emitted] = free
         parts = list(expr.params)
         for f in frees:
-            parts.append(f"{rename[f]}={f}")
+            # Default must read the *current* outer binding (e.g. mangled loop binder).
+            outer = self._lambda_rename.get(f, f)
+            parts.append(f"{rename[f]}={outer}")
         self._emit(self._expr_indent, f"def {name}({', '.join(parts)}):")
         prev_rename = self._lambda_rename
         self._lambda_rename = {**prev_rename, **rename}

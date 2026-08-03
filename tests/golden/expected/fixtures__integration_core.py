@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 x = 10
 y = 20
 print(f"x={x} y={y}")
-for i in range(0, 2):
-    print(i)
+for _pys_b1_i in range(0, 2):
+    print(_pys_b1_i)
 
 if x < y:
     print("lt")
