@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.61",
+  "version": "0.0.63",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -176,7 +176,7 @@
       },
       {
         "command": "pys.refactor.rename",
-        "title": "Rename Symbol",
+        "title": "Rename",
         "category": "PYS Refactor"
       },
       {
@@ -212,8 +212,8 @@
     ],
     "submenus": [
       {
-        "id": "pys.refactor.submenu",
-        "label": "Refactor"
+        "id": "pys.refactor.more",
+        "label": "More Refactorings"
       }
     ],
     "menus": {
@@ -270,9 +270,24 @@
       ],
       "editor/context": [
         {
-          "submenu": "pys.refactor.submenu",
+          "command": "pys.refactor.rename",
           "when": "resourceExtname == .pys",
-          "group": "z_commands@0"
+          "group": "pys.refactor@1"
+        },
+        {
+          "command": "pys.refactor.extractVariable",
+          "when": "resourceExtname == .pys",
+          "group": "pys.refactor@2"
+        },
+        {
+          "command": "pys.refactor.extractFunction",
+          "when": "resourceExtname == .pys",
+          "group": "pys.refactor@3"
+        },
+        {
+          "submenu": "pys.refactor.more",
+          "when": "resourceExtname == .pys",
+          "group": "pys.refactor@4"
         },
         {
           "command": "pys.findUsages",
@@ -305,34 +320,22 @@
           "group": "navigation@5"
         }
       ],
-      "pys.refactor.submenu": [
+      "pys.refactor.more": [
         {
-          "command": "pys.refactor.rename",
+          "command": "pys.refactor.inlineVariable",
           "group": "1_modify@1"
         },
         {
-          "command": "pys.refactor.extractVariable",
+          "command": "pys.refactor.inlineFunction",
           "group": "1_modify@2"
         },
         {
-          "command": "pys.refactor.extractFunction",
+          "command": "pys.refactor.safeDelete",
           "group": "1_modify@3"
         },
         {
-          "command": "pys.refactor.inlineVariable",
-          "group": "1_modify@4"
-        },
-        {
-          "command": "pys.refactor.inlineFunction",
-          "group": "1_modify@5"
-        },
-        {
-          "command": "pys.refactor.safeDelete",
-          "group": "1_modify@6"
-        },
-        {
           "command": "pys.refactor.introduceParameter",
-          "group": "1_modify@7"
+          "group": "1_modify@4"
         }
       ],
       "editor/lineNumber/context": [

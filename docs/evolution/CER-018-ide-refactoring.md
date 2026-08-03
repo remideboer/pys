@@ -31,8 +31,11 @@ true declaration identity (shadowing, imports) plus previewable edit plans.
   members) and powers Find Usages + refactors.
 - `RefactorPlan` JSON with catalog teaching fields; ops: rename, extract-*,
   inline-*, safe-delete, introduce-parameter.
-- Extension 0.0.57: F2 RenameProvider, Refactor submenu, CodeActions, preview
+- Extension 0.0.57: F2 RenameProvider, Refactor menu, CodeActions, preview
   QuickPick then `WorkspaceEdit`.
+- Extension 0.0.63: context menu shows common techniques flat (Rename, Extract
+  Variable/Function); rarer ones under click-to-open “More Refactorings”
+  (VS Code hover-open submenus are unreliable). Titles are names only.
 - CLI: `--refactor-plan <op> …`; `--usages` accepts `--line` / `--column`.
 
 ### Evidence
