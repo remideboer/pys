@@ -31,6 +31,7 @@ which is unsafe for Rename.
 
 - Extension ≥ 0.0.57: RenameProvider, refactor CodeActions; context menu keeps
   common techniques flat and rarer ones under “More Refactorings” (≥ 0.0.63).
+- Preview dialog shows resulting code (diff) before apply (≥ 0.0.64).
 - Trust boundary unchanged (ADR-001).
 
 ## Rejected alternatives

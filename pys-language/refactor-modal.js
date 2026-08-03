@@ -1,8 +1,10 @@
 /**
  * Refactor dialogs as an integrated side editor tab (ViewColumn.Beside).
  * Source stays visible on the left; primary action label is "Refactor".
+ * Preview step shows a live diff of how selected edits will rewrite the code.
  */
 const vscode = require('vscode');
+const { applySelectedEdits, buildLineDiff } = require('./refactor-preview');
 
 function escapeHtml(s) {
   return String(s ?? '')
@@ -52,8 +54,8 @@ function shellHtml({ title, bodyInner, script }) {
     background: color-mix(in srgb, var(--bg) 82%, transparent);
   }
   .dialog {
-    width: min(440px, 100%);
-    max-height: min(85vh, 640px);
+    width: min(560px, 100%);
+    max-height: min(90vh, 720px);
     overflow: auto;
     background: var(--bg);
     color: var(--fg);
@@ -92,7 +94,7 @@ function shellHtml({ title, bodyInner, script }) {
     border-radius: 4px;
   }
   input[type="text"]:focus { outline: 1px solid var(--focus); }
-  .edits { margin: 0 0 14px; max-height: 280px; overflow: auto; }
+  .edits { margin: 0 0 10px; max-height: 140px; overflow: auto; }
   .edit-row {
     display: flex;
     gap: 8px;
@@ -103,6 +105,37 @@ function shellHtml({ title, bodyInner, script }) {
   .edit-row:last-child { border-bottom: none; }
   .edit-row label { flex: 1; cursor: pointer; line-height: 1.35; }
   .edit-meta { color: var(--muted); font-size: 0.9em; }
+  .preview-label {
+    margin: 12px 0 6px;
+    font-weight: 600;
+  }
+  .code-preview {
+    margin: 0 0 14px;
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--bg) 92%, #000);
+    font-family: var(--vscode-editor-font-family, ui-monospace, Consolas, monospace);
+    font-size: var(--vscode-editor-font-size, 12px);
+    line-height: 1.45;
+  }
+  .code-preview .file-head {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--vscode-font-family, system-ui, sans-serif);
+    font-size: 0.9em;
+  }
+  .code-preview pre {
+    margin: 0;
+    padding: 8px 0;
+    white-space: pre;
+  }
+  .diff-line { padding: 0 10px; display: block; }
+  .diff-add { background: color-mix(in srgb, #3fa66b 22%, transparent); }
+  .diff-del { background: color-mix(in srgb, #f44747 18%, transparent); }
+  .diff-ctx { color: var(--muted); }
   .actions {
     display: flex;
     justify-content: flex-end;
@@ -209,7 +242,7 @@ function openModalPanel(context, title, html, onMessage, editorSnap) {
       (msg) => {
         if (onMessage(msg, (v) => {
           void finish(v);
-        })) {
+        }, panel)) {
           // finish scheduled
         }
       },
@@ -280,6 +313,44 @@ function showModalInput(context, opts, editorSnap) {
   );
 }
 
+function basenamePath(p) {
+  const s = String(p || '');
+  const i = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+  return i >= 0 ? s.slice(i + 1) : s;
+}
+
+/**
+ * @param {Record<string, string>} sources
+ * @param {object[]} edits
+ * @param {number[]|null} selectedIndices
+ */
+function renderCodePreviewHtml(sources, edits, selectedIndices) {
+  if (!sources || !Object.keys(sources).length || !edits || !edits.length) {
+    return '<p class="summary">No code preview.</p>';
+  }
+  const afterByFile = applySelectedEdits(sources, edits, selectedIndices);
+  const files = Object.keys(afterByFile).sort();
+  return files
+    .map((file) => {
+      const before = sources[file] || '';
+      const after = afterByFile[file] || '';
+      if (before === after) {
+        return '';
+      }
+      const lines = buildLineDiff(before, after, 3)
+        .map((row) => {
+          const cls =
+            row.kind === 'add' ? 'diff-add' : row.kind === 'del' ? 'diff-del' : 'diff-ctx';
+          const prefix = row.kind === 'add' ? '+' : row.kind === 'del' ? '-' : ' ';
+          return `<span class="diff-line ${cls}">${escapeHtml(prefix + row.text)}</span>`;
+        })
+        .join('\n');
+      return `<div class="file-head">${escapeHtml(basenamePath(file))}</div><pre>${lines}</pre>`;
+    })
+    .filter(Boolean)
+    .join('') || '<p class="summary">No textual change with the current selection.</p>';
+}
+
 function showModalPreview(context, opts, editorSnap) {
   const title = opts.title || 'Refactor preview';
   const summary = opts.summary || '';
@@ -287,6 +358,8 @@ function showModalPreview(context, opts, editorSnap) {
   const conflicts = opts.conflicts || [];
   const edits = opts.edits || [];
   const hardBlocked = opts.hardBlocked === true;
+  /** @type {Record<string, string>} */
+  const sources = opts.sources || {};
 
   const conflictHtml = conflicts.length
     ? `<div class="conflicts"><strong>Conflicts</strong><ul>${conflicts
@@ -299,6 +372,13 @@ function showModalPreview(context, opts, editorSnap) {
         .join('')}</ul></div>`
     : '';
 
+  const initialIndices = edits
+    .map((e, i) => (e.optional ? -1 : i))
+    .filter((i) => i >= 0);
+  const previewInner = hardBlocked
+    ? ''
+    : renderCodePreviewHtml(sources, edits, initialIndices);
+
   const editsHtml = edits
     .map((e, i) => {
       const checked = e.optional ? '' : 'checked';
@@ -307,7 +387,7 @@ function showModalPreview(context, opts, editorSnap) {
       return `<div class="edit-row">
         <input type="checkbox" id="e${i}" data-i="${i}" ${checked} ${disabled}/>
         <label for="e${i}">${escapeHtml(label)}
-          <div class="edit-meta">${escapeHtml(e.file || '')}:${e.line || ''} ${e.optional ? '(optional)' : ''}</div>
+          <div class="edit-meta">${escapeHtml(basenamePath(e.file || ''))}:${e.line || ''} ${e.optional ? '(optional)' : ''}</div>
         </label>
       </div>`;
     })
@@ -323,7 +403,9 @@ function showModalPreview(context, opts, editorSnap) {
       ${
         hardBlocked
           ? '<p class="summary">Refactor blocked until conflicts are resolved.</p>'
-          : `<div class="edits">${editsHtml || '<p class="summary">No edits.</p>'}</div>`
+          : `<div class="edits">${editsHtml || '<p class="summary">No edits.</p>'}</div>
+             <div class="preview-label">Code after refactor</div>
+             <div class="code-preview" id="codePreview">${previewInner}</div>`
       }
       <div class="actions">
         <button type="button" class="secondary" id="cancel">${hardBlocked ? 'Close' : 'Cancel'}</button>
@@ -336,6 +418,20 @@ function showModalPreview(context, opts, editorSnap) {
         return Array.from(document.querySelectorAll('input[type=checkbox][data-i]'))
           .filter((el) => el.checked)
           .map((el) => Number(el.getAttribute('data-i')));
+      }
+      function refreshPreview() {
+        if (hardBlocked) return;
+        vscode.postMessage({ type: 'repreview', indices: collect() });
+      }
+      window.addEventListener('message', (ev) => {
+        const msg = ev.data || {};
+        if (msg.type === 'setPreview') {
+          const el = document.getElementById('codePreview');
+          if (el) el.innerHTML = msg.html;
+        }
+      });
+      for (const el of document.querySelectorAll('input[type=checkbox][data-i]')) {
+        el.addEventListener('change', refreshPreview);
       }
       const ok = document.getElementById('ok');
       if (ok) {
@@ -355,7 +451,13 @@ function showModalPreview(context, opts, editorSnap) {
     context,
     title,
     html,
-    (msg, resolve) => {
+    (msg, resolve, panel) => {
+      if (msg.type === 'repreview') {
+        const indices = Array.isArray(msg.indices) ? msg.indices.map(Number) : [];
+        const next = renderCodePreviewHtml(sources, edits, indices);
+        void panel.webview.postMessage({ type: 'setPreview', html: next });
+        return false;
+      }
       if (msg.type === 'ok') {
         resolve(Array.isArray(msg.indices) ? msg.indices.map(Number) : []);
         return true;

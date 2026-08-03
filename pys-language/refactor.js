@@ -59,6 +59,32 @@ function registerRefactoring(context, deps = {}) {
    * @param {object} plan
    * @param {ReturnType<typeof captureEditor>} editorSnap
    */
+  async function loadEditSources(document, edits) {
+    /** @type {Record<string, string>} */
+    const sources = {};
+    const paths = [...new Set((edits || []).map((e) => e.file).filter(Boolean))];
+    const docPath = document.uri.fsPath;
+    for (const filePath of paths) {
+      try {
+        if (filePath === docPath) {
+          sources[filePath] = document.getText();
+          continue;
+        }
+        // Path equality can differ by separators / casing on Windows.
+        const uri = vscode.Uri.file(filePath);
+        if (uri.fsPath === docPath) {
+          sources[filePath] = document.getText();
+          continue;
+        }
+        const other = await vscode.workspace.openTextDocument(uri);
+        sources[filePath] = other.getText();
+      } catch (_e) {
+        sources[filePath] = '';
+      }
+    }
+    return sources;
+  }
+
   async function previewAndApply(document, plan, editorSnap) {
     if (!plan) {
       return;
@@ -70,6 +96,7 @@ function registerRefactoring(context, deps = {}) {
     const hard = conflicts.filter((c) => !c.soft);
     const hardBlocked = hard.length > 0 && !plan.ok;
     const edits = plan.edits || [];
+    const sources = hardBlocked ? {} : await loadEditSources(document, edits);
 
     if (!hardBlocked && !edits.length) {
       await showModalPreview(
@@ -80,6 +107,7 @@ function registerRefactoring(context, deps = {}) {
           why,
           conflicts,
           edits: [],
+          sources: {},
           hardBlocked: true,
         },
         editorSnap,
@@ -95,6 +123,7 @@ function registerRefactoring(context, deps = {}) {
         why,
         conflicts,
         edits,
+        sources,
         hardBlocked,
       },
       editorSnap,

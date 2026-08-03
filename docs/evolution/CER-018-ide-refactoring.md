@@ -36,6 +36,8 @@ true declaration identity (shadowing, imports) plus previewable edit plans.
 - Extension 0.0.63: context menu shows common techniques flat (Rename, Extract
   Variable/Function); rarer ones under click-to-open “More Refactorings”
   (VS Code hover-open submenus are unreliable). Titles are names only.
+- Extension 0.0.64: preview dialog shows a live “Code after refactor” diff of
+  selected edits before apply (client-side apply mirroring `refactor/apply.py`).
 - CLI: `--refactor-plan <op> …`; `--usages` accepts `--line` / `--column`.
 
 ### Evidence
