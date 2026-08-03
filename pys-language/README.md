@@ -9,6 +9,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
 - Brace-based indentation and `##` … `/#` block comments
 - Snippets for functions, classes, loops, `inherits`, and interpolation
 - Keyword / type completions and hover hints
+- Go to Definition / **Find Usages** (editor context menu on the identifier under the cursor)
 - Language / file icons for `.pys`
 - Markdown ` ```pys ` fences: editor + preview highlighting
 - **Run** and **Debug** using the bundled transpiler

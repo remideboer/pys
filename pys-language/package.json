@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.55",
+  "version": "0.0.56",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -167,6 +167,12 @@
         "title": "Add Logpoint",
         "category": "PYS",
         "icon": "$(debug-breakpoint-log)"
+      },
+      {
+        "command": "pys.findUsages",
+        "title": "Find Usages",
+        "category": "PYS",
+        "icon": "$(references)"
       }
     ],
     "menus": {
@@ -222,6 +228,11 @@
         }
       ],
       "editor/context": [
+        {
+          "command": "pys.findUsages",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@0"
+        },
         {
           "command": "pys.runFile",
           "when": "resourceExtname == .pys",

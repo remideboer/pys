@@ -577,6 +577,54 @@ function activate(context) {
     provideDeclaration: provideSymbolLocation,
   }));
 
+  async function findSymbolUsages(document, symbol, token) {
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace || !symbol) {
+      return [];
+    }
+    const workspacePath = workspace.uri.fsPath;
+    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const spec = buildWorkspaceIdeProcessSpec(
+      context.extensionPath,
+      workspacePath,
+      document.uri.fsPath,
+      ['--usages', symbol],
+    );
+    if (!spec) {
+      return [];
+    }
+    try {
+      const parsed = await runJsonProcess(
+        pythonExecutable,
+        spec.args,
+        spec.options,
+        { signal: token },
+      );
+      const usages = (parsed && parsed.usages) || [];
+      return usages
+        .filter((u) => u && u.file)
+        .map((u) => {
+          const uri = vscode.Uri.file(u.file);
+          const line = Math.max((u.line || 1) - 1, 0);
+          const column = Math.max((u.column || 1) - 1, 0);
+          const pos = new vscode.Position(line, column);
+          return new vscode.Location(uri, pos);
+        });
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  context.subscriptions.push(vscode.languages.registerReferenceProvider({ language: 'pys' }, {
+    async provideReferences(document, position, _refContext, token) {
+      const symbol = getDottedPathAt(document, position);
+      if (!symbol) {
+        return [];
+      }
+      return findSymbolUsages(document, symbol, token);
+    },
+  }));
+
   const typeTokenCache = new Map(); // uri -> { types: Set, version: number }
   const semanticLegend = new vscode.SemanticTokensLegend(['pysType'], []);
 
@@ -1278,6 +1326,15 @@ function activate(context) {
       }
     }),
   );
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.findUsages', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== 'pys') {
+      return;
+    }
+    // Uses the ReferenceProvider registered above (Peek / References view).
+    await vscode.commands.executeCommand('editor.action.referenceSearch.trigger');
+  }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
     await runPysFile(resolveTargetPysFile(file));

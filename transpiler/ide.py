@@ -1,4 +1,4 @@
-"""IDE helpers: symbol location for go-to-definition / highlighting.
+"""IDE helpers: symbol location, Find Usages, and highlighting.
 
 Uses the AST pipeline (parse + ImportResolver + compile_pys).
 """
@@ -537,6 +537,52 @@ def lookup_symbol(analysis: dict, symbol: str) -> dict | None:
     return {"file": str(path), "line": line, "column": col, "kind": kind}
 
 
+def find_usages(source_path: Path, symbol: str) -> list[dict[str, Any]]:
+    """Find identifier occurrences for Find Usages / ReferenceProvider.
+
+    Searches ``.pys`` files in the same folder as ``source_path`` (package
+    scope). Uses the lexer so string/comment text is ignored. The last segment
+    of a dotted path is the match name (``HttpStatus.OK`` → ``OK``).
+    """
+    from .lex import TokenKind, tokenize
+
+    symbol = (symbol or "").strip()
+    if not symbol:
+        return []
+    name = symbol.split(".")[-1]
+    if not re.fullmatch(r"[A-Za-z_]\w*", name):
+        return []
+    # Skip language keywords / type names used as keywords — not useful as usages.
+    from .lex import KEYWORDS
+
+    if name in KEYWORDS or name in _PRIMITIVES:
+        return []
+
+    source_path = source_path.resolve()
+    folder = source_path.parent
+    files = sorted(folder.glob("*.pys"))
+    hits: list[dict[str, Any]] = []
+    for path in files:
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        try:
+            tokens = tokenize(text)
+        except Exception:
+            continue
+        for tok in tokens:
+            if tok.kind == TokenKind.IDENT and tok.text == name:
+                hits.append(
+                    {
+                        "file": str(path.resolve()),
+                        "line": tok.line,
+                        "column": tok.column,
+                    }
+                )
+    return hits
+
+
 def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
     """Transpile entry + imports into ``out_dir`` with ``*.pysmap.json`` sidecars.
 
@@ -665,9 +711,32 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result))
         return 0 if result.get("ok") else 1
     if len(argv) < 1:
-        print(json.dumps({"ok": False, "message": "Usage: python -m transpiler.ide <file.pys> [symbol]"}))
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "message": (
+                        "Usage: python -m transpiler.ide <file.pys> [symbol] "
+                        "| <file.pys> --usages <symbol>"
+                    ),
+                }
+            )
+        )
         return 2
     path = Path(argv[0])
+    if len(argv) >= 3 and argv[1] == "--usages":
+        symbol = argv[2]
+        usages = find_usages(path, symbol)
+        print(
+            json.dumps(
+                {
+                    "ok": True,
+                    "symbol": symbol,
+                    "usages": usages,
+                }
+            )
+        )
+        return 0
     try:
         result = analyze_file(path)
     except Exception as exc:
