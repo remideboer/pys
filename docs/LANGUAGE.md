@@ -592,6 +592,37 @@ Rules (summary):
 | `entity` | Identity fields only | `identity(...)` | Entity-only |
 | `class` | Reference (manual override) | Implicit | Yes |
 
+### Lambdas
+
+Anonymous first-class functions. Type form `lambda<P…, R>` (last type is the
+return; `lambda<int>` means zero parameters returning `int`).
+
+```pys
+lambda<int, bool> isEven = n => n % 2 == 0
+int doubled = apply(5, n => n * 2)
+
+lambda<int, int, int> safeDivide = (int a, int b) => {
+    if (b == 0) {
+        return 0
+    }
+    return a / b
+}
+```
+
+Rules:
+
+1. Forms: `n => expr`, `(params) => expr`, `(params) => { … }`, `() => …`
+2. Param types may be omitted when the target type is `lambda<…>`
+3. **Capture by value** at creation; captured names are read-only unless
+   `shared` (same model as `tasks`)
+4. Foreach / C-style loop variables are immutable per iteration — each lambda
+   in a loop gets its own captured value (no Python late-binding bug)
+5. `name.loop(fn)` still maps: `list(map(fn, name))`
+
+See [`examples/lambdas.pys`](../examples/lambdas.pys) and JIT
+[`J-lambda`](../tutorials/jit/J-lambda.md). `atomic` (race-free `+=`) is
+deferred — `shared` is visibility, not atomicity ([CONCURRENCY](CONCURRENCY.md)).
+
 ### Enums
 
 Enums are **nominal closed sets** of named constants. Members are immutable.
@@ -650,6 +681,7 @@ Rules:
 | `module` | Explicit module scope (same file family) |
 
 Applies to functions, classes, structs, `data`, `entity`, enums, interfaces, and top-level `const` / `fix`.
+(`lambda<…>` bindings use the same top-level visibility rules as other typed decls.)
 
 ### Member access (inside classes)
 

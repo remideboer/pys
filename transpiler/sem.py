@@ -30,6 +30,7 @@ from .ast_nodes import (
     InterfaceDef,
     InterpolatedString,
     KeywordArg,
+    LambdaExpr,
     Literal,
     Member,
     Module,
@@ -189,6 +190,7 @@ def analyze(
     _check_traits(module.body, types=types)
     _check_abstract_classes(module.body)
     _check_interfaces(module.body)
+    _check_lambdas(module.body, types=types)
     _check_shared_capture(module.body)
     _check_arrays(module.body)
     _check_class_member_modifiers(module.body)
@@ -563,6 +565,7 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         "dict",
         "tuple",
         "set",
+        "lambda",
         "var",
     }
     if not base or base in primitives:
@@ -1296,7 +1299,8 @@ def _check_bindings(
             declared.add(stmt.var)
             if stmt.var_type:
                 types[stmt.var] = stmt.var_type
-            # foreach vars are writable in PYS? Legacy only marks C-style for counters.
+            # Immutable per iteration (lambda.md §3 / classic closure capture).
+            nested = set(loop_counters) | {stmt.var}
             if stmt.body:
                 _check_bindings(
                     stmt.body.statements,
@@ -1304,7 +1308,7 @@ def _check_bindings(
                     declared=declared,
                     constants=constants,
                     fixed=fixed,
-                    loop_counters=loop_counters,
+                    loop_counters=nested,
                     class_parents=class_parents,
                     class_names=class_names,
                     class_implements=class_implements,
@@ -3627,6 +3631,288 @@ def _check_enums(
                         walk(t.body.statements)
 
     walk(body)
+
+
+def _parse_lambda_type_parts(type_name: str) -> tuple[list[str], str] | None:
+    """Split `lambda<P…, R>` into (param_types, return_type). `lambda<R>` → ([], R)."""
+    name = (type_name or "").strip()
+    if not name.startswith("lambda<") or not name.endswith(">"):
+        return None
+    inner = name[len("lambda<") : -1].strip()
+    if not inner:
+        return None
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(inner):
+        if ch == "<":
+            depth += 1
+        elif ch == ">":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(inner[start:i].strip())
+            start = i + 1
+    parts.append(inner[start:].strip())
+    if not parts or any(not p for p in parts):
+        return None
+    if len(parts) == 1:
+        return [], parts[0]
+    return parts[:-1], parts[-1]
+
+
+def _infer_lambda_params(expr: LambdaExpr, target_type: str) -> None:
+    """Fill omitted param types from a declared `lambda<…>` target (mutates expr)."""
+    parsed = _parse_lambda_type_parts(target_type)
+    if parsed is None:
+        return
+    param_types, _ret = parsed
+    if len(param_types) != len(expr.params):
+        line = expr.span.line if expr.span else 1
+        col = expr.span.column if expr.span else 1
+        _transpile_error(
+            f"Lambda has {len(expr.params)} parameter(s) but type `{target_type}` "
+            f"expects {len(param_types)}.",
+            line,
+            col,
+            "=>",
+            code="pys.lambda-arity",
+        )
+    for i, t in enumerate(param_types):
+        if i < len(expr.param_types) and not expr.param_types[i]:
+            expr.param_types[i] = t
+
+
+def _check_lambdas(body: list[Any], *, types: dict[str, str]) -> None:
+    """Infer lambda params from context; enforce capture mutation rules."""
+    fn_param_types: dict[str, list[str]] = {}
+    for stmt in body:
+        if isinstance(stmt, FunctionDef):
+            fn_param_types[stmt.name] = list(stmt.param_types)
+
+    def check_assign_in_lambda(
+        stmt: AssignStmt | AugAssignStmt,
+        *,
+        lambda_locals: set[str],
+        shared: set[str],
+        declared: set[str],
+    ) -> None:
+        if not _is_simple_name(stmt.name):
+            return
+        name = stmt.name
+        if name in lambda_locals or name in shared:
+            return
+        if name not in declared:
+            return
+        line = stmt.span.line if stmt.span else 1
+        col = stmt.span.column if stmt.span else 1
+        op = getattr(stmt, "op", "=")
+        _transpile_error(
+            f"Cannot mutate captured variable '{name}' inside lambda — "
+            f"declare it 'shared' if mutation across closures is intended.",
+            line,
+            col,
+            f"{name}{op}" if op != "=" else f"{name} = ...",
+            code="pys.lambda-capture",
+            tips=[f"Write `shared <type> {name} = …` at the outer scope."],
+        )
+
+    def walk_expr(
+        expr: Expr | None,
+        *,
+        declared: set[str],
+        shared: set[str],
+        expected_type: str = "",
+    ) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, LambdaExpr):
+            if expected_type:
+                _infer_lambda_params(expr, expected_type)
+            lambda_locals = set(expr.params)
+            if isinstance(expr.body, Block):
+                walk_stmts(
+                    expr.body.statements,
+                    declared=declared,
+                    shared=shared,
+                    in_lambda=True,
+                    lambda_locals=lambda_locals,
+                )
+            else:
+                walk_expr(expr.body, declared=declared, shared=shared)
+            return
+        if isinstance(expr, Call):
+            walk_expr(expr.callee, declared=declared, shared=shared)
+            callee_name = ""
+            if isinstance(expr.callee, Identifier):
+                callee_name = expr.callee.name
+            ptypes = fn_param_types.get(callee_name, [])
+            for i, a in enumerate(expr.args):
+                if isinstance(a, KeywordArg):
+                    walk_expr(
+                        a.value,
+                        declared=declared,
+                        shared=shared,
+                        expected_type="",
+                    )
+                    continue
+                et = ptypes[i] if i < len(ptypes) else ""
+                walk_expr(a, declared=declared, shared=shared, expected_type=et)
+            return
+        if isinstance(expr, KeywordArg):
+            walk_expr(expr.value, declared=declared, shared=shared)
+            return
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "object",
+            "index",
+            "target",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child, declared=declared, shared=shared)
+        elems = getattr(expr, "elements", None)
+        if isinstance(elems, list):
+            for e in elems:
+                if isinstance(e, Expr):
+                    walk_expr(e, declared=declared, shared=shared)
+        if isinstance(expr, SwitchExpr):
+            for case in expr.cases:
+                walk_expr(case.value, declared=declared, shared=shared)
+            walk_expr(expr.subject, declared=declared, shared=shared)
+
+    def walk_stmts(
+        stmts: list[Any],
+        *,
+        declared: set[str],
+        shared: set[str],
+        in_lambda: bool = False,
+        lambda_locals: set[str] | None = None,
+    ) -> None:
+        declared = set(declared)
+        shared = set(shared)
+        lambda_locals = set(lambda_locals or ())
+        for stmt in stmts:
+            if isinstance(stmt, SharedDecl):
+                declared.add(stmt.name)
+                shared.add(stmt.name)
+                continue
+            if isinstance(stmt, AssignStmt):
+                if in_lambda and not (stmt.declare_type or stmt.is_const or stmt.is_fix):
+                    check_assign_in_lambda(
+                        stmt,
+                        lambda_locals=lambda_locals,
+                        shared=shared,
+                        declared=declared,
+                    )
+                et = ""
+                if stmt.declare_type and stmt.declare_type.startswith("lambda"):
+                    et = stmt.declare_type
+                walk_expr(stmt.value, declared=declared, shared=shared, expected_type=et)
+                if stmt.declare_type or stmt.is_const or stmt.is_fix:
+                    declared.add(stmt.name)
+                    if in_lambda:
+                        lambda_locals.add(stmt.name)
+            elif isinstance(stmt, AugAssignStmt):
+                if in_lambda:
+                    check_assign_in_lambda(
+                        stmt,
+                        lambda_locals=lambda_locals,
+                        shared=shared,
+                        declared=declared,
+                    )
+                walk_expr(stmt.value, declared=declared, shared=shared)
+            elif isinstance(stmt, ArrayDecl):
+                declared.add(stmt.name)
+                if in_lambda:
+                    lambda_locals.add(stmt.name)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt)):
+                val = getattr(stmt, "value", None) or getattr(stmt, "expr", None)
+                walk_expr(val, declared=declared, shared=shared)
+            elif isinstance(stmt, FunctionDef):
+                local = set(declared) | set(stmt.params)
+                if stmt.body:
+                    # Match params to lambda types for nested inference in body.
+                    walk_stmts(stmt.body.statements, declared=local, shared=shared)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    local = set(declared) | set(m.params)
+                    if m.body:
+                        walk_stmts(m.body.statements, declared=local, shared=shared)
+            elif isinstance(stmt, EntityDef):
+                for m in stmt.methods:
+                    local = set(declared) | set(m.params)
+                    if m.body:
+                        walk_stmts(m.body.statements, declared=local, shared=shared)
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond, declared=declared, shared=shared)
+                if stmt.then_body:
+                    walk_stmts(
+                        stmt.then_body.statements,
+                        declared=declared,
+                        shared=shared,
+                        in_lambda=in_lambda,
+                        lambda_locals=lambda_locals,
+                    )
+                if stmt.else_body:
+                    walk_stmts(
+                        stmt.else_body.statements,
+                        declared=declared,
+                        shared=shared,
+                        in_lambda=in_lambda,
+                        lambda_locals=lambda_locals,
+                    )
+            elif isinstance(stmt, Block):
+                walk_stmts(
+                    stmt.statements,
+                    declared=declared,
+                    shared=shared,
+                    in_lambda=in_lambda,
+                    lambda_locals=lambda_locals,
+                )
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(stmt, WhileStmt):
+                    walk_expr(stmt.cond, declared=declared, shared=shared)
+                if isinstance(stmt, ForEachStmt):
+                    walk_expr(stmt.iterable, declared=declared, shared=shared)
+                    local = set(declared) | {stmt.var}
+                elif isinstance(stmt, ForRangeStmt):
+                    local = set(declared) | {stmt.var}
+                else:
+                    local = declared
+                if stmt.body:
+                    walk_stmts(
+                        stmt.body.statements,
+                        declared=local,
+                        shared=shared,
+                        in_lambda=in_lambda,
+                        lambda_locals=lambda_locals,
+                    )
+            elif isinstance(stmt, TasksBlock):
+                for t in stmt.tasks:
+                    if t.body:
+                        walk_stmts(
+                            t.body.statements,
+                            declared=set(declared) | set(t.params),
+                            shared=shared,
+                        )
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject, declared=declared, shared=shared)
+                for case in stmt.cases:
+                    if case.body:
+                        walk_stmts(
+                            case.body.statements,
+                            declared=declared,
+                            shared=shared,
+                            in_lambda=in_lambda,
+                            lambda_locals=lambda_locals,
+                        )
+
+    walk_stmts(body, declared=set(types), shared=set())
 
 
 def _check_shared_capture(body: list[Any]) -> None:

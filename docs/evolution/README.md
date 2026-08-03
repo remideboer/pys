@@ -46,5 +46,6 @@ Each record then uses:
 | [CER-009](CER-009-abstract-classes.md) | Abstract classes (`abstract` / `void`) | Language |
 | [CER-010](CER-010-interface-method-access.md) | Interface methods omit access modifiers | Language |
 | [CER-011](CER-011-data-and-entity.md) | `data` value objects and `entity` identity types | Language |
+| [CER-012](CER-012-lambdas.md) | Lambdas with by-value capture | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

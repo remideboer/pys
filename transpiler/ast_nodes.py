@@ -114,6 +114,15 @@ class ArrayLiteral(Expr):
 
 
 @dataclass
+class LambdaExpr(Expr):
+    """Anonymous function: `(params) => expr|{…}` or `n => expr`."""
+
+    params: list[str] = field(default_factory=list)
+    param_types: list[str] = field(default_factory=list)
+    body: Expr | Block | None = None
+
+
+@dataclass
 class CommentStmt(Node):
     """Standalone `# ...` line preserved in Python output."""
 

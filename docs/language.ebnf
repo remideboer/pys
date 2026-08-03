@@ -101,9 +101,14 @@ type_args        = "<" , type_expr , { "," , type_expr } , ">" ;
 type_expr        = primitive_type
                  | collection_type , [ type_args ]
                  | named_type , [ type_args ]
-                 | array_type ;
+                 | array_type
+                 | lambda_type ;
 
 collection_type  = "list" | "dict" | "tuple" | "set" ;
+
+lambda_type      = "lambda" , "<" , type_expr , { "," , type_expr } , ">" ;
+(* Last type_expr is the return type; preceding are parameter types.
+   lambda<int> = () => int; lambda<int, bool> = (int) => bool. *)
 
 type_name        = type_expr ;
 
@@ -409,7 +414,18 @@ primary          = identifier
                  | array_literal
                  | "(" , expression , ")"
                  | constructor_call
-                 | switch_expr ;
+                 | switch_expr
+                 | lambda_expr ;
+
+(* ------------------------- Lambdas ------------------------- *)
+
+lambda_expr       = lambda_params , "=>" , ( expression | block ) ;
+
+lambda_params     = "(" , [ lambda_param_list ] , ")"
+                   | identifier ;
+
+lambda_param_list = lambda_param , { "," , lambda_param } ;
+lambda_param      = [ type_name ] , identifier ;
 
 constructor_call = named_type , [ type_args ] , "(" , [ arg_list ] , ")" ;
 
@@ -468,7 +484,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
 
   if else unless loop while for repeat times then do elif
   function func return class struct data entity identity enum interface implements inherits super sealed abstract
-  trait uses requires void
+  trait uses requires void lambda
   import from all var const fix print pass break continue switch case default
   this and or not xor shift
   public private protected global package module

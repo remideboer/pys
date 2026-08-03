@@ -1,0 +1,56 @@
+# Lambdas: first-class function values with by-value capture.
+# Capture is fixed at creation time (no Python late-binding). Captured names
+# are read-only unless declared `shared`. See tutorials/jit/J-lambda.md.
+
+# --- Named lambda<…> type + inferred param ---
+lambda<int, bool> isEven = n => n % 2 == 0
+print(isEven(4))  # True
+print(isEven(3))  # False
+
+# --- Pass as argument ---
+function int apply(int x, lambda<int, int> fn) {
+    return fn(x)
+}
+print(apply(5, n => n * 2))  # 10
+
+# --- Block body with return ---
+lambda<int, int, int> safeDivide = (int a, int b) => {
+    if (b == 0) {
+        return 0
+    }
+    return a / b
+}
+print(safeDivide(10, 2))  # 5
+print(safeDivide(10, 0))  # 0
+
+# --- .loop maps (not filter): callback returns a value per element ---
+list<int> numbers = [1, 2, 3, 4, 5]
+int threshold = 3
+list<bool> above = numbers.loop(n => n > threshold)
+print(above[0])  # False
+print(above[3])  # True
+
+# --- Capture by value in a foreach (immutable per iteration) ---
+# Unlike Python `[lambda: i for i in …]`, each callback keeps its own i.
+list<lambda<int>> callbacks = []
+loop (int i in [0, 1, 2]) {
+    callbacks = callbacks + [() => print(i)]
+}
+loop (lambda<int> cb in callbacks) {
+    cb()
+}
+# expected prints: 0 / 1 / 2
+
+# --- shared allows intentional mutation across closures ---
+shared int counter = 0
+list<int> bits = [1, 2, 3]
+bits.loop(n => {
+    counter += n
+    return n
+})
+print(counter)  # 6
+
+# Mutation of a non-shared capture is a compile error, e.g.:
+#   int x = 0
+#   bits.loop(n => { x += n; return n })
+# → Cannot mutate captured variable 'x' inside lambda — declare it 'shared' …

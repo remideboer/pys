@@ -349,13 +349,20 @@
     {
       id: 'type_expr',
       title: 'type_expr',
-      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type ;',
+      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type | lambda_type ;',
       node: Choice(
         N('primitive_type'),
         Seq(N('collection_type'), Opt(N('type_args'))),
         Seq(N('named_type'), Opt(N('type_args'))),
-        N('array_type')
+        N('array_type'),
+        N('lambda_type')
       )
+    },
+    {
+      id: 'lambda_type',
+      title: 'lambda_type',
+      ebnf: 'lambda_type = "lambda" "<" type_expr { "," type_expr } ">" ;',
+      node: Seq(T('lambda'), T('<'), N('type_expr'), Star(Seq(T(','), N('type_expr'))), T('>'))
     },
     {
       id: 'array_type',
@@ -839,6 +846,37 @@
         Choice(T('**'), T('//')),
         T('~')
       )
+    },
+    {
+      id: 'lambda_expr',
+      title: 'lambda_expr',
+      ebnf: 'lambda_expr = lambda_params "=>" ( expression | block ) ;',
+      node: Seq(
+        N('lambda_params'),
+        T('=>'),
+        Choice(N('expression'), N('block'))
+      )
+    },
+    {
+      id: 'lambda_params',
+      title: 'lambda_params',
+      ebnf: 'lambda_params = "(" [ lambda_param_list ] ")" | identifier ;',
+      node: Choice(
+        Seq(T('('), Opt(N('lambda_param_list')), T(')')),
+        N('identifier')
+      )
+    },
+    {
+      id: 'lambda_param_list',
+      title: 'lambda_param_list',
+      ebnf: 'lambda_param { "," lambda_param } ;',
+      node: Seq(N('lambda_param'), Star(Seq(T(','), N('lambda_param'))))
+    },
+    {
+      id: 'lambda_param',
+      title: 'lambda_param',
+      ebnf: '[ type_name ] identifier ;',
+      node: Seq(Opt(N('type_name')), N('identifier'))
     },
     {
       id: 'expression',

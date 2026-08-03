@@ -35,6 +35,13 @@ Full rationale (Java/C#/Hibernate counterexamples + sources):
 [`docs/DATA_ENTITY.md`](docs/DATA_ENTITY.md). Samples:
 [`examples/data.pys`](examples/data.pys), [`examples/entities.pys`](examples/entities.pys).
 
+## Why lambdas capture by value
+
+Python and older JS close over **bindings** (late-binding / shared loop vars).
+PYS lambdas capture **values at creation**; captured names are read-only unless
+`shared` (same visibility rule as `tasks`). Sample:
+[`examples/lambdas.pys`](examples/lambdas.pys). JIT: [`tutorials/jit/J-lambda.md`](tutorials/jit/J-lambda.md).
+
 ## Getting Started
 
 ### Students — install the extension

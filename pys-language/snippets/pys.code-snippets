@@ -199,6 +199,21 @@
     ],
     "description": "PYS entity with identity(...) key fields"
   },
+  "Lambda binding": {
+    "prefix": "lambda",
+    "body": [
+      "lambda<${1:int}, ${2:bool}> ${3:name} = ${4:n} => ${5:n % 2 == 0}",
+      "${0}"
+    ],
+    "description": "PYS lambda type binding (by-value capture)"
+  },
+  "Lambda arrow": {
+    "prefix": "=>",
+    "body": [
+      "(${1:n}) => ${2:n}"
+    ],
+    "description": "PYS lambda expression"
+  },
   "Enum": {
     "prefix": "enum",
     "body": [

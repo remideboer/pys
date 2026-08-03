@@ -52,6 +52,7 @@ KEYWORDS = frozenset(
         "data",
         "entity",
         "identity",
+        "lambda",
         "enum",
         "interface",
         "implements",

@@ -34,6 +34,7 @@ from ..ast_nodes import (
     InterfaceDef,
     InterpolatedString,
     KeywordArg,
+    LambdaExpr,
     Literal,
     Member,
     MethodDef,
@@ -159,6 +160,9 @@ class _Emitter:
         self.entity_defs: dict[str, EntityDef] = {}
         self.trait_defs: dict[str, TraitDef] = {}
         self.trait_names: set[str] = set()
+        self.lambda_serial = 0
+        self._expr_indent = 0
+        self._lambda_rename: dict[str, str] = {}
         self._import_resolver = None
         if source_path is not None:
             from .. import imports as imports_mod
@@ -214,6 +218,14 @@ class _Emitter:
         self.lines.append(("    " * indent) + text)
 
     def _stmt(self, stmt, indent: int) -> None:
+        prev = self._expr_indent
+        self._expr_indent = indent
+        try:
+            self._stmt_inner(stmt, indent)
+        finally:
+            self._expr_indent = prev
+
+    def _stmt_inner(self, stmt, indent: int) -> None:
         if isinstance(stmt, BlankStmt):
             self.lines.append("")
         elif isinstance(stmt, CommentStmt):
@@ -226,26 +238,28 @@ class _Emitter:
         elif isinstance(stmt, ArrayDecl):
             self._array_decl(stmt, indent)
         elif isinstance(stmt, AugAssignStmt):
-            if stmt.name in self.shared_vars:
+            name = self._lambda_rename.get(stmt.name, stmt.name)
+            shared = stmt.name in self.shared_vars
+            if shared:
                 if stmt.op == "++":
-                    self._emit(indent, f"{stmt.name}.iadd(1)")
+                    self._emit(indent, f"{name}.iadd(1)")
                 elif stmt.op == "--":
-                    self._emit(indent, f"{stmt.name}.isub(1)")
+                    self._emit(indent, f"{name}.isub(1)")
                 elif stmt.op == "+=":
-                    self._emit(indent, f"{stmt.name}.iadd({self._expr(stmt.value)})")
+                    self._emit(indent, f"{name}.iadd({self._expr(stmt.value)})")
                 elif stmt.op == "-=":
-                    self._emit(indent, f"{stmt.name}.isub({self._expr(stmt.value)})")
+                    self._emit(indent, f"{name}.isub({self._expr(stmt.value)})")
                 else:
                     self._emit(
                         indent,
-                        f"{stmt.name}.set({stmt.name}.value {stmt.op[0]} {self._expr(stmt.value)})",
+                        f"{name}.set({name}.value {stmt.op[0]} {self._expr(stmt.value)})",
                     )
             elif stmt.op == "++":
-                self._emit(indent, f"{stmt.name} += 1")
+                self._emit(indent, f"{name} += 1")
             elif stmt.op == "--":
-                self._emit(indent, f"{stmt.name} -= 1")
+                self._emit(indent, f"{name} -= 1")
             else:
-                self._emit(indent, f"{stmt.name} {stmt.op} {self._expr(stmt.value)}")
+                self._emit(indent, f"{name} {stmt.op} {self._expr(stmt.value)}")
         elif isinstance(stmt, SharedDecl):
             self.needs_concurrency = True
             self.shared_vars.add(stmt.name)
@@ -368,9 +382,15 @@ class _Emitter:
         else:
             value = self._expr(stmt.value)
         if "." not in stmt.name and stmt.name in self.shared_vars:
-            self._emit(indent, f"{stmt.name}.set({value})")
+            lhs = self._lambda_rename.get(stmt.name, stmt.name)
+            self._emit(indent, f"{lhs}.set({value})")
             return
-        self._emit(indent, f"{stmt.name} = {value}")
+        lhs = (
+            self._lambda_rename.get(stmt.name, stmt.name)
+            if "." not in stmt.name
+            else stmt.name
+        )
+        self._emit(indent, f"{lhs} = {value}")
 
     @staticmethod
     def _base_type(type_name: str) -> str:
@@ -857,9 +877,10 @@ class _Emitter:
             text = _translate_string_literal(expr.raw)
             return re.sub(r"\bthis\b", "self", text)
         if isinstance(expr, Identifier):
+            name = self._lambda_rename.get(expr.name, expr.name)
             if expr.name in self.shared_vars:
-                return f"{expr.name}.value"
-            return expr.name
+                return f"{name}.value"
+            return name
         if isinstance(expr, AwaitExpr):
             return self._await(expr)
         if isinstance(expr, UnaryOp):
@@ -925,7 +946,137 @@ class _Emitter:
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
         if isinstance(expr, SwitchExpr):
             return self._switch_expr(expr)
+        if isinstance(expr, LambdaExpr):
+            return self._lambda(expr)
         raise TypeError(f"unsupported expr {type(expr).__name__}")
+
+    def _lambda_free_names(self, expr: LambdaExpr) -> list[str]:
+        params = set(expr.params)
+        used: set[str] = set()
+
+        def walk_expr(e: Expr | None, *, as_callee: bool = False) -> None:
+            if e is None:
+                return
+            if isinstance(e, Identifier):
+                if as_callee:
+                    return
+                if e.name in params:
+                    return
+                if e.name in {
+                    "true",
+                    "false",
+                    "null",
+                    "self",
+                    "this",
+                    "print",
+                    "super",
+                }:
+                    return
+                used.add(e.name)
+                return
+            if isinstance(e, Call):
+                walk_expr(e.callee, as_callee=isinstance(e.callee, Identifier))
+                if not isinstance(e.callee, Identifier):
+                    walk_expr(e.callee)
+                for a in e.args:
+                    walk_expr(a)
+                return
+            if isinstance(e, KeywordArg):
+                walk_expr(e.value)
+                return
+            if isinstance(e, LambdaExpr):
+                # Nested lambda: outer free still free if not nested param.
+                for name in self._lambda_free_names(e):
+                    if name not in params:
+                        used.add(name)
+                return
+            for attr in (
+                "left",
+                "right",
+                "operand",
+                "value",
+                "expr",
+                "cond",
+                "object",
+                "index",
+                "target",
+            ):
+                child = getattr(e, attr, None)
+                if isinstance(child, Expr):
+                    walk_expr(child)
+            elems = getattr(e, "elements", None)
+            if isinstance(elems, list):
+                for el in elems:
+                    if isinstance(el, Expr):
+                        walk_expr(el)
+            if isinstance(e, SwitchExpr):
+                walk_expr(e.subject)
+                for case in e.cases:
+                    walk_expr(case.value)
+
+        def walk_stmt(s) -> None:
+            if isinstance(s, (AssignStmt, AugAssignStmt)):
+                if isinstance(s, AssignStmt) and (
+                    s.declare_type or s.is_const or s.is_fix
+                ):
+                    params.add(s.name)
+                walk_expr(s.value)
+            elif isinstance(s, (PrintStmt, ReturnStmt)):
+                walk_expr(s.value)
+            elif isinstance(s, ExprStmt):
+                walk_expr(s.expr)
+            elif isinstance(s, IfStmt):
+                walk_expr(s.cond)
+                if s.then_body:
+                    for st in s.then_body.statements:
+                        walk_stmt(st)
+                if s.else_body:
+                    for st in s.else_body.statements:
+                        walk_stmt(st)
+            elif isinstance(s, Block):
+                for st in s.statements:
+                    walk_stmt(st)
+            elif isinstance(s, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if isinstance(s, WhileStmt):
+                    walk_expr(s.cond)
+                if isinstance(s, ForEachStmt):
+                    walk_expr(s.iterable)
+                    params.add(s.var)
+                if isinstance(s, ForRangeStmt):
+                    params.add(s.var)
+                if s.body:
+                    for st in s.body.statements:
+                        walk_stmt(st)
+
+        if isinstance(expr.body, Block):
+            for st in expr.body.statements:
+                walk_stmt(st)
+        else:
+            walk_expr(expr.body)
+        return sorted(used)
+
+    def _lambda(self, expr: LambdaExpr) -> str:
+        name = f"_pys_lam_{self.lambda_serial}"
+        self.lambda_serial += 1
+        frees = self._lambda_free_names(expr)
+        rename = {f: f"_c_{f}" for f in frees}
+        parts = list(expr.params)
+        for f in frees:
+            parts.append(f"{rename[f]}={f}")
+        self._emit(self._expr_indent, f"def {name}({', '.join(parts)}):")
+        prev_rename = self._lambda_rename
+        self._lambda_rename = {**prev_rename, **rename}
+        body_indent = self._expr_indent + 1
+        if isinstance(expr.body, Block):
+            if not expr.body.statements:
+                self._emit(body_indent, "pass")
+            else:
+                for st in expr.body.statements:
+                    self._stmt(st, body_indent)
+        else:
+            self._emit(body_indent, f"return {self._expr(expr.body)}")
+        self._lambda_rename = prev_rename
+        return name
 
     def _call_arg(self, arg: Expr) -> str:
         return self._maybe_copy_struct(arg)

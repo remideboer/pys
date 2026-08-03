@@ -38,6 +38,7 @@ from .ast_nodes import (
     InterfaceDef,
     InterpolatedString,
     KeywordArg,
+    LambdaExpr,
     Literal,
     Member,
     MethodDef,
@@ -2118,7 +2119,104 @@ def _parse_loop(p: _Tok):
 
 @_packrat("expression")
 def _parse_expression(p: _Tok) -> Expr:
+    # Lambda forms bind tighter than being an operand of `+` etc.: they are
+    # recognized at the start of an expression (call args, bindings, …).
+    if _at_lambda_expr(p):
+        return _parse_lambda_expr(p)
     return _parse_or(p)
+
+
+def _at_lambda_expr(p: _Tok) -> bool:
+    # n => …
+    if (
+        p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+        and p.cur().text
+        not in {
+            "if",
+            "unless",
+            "loop",
+            "print",
+            "return",
+            "pass",
+            "break",
+            "continue",
+            "else",
+            "function",
+            "class",
+            "switch",
+            "case",
+            "default",
+            "not",
+            "await",
+            "shared",
+            "tasks",
+            "task",
+            "true",
+            "false",
+            "null",
+            "this",
+            "super",
+        }
+        and p.peek(1).kind == TokenKind.OP
+        and p.peek(1).text == "=>"
+    ):
+        return True
+    # ( … ) => …
+    if p.at(TokenKind.LPAREN):
+        return _paren_group_followed_by_arrow(p)
+    return False
+
+
+def _paren_group_followed_by_arrow(p: _Tok) -> bool:
+    if not p.at(TokenKind.LPAREN):
+        return False
+    depth = 0
+    k = 0
+    while True:
+        t = p.peek(k)
+        if t.kind == TokenKind.EOF:
+            return False
+        if t.kind == TokenKind.LPAREN:
+            depth += 1
+        elif t.kind == TokenKind.RPAREN:
+            depth -= 1
+            if depth == 0:
+                nxt = p.peek(k + 1)
+                return nxt.kind == TokenKind.OP and nxt.text == "=>"
+            if depth < 0:
+                return False
+        k += 1
+
+
+def _parse_lambda_body(p: _Tok) -> Expr | Block:
+    if p.at(TokenKind.LBRACE):
+        return _parse_block(p)
+    return _parse_expression(p)
+
+
+def _parse_lambda_expr(p: _Tok) -> LambdaExpr:
+    sp = p.span()
+    params: list[str] = []
+    param_types: list[str] = []
+    if p.at(TokenKind.LPAREN):
+        p.eat(TokenKind.LPAREN)
+        if not p.at(TokenKind.RPAREN):
+            t, n = _parse_param(p)
+            params.append(n)
+            param_types.append(t)
+            while p.at(TokenKind.COMMA):
+                p.eat(TokenKind.COMMA)
+                t, n = _parse_param(p)
+                params.append(n)
+                param_types.append(t)
+        p.eat(TokenKind.RPAREN)
+    else:
+        name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        params.append(name)
+        param_types.append("")
+    p.eat(TokenKind.OP, text="=>")
+    body = _parse_lambda_body(p)
+    return LambdaExpr(span=sp, params=params, param_types=param_types, body=body)
 
 
 @_packrat("or")
