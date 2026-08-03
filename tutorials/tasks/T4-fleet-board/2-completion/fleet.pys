@@ -1,5 +1,5 @@
 # fleet.pys — completion
-# TODO: declare package interface Drivable with public start() and public move()
+# TODO: declare package interface Drivable with start() and move() (no access modifiers)
 
 # TODO: package class Bike implements Drivable (private string name, constructor, start/move)
 

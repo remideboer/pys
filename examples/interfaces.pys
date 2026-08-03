@@ -2,20 +2,21 @@
 # Vehicle domain shows implements, layered interfaces, and polymorphism.
 
 # --- Interfaces (package: importable from any file in the folder) ---
+# Methods are always public and abstract — no access modifier on signatures.
 package interface Drivable {
-    public start()
-    public move()
-    public stop()
+    start()
+    move()
+    stop()
 }
 
 package interface Flyable {
-    public takeoff()
-    public land()
+    takeoff()
+    land()
 }
 
 package interface Loadable {
-    public load(int weight)
-    public int capacity()
+    load(int weight)
+    int capacity()
 }
 
 # --- Base class implementing Drivable ---

@@ -21,7 +21,7 @@ global function int mul(int a, int b) {
 print(mul(3, 4))
 
 interface Named {
-    public string label()
+    string label()
 }
 
 class Point implements Named {

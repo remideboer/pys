@@ -557,6 +557,18 @@
       )
     },
     {
+      id: 'interface_method',
+      title: 'interface_method',
+      ebnf: '[ return_type ] identifier "(" [ parameter_list ] ")" ;',
+      node: Seq(
+        Opt(N('return_type')),
+        N('identifier'),
+        T('('),
+        Opt(N('parameter_list')),
+        T(')')
+      )
+    },
+    {
       id: 'method_decl',
       title: 'method_decl',
       ebnf: 'member_access [ return_type ] identifier "(" [ parameter_list ] ")" block ;',

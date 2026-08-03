@@ -44,5 +44,6 @@ Each record then uses:
 | [CER-007](CER-007-switch-stmt-and-expr.md) | Switch statement and expression | Language |
 | [CER-008](CER-008-traits.md) | Traits composition (`uses` / `requires`) | Language |
 | [CER-009](CER-009-abstract-classes.md) | Abstract classes (`abstract` / `void`) | Language |
+| [CER-010](CER-010-interface-method-access.md) | Interface methods omit access modifiers | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

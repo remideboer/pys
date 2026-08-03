@@ -4,7 +4,7 @@
 
 ```pys
 package interface Drivable {
-    public start()
+    start()
 }
 
 package class Cart implements Drivable {
@@ -27,9 +27,10 @@ package class BigCart inherits Cart {
 ## Rules
 
 1. Class members need an access modifier (`public` / `private` / `protected` / `module`)  
-2. No `function` keyword on methods — `public name(args) { … }`  
-3. `inherits` one class; `implements` one or more interfaces  
-4. `this` / `super` for current / parent  
+2. Interface method signatures have **no** access modifier (always public/abstract)  
+3. No `function` keyword on methods — `public name(args) { … }` on classes  
+4. `inherits` one class; `implements` one or more interfaces  
+5. `this` / `super` for current / parent  
 
 Bag of fields with no behavior → use a [struct](J-struct.md), not a class.
 

@@ -211,9 +211,10 @@ enum_member      = identifier , [ "=" , ( integer | string_literal ) ] ;
 interface_decl   = [ top_visibility ] , "interface" , identifier ,
                    "{" , { interface_method } , "}" ;
 
-interface_method = "public" , [ return_type ] , identifier ,
+interface_method = [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" ;
-(* No body, no fields. Implementing classes must provide matching methods. *)
+(* Always public and abstract — no member_access, no body, no fields.
+   Implementing classes must provide matching public methods. *)
 
 (* ------------------------- Traits ------------------------- *)
 

@@ -127,7 +127,7 @@ def test_sem_sealed_class_rejects_inheritance() -> None:
 
 def test_sem_missing_interface_method() -> None:
     source = """interface Startable {
-    public start()
+    start()
 }
 
 class Car implements Startable {
@@ -142,7 +142,7 @@ class Car implements Startable {
 
 def test_sem_interface_arity_mismatch() -> None:
     source = """interface Startable {
-    public start(string name)
+    start(string name)
 }
 
 class Car implements Startable {
@@ -157,12 +157,21 @@ class Car implements Startable {
 
 def test_sem_interface_method_body_rejected() -> None:
     source = """interface Startable {
-    public start() {
+    start() {
         print("nope")
     }
 }
 """
     with pytest.raises(TranspileError, match=r"abstract and cannot have a body"):
+        parse_program(source)
+
+
+def test_sem_interface_access_modifier_rejected() -> None:
+    source = """interface Startable {
+    public start()
+}
+"""
+    with pytest.raises(TranspileError, match=r"always public|omit `public`"):
         parse_program(source)
 
 

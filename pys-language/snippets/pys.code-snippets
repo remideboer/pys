@@ -239,10 +239,10 @@
     "prefix": "interface",
     "body": [
       "interface ${1:Name} {",
-      "\tpublic ${2:action}(${3})",
+      "\t${2:action}(${3})",
       "}"
     ],
-    "description": "PYS interface with abstract method"
+    "description": "PYS interface method signatures (always public; no access modifier)"
   },
   "Class implements": {
     "prefix": "implements",

@@ -29,7 +29,7 @@ while y < 30:
 
 def test_polymorphic_assignment_and_dispatch() -> None:
     source = """interface Startable {
-    public start()
+    start()
 }
 
 class Car implements Startable {
@@ -132,7 +132,7 @@ t.haul()
 
 def test_transpile_interface_and_implements() -> None:
     source = """interface Startable {
-    public start()
+    start()
 }
 
 class Car implements Startable {
@@ -155,7 +155,7 @@ class Car implements Startable {
 
 def test_missing_interface_method_is_rejected() -> None:
     source = """interface Startable {
-    public start()
+    start()
 }
 
 class Car implements Startable {
@@ -170,7 +170,7 @@ class Car implements Startable {
 
 def test_interface_method_body_is_rejected() -> None:
     source = """interface Startable {
-    public start() {
+    start() {
         print("nope")
     }
 }
@@ -181,7 +181,7 @@ def test_interface_method_body_is_rejected() -> None:
 
 def test_interface_arity_mismatch_is_rejected() -> None:
     source = """interface Startable {
-    public start(string name)
+    start(string name)
 }
 
 class Car implements Startable {
@@ -191,6 +191,15 @@ class Car implements Startable {
 }
 """
     with pytest.raises(TranspileError, match=r"does not match interface"):
+        transpile(source)
+
+
+def test_interface_access_modifier_is_rejected() -> None:
+    source = """interface Startable {
+    private start()
+}
+"""
+    with pytest.raises(TranspileError, match=r"always public|omit `private`"):
         transpile(source)
 
 

@@ -63,6 +63,7 @@ _TYPES = frozenset(
         "char",
         "string",
         "bool",
+        "void",
         "byte",
         "nibble",
         "int16",
@@ -78,10 +79,20 @@ _ROTATE_DEFERRED = (
 
 
 class ParseError(ValueError):
-    def __init__(self, message: str, line: int = 1, column: int = 1) -> None:
+    def __init__(
+        self,
+        message: str,
+        line: int = 1,
+        column: int = 1,
+        *,
+        code: str | None = None,
+        tips: list[str] | None = None,
+    ) -> None:
         self.message = message
         self.line = line
         self.column = column
+        self.code = code
+        self.tips = tips or []
         super().__init__(f"{message} (line {line}, column {column})")
 
 
@@ -311,11 +322,25 @@ def _parse_brace_module_rd(
     except FatalParseError as exc:
         from .transpiler import TranspileError
 
-        raise TranspileError(exc.message, exc.line, exc.column, "") from exc
+        raise TranspileError(
+            exc.message,
+            exc.line,
+            exc.column,
+            "",
+            code=exc.code,
+            tips=exc.tips,
+        ) from exc
     except ParseError as exc:
         from .transpiler import TranspileError
 
-        raise TranspileError(str(exc), exc.line, exc.column, "") from exc
+        raise TranspileError(
+            str(exc),
+            exc.line,
+            exc.column,
+            "",
+            code=getattr(exc, "code", None),
+            tips=getattr(exc, "tips", None),
+        ) from exc
 
     return Module(span=Span(1, 1), source=source, body=body, brace_mode=brace_mode)
 
@@ -803,7 +828,18 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
             p.eat(TokenKind.COMMENT)
             continue
         if p.at_kw("public", "private", "protected", "module"):
-            p.eat(TokenKind.KEYWORD)
+            mod = p.cur().text
+            raise FatalParseError(
+                f"Interface methods are always public and abstract — "
+                f"omit `{mod}` on the method signature.",
+                p.cur().line,
+                p.cur().column,
+                code="pys.interface-access",
+                tips=[
+                    "Write `name(...)` or `int name(...)` inside the interface "
+                    "(no access modifier)."
+                ],
+            )
         if p.cur().text in _TYPES and p.peek(1).kind != TokenKind.LPAREN:
             p.eat(TokenKind.KEYWORD, TokenKind.IDENT)
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text

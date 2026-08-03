@@ -1,5 +1,5 @@
 package interface Startable {
-    public start()
+    start()
 }
 
 package class Car implements Startable {

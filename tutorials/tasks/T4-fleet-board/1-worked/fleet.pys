@@ -1,8 +1,8 @@
 # fleet.pys — contracts and machines (worked)
 
 package interface Drivable {
-    public start()
-    public move()
+    start()
+    move()
 }
 
 package class Tug implements Drivable {

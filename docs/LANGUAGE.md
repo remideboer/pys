@@ -327,14 +327,15 @@ modifiers instead (`public name(…) { … }` or `public void name(…) { … }`
 
 ### Interfaces
 
-No fields, no bodies — only `public` method signatures. Implementing classes
-must provide matching methods.
+No fields, no bodies — only method signatures. Interface methods are always
+public and abstract, so **omit** access modifiers on the signatures. Implementing
+classes must provide matching **public** methods.
 
 ```pys
 package interface Drivable {
-    public start()
-    public move()
-    public stop()
+    start()
+    move()
+    stop()
 }
 ```
 
