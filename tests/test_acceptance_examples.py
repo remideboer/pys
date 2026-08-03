@@ -17,6 +17,20 @@ ACCEPTANCE = [
 ]
 
 
+def test_examples_root_pys_transpile() -> None:
+    """Every top-level examples/*.pys must transpile (catches bare prose / bad comments)."""
+    from transpiler.transpiler import transpile
+
+    paths = sorted((ROOT / "examples").glob("*.pys"))
+    assert paths, "expected examples/*.pys"
+    for path in paths:
+        try:
+            out = transpile(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise AssertionError(f"{path.relative_to(ROOT)} failed to transpile: {exc}") from exc
+        assert out.strip(), path.name
+
+
 def test_acceptance_examples_transpile() -> None:
     """Showcase entries must compile on the AST pipeline (multi-module)."""
     for path in ACCEPTANCE:

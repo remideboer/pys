@@ -1,12 +1,11 @@
 # Debug stepping (breakpoints on .pys)
-
-Teaching sample for **PYS: Debug File**. Set gutter breakpoints on the marked
-lines — Debug runs until it hits one (no stop-on-entry). Requires the Microsoft
-Python extension. Clear breakpoints via **PYS: Clear All Breakpoints**
-(context / gutter / tab).
-
-See [`tutorials/jit/J-debug.md`](../tutorials/jit/J-debug.md) and
-[`docs/adr/ADR-014-pys-dap-stepping.md`](../docs/adr/ADR-014-pys-dap-stepping.md).
+#
+# Teaching sample for **PYS: Debug File**. Set gutter breakpoints on the marked
+# lines — Debug runs until it hits one (no stop-on-entry). Requires the Microsoft
+# Python extension. Clear breakpoints via **PYS: Clear All Breakpoints**
+# (context / gutter / tab).
+#
+# See tutorials/jit/J-debug.md and docs/adr/ADR-014-pys-dap-stepping.md.
 
 # --- Stop A: assignment ---
 int total = 0
