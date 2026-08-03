@@ -1,0 +1,83 @@
+# `entity`: identity-keyed rows. Equality uses identity(...) fields only.
+# Key fields are `fix`; other fields may change. Timestamps are `string`
+# (no DateTime builtin). See docs/DATA_ENTITY.md and tutorials/jit/J-entity.md.
+
+# --- Single key ---
+entity Customer identity(customerId) {
+    private fix int customerId
+    public string name
+    public string email
+
+    public Customer(int customerId, string name, string email) {
+        this.customerId = customerId
+        this.name = name
+        this.email = email
+    }
+}
+
+Customer c1 = Customer(7, "Ana", "ana@x.nl")
+Customer c2 = Customer(7, "Ana B.", "anab@x.nl")
+print(c1 == c2)  # True — same customerId
+
+Customer c3 = Customer(8, "Ana", "ana@x.nl")
+print(c1 == c3)  # False — different key
+
+c1.name = "Ana C."
+print(c1 == c2)  # True — mutation does not change identity
+
+# --- Shared key inheritance (Account / User) ---
+entity Account identity(accountId) {
+    private fix int accountId
+    public string createdAt
+
+    public Account(int accountId, string createdAt) {
+        this.accountId = accountId
+        this.createdAt = createdAt
+    }
+}
+
+entity User inherits Account {
+    public string username
+    public string passwordHash
+
+    public User(int accountId, string createdAt, string username, string passwordHash) {
+        super(accountId, createdAt)
+        this.username = username
+        this.passwordHash = passwordHash
+    }
+}
+
+User u1 = User(42, "2024-01-01", "remi", "a")
+User u2 = User(42, "2024-01-01", "remi", "b")
+print(u1 == u2)  # True — identity is accountId alone
+
+# --- Composite key extension (Order / OrderLine) ---
+entity Order identity(orderId) {
+    private fix int orderId
+    public string placedAt
+
+    public Order(int orderId, string placedAt) {
+        this.orderId = orderId
+        this.placedAt = placedAt
+    }
+}
+
+entity OrderLine inherits Order identity(lineNumber) {
+    private fix int lineNumber
+    public string productSku
+    public int quantity
+
+    public OrderLine(int orderId, string placedAt, int lineNumber, string productSku, int quantity) {
+        super(orderId, placedAt)
+        this.lineNumber = lineNumber
+        this.productSku = productSku
+        this.quantity = quantity
+    }
+}
+
+OrderLine l1 = OrderLine(100, "2024-06-01T10:00:00", 1, "SKU-A", 2)
+OrderLine l2 = OrderLine(100, "2024-06-01T11:00:00", 1, "SKU-B", 5)
+print(l1 == l2)  # True — (orderId, lineNumber) match
+
+OrderLine l3 = OrderLine(100, "2024-06-01T10:00:00", 2, "SKU-A", 2)
+print(l1 == l3)  # False — lineNumber differs

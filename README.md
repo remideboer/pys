@@ -17,6 +17,24 @@ and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md)
 - Minimize a separate build step for students
 - Ship a curriculum path separate from the dense `examples/` showcase
 
+## Why `data` and `entity`?
+
+Mainstream languages leave **identity vs value equality** to frameworks
+(Hibernate `@Id`, EF Core `[Key]`, ActiveRecord). That produces a well-known
+class of defects: mutable keys in `hashCode`, hand-written `equals` that widen
+or NPE, Lombok `@Data` applied to entities. PYS makes the Evans (2003)
+distinction first-class and compiler-checked:
+
+| Construct | Equality | Mutability | Typical use |
+|-----------|----------|------------|-------------|
+| `data` | All fields (structural) | Immutable | Value objects (`Money`, `Point`) |
+| `entity` | `identity(...)` keys only | Keys `fix`; other fields mutable | Domain rows with a lifecycle |
+| `struct` | Field-wise, not a VO/Entity contract | Per-field `fix` optional | Ad-hoc bags without identity semantics |
+
+Full rationale (Java/C#/Hibernate counterexamples + sources):
+[`docs/DATA_ENTITY.md`](docs/DATA_ENTITY.md). Samples:
+[`examples/data.pys`](examples/data.pys), [`examples/entities.pys`](examples/entities.pys).
+
 ## Getting Started
 
 ### Students — install the extension

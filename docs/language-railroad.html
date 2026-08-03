@@ -389,11 +389,11 @@
     {
       id: 'declaration',
       title: 'declaration',
-      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | enum_decl | interface_decl | trait_decl ;',
+      ebnf: 'declaration = var_decl | const_decl | fix_decl | shared_decl | function_decl | class_decl | struct_decl | data_decl | entity_decl | enum_decl | interface_decl | trait_decl ;',
       node: Choice(
         N('var_decl'), N('const_decl'), N('fix_decl'), N('shared_decl'),
-        N('function_decl'), N('class_decl'), N('struct_decl'), N('enum_decl'),
-        N('interface_decl'), N('trait_decl')
+        N('function_decl'), N('class_decl'), N('struct_decl'), N('data_decl'),
+        N('entity_decl'), N('enum_decl'), N('interface_decl'), N('trait_decl')
       )
     },
     {
@@ -464,6 +464,66 @@
       title: 'struct_field_decl',
       ebnf: '[ "fix" ] type_name identifier [ "=" expression ] ;',
       node: Seq(
+        Opt(T('fix')),
+        N('type_name'),
+        N('identifier'),
+        Opt(Seq(T('='), N('expression')))
+      )
+    },
+    {
+      id: 'data_decl',
+      title: 'data_decl',
+      ebnf: '[ top_visibility ] "data" identifier "{" { data_field_decl } "}" ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        T('data'),
+        N('identifier'),
+        T('{'),
+        Star(N('data_field_decl')),
+        T('}')
+      )
+    },
+    {
+      id: 'data_field_decl',
+      title: 'data_field_decl',
+      ebnf: 'type_name identifier [ "=" expression ] ;',
+      node: Seq(
+        N('type_name'),
+        N('identifier'),
+        Opt(Seq(T('='), N('expression')))
+      )
+    },
+    {
+      id: 'entity_decl',
+      title: 'entity_decl',
+      ebnf: '[ top_visibility ] "entity" identifier [ "inherits" Id ] [ "identity" "(" Id {"," Id} ")" ] entity_body ;',
+      node: Seq(
+        Opt(N('top_visibility')),
+        T('entity'),
+        N('identifier'),
+        Opt(Seq(T('inherits'), N('identifier'))),
+        Opt(Seq(T('identity'), T('('), N('identifier'), Star(Seq(T(','), N('identifier'))), T(')'))),
+        N('entity_body')
+      )
+    },
+    {
+      id: 'entity_body',
+      title: 'entity_body',
+      ebnf: '"{" { entity_member } "}" ;',
+      node: Seq(T('{'), Star(N('entity_member')), T('}'))
+    },
+    {
+      id: 'entity_member',
+      title: 'entity_member',
+      ebnf: 'entity_field_decl | method_decl | constructor_decl ;',
+      node: Choice(N('entity_field_decl'), N('method_decl'), N('constructor_decl'))
+    },
+    {
+      id: 'entity_field_decl',
+      title: 'entity_field_decl',
+      ebnf: 'member_access [ "fix" ] type_name identifier [ "=" expression ] ;',
+      node: Seq(
+        N('member_access'),
         Opt(T('fix')),
         N('type_name'),
         N('identifier'),

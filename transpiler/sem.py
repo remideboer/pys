@@ -16,7 +16,9 @@ from .ast_nodes import (
     Call,
     Cast,
     ClassDef,
+    DataDef,
     EnumDef,
+    EntityDef,
     Expr,
     ExprStmt,
     ForEachStmt,
@@ -106,6 +108,18 @@ def analyze(
     )
     class_parents = _class_parents_map(module.body)
     struct_info = _struct_info_map(module.body)
+    # `data` types participate in the same value/fix/copy SA as fix structs.
+    for stmt in module.body:
+        if isinstance(stmt, DataDef):
+            struct_info[stmt.name] = {
+                "type_fix": True,
+                "fields": [f.name for f in stmt.fields],
+                "access": {f.name: "public" for f in stmt.fields},
+                "types": {f.name: f.type_name for f in stmt.fields},
+                "fix_fields": {f.name for f in stmt.fields},
+                "defaults": {f.name for f in stmt.fields if f.default is not None},
+                "kind": "data",
+            }
     if import_resolver is not None:
         for name in getattr(import_resolver, "structs", set()):
             struct_info.setdefault(
@@ -134,9 +148,10 @@ def analyze(
             )
     struct_names = set(struct_info)
     enum_names = set(enum_info)
+    entity_names = {s.name for s in module.body if isinstance(s, EntityDef)}
     class_names = set(class_parents) | {
         s.name for s in module.body if isinstance(s, ClassDef)
-    } | struct_names | enum_names
+    } | struct_names | enum_names | entity_names
     interfaces = {s.name for s in module.body if isinstance(s, InterfaceDef)}
     class_implements = _class_implements_map(module.body, interfaces)
     if import_resolver is not None:
@@ -161,6 +176,7 @@ def analyze(
     _check_width_ranges(module.body, types=types)
     _check_int_ops(module.body, types=types, class_names=class_names)
     _check_structs(module.body, types=types, fixed=fixed, struct_info=struct_info)
+    _check_data_and_entities(module.body, types=types)
     _check_enums(module.body, types=types, fixed=fixed, enum_info=enum_info)
     _check_switch(
         module.body,
@@ -652,14 +668,17 @@ def _class_parents_map(body: list[Any]) -> dict[str, str | None]:
     interfaces = {s.name for s in body if isinstance(s, InterfaceDef)}
     parents: dict[str, str | None] = {}
     for stmt in body:
-        if not isinstance(stmt, ClassDef):
-            continue
-        parent: str | None = None
-        for b in stmt.bases:
-            if b not in interfaces:
-                parent = b
-                break
-        parents[stmt.name] = parent
+        if isinstance(stmt, ClassDef):
+            parent: str | None = None
+            for b in stmt.bases:
+                if b not in interfaces:
+                    parent = b
+                    break
+            if stmt.parent:
+                parent = stmt.parent
+            parents[stmt.name] = parent
+        elif isinstance(stmt, EntityDef):
+            parents[stmt.name] = stmt.parent or None
     return parents
 
 
@@ -1120,6 +1139,27 @@ def _check_bindings(
         elif isinstance(stmt, StructDef):
             declared.add(stmt.name)
             types[stmt.name] = stmt.name
+        elif isinstance(stmt, DataDef):
+            declared.add(stmt.name)
+            types[stmt.name] = stmt.name
+        elif isinstance(stmt, EntityDef):
+            declared.add(stmt.name)
+            types[stmt.name] = stmt.name
+            for m in stmt.methods:
+                local_decl = set(declared) | set(m.params) | {"self", "this"}
+                if m.body:
+                    _check_bindings(
+                        m.body.statements,
+                        types=dict(types),
+                        declared=local_decl,
+                        constants=set(constants),
+                        fixed=set(fixed),
+                        loop_counters=set(),
+                        class_parents=class_parents,
+                        class_names=class_names,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    )
         elif isinstance(stmt, EnumDef):
             declared.add(stmt.name)
             types[stmt.name] = stmt.name
@@ -1463,6 +1503,16 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         elif isinstance(stmt, StructDef):
             # Struct fields are always public; type export uses top_visibility.
             class_members[stmt.name] = {f.name: "public" for f in stmt.fields}
+        elif isinstance(stmt, DataDef):
+            class_members[stmt.name] = {f.name: "public" for f in stmt.fields}
+        elif isinstance(stmt, EntityDef):
+            class_names.add(stmt.name)
+            members = {f.name: (f.access or "public") for f in stmt.fields}
+            for m in stmt.methods:
+                if not m.is_constructor:
+                    members[m.name] = m.access or "public"
+            class_members[stmt.name] = members
+            class_parents[stmt.name] = stmt.parent or None
         elif isinstance(stmt, EnumDef):
             members = {m.name: "public" for m in stmt.members}
             members["value"] = "public"
@@ -1691,7 +1741,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 walk_expr(stmt.value, local_types, current_class)
             elif isinstance(stmt, ExprStmt):
                 walk_expr(stmt.expr, local_types, current_class)
-            elif isinstance(stmt, ClassDef):
+            elif isinstance(stmt, (ClassDef, EntityDef)):
                 for m in stmt.methods:
                     method_types = dict(local_types)
                     for i, pname in enumerate(m.params):
@@ -2354,11 +2404,14 @@ def _check_struct_field_assign(
     if root_t not in struct_info:
         return
     if struct_info[root_t]["type_fix"]:
+        kind = struct_info[root_t].get("kind", "struct")
+        label = "data" if kind == "data" else "fix struct"
         _transpile_error(
-            f"Cannot assign to field path '{lvalue}' of fix struct type {root_t}.",
+            f"Cannot assign to field path '{lvalue}' of {label} type {root_t}.",
             line,
             col,
             lvalue,
+            code="pys.data-immutable" if kind == "data" else None,
         )
     if root in fixed:
         _transpile_error(
@@ -2408,6 +2461,197 @@ def _check_struct_field_assign(
         cur_t = next_t
 
 
+def _check_data_and_entities(body: list[Any], *, types: dict[str, str]) -> None:
+    """SA for `data` value objects and `entity` identity types."""
+    _EQ_BANNED = frozenset(
+        {"equals", "hashCode", "toString", "__eq__", "__hash__", "__str__", "__repr__"}
+    )
+    entities = {s.name: s for s in body if isinstance(s, EntityDef)}
+
+    def effective_identity(ent: EntityDef) -> list[str]:
+        keys: list[str] = []
+        if ent.parent:
+            parent = entities.get(ent.parent)
+            if parent is not None:
+                keys.extend(effective_identity(parent))
+        keys.extend(ent.identity)
+        return keys
+
+    for stmt in body:
+        if isinstance(stmt, DataDef):
+            line = stmt.span.line if stmt.span else 1
+            # No methods on data (parser already forbids most); belt-and-suspenders.
+            continue
+        if not isinstance(stmt, EntityDef):
+            continue
+        line = stmt.span.line if stmt.span else 1
+        field_map = {f.name: f for f in stmt.fields}
+        if not stmt.parent and not stmt.identity:
+            _transpile_error(
+                f"Root entity '{stmt.name}' must declare `identity(...)` "
+                f"(at least one key field).",
+                line,
+                1,
+                stmt.name,
+                code="pys.entity-identity",
+                tips=[
+                    f"Example: `entity {stmt.name} identity(id) {{ private fix int id … }}`."
+                ],
+            )
+        if stmt.parent:
+            if stmt.parent not in entities:
+                # May be a class — reject non-entity parents.
+                is_class = any(
+                    isinstance(s, ClassDef) and s.name == stmt.parent for s in body
+                )
+                _transpile_error(
+                    f"Entity '{stmt.name}' can only inherit another entity "
+                    f"(found parent '{stmt.parent}'"
+                    + (" which is a class" if is_class else "")
+                    + ").",
+                    line,
+                    1,
+                    stmt.parent,
+                    code="pys.entity-inherits",
+                    tips=["Change the parent to an `entity`, or use `class` instead."],
+                )
+        for key in stmt.identity:
+            fld = field_map.get(key)
+            if fld is None:
+                _transpile_error(
+                    f"Entity '{stmt.name}': identity field '{key}' is not declared "
+                    f"in this entity's body.",
+                    line,
+                    1,
+                    key,
+                    code="pys.entity-identity",
+                    tips=[f"Add `private fix <type> {key}` (or another access) in `{stmt.name}`."],
+                )
+            elif not fld.is_fix:
+                _transpile_error(
+                    f"Entity '{stmt.name}': identity field '{key}' must be declared `fix`.",
+                    fld.span.line if fld.span else line,
+                    fld.span.column if fld.span else 1,
+                    key,
+                    code="pys.entity-fix",
+                    tips=[
+                        f"Write `private fix <type> {key}` — mutable keys corrupt hash-based collections."
+                    ],
+                )
+        has_ctor = any(m.is_constructor for m in stmt.methods)
+        if not has_ctor:
+            _transpile_error(
+                f"Entity '{stmt.name}' must declare a constructor "
+                f"`public {stmt.name}(...) {{ … }}`.",
+                line,
+                1,
+                stmt.name,
+                code="pys.entity-ctor",
+            )
+        for m in stmt.methods:
+            if m.is_constructor:
+                continue
+            if m.name in _EQ_BANNED:
+                _transpile_error(
+                    f"Entity '{stmt.name}' cannot declare `{m.name}` — "
+                    f"equality/hash/string form are generated from `identity(...)`.",
+                    m.span.line if m.span else line,
+                    m.span.column if m.span else 1,
+                    m.name,
+                    code="pys.entity-equals",
+                    tips=["Remove the method; use `==` which compares identity fields only."],
+                )
+
+    # Fix-field assignment guards for entities (outside constructors).
+    # Include inherited fix fields so subclasses cannot mutate parent keys.
+    entity_fix: dict[str, set[str]] = {}
+    for name, ent in entities.items():
+        fixes: set[str] = set()
+        cur: EntityDef | None = ent
+        seen: set[str] = set()
+        while cur is not None and cur.name not in seen:
+            seen.add(cur.name)
+            fixes |= {f.name for f in cur.fields if f.is_fix}
+            cur = entities.get(cur.parent) if cur.parent else None
+        entity_fix[name] = fixes
+
+    def check_assign(stmt: AssignStmt, *, in_entity_ctor: bool, entity_type: str) -> None:
+        if in_entity_ctor:
+            return
+        # AssignStmt.name is an lvalue string: `this.field` / `obj.field`.
+        parts = stmt.name.split(".")
+        if len(parts) < 2:
+            return
+        root, member = parts[0], parts[1]
+        if root in {"this", "self"}:
+            if member in entity_fix.get(entity_type, set()):
+                _transpile_error(
+                    f"Cannot assign to fix field '{member}' of entity {entity_type}.",
+                    stmt.span.line if stmt.span else 1,
+                    stmt.span.column if stmt.span else 1,
+                    member,
+                    code="pys.entity-fix",
+                )
+            return
+        et = _base_type_name(types.get(root, ""))
+        if et in entity_fix and member in entity_fix[et]:
+            _transpile_error(
+                f"Cannot assign to fix field '{member}' of entity {et}.",
+                stmt.span.line if stmt.span else 1,
+                stmt.span.column if stmt.span else 1,
+                member,
+                code="pys.entity-fix",
+            )
+
+    def walk(stmts: list[Any], *, in_entity_ctor: bool = False, entity_type: str = "") -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                check_assign(stmt, in_entity_ctor=in_entity_ctor, entity_type=entity_type)
+            elif isinstance(stmt, EntityDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(
+                            m.body.statements,
+                            in_entity_ctor=m.is_constructor,
+                            entity_type=stmt.name,
+                        )
+            elif isinstance(stmt, FunctionDef):
+                if stmt.body:
+                    walk(stmt.body.statements)
+            elif isinstance(stmt, ClassDef):
+                for m in stmt.methods:
+                    if m.body:
+                        walk(m.body.statements)
+            elif isinstance(stmt, IfStmt):
+                if stmt.then_body:
+                    walk(
+                        stmt.then_body.statements,
+                        in_entity_ctor=in_entity_ctor,
+                        entity_type=entity_type,
+                    )
+                if stmt.else_body:
+                    walk(
+                        stmt.else_body.statements,
+                        in_entity_ctor=in_entity_ctor,
+                        entity_type=entity_type,
+                    )
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                if stmt.body:
+                    walk(
+                        stmt.body.statements,
+                        in_entity_ctor=in_entity_ctor,
+                        entity_type=entity_type,
+                    )
+            elif isinstance(stmt, Block):
+                walk(
+                    stmt.statements,
+                    in_entity_ctor=in_entity_ctor,
+                    entity_type=entity_type,
+                )
+
+    walk(body)
+
+
 def _check_structs(
     body: list[Any],
     *,
@@ -2419,6 +2663,8 @@ def _check_structs(
 
     def check_null_in_struct_ctor(call: Call, struct_name: str) -> None:
         meta = struct_info[struct_name]
+        kind = meta.get("kind", "struct")
+        label = "data" if kind == "data" else "struct"
         fields: list[str] = meta["fields"]
         defaults: set[str] = meta["defaults"]
         line = call.span.line if call.span else 1
@@ -2429,14 +2675,14 @@ def _check_structs(
             if isinstance(arg, KeywordArg):
                 if arg.name in named:
                     _transpile_error(
-                        f"Duplicate named argument '{arg.name}' in struct {struct_name} constructor.",
+                        f"Duplicate named argument '{arg.name}' in {label} {struct_name} constructor.",
                         arg.span.line if arg.span else line,
                         arg.span.column if arg.span else col,
                         arg.name,
                     )
                 if arg.name not in fields:
                     _transpile_error(
-                        f"Unknown field '{arg.name}' in struct {struct_name} constructor.",
+                        f"Unknown field '{arg.name}' in {label} {struct_name} constructor.",
                         arg.span.line if arg.span else line,
                         arg.span.column if arg.span else col,
                         arg.name,
@@ -2445,7 +2691,7 @@ def _check_structs(
             else:
                 if named:
                     _transpile_error(
-                        f"Positional argument after named argument in struct {struct_name} constructor.",
+                        f"Positional argument after named argument in {label} {struct_name} constructor.",
                         arg.span.line if arg.span else line,
                         arg.span.column if arg.span else col,
                         struct_name,
@@ -2453,7 +2699,7 @@ def _check_structs(
                 positional.append(arg)
         if len(positional) > len(fields):
             _transpile_error(
-                f"Struct {struct_name} constructor expects at most {len(fields)} "
+                f"{label.capitalize()} {struct_name} constructor expects at most {len(fields)} "
                 f"positional argument(s), got {len(positional)}.",
                 line,
                 col,
@@ -2462,7 +2708,7 @@ def _check_structs(
         for i, arg in enumerate(positional):
             if _is_null_lit(arg):
                 _transpile_error(
-                    f"Struct field '{fields[i]}' of type {struct_name} cannot be null.",
+                    f"{label.capitalize()} field '{fields[i]}' of type {struct_name} cannot be null.",
                     arg.span.line if arg.span else line,
                     arg.span.column if arg.span else col,
                     "null",
@@ -2470,7 +2716,7 @@ def _check_structs(
         for fname, val in named.items():
             if _is_null_lit(val):
                 _transpile_error(
-                    f"Struct field '{fname}' of type {struct_name} cannot be null.",
+                    f"{label.capitalize()} field '{fname}' of type {struct_name} cannot be null.",
                     val.span.line if val.span else line,
                     val.span.column if val.span else col,
                     "null",
@@ -2479,7 +2725,7 @@ def _check_structs(
         missing = [f for f in fields if f not in provided and f not in defaults]
         if missing:
             _transpile_error(
-                f"Struct {struct_name} constructor missing field(s): {', '.join(missing)}.",
+                f"{label.capitalize()} {struct_name} constructor missing field(s): {', '.join(missing)}.",
                 line,
                 col,
                 struct_name,

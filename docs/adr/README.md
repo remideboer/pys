@@ -54,5 +54,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-008](ADR-008-switch-stmt-and-expr.md) | Switch statement and expression | Accepted |
 | [ADR-009](ADR-009-traits-composition.md) | Traits as composition (not types) | Accepted |
 | [ADR-010](ADR-010-abstract-classes.md) | Abstract classes as nominal incomplete types | Accepted |
+| [ADR-011](ADR-011-data-and-entity.md) | `data` value objects and `entity` identity types | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

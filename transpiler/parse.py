@@ -15,10 +15,12 @@ from .ast_nodes import (
     Cast,
     ClassDef,
     CommentStmt,
+    DataDef,
     EnumDef,
     EnumMember,
     StructDef,
     StructField,
+    EntityDef,
     ContinueStmt,
     SwitchCase,
     SwitchExpr,
@@ -471,6 +473,10 @@ def _parse_toplevel(p: _Tok):
             return _parse_struct(p, visibility=vis, type_fix=True)
         if p.at_kw("struct"):
             return _parse_struct(p, visibility=vis)
+        if p.at_kw("data"):
+            return _parse_data(p, visibility=vis)
+        if p.at_kw("entity"):
+            return _parse_entity(p, visibility=vis)
         if p.at_kw("enum"):
             return _parse_enum(p, visibility=vis)
         if p.at_kw("interface"):
@@ -490,6 +496,10 @@ def _parse_toplevel(p: _Tok):
         return _parse_struct(p, type_fix=True)
     if p.at_kw("struct"):
         return _parse_struct(p)
+    if p.at_kw("data"):
+        return _parse_data(p)
+    if p.at_kw("entity"):
+        return _parse_entity(p)
     if p.at_kw("enum"):
         return _parse_enum(p)
     if p.at_kw("interface"):
@@ -955,6 +965,272 @@ def _parse_struct(
         visibility=visibility,
         type_params=type_params,
         type_fix=type_fix,
+    )
+
+
+def _parse_data(p: _Tok, visibility: str = "") -> DataDef:
+    """Parse ``[top_visibility] data Name { fields }`` (immutable value object)."""
+    sp = p.span()
+    p.eat_kw("data")
+    if p.at_kw("inherits", "super", "uses", "implements", "sealed", "identity"):
+        bad = p.cur().text
+        raise FatalParseError(
+            f"`data` types cannot use `{bad}` — they are immutable value objects "
+            f"with fields only (no inheritance, traits, or identity).",
+            p.cur().line,
+            p.cur().column,
+        )
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    if p.at_kw("inherits", "super", "uses", "implements", "sealed", "identity"):
+        bad = p.cur().text
+        raise FatalParseError(
+            f"`data` types cannot use `{bad}` — they are immutable value objects "
+            f"with fields only (no inheritance, traits, or identity).",
+            p.cur().line,
+            p.cur().column,
+        )
+    p.eat(TokenKind.LBRACE)
+    fields: list[StructField] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        field_sp = p.span()
+        if p.at_kw("public", "private", "protected", "module"):
+            raise FatalParseError(
+                "`data` fields are always public and implicitly `fix` — "
+                "omit field access modifiers.",
+                p.cur().line,
+                p.cur().column,
+            )
+        if p.at_kw("fix"):
+            raise FatalParseError(
+                "`data` fields are implicitly `fix` — omit the `fix` keyword.",
+                p.cur().line,
+                p.cur().column,
+            )
+        if p.at_kw("function", "func", "class", "interface", "struct", "enum", "tasks"):
+            bad = p.cur().text
+            raise FatalParseError(
+                f"`data` types cannot contain `{bad}` — only fields are allowed.",
+                p.cur().line,
+                p.cur().column,
+            )
+        type_name = _parse_type_name(p)
+        fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        default = None
+        if p.at(TokenKind.OP, text="="):
+            p.eat(TokenKind.OP, text="=")
+            default = _parse_expression(p)
+        fields.append(
+            StructField(
+                span=field_sp,
+                access="public",
+                type_name=type_name,
+                name=fname,
+                is_fix=True,
+                default=default,
+            )
+        )
+    p.eat(TokenKind.RBRACE)
+    return DataDef(span=sp, name=name, fields=fields, visibility=visibility)
+
+
+def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
+    """Parse ``entity Name [inherits P] [identity(...)] { members }``."""
+    sp = p.span()
+    p.eat_kw("entity")
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    parent = ""
+    if p.at_kw("inherits", "super"):
+        p.eat(TokenKind.KEYWORD)
+        parent = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    if p.at_kw("uses"):
+        raise FatalParseError(
+            "`entity` cannot use `uses` — traits are not allowed on entities "
+            "(keep pure identity-keyed data + methods).",
+            p.cur().line,
+            p.cur().column,
+        )
+    if p.at_kw("implements"):
+        raise FatalParseError(
+            "`entity` cannot use `implements` — use `class` when you need interfaces.",
+            p.cur().line,
+            p.cur().column,
+        )
+    identity: list[str] = []
+    if p.at_kw("identity"):
+        p.eat_kw("identity")
+        p.eat(TokenKind.LPAREN)
+        identity.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            identity.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        p.eat(TokenKind.RPAREN)
+    if p.at_kw("uses"):
+        raise FatalParseError(
+            "`entity` cannot use `uses` — traits are not allowed on entities.",
+            p.cur().line,
+            p.cur().column,
+        )
+    if p.at_kw("implements"):
+        raise FatalParseError(
+            "`entity` cannot use `implements`.",
+            p.cur().line,
+            p.cur().column,
+        )
+    p.eat(TokenKind.LBRACE)
+    fields: list[FieldDecl] = []
+    methods: list[MethodDef] = []
+    while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK):
+            p.eat(TokenKind.BLANK)
+            continue
+        if p.at(TokenKind.COMMENT):
+            p.eat(TokenKind.COMMENT)
+            continue
+        access = ""
+        member_sp = p.span()
+        if p.at_kw("public", "private", "protected", "module"):
+            access = p.eat(TokenKind.KEYWORD).text
+        if p.at_kw("function"):
+            raise FatalParseError(
+                "Entity methods must not use `function`. Use an access modifier: "
+                "`public name(args)`.",
+                p.cur().line,
+                p.cur().column,
+            )
+        # constructor
+        if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
+            if not access:
+                raise FatalParseError(
+                    "Entity members require an access modifier "
+                    f"(e.g. `public {name}(...)`).",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            p.eat(TokenKind.LPAREN)
+            params: list[tuple[str, str]] = []
+            if not p.at(TokenKind.RPAREN):
+                params.append(_parse_param(p))
+                while p.at(TokenKind.COMMA):
+                    p.eat(TokenKind.COMMA)
+                    params.append(_parse_param(p))
+            p.eat(TokenKind.RPAREN)
+            body = _parse_block(p)
+            methods.append(
+                MethodDef(
+                    span=member_sp,
+                    access=access,
+                    name="__init__",
+                    params=[n for _, n in params],
+                    param_types=[t for t, _ in params],
+                    body=body,
+                    is_constructor=True,
+                )
+            )
+            continue
+        is_fix = False
+        if p.at_kw("fix"):
+            is_fix = True
+            p.eat_kw("fix")
+        type_name = ""
+        if p.cur().text in _TYPES or p.at_kw("void") or (
+            p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and (
+                p.peek(1).kind == TokenKind.LBRACK
+                or p.peek(1).kind == TokenKind.LT
+                or (
+                    p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                    and p.peek(1).kind != TokenKind.LPAREN
+                    and p.peek(1).text != name
+                )
+            )
+        ):
+            if p.peek(1).kind == TokenKind.LPAREN:
+                pass
+            else:
+                type_name = _parse_type_name(p)
+                if p.at(TokenKind.LBRACK):
+                    p.eat(TokenKind.LBRACK)
+                    p.eat(TokenKind.RBRACK)
+                    type_name += "[]"
+        mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+        if p.at(TokenKind.LPAREN):
+            if not access:
+                raise FatalParseError(
+                    "Entity methods require an access modifier "
+                    f"(e.g. `public {mname}(...)`).",
+                    member_sp.line,
+                    member_sp.column,
+                )
+            if is_fix:
+                raise FatalParseError(
+                    "`fix` applies to fields, not methods.",
+                    member_sp.line,
+                    member_sp.column,
+                )
+            p.eat(TokenKind.LPAREN)
+            params = []
+            if not p.at(TokenKind.RPAREN):
+                params.append(_parse_param(p))
+                while p.at(TokenKind.COMMA):
+                    p.eat(TokenKind.COMMA)
+                    params.append(_parse_param(p))
+            p.eat(TokenKind.RPAREN)
+            body = _parse_block(p)
+            methods.append(
+                MethodDef(
+                    span=member_sp,
+                    access=access,
+                    name=mname,
+                    params=[n for _, n in params],
+                    param_types=[t for t, _ in params],
+                    body=body,
+                    return_type=type_name,
+                )
+            )
+        else:
+            if not access:
+                raise FatalParseError(
+                    "Entity fields require an access modifier "
+                    f"(e.g. `private fix int {mname}`).",
+                    member_sp.line,
+                    member_sp.column,
+                )
+            if not type_name:
+                raise FatalParseError(
+                    f"Entity field '{mname}' requires a type.",
+                    member_sp.line,
+                    member_sp.column,
+                )
+            default = None
+            if p.at(TokenKind.OP, text="="):
+                p.eat(TokenKind.OP, text="=")
+                default = _parse_expression(p)
+            fields.append(
+                FieldDecl(
+                    span=member_sp,
+                    access=access,
+                    type_name=type_name,
+                    name=mname,
+                    is_fix=is_fix,
+                    default=default,
+                )
+            )
+    p.eat(TokenKind.RBRACE)
+    return EntityDef(
+        span=sp,
+        name=name,
+        parent=parent,
+        identity=identity,
+        fields=fields,
+        methods=methods,
+        visibility=visibility,
     )
 
 

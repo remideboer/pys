@@ -9,7 +9,7 @@ const {
 } = require('./ide-process');
 
 const PYS_KEYWORDS = [
-  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface', 'trait',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
@@ -22,7 +22,7 @@ const PYS_TYPES = [
 ];
 
 const PYS_MD_KEYWORDS = new Set([
-  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'enum', 'interface', 'trait',
+  'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
@@ -416,6 +416,9 @@ function activate(context) {
         implements: 'Class implements interface(s): `class Car implements Startable { ... }`',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
         struct: 'Value type (fields only): `package struct Damage { int amount }`\nConstruct with `Damage(20)` / `Damage(amount=20)`. Fields are always public; use `global`/`package`/`module` on the struct. Copied on assign/call.',
+        data: 'Immutable value object: `data Money { int amountCents\n  string currency }`\nStructural `==` over all fields; fields implicitly fix. No methods/inherits/uses.',
+        entity: 'Identity-keyed type: `entity Customer identity(customerId) { private fix int customerId … }`\n`==` uses identity fields only. Root needs `identity(...)`; keys must be `fix`. May inherit another entity.',
+        identity: 'Entity key clause: `entity Name identity(id, …) { … }`.\nRoot entities require it; derived entities may omit (share parent keys) or append local fix fields.',
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
         uses: 'Compose traits onto a class: `class Product uses Printable, Comparable { … }`\nPlaced after `inherits` and before `implements`.',

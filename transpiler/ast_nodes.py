@@ -296,6 +296,8 @@ class FieldDecl(Node):
     access: str = ""
     type_name: str = ""
     name: str = ""
+    is_fix: bool = False
+    default: Expr | None = None
 
 
 @dataclass
@@ -316,6 +318,27 @@ class StructDef(Node):
     visibility: str = ""
     type_params: list[str] = field(default_factory=list)
     type_fix: bool = False  # leading `fix struct`
+
+
+@dataclass
+class DataDef(Node):
+    """Immutable value object: structural equality over all fields."""
+
+    name: str = ""
+    fields: list[StructField] = field(default_factory=list)
+    visibility: str = ""
+
+
+@dataclass
+class EntityDef(Node):
+    """Identity-keyed type: equality over identity(...) fields only."""
+
+    name: str = ""
+    parent: str = ""
+    identity: list[str] = field(default_factory=list)  # local identity clause fields
+    fields: list[FieldDecl] = field(default_factory=list)
+    methods: list[MethodDef] = field(default_factory=list)
+    visibility: str = ""
 
 
 @dataclass

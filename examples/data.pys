@@ -1,0 +1,63 @@
+# `data` vs `struct` — when to use which
+#
+# Both are field-only value types with copy-on-assign/call/return and field-wise
+# `==`. The difference is the *contract* the type declares:
+#
+#   struct  — ad-hoc bag. Equality happens to be field-wise; mutability is
+#             optional per field. No VO promise — callers may mutate fields.
+#   data    — Value Object. Always immutable; `==` / hash / string form are the
+#             generated contract (all fields). Two equal instances are
+#             interchangeable; "change" means a *new* instance.
+#
+# Prefer `struct` for temporary groupings / game stats you may tweak in place.
+# Prefer `data` for domain values (Money, Color, ISBN) where mutation would be
+# a bug. See docs/DATA_ENTITY.md and tutorials/jit/J-data.md.
+# Contrast: examples/structs.pys (mutable Damage) · entity keys: examples/entities.pys
+
+# --- `data`: immutable Value Object (Evans) — Money ---
+data Money {
+    int amountCents
+    string currency
+}
+
+Money m1 = Money(10000, "USD")
+Money m2 = Money(amountCents=10000, currency="USD")
+print(m1 == m2)  # True — same values ⇒ interchangeable
+
+# Changing currency yields a DIFFERENT Money, not an edit of m1.
+# (Assigning m1.amountCents = … is a compile error — fields are implicitly fix.)
+Money m3 = Money(m1.amountCents, "EUR")
+print(m1 == m3)  # False
+print(m1.currency)  # USD
+
+# --- `data`: Point — copy-on-call still applies (like fix struct) ---
+data Point {
+    int x
+    int y
+}
+
+function Point bumpX(Point p) {
+    # Must return a new Point; cannot write p.x = p.x + 1
+    return Point(p.x + 1, p.y)
+}
+
+Point origin = Point(0, 0)
+Point moved = bumpX(origin)
+print(origin.x)  # 0 — caller unchanged
+print(moved.x)  # 1
+print(origin == Point(0, 0))  # True
+
+# --- Contrast: `struct` is for mutable ad-hoc bags (not a VO contract) ---
+# Same shape as a "point", but fields may be written after construction.
+# Use this when in-place updates are intentional (e.g. running tallies).
+struct MutableScore {
+    int points
+    string label
+}
+
+MutableScore score = MutableScore(0, "round1")
+score.points = score.points + 10  # OK on struct — would be illegal on `data`
+print(score.points)  # 10
+print(score == MutableScore(10, "round1"))  # True (field-wise), but the type
+# does not promise immutability or a domain Value Object — prefer `data` when
+# that promise is the point of the type.

@@ -13,6 +13,8 @@ from typing import Any
 from .ast_nodes import (
     AssignStmt,
     ClassDef,
+    DataDef,
+    EntityDef,
     EnumDef,
     FunctionDef,
     ImportStmt,
@@ -207,6 +209,35 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             struct_field_fix[stmt.name] = ffix
             struct_field_defaults[stmt.name] = fdefaults
             struct_field_locations[stmt.name] = flocs
+        elif isinstance(stmt, DataDef):
+            # `data` is indexed like a fully-fix struct for cross-file typing/copy.
+            vis = stmt.visibility or "module"
+            exports[stmt.name] = vis
+            symbol_locations[stmt.name] = (path, line, col)
+            structs.add(stmt.name)
+            struct_type_fix.add(stmt.name)
+            order = []
+            access = {}
+            ftypes = {}
+            ffix = set()
+            fdefaults = set()
+            flocs = {}
+            for f in stmt.fields:
+                order.append(f.name)
+                access[f.name] = "public"
+                ftypes[f.name] = f.type_name
+                ffix.add(f.name)
+                if f.default is not None:
+                    fdefaults.add(f.name)
+                fl = f.span.line if f.span else line
+                fc = f.span.column if f.span else col
+                flocs[f.name] = (path, fl, fc)
+            struct_fields[stmt.name] = order
+            struct_field_access[stmt.name] = access
+            struct_field_types[stmt.name] = ftypes
+            struct_field_fix[stmt.name] = ffix
+            struct_field_defaults[stmt.name] = fdefaults
+            struct_field_locations[stmt.name] = flocs
         elif isinstance(stmt, EnumDef):
             vis = stmt.visibility or "module"
             exports[stmt.name] = vis
@@ -260,6 +291,26 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             members: dict[str, str] = {}
             methods: dict[str, int] = {}
             mlocs: dict[str, tuple[Path, int, int]] = {}
+            for f in stmt.fields:
+                members[f.name] = f.access or "module"
+            for m in stmt.methods:
+                methods[m.name] = len(m.params)
+                members[m.name] = m.access or "module"
+                ml = m.span.line if m.span else line
+                mc = m.span.column if m.span else col
+                mlocs[m.name] = (path, ml, mc)
+            class_members[stmt.name] = members
+            class_methods[stmt.name] = methods
+            method_locations[stmt.name] = mlocs
+        elif isinstance(stmt, EntityDef):
+            vis = stmt.visibility or "module"
+            exports[stmt.name] = vis
+            symbol_locations[stmt.name] = (path, line, col)
+            class_decl_lines[stmt.name] = line
+            class_parents[stmt.name] = stmt.parent or None
+            members = {}
+            methods = {}
+            mlocs = {}
             for f in stmt.fields:
                 members[f.name] = f.access or "module"
             for m in stmt.methods:

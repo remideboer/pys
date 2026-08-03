@@ -173,6 +173,32 @@
     ],
     "description": "Immutable PYS struct (all fields assign-once)"
   },
+  "Data": {
+    "prefix": "data",
+    "body": [
+      "${1|package,global,module|} data ${2:Name} {",
+      "\t${3|int,string,float,bool|} ${4:field}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS data value object (immutable, structural equality)"
+  },
+  "Entity": {
+    "prefix": "entity",
+    "body": [
+      "${1|package,global,module|} entity ${2:Name} identity(${3:id}) {",
+      "\tprivate fix ${4|int,string|} ${3:id}",
+      "\tpublic ${5|string,int|} ${6:field}",
+      "",
+      "\tpublic ${2:Name}(${4|int,string|} ${3:id}, ${5|string,int|} ${6:field}) {",
+      "\t\tthis.${3:id} = ${3:id}",
+      "\t\tthis.${6:field} = ${6:field}",
+      "\t}",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS entity with identity(...) key fields"
+  },
   "Enum": {
     "prefix": "enum",
     "body": [

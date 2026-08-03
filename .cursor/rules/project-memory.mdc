@@ -57,6 +57,7 @@ touching the matching CER/ADR is incomplete.
 - Do not force PEG (`_BRACE_ENGINE = "peg"`) without a CER showing packrat ≤ RD on the gate corpus
 - Keep `parse_program_from_tokens` / single-lex compile path; do not restore double-counted phase benches
 - Structs stay identity-free value types (ADR-005 / CER-004): no methods/inherits/`new`; fields always public (visibility on the struct); copy on assign/call/return; hash only when all fields fix / `fix struct`
+- `data` / `entity` stay separate from `struct` (ADR-011 / CER-011): `data` = frozen VO (all-fields equality); `entity` = identity keys only (`identity(...)` fix); no `uses` on either; do not fold entity identity into `struct`
 - Enums stay nominal closed sets (ADR-006 / CER-005): all-or-nothing values; no `@alias` / match until a new record; casing is Warning + IDE quick fix, not a hard error
 - Abstract classes (ADR-010 / CER-009): `sealed` XOR `abstract`; abstract methods
   only in abstract classes (no body); nominal types; emit `ABC`/`@abstractmethod`

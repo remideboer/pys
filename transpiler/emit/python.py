@@ -20,6 +20,8 @@ from ..ast_nodes import (
     ClassDef,
     CommentStmt,
     ContinueStmt,
+    DataDef,
+    EntityDef,
     Expr,
     ExprStmt,
     ForEachStmt,
@@ -154,6 +156,7 @@ class _Emitter:
         self.fn_return_types: dict[str, str] = {}
         self.struct_names: set[str] = set()
         self.struct_field_types: dict[str, dict[str, str]] = {}
+        self.entity_defs: dict[str, EntityDef] = {}
         self.trait_defs: dict[str, TraitDef] = {}
         self.trait_names: set[str] = set()
         self._import_resolver = None
@@ -164,12 +167,15 @@ class _Emitter:
 
     def emit_module(self, module: Module) -> str:
         self.struct_names = {
-            s.name for s in module.body if isinstance(s, StructDef)
+            s.name for s in module.body if isinstance(s, (StructDef, DataDef))
         }
         self.struct_field_types = {
             s.name: {f.name: f.type_name for f in s.fields}
             for s in module.body
-            if isinstance(s, StructDef)
+            if isinstance(s, (StructDef, DataDef))
+        }
+        self.entity_defs = {
+            s.name: s for s in module.body if isinstance(s, EntityDef)
         }
         self.trait_defs = {
             s.name: s for s in module.body if isinstance(s, TraitDef)
@@ -302,6 +308,10 @@ class _Emitter:
             self._class(stmt, indent)
         elif isinstance(stmt, StructDef):
             self._struct(stmt, indent)
+        elif isinstance(stmt, DataDef):
+            self._data(stmt, indent)
+        elif isinstance(stmt, EntityDef):
+            self._entity(stmt, indent)
         elif isinstance(stmt, EnumDef):
             self._enum(stmt, indent)
         elif isinstance(stmt, ExprStmt):
@@ -541,6 +551,98 @@ class _Emitter:
             f"{f.name}=_pys_struct_copy(self.{f.name})" for f in stmt.fields
         )
         self._emit(indent + 2, f"return {stmt.name}({copy_args})")
+
+    def _data(self, stmt: DataDef, indent: int) -> None:
+        """Immutable value object: frozen dataclass + struct-style copy helper."""
+        self.needs_dataclass = True
+        self.needs_struct_copy = True
+        self.struct_names.add(stmt.name)
+        self.struct_field_types[stmt.name] = {f.name: f.type_name for f in stmt.fields}
+        self._emit(indent, "@dataclass(frozen=True)")
+        self._emit(indent, f"class {stmt.name}:")
+        if not stmt.fields:
+            self._emit(indent + 1, "pass")
+            self._emit(indent + 1, "def _pys_copy(self):")
+            self._emit(indent + 2, f"return {stmt.name}()")
+            return
+        for f in stmt.fields:
+            if f.default is not None:
+                self._emit(indent + 1, f"{f.name}: object = {self._expr(f.default)}")
+            else:
+                self._emit(indent + 1, f"{f.name}: object")
+        self._emit(indent + 1, "def _pys_copy(self):")
+        copy_args = ", ".join(
+            f"{f.name}=_pys_struct_copy(self.{f.name})" for f in stmt.fields
+        )
+        self._emit(indent + 2, f"return {stmt.name}({copy_args})")
+
+    def _entity_identity_keys(self, stmt: EntityDef) -> list[str]:
+        keys: list[str] = []
+        if stmt.parent and stmt.parent in self.entity_defs:
+            keys.extend(self._entity_identity_keys(self.entity_defs[stmt.parent]))
+        keys.extend(stmt.identity)
+        return keys
+
+    def _entity_fix_fields(self, stmt: EntityDef) -> set[str]:
+        fixes = {f.name for f in stmt.fields if f.is_fix}
+        if stmt.parent and stmt.parent in self.entity_defs:
+            fixes |= self._entity_fix_fields(self.entity_defs[stmt.parent])
+        return fixes
+
+    def _entity(self, stmt: EntityDef, indent: int) -> None:
+        """Identity-keyed type: class + eq/hash/repr on identity fields."""
+        if stmt.parent:
+            self._emit(indent, f"class {stmt.name}({stmt.parent}):")
+        else:
+            self._emit(indent, f"class {stmt.name}:")
+        if not stmt.fields and not stmt.methods:
+            self._emit(indent + 1, "pass")
+            return
+        for f in stmt.fields:
+            default = _default_value_for_type(f.type_name or "string")
+            self._emit(indent + 1, f"{f.name} = {default}")
+            self.var_kinds[f.name] = "string" if f.type_name == "string" else "number"
+        local_fix = {f.name for f in stmt.fields if f.is_fix}
+        # Re-emit setattr when this body adds fix fields (must include parent keys).
+        if local_fix:
+            all_fix = self._entity_fix_fields(stmt)
+            names = ", ".join(repr(n) for n in sorted(all_fix))
+            self._emit(indent + 1, f"_pys_fix_fields = frozenset({{{names}}})")
+            self._emit(indent + 1, "def __setattr__(self, name, value):")
+            self._emit(
+                indent + 2,
+                "if name in type(self)._pys_fix_fields and name in self.__dict__:",
+            )
+            self._emit(
+                indent + 3,
+                "raise AttributeError(f\"Cannot assign to fix field {name!r}\")",
+            )
+            self._emit(indent + 2, "object.__setattr__(self, name, value)")
+        inject_super = bool(stmt.parent)
+        first_method = True
+        for i, m in enumerate(stmt.methods):
+            if (not first_method or i > 0) and self.lines and self.lines[-1] != "":
+                self.lines.append("")
+            first_method = False
+            self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
+        keys = self._entity_identity_keys(stmt)
+        if keys:
+            if not first_method and self.lines and self.lines[-1] != "":
+                self.lines.append("")
+            key_tuple = ", ".join(f"self.{k}" for k in keys)
+            other_tuple = ", ".join(f"other.{k}" for k in keys)
+            self._emit(indent + 1, "def __eq__(self, other):")
+            self._emit(indent + 2, f"if not isinstance(other, {stmt.name}):")
+            self._emit(indent + 3, "return NotImplemented")
+            self._emit(indent + 2, f"return ({key_tuple},) == ({other_tuple},)")
+            self._emit(indent + 1, "def __hash__(self):")
+            self._emit(indent + 2, f"return hash(({key_tuple},))")
+            repr_parts = ", ".join(f"{k}={{self.{k}!r}}" for k in keys)
+            self._emit(indent + 1, "def __repr__(self):")
+            self._emit(
+                indent + 2,
+                f"return f\"{stmt.name}({repr_parts})\"",
+            )
 
     def _class(self, stmt: ClassDef, indent: int) -> None:
         bases_list = list(stmt.bases)

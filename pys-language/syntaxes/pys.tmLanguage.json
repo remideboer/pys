@@ -165,7 +165,7 @@
         },
         {
           "name": "meta.fix.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(fix)\\s+(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
+          "match": "\\b(?:(global|package|module)\\s+)?(fix)\\s+(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -222,7 +222,7 @@
         },
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:(?:sealed|abstract)\\s+)?class|(?:fix\\s+)?struct|enum|interface|trait|const|fix)\\b)"
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:(?:sealed|abstract)\\s+)?class|(?:fix\\s+)?struct|data|entity|enum|interface|trait|const|fix)\\b)"
         },
         {
           "name": "meta.struct.declaration.pys",
@@ -248,6 +248,36 @@
             },
             "7": {
               "name": "punctuation.definition.typeparameters.end.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.data.declaration.pys",
+          "match": "\\b(?:(global|package|module)\\s+)?(data)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "keyword.control.pys"
+            },
+            "3": {
+              "name": "entity.name.type.data.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.entity.declaration.pys",
+          "match": "\\b(?:(global|package|module)\\s+)?(entity)\\s+([A-Za-z_]\\w*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "keyword.control.pys"
+            },
+            "3": {
+              "name": "entity.name.type.entity.pys"
             }
           }
         },
@@ -419,7 +449,7 @@
         },
         {
           "name": "meta.typed.declaration.pys",
-          "match": "\\b(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|tasks\\b|task\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
+          "match": "\\b(?:(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|tasks\\b|task\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.type.pys"
@@ -450,7 +480,7 @@
         },
         {
           "name": "keyword.control.pys",
-          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|enum|interface|trait|implements|inherits|uses|requires|return|repeat|times|import|from|all|break|continue|pass|unless|switch|case|default|not|and|or|xor|shift|this|super|tasks|task|await)\\b"
+          "match": "\\b(?:if|else|elseif|while|for|loop|func|function|class|struct|data|entity|identity|enum|interface|trait|implements|inherits|uses|requires|return|repeat|times|import|from|all|break|continue|pass|unless|switch|case|default|not|and|or|xor|shift|this|super|tasks|task|await)\\b"
         }
       ]
     },

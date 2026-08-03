@@ -116,6 +116,8 @@ declaration      = var_decl
                  | function_decl
                  | class_decl
                  | struct_decl
+                 | data_decl
+                 | entity_decl
                  | enum_decl
                  | interface_decl
                  | trait_decl ;
@@ -194,6 +196,29 @@ struct_body      = "{" , { struct_field_decl } , "}" ;
 
 (* Fields are always public; top_visibility on struct_decl controls import access. *)
 struct_field_decl = [ "fix" ] , type_name , identifier ,
+                    [ "=" , expression ] ;
+
+(* ------------------------- Data types (Value Objects) ------------------------- *)
+
+data_decl         = [ top_visibility ] , "data" , identifier , data_body ;
+(* Structural equality/hashCode/toString auto-generated over ALL fields.
+   All fields implicitly fix. No inherits / uses / implements / methods. *)
+
+data_body         = "{" , { data_field_decl } , "}" ;
+data_field_decl   = type_name , identifier , [ "=" , expression ] ;
+
+(* ------------------------- Entities ------------------------- *)
+
+entity_decl       = [ top_visibility ] , "entity" , identifier ,
+                    [ "inherits" , identifier ] ,
+                    [ "identity" , "(" , identifier , { "," , identifier } , ")" ] ,
+                    entity_body ;
+(* Root entity: identity(...) mandatory. Derived: identity optional; when
+   present, fields append after parent keys. No uses / implements. *)
+
+entity_body       = "{" , { entity_member } , "}" ;
+entity_member     = entity_field_decl | method_decl | constructor_decl ;
+entity_field_decl = member_access , [ "fix" ] , type_name , identifier ,
                     [ "=" , expression ] ;
 
 (* ------------------------- Enums ------------------------- *)
@@ -442,7 +467,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class struct enum interface implements inherits super sealed abstract
+  function func return class struct data entity identity enum interface implements inherits super sealed abstract
   trait uses requires void
   import from all var const fix print pass break continue switch case default
   this and or not xor shift

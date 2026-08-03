@@ -539,6 +539,59 @@ struct’s top-level visibility — not per-field modifiers. Construct with
 `Damage(...)`, not brace literals. Prefer a **class** when the type has
 behavior or inheritance.
 
+### `data` (value objects) and `entity` (identity keys)
+
+Two first-class constructs separate **structural** vs **identity** equality —
+deliberately distinct from `struct` (no generated VO/Entity contract) and
+`class` (reference equality by default). Full rationale:
+[`DATA_ENTITY.md`](DATA_ENTITY.md).
+
+```pys
+data Money {
+    int amountCents
+    string currency
+}
+
+Money m1 = Money(10000, "USD")
+Money m2 = Money(10000, "USD")
+# m1 == m2 → true (all fields); fields are immutable
+
+entity Customer identity(customerId) {
+    private fix int customerId
+    public string name
+
+    public Customer(int customerId, string name) {
+        this.customerId = customerId
+        this.name = name
+    }
+}
+
+Customer a = Customer(7, "Ana")
+Customer b = Customer(7, "Ana B.")
+# a == b → true (customerId only); name may change
+```
+
+Rules (summary):
+
+1. **`data`**: fields only (implicitly `fix` + public); implicit ctor like
+   `struct`; copy on assign/call/return; `==` / hash / string form over **all**
+   fields; no `inherits` / `uses` / `implements` / hand `equals`
+2. **`entity`**: explicit ctor; fields need `member_access`; root requires
+   `identity(...)`; every identity field must be `fix`; `==` / hash / string
+   form over identity fields only (parent keys then local); may `inherits`
+   another **entity** (optional local `identity` appends to the parent key);
+   no `uses` / `implements`; hand `equals` / `hashCode` / `toString` rejected
+3. Prefer **`struct`** for ad-hoc bags without a VO/Entity contract; **`data`**
+   for immutable interchangeable values; **`entity`** for lifecycle rows;
+   **`class`** for general OOP
+
+| Construct | Equality | Identity | Inheritance |
+|-----------|----------|----------|-------------|
+| `struct` | Field-wise (no VO contract) | No | No |
+| `data` | All fields, generated | No | No |
+| `entity` | Identity fields only | `identity(...)` | Entity-only |
+| `class` | Reference (manual override) | Implicit | Yes |
+
 ### Enums
 
 Enums are **nominal closed sets** of named constants. Members are immutable.
@@ -596,7 +649,7 @@ Rules:
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 
-Applies to functions, classes, structs, enums, interfaces, and top-level `const` / `fix`.
+Applies to functions, classes, structs, `data`, `entity`, enums, interfaces, and top-level `const` / `fix`.
 
 ### Member access (inside classes)
 
