@@ -320,6 +320,45 @@ loop (counter < 3) {
 }
 ```
 
+#### Why the C-style form has one counter
+
+The C-style `loop` deliberately models one induction variable: its initializer,
+condition, and step must name the same variable, and the body cannot modify it.
+That keeps the condition that controls termination and the step that advances
+toward termination visibly connected.
+
+Java and C++ permit compact headers such as this (this is not PYS):
+
+```java
+for (int x = 0, y = 10; x < 10; x++, y++) {
+    System.out.println(x + ", " + y);
+}
+```
+
+The compiler accepts changes such as `y += 2` in the step or an additional
+`y++` in the body. The condition still checks only `x`, so keeping `x` and `y`
+in sync is a programmer-maintained invariant rather than a language guarantee.
+(C++ uses its comma operator in the update expression; Java uses a
+comma-separated list of update expressions.)
+
+PYS does not add multi-counter or `{x, y}` header syntax. Use the while-style
+form when several mutable values participate:
+
+```pys
+int x = 0
+int y = 10
+
+loop (x < 3) {
+    print("#i{x}, #i{y}")
+    x++
+    y++
+}
+```
+
+This prints `0, 10`, `1, 11`, and `2, 12`. Initialization and mutation remain
+ordinary visible statements; the narrow C-style form keeps its single-counter
+immutability guarantee. See [ADR-019](adr/ADR-019-single-counter-loops.md).
+
 **Foreach**:
 
 ```pys

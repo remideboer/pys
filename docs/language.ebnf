@@ -369,7 +369,8 @@ for_cond         = identifier , rel_op , expression ;
 for_step         = identifier , ( "++" | "--" )
                  | identifier , ( "+=" | "-=" ) , expression ;
 (* Init, condition, and step must refer to the same loop variable.
-   That variable is immutable inside the loop body. *)
+   That variable is immutable inside the loop body. Multiple changing values
+   use while_loop, where initialization and every mutation stay explicit. *)
 
 while_loop       = "loop" , "(" , expression , ")" , block ;
 

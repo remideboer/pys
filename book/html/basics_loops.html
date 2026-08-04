@@ -134,6 +134,25 @@ assignments in the middle of the body.</p>
 2
 </code></pre>
 <p>Same three prints; the condition is checked before each pass.</p>
+<h2>When two values must change</h2>
+<p>The C-style form is intentionally for <strong>one</strong> counter. Its start, condition,
+and step all name that counter, and you cannot change it in the body. For two
+or more changing values, use the while-style form you already know:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+
+<span class="tok-kw">loop</span> (<span class="tok-ident">x</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string">, </span><span class="tok-interp">#i{y}</span><span class="tok-string">&quot;</span>)
+    <span class="tok-ident">x</span><span class="tok-op">++</span>
+    <span class="tok-ident">y</span><span class="tok-op">++</span>
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">0, 10
+1, 11
+2, 12
+</code></pre>
+<p>The two starting values and both updates are visible on their own lines. PYS
+does not hide them in a denser multi-variable loop header.</p>
 <h2>Foreach — walk a collection</h2>
 <pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>]
 <span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">names</span>) {

@@ -62,5 +62,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-016](ADR-016-ide-refactoring.md) | IDE educational refactoring (binding-aware plans) | Accepted |
 | [ADR-017](ADR-017-source-roots-same-package-tests.md) | Declared source roots and same-package tests | Accepted (impl Active) |
 | [ADR-018](ADR-018-collection-literals.md) | Collection literals + type-directed braces | Accepted |
+| [ADR-019](ADR-019-single-counter-loops.md) | C-style loops have one immutable counter | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

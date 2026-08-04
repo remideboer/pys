@@ -35,6 +35,78 @@ a
 b
 ```
 
+## Why a C-style loop has one counter
+
+PYS deliberately keeps the C-style form narrow. The initializer, condition,
+and step must all name the same counter, and that counter is immutable in the
+body. This gives the reader one clear answer to: “what controls this loop?”
+
+Java and C++ allow this denser form (the following is **not PYS**):
+
+```java
+for (int x = 0, y = 10; x < 3; x++, y++) {
+    System.out.println(x + ", " + y);
+}
+```
+
+Output while both updates stay aligned:
+
+```text
+0, 10
+1, 11
+2, 12
+```
+
+Their compilers also accept an extra update to only one value. For example,
+this Java body accidentally advances `y` twice during one pass:
+
+```java
+for (int x = 0, y = 10; x < 3; x++, y++) {
+    if (x == 1) {
+        y++;
+    }
+    System.out.println(x + ", " + y);
+}
+```
+
+Output — notice that the last two pairs are no longer ten apart:
+
+```text
+0, 10
+1, 12
+2, 13
+```
+
+The condition still checks only `x`; nothing guarantees that `y` stays in
+step. A different `y += 2` in the header would compile too. C++ expresses the
+update with its comma operator, while Java uses a comma-separated update list.
+
+PYS does not add comma-separated counters or a special `{x, y}` group. Use
+the existing while-style form when several ordinary mutable values take part:
+
+```pys
+int x = 0
+int y = 10
+
+loop (x < 3) {
+    print("#i{x}, #i{y}")
+    x++
+    y++
+}
+```
+
+Output:
+
+```text
+0, 10
+1, 11
+2, 12
+```
+
+This is the same algorithm, but initialization and every mutation are visible.
+The trade-off is the normal while-loop responsibility: make sure the body
+eventually changes the values needed to make the condition false.
+
 
 ## Leaving early: `break`
 

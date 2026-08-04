@@ -48,6 +48,34 @@ Output:
 
 Same three prints; the condition is checked before each pass.
 
+## When two values must change
+
+The C-style form is intentionally for **one** counter. Its start, condition,
+and step all name that counter, and you cannot change it in the body. For two
+or more changing values, use the while-style form you already know:
+
+```pys
+int x = 0
+int y = 10
+
+loop (x < 3) {
+    print("#i{x}, #i{y}")
+    x++
+    y++
+}
+```
+
+Output:
+
+```text
+0, 10
+1, 11
+2, 12
+```
+
+The two starting values and both updates are visible on their own lines. PYS
+does not hide them in a denser multi-variable loop header.
+
 ## Foreach — walk a collection
 
 ```pys

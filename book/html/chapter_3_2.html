@@ -132,6 +132,55 @@
 a
 b
 </code></pre>
+<h2>Why a C-style loop has one counter</h2>
+<p>PYS deliberately keeps the C-style form narrow. The initializer, condition,
+and step must all name the same counter, and that counter is immutable in the
+body. This gives the reader one clear answer to: “what controls this loop?”</p>
+<p>Java and C++ allow this denser form (the following is <strong>not PYS</strong>):</p>
+<pre><code class="language-java">for (int x = 0, y = 10; x &lt; 3; x++, y++) {
+    System.out.println(x + &quot;, &quot; + y);
+}
+</code></pre>
+<p>Output while both updates stay aligned:</p>
+<pre><code class="language-text">0, 10
+1, 11
+2, 12
+</code></pre>
+<p>Their compilers also accept an extra update to only one value. For example,
+this Java body accidentally advances <code>y</code> twice during one pass:</p>
+<pre><code class="language-java">for (int x = 0, y = 10; x &lt; 3; x++, y++) {
+    if (x == 1) {
+        y++;
+    }
+    System.out.println(x + &quot;, &quot; + y);
+}
+</code></pre>
+<p>Output — notice that the last two pairs are no longer ten apart:</p>
+<pre><code class="language-text">0, 10
+1, 12
+2, 13
+</code></pre>
+<p>The condition still checks only <code>x</code>; nothing guarantees that <code>y</code> stays in
+step. A different <code>y += 2</code> in the header would compile too. C++ expresses the
+update with its comma operator, while Java uses a comma-separated update list.</p>
+<p>PYS does not add comma-separated counters or a special <code>{x, y}</code> group. Use
+the existing while-style form when several ordinary mutable values take part:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+
+<span class="tok-kw">loop</span> (<span class="tok-ident">x</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string">, </span><span class="tok-interp">#i{y}</span><span class="tok-string">&quot;</span>)
+    <span class="tok-ident">x</span><span class="tok-op">++</span>
+    <span class="tok-ident">y</span><span class="tok-op">++</span>
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">0, 10
+1, 11
+2, 12
+</code></pre>
+<p>This is the same algorithm, but initialization and every mutation are visible.
+The trade-off is the normal while-loop responsibility: make sure the body
+eventually changes the values needed to make the condition false.</p>
 <h2>Leaving early: <code>break</code></h2>
 <p><code>break</code> stops the loop <strong>immediately</strong>. Use it when you have found what you
 were looking for and further passes would waste work.</p>
