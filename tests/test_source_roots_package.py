@@ -127,6 +127,21 @@ def test_package_peer_files_across_roots(tmp_path: Path) -> None:
     assert peers == {"Invoice.pys", "InvoiceTest.pys"}
 
 
+def test_wrong_place_example_reproduces_diagnostic() -> None:
+    """examples/source_roots wrong-folder stub: enable import → package-mismatch."""
+    root = Path(__file__).resolve().parents[1] / "examples" / "source_roots"
+    wrong = root / "tests" / "test_utils" / "WrongPlaceTest.pys"
+    text = wrong.read_text(encoding="utf-8")
+    text = text.replace(
+        "# import formatInvoice from ../../src/billing/Invoice.pys\n",
+        "import formatInvoice from ../../src/billing/Invoice.pys\n",
+    )
+    with pytest.raises(TranspileError) as exc:
+        transpile(text, source_path=wrong)
+    assert exc.value.code == "pys.package-mismatch"
+    assert exc.value.suggested_fix == "tests/billing/WrongPlaceTest.pys"
+
+
 def test_mismatch_diagnostic_helper(tmp_path: Path) -> None:
     root = _project(tmp_path)
     inv = root / "src" / "billing" / "Invoice.pys"

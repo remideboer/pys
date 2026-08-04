@@ -1,5 +1,7 @@
-# Mirrored package billing under tests/ — same package as src/billing/Invoice.pys.
-# Can import package-scoped symbols without widening them to global/public.
+# Mirrored package billing under tests/ — same package as src/billing/*.
+#
+# Bare import `from Invoice` resolves across source roots (package peers).
+# No widening of Invoice to `public` was required for this to compile.
 
 import Invoice, formatInvoice from Invoice
 
@@ -7,6 +9,14 @@ Invoice inv = Invoice("Ada", 100)
 inv.addCents(50)
 print(formatInvoice(inv))  # Ada: 150 cents
 
-# Contrast: private Invoice.cents is not accessible here (by design).
-# A test that "needs" private fields should push for a better public API instead
-# of a language bypass — see requirements/package_resolution_testing_philosophy.md.
+# --- What tests must NOT do ---
+# private Invoice.cents is not visible here. If a test "needs" a private field,
+# that is a signal to improve the public API (query method, result object),
+# not a gap for a language bypass — see
+# requirements/package_resolution_testing_philosophy.md §§1–2.
+#
+# --- Wrong folder mistake ---
+# tests/test_utils/WrongPlaceTest.pys is intentionally in the wrong package.
+# Importing a package symbol from billing fails with pys.package-mismatch and
+# suggests moving the file to tests/billing/ (IDE quick fix available).
+# See tests/test_utils/WrongPlaceTest.pys (uncomment the explicit-path import).

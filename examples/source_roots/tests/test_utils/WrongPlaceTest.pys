@@ -1,0 +1,12 @@
+# Intentionally WRONG package path for teaching the §4 diagnostic.
+#
+# This file resolves to package `test_utils` (under source root `tests`),
+# not `billing`. Uncomment the import and analyze/run to see:
+#   code: pys.package-mismatch
+#   tip + suggested_fix → tests/billing/WrongPlaceTest.pys
+#   IDE quick fix: Move File to Suggested Package Path
+#
+# Use an explicit path so the module is found; visibility then fails:
+# import formatInvoice from ../../src/billing/Invoice.pys
+
+print("wrong-place stub — enable the import above to reproduce the diagnostic")

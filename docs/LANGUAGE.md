@@ -714,7 +714,21 @@ Rules:
 | Keyword | Who can import it |
 |---------|-------------------|
 | (default / omit) | Nobody outside this file (module-private) |
-| `package` | Other `.pys` files in the **same package**: same folder by default, or the same path relative to a declared `pys.toml` `[source_roots]` entry (e.g. `src/billing` and `tests/billing`) — see [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) |
+| `package` | Other `.pys` files in the **same package**: same folder by default, or the same path relative to a declared `pys.toml` `[source_roots]` entry (e.g. `src/billing` and `tests/billing`) — see [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) and `examples/source_roots/` |
+
+### Project source roots (`pys.toml`)
+
+Optional project-manifest (not a language keyword). Declares roots whose
+relative paths define package identity:
+
+```toml
+[source_roots]
+main = "src"
+test = "tests"
+```
+
+Without `[source_roots]`, same-folder remains the package rule. Mismatched
+packages emit `pys.package-mismatch` with a move-file quick fix in the IDE.
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 

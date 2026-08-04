@@ -1,15 +1,17 @@
-# examples/source_roots — package identity across src/ and tests/ (ADR-017 / F-006).
+# examples/source_roots — package identity across src/ and tests/ (ADR-017 / F-006)
 #
-# pys.toml declares [source_roots]. Files with the same path *after* stripping
-# the root share one package. No new keyword; no private-bypass for tests.
+# pys.toml declares [source_roots]. After stripping the root, identical relative
+# paths are the same package. No new keyword; no private-bypass for tests.
 #
-# Run the mirrored test:
+# Run:
 #   python -m transpiler run examples/source_roots/tests/billing/InvoiceTest.pys
 
 # --- Production type in package billing (src/billing) ---
-# package visibility: visible to tests/billing/* without making members public.
+# `package` exports are visible to tests/billing/* (mirrored path) without
+# making the API `public` / `global`.
 
 package class Invoice {
+    # private: implementation detail — tests must not reach in.
     private int cents
     public string customer
 
@@ -18,7 +20,7 @@ package class Invoice {
         this.cents = cents
     }
 
-    # Public surface is what tests (and callers) should use — not private fields.
+    # Public / package surface is the contract tests should use.
     public int totalCents() {
         return this.cents
     }
@@ -28,6 +30,7 @@ package class Invoice {
     }
 }
 
+# package function: same visibility rule as package class.
 package function string formatInvoice(Invoice inv) {
     return inv.customer + ": " + str(inv.totalCents()) + " cents"
 }

@@ -4,8 +4,9 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-04 |
-| Scope | `transpiler/project_manifest.py`, `imports.ImportResolver._same_package`, package import diagnostics |
+| Scope | `transpiler/project_manifest.py`, `imports.ImportResolver._same_package`, package import diagnostics; IDE 0.0.65 |
 | ADR | [ADR-017](../adr/ADR-017-source-roots-same-package-tests.md) |
+| Extension | 0.0.65 (`pys.package-mismatch` quick fix → move file) |
 
 ## Context
 
