@@ -1,0 +1,27 @@
+{
+  "deps_fingerprint": "aae331c2642c93d246bb174e828199ff0928a6f9cac75b674b48e03ac7126f62",
+  "index_url": "https://pypi.org/simple",
+  "packages": [
+    {
+      "name": "h2",
+      "sha256": "03a46bcf682256c95b5fd9e9a99c1323584c3eec6440d379b9903d709476bc6d",
+      "url": "https://files.pythonhosted.org/packages/2a/e5/db6d438da759efbb488c4f3fbdab7764492ff3c3f953132efa6b9f0e9e53/h2-4.1.0-py3-none-any.whl",
+      "version": "4.1.0"
+    },
+    {
+      "name": "hpack",
+      "sha256": "858ac0b02280fa582b5080d68db0899c62a80375e0e5413a74970c5e518b6986",
+      "url": "https://files.pythonhosted.org/packages/71/b4/4a9fcfb2aef6ba44d9073ecd301443aa00b3dac95de5619f2a7de7ec8a91/hpack-4.2.0-py3-none-any.whl",
+      "version": "4.2.0"
+    },
+    {
+      "name": "hyperframe",
+      "sha256": "b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5",
+      "url": "https://files.pythonhosted.org/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl",
+      "version": "6.1.0"
+    }
+  ],
+  "platform": "win-amd64",
+  "python": "3.11",
+  "schema": 1
+}

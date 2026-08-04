@@ -1,10 +1,13 @@
 # examples/webserver/main.pys
-# Concurrent HTTP/1.1 server: acceptor task + worker tasks (canonical PYS).
+# Concurrent HTTP server: acceptor + workers; HTTP/1.1 or HTTP/2 via ALPN.
 #
 # Run:
 #   python -m transpiler run examples/webserver/main.pys
 #
-# Then: curl http://127.0.0.1:8080/health
+# HTTPS + HTTP/2:
+#   python examples/webserver/scripts/gen_dev_certs.py
+#   # set cfg.tlsEnabled = true below
+#   curl -k --http2 https://127.0.0.1:8080/health
 
 import socket
 import select
@@ -12,27 +15,29 @@ import time
 
 import ServerConfig from config
 import ConnQueue from conn_queue
-import Http11, HttpRequest from http11
+import Http11 from http11
+import Http2Server from http2
+import ConnHandler from conn_handler
 import AppContext, Router from router
 import TlsTerminator from tls_term
 
 ServerConfig cfg = ServerConfig()
-# Set tlsEnabled = true and run from repo root to serve HTTPS (FR5).
+# Set tlsEnabled = true (certs via scripts/gen_dev_certs.py) for HTTPS + HTTP/2 ALPN.
 # cfg.tlsEnabled = true
 AppContext ctx = AppContext(cfg)
 Router router = Router(ctx)
 Http11 http = Http11()
+Http2Server http2 = Http2Server()
+ConnHandler handler = ConnHandler(http, http2, router)
 TlsTerminator tls = TlsTerminator(cfg.tlsEnabled, cfg.tlsCertFile, cfg.tlsKeyFile)
 
 shared ConnQueue work = ConnQueue()
 shared bool running = true
-shared Router sharedRouter = router
-shared Http11 sharedHttp = http
-shared AppContext sharedCtx = ctx
+shared ConnHandler sharedHandler = handler
 shared TlsTerminator sharedTls = tls
 
 print("starting concurrent webserver on " + cfg.listenHost + ":" + str(cfg.listenPort))
-print("workers=4 (tasks) pool=" + str(cfg.poolSize) + " tls=" + str(cfg.tlsEnabled))
+print("workers=4 (tasks) pool=" + str(cfg.poolSize) + " tls=" + str(cfg.tlsEnabled) + " alpn=h2,http/1.1")
 
 tasks {
     task acceptor {
@@ -71,11 +76,7 @@ tasks {
             if (conn == null) {
                 done = true
             } else {
-                string raw = sharedHttp.readRaw(conn)
-                HttpRequest req = sharedHttp.parse(raw)
-                var resp = sharedRouter.handle(req)
-                sharedHttp.write(conn, resp)
-                conn.close()
+                sharedHandler.serveOne(conn)
             }
         }
     }
@@ -87,11 +88,7 @@ tasks {
             if (conn == null) {
                 done = true
             } else {
-                string raw = sharedHttp.readRaw(conn)
-                HttpRequest req = sharedHttp.parse(raw)
-                var resp = sharedRouter.handle(req)
-                sharedHttp.write(conn, resp)
-                conn.close()
+                sharedHandler.serveOne(conn)
             }
         }
     }
@@ -103,11 +100,7 @@ tasks {
             if (conn == null) {
                 done = true
             } else {
-                string raw = sharedHttp.readRaw(conn)
-                HttpRequest req = sharedHttp.parse(raw)
-                var resp = sharedRouter.handle(req)
-                sharedHttp.write(conn, resp)
-                conn.close()
+                sharedHandler.serveOne(conn)
             }
         }
     }
@@ -119,11 +112,7 @@ tasks {
             if (conn == null) {
                 done = true
             } else {
-                string raw = sharedHttp.readRaw(conn)
-                HttpRequest req = sharedHttp.parse(raw)
-                var resp = sharedRouter.handle(req)
-                sharedHttp.write(conn, resp)
-                conn.close()
+                sharedHandler.serveOne(conn)
             }
         }
     }

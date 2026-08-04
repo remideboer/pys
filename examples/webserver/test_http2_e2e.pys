@@ -1,0 +1,175 @@
+# examples/webserver/test_http2_e2e.pys
+# Given TLS + ALPN h2,
+# When a client multiplexes two GET /health streams on one connection,
+# Then both streams receive :status 200 (FR2).
+
+import socket
+import select
+import time
+import ssl
+import subprocess
+import sys
+
+import h2.config
+import h2.connection
+import h2.events
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11 from http11
+import Http2Server from http2
+import ConnHandler from conn_handler
+import AppContext, Router from router
+import TlsTerminator from tls_term
+
+subprocess.check_call([sys.executable, "scripts/gen_dev_certs.py"])
+
+ServerConfig cfg = ServerConfig()
+cfg.poolSize = 4
+cfg.tlsEnabled = true
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+Http11 http = Http11()
+Http2Server http2 = Http2Server()
+ConnHandler handler = ConnHandler(http, http2, router)
+TlsTerminator tls = TlsTerminator(cfg.tlsEnabled, cfg.tlsCertFile, cfg.tlsKeyFile)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared int listenPort = 0
+shared ConnHandler sharedHandler = handler
+shared TlsTerminator sharedTls = tls
+atomic int served = 0
+shared int okStreams = 0
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = ["127.0.0.1", 0]
+        srv.bind(tuple(bindAddr))
+        srv.listen(16)
+        srv.setblocking(false)
+        listenPort = srv.getsockname()[1]
+        var empty = []
+        int left = 1
+        loop (running && left > 0) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.05)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                client = sharedTls.wrap(client)
+                work.putConn(client)
+                left = left - 1
+            }
+        }
+        work.putPoison()
+        running = false
+        srv.close()
+    }
+
+    task worker {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+                served += 1
+            }
+        }
+    }
+
+    task client {
+        loop (listenPort == 0) {
+            time.sleep(0.01)
+        }
+        int port = listenPort
+        var addr = ["127.0.0.1", port]
+        var raw = socket.create_connection(tuple(addr), 2.0)
+        var cctx = ssl.create_default_context()
+        cctx.check_hostname = false
+        cctx.verify_mode = ssl.CERT_NONE
+        cctx.set_alpn_protocols(["h2"])
+        var s = cctx.wrap_socket(raw, false, true, true, "localhost")
+        string negotiated = str(s.selected_alpn_protocol())
+        if (negotiated != "h2") {
+            print("FAIL alpn not h2: " + negotiated)
+            s.close()
+            running = false
+        } else {
+            var h2cfg = h2.config.H2Configuration(true, "utf-8")
+            var h2conn = h2.connection.H2Connection(h2cfg)
+            h2conn.initiate_connection()
+            var h1 = [
+                tuple([":method", "GET"]),
+                tuple([":path", "/health"]),
+                tuple([":authority", "localhost"]),
+                tuple([":scheme", "https"]),
+                tuple(["x-correlation-id", "h2-a"])
+            ]
+            var h2hdr = [
+                tuple([":method", "GET"]),
+                tuple([":path", "/health"]),
+                tuple([":authority", "localhost"]),
+                tuple([":scheme", "https"]),
+                tuple(["x-correlation-id", "h2-b"])
+            ]
+            h2conn.send_headers(1, h1, true)
+            h2conn.send_headers(3, h2hdr, true)
+            s.sendall(h2conn.data_to_send())
+            int got = 0
+            int rounds = 0
+            loop (got < 2 && rounds < 40) {
+                var data = s.recv(65535)
+                if (len(data) == 0) {
+                    rounds = 40
+                } else {
+                    var events = h2conn.receive_data(data)
+                    loop (event in events) {
+                        if (type(event).__name__ == "ResponseReceived") {
+                            string status = ""
+                            loop (pair in event.headers) {
+                                if (str(pair[0]) == ":status") {
+                                    status = str(pair[1])
+                                }
+                            }
+                            if (status == "200") {
+                                got = got + 1
+                            }
+                        }
+                    }
+                    var out = h2conn.data_to_send()
+                    if (len(out) > 0) {
+                        s.sendall(out)
+                    }
+                }
+                rounds = rounds + 1
+            }
+            s.close()
+            okStreams = got
+            if (got >= 2) {
+                print("PASS e2e HTTP/2 multiplex /health x2")
+            } else {
+                print("FAIL e2e HTTP/2 multiplex got=" + str(got))
+            }
+            time.sleep(0.05)
+            running = false
+        }
+    }
+}
+
+if (okStreams >= 2) {
+    print("PASS http2 stream count")
+} else {
+    print("FAIL http2 stream count")
+}
+if (served.get() >= 1) {
+    print("PASS http2 served connection")
+} else {
+    print("FAIL http2 served connection")
+}
+print("=== http2 e2e done ===")

@@ -1,0 +1,90 @@
+# examples/webserver/http2.pys
+# HTTP/2 multiplexed streams over an already-negotiated ALPN "h2" socket (FR2).
+# Uses locked package `h2` (see pys.deps / pys.lock).
+
+import h2.config
+import h2.connection
+import h2.events
+
+import HttpRequest from http11
+
+package class Http2Server {
+    public Http2Server() {
+    }
+
+    public void serve(var conn, var router) {
+        var h2cfg = h2.config.H2Configuration(false, "utf-8")
+        var h2conn = h2.connection.H2Connection(h2cfg)
+        h2conn.initiate_connection()
+        var preface = h2conn.data_to_send()
+        if (len(preface) > 0) {
+            conn.sendall(preface)
+        }
+        bool open = true
+        loop (open) {
+            var data = conn.recv(65535)
+            if (len(data) == 0) {
+                open = false
+            } else {
+                var events = h2conn.receive_data(data)
+                loop (event in events) {
+                    this._handleEvent(h2conn, event, router)
+                }
+                var out = h2conn.data_to_send()
+                if (len(out) > 0) {
+                    conn.sendall(out)
+                }
+            }
+        }
+    }
+
+    public void _handleEvent(var h2conn, var event, var router) {
+        string kind = type(event).__name__
+        if (kind == "RequestReceived") {
+            string method = "GET"
+            string path = "/"
+            string body = ""
+            string correlationId = "corr-0"
+            var headers = event.headers
+            loop (pair in headers) {
+                string name = str(pair[0]).lower()
+                string value = str(pair[1])
+                if (name == ":method") {
+                    method = value
+                } else {
+                    if (name == ":path") {
+                        path = value
+                    } else {
+                        if (name == "x-correlation-id") {
+                            correlationId = value
+                        }
+                    }
+                }
+            }
+            int qi = path.find("?")
+            if (qi >= 0) {
+                path = path[0:qi]
+            }
+            HttpRequest req = HttpRequest(method, path, body, correlationId)
+            var resp = router.handle(req)
+            string payload = resp.body
+            var bodyBytes = payload.encode("utf-8")
+            var statusPair = tuple([":status", str(resp.status)])
+            var typePair = tuple(["content-type", "text/plain; charset=utf-8"])
+            var lenPair = tuple(["content-length", str(len(bodyBytes))])
+            var outHeaders = [statusPair, typePair, lenPair]
+            if (resp.rejectReason != "") {
+                var rejectPair = tuple(["x-reject-reason", resp.rejectReason])
+                outHeaders = [statusPair, typePair, lenPair, rejectPair]
+            }
+            int streamId = event.stream_id
+            h2conn.send_headers(streamId, outHeaders)
+            h2conn.send_data(streamId, bodyBytes, true)
+        } else {
+            if (kind == "ConnectionTerminated") {
+                # peer closed; outer recv loop ends
+                int unused = 0
+            }
+        }
+    }
+}

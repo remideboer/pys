@@ -1,0 +1,36 @@
+# examples/webserver/conn_handler.pys
+# Dispatch one accepted connection to HTTP/1.1 or HTTP/2 (ALPN).
+
+import Http11, HttpRequest from http11
+import Http2Server from http2
+
+package class ConnHandler {
+    private Http11 http
+    private Http2Server http2
+    private var router
+
+    public ConnHandler(Http11 http, Http2Server http2, var router) {
+        this.http = http
+        this.http2 = http2
+        this.router = router
+    }
+
+    public void serveOne(var conn) {
+        string alpn = ""
+        if (hasattr(conn, "selected_alpn_protocol")) {
+            var selected = conn.selected_alpn_protocol()
+            if (selected != null) {
+                alpn = str(selected)
+            }
+        }
+        if (alpn == "h2") {
+            this.http2.serve(conn, this.router)
+        } else {
+            string raw = this.http.readRaw(conn)
+            HttpRequest req = this.http.parse(raw)
+            var resp = this.router.handle(req)
+            this.http.write(conn, resp)
+        }
+        conn.close()
+    }
+}
