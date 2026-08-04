@@ -19,6 +19,7 @@ const {
   collectInlineValueSites,
   filterInlineValueSitesByScope,
 } = require('./debug-map');
+const { createPysProjectScaffold } = require('./create-project');
 
 const PYS_DEBUG_SESSION_NAME = 'Debug PYS';
 /** @type {Map<string, { dir: string, registry: object }>} */
@@ -139,6 +140,17 @@ function activate(context) {
   registerRefactoring(context);
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
+
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider('pys.sidebar', {
+      getChildren() {
+        return [];
+      },
+      getTreeItem(element) {
+        return element;
+      },
+    }),
+  );
 
   let validateTimer = null;
   let validateController = null;
@@ -1479,6 +1491,42 @@ function activate(context) {
     }
     // Uses the ReferenceProvider registered above (Peek / References view).
     await vscode.commands.executeCommand('editor.action.referenceSearch.trigger');
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.createProject', async () => {
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage('Trust this workspace before creating a PYS project.');
+      return;
+    }
+    const folders = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      openLabel: 'Create PYS Project Here',
+      title: 'Select a folder for the new PYS project',
+    });
+    if (!folders || !folders.length) {
+      return;
+    }
+    const target = folders[0].fsPath;
+    try {
+      const result = createPysProjectScaffold(target);
+      const open = 'Open Folder';
+      const choice = await vscode.window.showInformationMessage(
+        `PYS project created in ${result.root} (src/, tests/, pys.toml, pys.deps).`,
+        open,
+      );
+      if (choice === open) {
+        await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(result.root), {
+          forceNewWindow: false,
+        });
+      } else {
+        await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(result.root));
+      }
+    } catch (error) {
+      const message = error && error.message ? String(error.message) : String(error);
+      vscode.window.showErrorMessage(message);
+    }
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.lockDeps', async (file) => {

@@ -19,6 +19,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
   - Setting `pys.mainFile` (or right-click **Set as Main File**)
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
   - Right-click **`pys.deps`** → **PYS: Run Deps** (runs `deps lock` / refreshes `pys.lock`)
+- **PYS activity bar** (sidebar icon): **Create PYS Project** — scaffolds `src/`, `tests/`, `pys.toml` (`[source_roots]`), and a template `pys.deps`
 
 ## Install (students)
 

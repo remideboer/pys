@@ -201,7 +201,9 @@ before you `import` them from `.pys`.
 ## VS Code Integration
 
 Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
-editor Run controls — no workspace `.vscode/run_pys.py` required.
+editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
+**PYS** icon offers **Create PYS Project** (`src` / `tests` + `pys.toml` + template
+`pys.deps`).
 
 - Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
 - Debug prepares generated Python + line maps, launches debugpy on the program,

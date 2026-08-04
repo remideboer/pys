@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.66",
+  "version": "0.0.67",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -60,6 +60,30 @@
         }
       }
     },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pys",
+          "title": "PYS",
+          "icon": "icons/pys-logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "pys": [
+        {
+          "id": "pys.sidebar",
+          "name": "Project",
+          "icon": "icons/pys-logo.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "pys.sidebar",
+        "contents": "Create a PYS project with source roots (`src` / `tests`), `pys.toml`, and a template `pys.deps`.\n\n[Create PYS Project](command:pys.createProject)\n\nAfter editing dependencies, right-click `pys.deps` → **Run Deps**."
+      }
+    ],
     "languages": [
       {
         "id": "pys",
@@ -152,6 +176,12 @@
         "icon": "$(debug-alt)"
       },
       {
+        "command": "pys.createProject",
+        "title": "Create PYS Project",
+        "category": "PYS",
+        "icon": "$(new-folder)"
+      },
+      {
         "command": "pys.lockDeps",
         "title": "Run Deps",
         "category": "PYS",
@@ -228,6 +258,13 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "pys.createProject",
+          "when": "view == pys.sidebar",
+          "group": "navigation@1"
+        }
+      ],
       "editor/title/run": [
         {
           "command": "pys.runFile",
@@ -395,6 +432,9 @@
       ],
       "commandPalette": [
         {
+          "command": "pys.createProject"
+        },
+        {
           "command": "pys.lockDeps",
           "when": "resourceFilename == 'pys.deps'"
         },
@@ -448,9 +488,11 @@
     "onCommand:pys.runMain",
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",
+    "onCommand:pys.createProject",
     "onCommand:pys.lockDeps",
     "onCommand:pys.clearAllBreakpoints",
     "onCommand:pys.addLogpoint",
+    "onView:pys.sidebar",
     "onStartupFinished"
   ],
   "devDependencies": {

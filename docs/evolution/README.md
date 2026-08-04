@@ -57,5 +57,6 @@ Each record then uses:
 | [CER-020](CER-020-source-roots-package.md) | Source-root package identity (`pys.toml`) | Language |
 | [CER-021](CER-021-collection-literals.md) | Collection literals (dict / set / tuple) | Language |
 | [CER-022](CER-022-run-deps-context-menu.md) | Run Deps from `pys.deps` context menu | IDE |
+| [CER-023](CER-023-create-pys-project.md) | Create PYS Project from activity bar | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

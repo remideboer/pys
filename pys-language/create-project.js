@@ -1,0 +1,66 @@
+/**
+ * Pure filesystem scaffold for a new PYS project (ADR-017 source roots).
+ * Kept free of vscode so unit tests can run under node --test.
+ */
+
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+
+const PYSTOML = `[source_roots]
+main = "src"
+test = "tests"
+`;
+
+const PYS_DEPS = `[interpreter]
+\tversion: >=3.10
+
+[dependencies]
+# Add third-party packages here, then right-click this file → PYS: Run Deps
+#\texample-package
+#\t\tversion: 1.2.3
+`;
+
+/**
+ * @param {string} projectRoot absolute path
+ * @param {{ existsSync?: Function, mkdirSync?: Function, writeFileSync?: Function }} [io]
+ * @returns {{ root: string, created: string[] }}
+ */
+function createPysProjectScaffold(projectRoot, io = fs) {
+  const root = path.resolve(projectRoot);
+  if (!io.existsSync(root)) {
+    io.mkdirSync(root, { recursive: true });
+  }
+  const tomlPath = path.join(root, 'pys.toml');
+  if (io.existsSync(tomlPath)) {
+    const err = new Error(`Already a PYS project (pys.toml exists): ${root}`);
+    err.code = 'PYS_PROJECT_EXISTS';
+    throw err;
+  }
+  const created = [];
+  for (const rel of ['src', 'tests']) {
+    const dir = path.join(root, rel);
+    if (!io.existsSync(dir)) {
+      io.mkdirSync(dir, { recursive: true });
+      created.push(rel + path.sep);
+    }
+    const keep = path.join(dir, '.gitkeep');
+    if (!io.existsSync(keep)) {
+      io.writeFileSync(keep, '', 'utf8');
+      created.push(path.join(rel, '.gitkeep'));
+    }
+  }
+  io.writeFileSync(tomlPath, PYSTOML, 'utf8');
+  created.push('pys.toml');
+  const depsPath = path.join(root, 'pys.deps');
+  io.writeFileSync(depsPath, PYS_DEPS, 'utf8');
+  created.push('pys.deps');
+  return { root, created };
+}
+
+module.exports = {
+  createPysProjectScaffold,
+  PYSTOML,
+  PYS_DEPS,
+};
