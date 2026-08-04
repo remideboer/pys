@@ -60,19 +60,14 @@ you want array-shaped teaching examples. Session 2 goes deeper.
 
 ## Tuples and dicts (construction)
 
-Typed `tuple<…>` / `dict<…>` names show up often on **library return values**.
-To *build* them in beginner programs, use the Python constructors (imported
-once at the top of the file):
+Build them with **typed literals** (same forms as in the language overview):
 
 ```pys
-from builtins import dict
-from builtins import tuple
-
-var person = tuple(["Ada", 36])
+tuple<string, int> person = ("Ada", 36)
 print(person[0])
 print(person[1])
 
-var ages = dict()
+dict<string, int> ages = {}
 ages["Ada"] = 36
 ages["Tom"] = 41
 print(ages["Ada"])
@@ -87,12 +82,11 @@ Ada
 ```
 
 
-> **Sidebar — typed empty `{}`**
+> **Sidebar — empty `{}` needs a type**
 >
-> Writing `dict<string, int> ages = {}` is the long-term typed form in the
-> language docs, but empty `{}` is not a reliable dict constructor in the
-> current toolchain (it can emit as a list). Prefer `dict()` here until you
-> take dicts from libraries.
+> Write `dict<string, int> ages = {}` (or `set<string> tags = {}`). Untyped
+> `var x = {}` is ambiguous between dict, set, and list — PYS asks you to type
+> the binding. Keyed dicts use `{"Ada": 36}`.
 
 ### Exercise
 

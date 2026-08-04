@@ -15,6 +15,7 @@ from ..ast_nodes import (
     BinaryOp,
     BlankStmt,
     Block,
+    BraceLiteral,
     BreakStmt,
     Call,
     Cast,
@@ -22,6 +23,7 @@ from ..ast_nodes import (
     CommentStmt,
     ContinueStmt,
     DataDef,
+    DictLiteral,
     EntityDef,
     Expr,
     ExprStmt,
@@ -46,6 +48,7 @@ from ..ast_nodes import (
     ReturnStmt,
     SharedDecl,
     AtomicDecl,
+    SetLiteral,
     Slice,
     EnumDef,
     StructDef,
@@ -55,6 +58,7 @@ from ..ast_nodes import (
     TaskDef,
     TasksBlock,
     TraitDef,
+    TupleLiteral,
     UnaryOp,
     WhileStmt,
 )
@@ -483,12 +487,23 @@ class _Emitter:
             and (stmt.declare_type or stmt.is_const or stmt.is_fix)
         ):
             self._bind_brace_local(stmt.name)
+        expected = stmt.declare_type if stmt.declare_type and stmt.declare_type != "var" else None
+        if expected is None and "." not in stmt.name and "[" not in stmt.name:
+            expected = self.var_types.get(stmt.name)
         array_rhs = self._array_assign_value(stmt.name, stmt.value)
         if "." not in stmt.name and "[" not in stmt.name:
             self._track_binding_type(stmt.name, stmt.declare_type, stmt.value)
-            value = array_rhs if array_rhs is not None else self._maybe_copy_struct(stmt.value)
+            value = (
+                array_rhs
+                if array_rhs is not None
+                else self._maybe_copy_struct(stmt.value, expected_type=expected)
+            )
         else:
-            value = array_rhs if array_rhs is not None else self._expr(stmt.value)
+            value = (
+                array_rhs
+                if array_rhs is not None
+                else self._expr(stmt.value, expected_type=expected)
+            )
         if "." not in stmt.name and "[" not in stmt.name and stmt.name in self.shared_vars:
             lhs = self._lambda_rename.get(stmt.name, stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
@@ -509,7 +524,7 @@ class _Emitter:
 
     def _array_assign_value(self, lhs: str, value: Expr | None) -> str | None:
         """Emit nested array.array when assigning a literal/alloc into an array slot."""
-        if value is None or not isinstance(value, (ArrayLiteral, ArrayAlloc)):
+        if value is None or not isinstance(value, (ArrayLiteral, BraceLiteral, ArrayAlloc)):
             return None
         meta = self._array_lvalue_remaining(lhs)
         if meta is None:
@@ -578,14 +593,16 @@ class _Emitter:
             return self._is_struct_type(ft)
         return False
 
-    def _maybe_copy_struct(self, expr: Expr | None) -> str:
+    def _maybe_copy_struct(
+        self, expr: Expr | None, *, expected_type: str | None = None
+    ) -> str:
         if expr is None:
             return ""
         if isinstance(expr, KeywordArg):
             return (
-                f"{expr.name}={self._maybe_copy_struct(expr.value)}"
+                f"{expr.name}={self._maybe_copy_struct(expr.value, expected_type=expected_type)}"
             )
-        code = self._expr(expr)
+        code = self._expr(expr, expected_type=expected_type)
         if self._expr_is_struct_value(expr):
             self.needs_struct_copy = True
             return f"_pys_struct_copy({code})"
@@ -653,7 +670,7 @@ class _Emitter:
         if isinstance(value, ArrayAlloc):
             self.needs_array = True
             return self._array_alloc_py(value.elem_type or elem_type, list(value.dims))
-        if isinstance(value, ArrayLiteral):
+        if isinstance(value, (ArrayLiteral, BraceLiteral)):
             if rank <= 1:
                 self.needs_array = True
                 return self._array_leaf_py(elem_type, list(value.elements))
@@ -1122,7 +1139,7 @@ class _Emitter:
 
     # ---- expressions ----
 
-    def _expr(self, expr: Expr | None) -> str:
+    def _expr(self, expr: Expr | None, *, expected_type: str | None = None) -> str:
         if expr is None:
             return ""
         if isinstance(expr, Literal):
@@ -1216,6 +1233,14 @@ class _Emitter:
             if py:
                 return f"{py}({inner})"
             return inner
+        if isinstance(expr, TupleLiteral):
+            return self._tuple_literal_py(expr)
+        if isinstance(expr, DictLiteral):
+            return self._dict_literal_py(expr)
+        if isinstance(expr, SetLiteral):
+            return self._set_literal_py(expr)
+        if isinstance(expr, BraceLiteral):
+            return self._brace_literal_py(expr, expected_type=expected_type)
         if isinstance(expr, ArrayLiteral):
             return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
         if isinstance(expr, ArrayAlloc):
@@ -1226,6 +1251,44 @@ class _Emitter:
         if isinstance(expr, LambdaExpr):
             return self._lambda(expr)
         raise TypeError(f"unsupported expr {type(expr).__name__}")
+
+    def _tuple_literal_py(self, expr: TupleLiteral) -> str:
+        if not expr.elements:
+            return "()"
+        parts = [self._expr(e) for e in expr.elements]
+        if len(parts) == 1:
+            return f"({parts[0]},)"
+        return "(" + ", ".join(parts) + ")"
+
+    def _dict_literal_py(self, expr: DictLiteral) -> str:
+        if not expr.entries:
+            return "{}"
+        parts = [f"{self._expr(k)}: {self._expr(v)}" for k, v in expr.entries]
+        return "{" + ", ".join(parts) + "}"
+
+    def _set_literal_py(self, expr: SetLiteral) -> str:
+        if not expr.elements:
+            return "set()"
+        return "{" + ", ".join(self._expr(e) for e in expr.elements) + "}"
+
+    def _brace_literal_py(
+        self, expr: BraceLiteral, *, expected_type: str | None
+    ) -> str:
+        base = self._base_type(expected_type or "")
+        if base == "dict":
+            if expr.elements:
+                raise TypeError("unkeyed brace cannot emit as dict")
+            return "{}"
+        if base == "set":
+            if not expr.elements:
+                return "set()"
+            return "{" + ", ".join(self._expr(e) for e in expr.elements) + "}"
+        if base == "list":
+            return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
+        # ArrayDecl uses _array_value_py; bare emit without type is a programming error.
+        if not expr.elements:
+            raise TypeError("ambiguous empty brace literal without expected type")
+        return "[" + ", ".join(self._expr(e) for e in expr.elements) + "]"
 
     def _lambda_free_names(self, expr: LambdaExpr) -> list[str]:
         params = set(expr.params)
@@ -1286,6 +1349,12 @@ class _Emitter:
                 for el in elems:
                     if isinstance(el, Expr):
                         walk_expr(el)
+            entries = getattr(e, "entries", None)
+            if isinstance(entries, list):
+                for pair in entries:
+                    if isinstance(pair, tuple) and len(pair) == 2:
+                        walk_expr(pair[0])
+                        walk_expr(pair[1])
             if isinstance(e, SwitchExpr):
                 walk_expr(e.subject)
                 for case in e.cases:

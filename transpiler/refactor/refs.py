@@ -274,6 +274,12 @@ def _walk_expr(index: RefIndex, scopes: list[_Scope], file: str, expr: Expr | No
                     _walk_expr(index, scopes, file, c)
         elif isinstance(child, Expr):
             _walk_expr(index, scopes, file, child)
+    entries = getattr(expr, "entries", None)
+    if isinstance(entries, list):
+        for pair in entries:
+            if isinstance(pair, tuple) and len(pair) == 2:
+                _walk_expr(index, scopes, file, pair[0])
+                _walk_expr(index, scopes, file, pair[1])
 
 
 def _walk_block(

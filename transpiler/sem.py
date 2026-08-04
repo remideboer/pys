@@ -15,10 +15,12 @@ from .ast_nodes import (
     AwaitExpr,
     BinaryOp,
     Block,
+    BraceLiteral,
     Call,
     Cast,
     ClassDef,
     DataDef,
+    DictLiteral,
     EnumDef,
     EntityDef,
     Expr,
@@ -47,6 +49,7 @@ from .ast_nodes import (
     TasksBlock,
     TraitDef,
     TraitRequire,
+    TupleLiteral,
     UnaryOp,
     WhileStmt,
 )
@@ -871,7 +874,71 @@ def _infer_type(expr: Expr | None, class_names: set[str] | None = None) -> str |
         return None
     if isinstance(expr, UnaryOp):
         return _infer_type(expr.operand, class_names)
+    if isinstance(expr, TupleLiteral):
+        return "tuple"
+    if isinstance(expr, DictLiteral):
+        return "dict"
+    if isinstance(expr, BraceLiteral):
+        return None
+    if isinstance(expr, ArrayLiteral):
+        return "list"
     return None
+
+
+def _check_brace_literal_assign(
+    value: BraceLiteral,
+    expected: str | None,
+    *,
+    line: int,
+    col: int,
+    name: str,
+) -> None:
+    """Validate unresolved `{…}` against an expected binding type."""
+    tip_type = (
+        "Type the binding: `dict<K, V> name = {}`, `set<T> name = {}`, "
+        "or `list<T> name = []`."
+    )
+    if not expected or expected == "var":
+        shape = "{}" if not value.elements else "{…}"
+        _transpile_error(
+            f"Ambiguous brace literal `{shape}` — PYS needs a typed binding to "
+            "choose dict, set, list, or array.",
+            line,
+            col,
+            f"var {name} = {shape}" if expected == "var" else f"{name} = {shape}",
+            tips=[tip_type],
+        )
+    base = _base_type_name(expected)
+    if base == "dict":
+        if value.elements:
+            _transpile_error(
+                "Dict literals use `key: value` pairs, not a bare element list. "
+                'Example: `dict<string, int> ages = {"Ada": 36}`.',
+                line,
+                col,
+                f"{expected} {name} = {{…}}",
+                tips=['Use keyed entries: `{"key": value}`.'],
+            )
+        return
+    if base == "set":
+        return
+    if base == "list":
+        return
+    if base == "tuple":
+        _transpile_error(
+            "Tuple values use parentheses: `(a, b)` or `(a,)`, not braces.",
+            line,
+            col,
+            f"{expected} {name} = (…)",
+            tips=["Write `tuple<…> name = (a, b)`."],
+        )
+    _transpile_error(
+        f"Brace literal cannot initialize '{name}' of type {expected}.",
+        line,
+        col,
+        f"{expected} {name} = {{…}}",
+        tips=[tip_type],
+    )
 
 
 def _is_compile_time_const_expr(expr: Expr | None) -> bool:
@@ -1019,6 +1086,35 @@ def _check_bindings(
             line = stmt.span.line if stmt.span else 1
             col = stmt.span.column if stmt.span else 1
             _check_typed_interpolation(stmt.value, types, line=line, column=col)
+            brace_expected: str | None
+            if stmt.declare_type == "var":
+                brace_expected = "var"
+            elif stmt.declare_type:
+                brace_expected = stmt.declare_type
+            elif _is_simple_name(stmt.name):
+                brace_expected = types.get(stmt.name)
+            else:
+                brace_expected = None
+            if isinstance(stmt.value, BraceLiteral) and "[" not in stmt.name:
+                _check_brace_literal_assign(
+                    stmt.value,
+                    brace_expected,
+                    line=line,
+                    col=col,
+                    name=stmt.name,
+                )
+            if (
+                isinstance(stmt.value, DictLiteral)
+                and stmt.declare_type
+                and stmt.declare_type != "var"
+                and _base_type_name(stmt.declare_type) != "dict"
+            ):
+                _transpile_error(
+                    f"Cannot assign a dict literal to '{stmt.name}' of type {stmt.declare_type}.",
+                    line,
+                    col,
+                    f"{stmt.declare_type} {stmt.name} = {{…}}",
+                )
             if stmt.declare_type or stmt.is_const or stmt.is_fix:
                 if stmt.is_const:
                     if not _is_compile_time_const_expr(stmt.value):
@@ -4513,7 +4609,7 @@ def _check_array_init(
             )
         return
 
-    if not isinstance(value, ArrayLiteral):
+    if not isinstance(value, (ArrayLiteral, BraceLiteral)):
         _transpile_error(
             f"Array '{name}' must be initialized with a list/brace literal or an allocation "
             f"like `{elem_type}[n][]…`.",
@@ -4555,7 +4651,7 @@ def _check_array_init(
         return
 
     for el in elems:
-        if not isinstance(el, ArrayLiteral):
+        if not isinstance(el, (ArrayLiteral, BraceLiteral)):
             _transpile_error(
                 f"Array '{name}' rank {rank} initializer expects nested array literals.",
                 line,

@@ -1,0 +1,46 @@
+# Collections — dict, set, tuple (and brace vs array)
+#
+# Teaching example for collection literals (ADR-018 / CER-021).
+# Contrasts typed dict / set / tuple with Java-style int[][] braces.
+#
+# Expected output:
+#   36
+#   41
+#   2
+#   0
+#   1
+#   Ada
+#   42
+#   20
+#   3
+
+# --- dict: empty then keyed assign ---
+dict<string, int> ages = {}
+ages["Ada"] = 36
+ages["Tom"] = 41
+print(ages["Ada"])
+
+# --- dict: keyed literal ---
+dict<string, int> known = {"Ada": 36, "Tom": 41}
+print(known["Tom"])
+
+# --- set: non-empty and empty ---
+set<string> tags = {"work", "home"}
+print(len(tags))
+set<string> emptyTags = {}
+print(len(emptyTags))
+
+# --- tuple: multi-element and singleton (trailing comma) ---
+tuple<int, string> row = (1, "Ada")
+print(row[0])
+print(row[1])
+tuple<int> one = (42,)
+print(one[0])
+
+# --- list may use braces (same as []) when typed list ---
+list<int> scores = {10, 20, 30}
+print(scores[1])
+
+# --- int[][] still uses braces as array init (not a set) ---
+int[][] grid = { {1, 2}, {3, 4} }
+print(grid[1][0])

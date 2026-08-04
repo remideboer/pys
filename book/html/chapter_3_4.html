@@ -104,20 +104,15 @@
     </nav>
     <main>
 <h1>4.4. Dicts, tuples, and sets</h1>
-<p>Construct with Python builtins (see also <a href="basics_data.html">Data structures</a>);
-typed <code>dict</code> / <code>tuple</code> / <code>set</code> names still matter on library APIs.</p>
-<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">dict</span>
-<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">tuple</span>
-<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">set</span>
-
-<span class="tok-mod">var</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> <span class="tok-type">dict</span>()
+<p>Use typed literals (see also <a href="basics_data.html">Data structures</a>):</p>
+<pre><code class="language-pys"><span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])
 
-<span class="tok-mod">var</span> <span class="tok-ident">row</span> <span class="tok-op">=</span> <span class="tok-type">tuple</span>([<span class="tok-number">1</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])
+<span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">row</span> <span class="tok-op">=</span> (<span class="tok-number">1</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">row</span>[<span class="tok-number">1</span>])
 
-<span class="tok-mod">var</span> <span class="tok-ident">tags</span> <span class="tok-op">=</span> <span class="tok-type">set</span>([<span class="tok-string">&quot;</span><span class="tok-string">work</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">home</span><span class="tok-string">&quot;</span>])
+<span class="tok-type">set</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">tags</span> <span class="tok-op">=</span> {<span class="tok-string">&quot;</span><span class="tok-string">work</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">home</span><span class="tok-string">&quot;</span>}
 <span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">tags</span>))</code></pre>
 <p>Output:</p>
 <pre><code class="language-text">36
@@ -125,10 +120,15 @@ Ada
 2
 </code></pre>
 <ul>
-<li><strong>dict</strong> — key → value lookup.</li>
-<li><strong>tuple</strong> — fixed-length sequence (often mixed types from libraries).</li>
-<li><strong>set</strong> — unique elements; order is not the point.</li>
+<li><strong>dict</strong> — key → value lookup (<code>{}</code> empty or <code>{"k": v}</code> keyed).</li>
+<li><strong>tuple</strong> — fixed-length sequence (<code>(a, b)</code> or singleton <code>(a,)</code>).</li>
+<li><strong>set</strong> — unique elements; order is not the point (<code>{}</code> empty when typed <code>set</code>).</li>
 </ul>
+<blockquote>
+<p><strong>Sidebar — braces and arrays</strong></p>
+<p>The same <code>{ … }</code> shape initializes <code>int[][]</code> grids in array chapters. The
+<strong>declared type</strong> decides whether braces mean dict, set, list, or array.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Make a dict from country code to country name with two entries. Print one

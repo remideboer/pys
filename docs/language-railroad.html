@@ -891,6 +891,60 @@
       node: Seq(Opt(N('type_name')), N('identifier'))
     },
     {
+      id: 'dict_literal',
+      title: 'dict_literal',
+      ebnf: '"{" dict_entry { "," dict_entry } [ "," ] "}" ;',
+      node: Seq(
+        T('{'),
+        N('dict_entry'),
+        Star(Seq(T(','), N('dict_entry'))),
+        Opt(T(',')),
+        T('}')
+      )
+    },
+    {
+      id: 'dict_entry',
+      title: 'dict_entry',
+      ebnf: 'expression ":" expression ;',
+      node: Seq(N('expression'), T(':'), N('expression'))
+    },
+    {
+      id: 'brace_elements',
+      title: 'brace_elements',
+      ebnf: '"{" [ expression { "," expression } [ "," ] ] "}"  (* resolved by expected type: dict/set/list/T[] *) ;',
+      node: Seq(
+        T('{'),
+        Opt(Seq(N('expression'), Star(Seq(T(','), N('expression'))), Opt(T(',')))),
+        T('}')
+      )
+    },
+    {
+      id: 'tuple_literal',
+      title: 'tuple_literal',
+      ebnf: '"(" ")" | "(" expression "," [ expression { "," expression } ] [ "," ] ")" ;',
+      node: Choice(
+        Seq(T('('), T(')')),
+        Seq(
+          T('('),
+          N('expression'),
+          T(','),
+          Opt(Seq(N('expression'), Star(Seq(T(','), N('expression'))))),
+          Opt(T(',')),
+          T(')')
+        )
+      )
+    },
+    {
+      id: 'array_literal',
+      title: 'array_literal',
+      ebnf: '"[" [ expression { "," expression } ] "]" ;',
+      node: Seq(
+        T('['),
+        Opt(Seq(N('expression'), Star(Seq(T(','), N('expression'))))),
+        T(']')
+      )
+    },
+    {
       id: 'expression',
       title: 'cast_expr',
       ebnf: 'cast_expr = [ "(" type_name ")" ] postfix_expr ;',

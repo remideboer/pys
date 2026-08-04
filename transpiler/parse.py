@@ -12,12 +12,14 @@ from .ast_nodes import (
     BinaryOp,
     BlankStmt,
     Block,
+    BraceLiteral,
     BreakStmt,
     Call,
     Cast,
     ClassDef,
     CommentStmt,
     DataDef,
+    DictLiteral,
     EnumDef,
     EnumMember,
     StructDef,
@@ -56,6 +58,7 @@ from .ast_nodes import (
     TasksBlock,
     TraitDef,
     TraitRequire,
+    TupleLiteral,
     UnaryOp,
     WhileStmt,
 )
@@ -3032,27 +3035,15 @@ def _parse_primary(p: _Tok) -> Expr:
             elems.append(_parse_expression(p))
             while p.at(TokenKind.COMMA):
                 p.eat(TokenKind.COMMA)
+                if p.at(TokenKind.RBRACK):
+                    break
                 elems.append(_parse_expression(p))
         p.eat(TokenKind.RBRACK)
         return ArrayLiteral(span=sp, elements=elems)
     if p.at(TokenKind.LBRACE):
-        # Array / nested-array initializer in expression position: `{1, 2}` / `{{1},{2}}`.
-        p.eat(TokenKind.LBRACE)
-        elems = []
-        if not p.at(TokenKind.RBRACE):
-            elems.append(_parse_expression(p))
-            while p.at(TokenKind.COMMA):
-                p.eat(TokenKind.COMMA)
-                if p.at(TokenKind.RBRACE):
-                    break
-                elems.append(_parse_expression(p))
-        p.eat(TokenKind.RBRACE)
-        return ArrayLiteral(span=sp, elements=elems)
+        return _parse_brace_literal(p, sp)
     if p.at(TokenKind.LPAREN):
-        p.eat(TokenKind.LPAREN)
-        e = _parse_expression(p)
-        p.eat(TokenKind.RPAREN)
-        return e
+        return _parse_paren_primary(p, sp)
     if p.at_kw(*_ARRAY_ELEM_TYPES) and p.peek(1).kind == TokenKind.LBRACK:
         return _parse_array_alloc(p)
     if p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD):
@@ -3066,3 +3057,69 @@ def _parse_primary(p: _Tok) -> Expr:
         name_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
         return Identifier(span=p.token_span(name_tok), name=name_tok.text)
     raise ParseError(f"Unexpected token {p.cur().text!r}", p.cur().line, p.cur().column)
+
+
+def _parse_brace_literal(p: _Tok, sp: Span) -> Expr:
+    """Parse `{…}` as DictLiteral (keyed) or BraceLiteral (unkeyed / empty)."""
+    p.eat(TokenKind.LBRACE)
+    if p.at(TokenKind.RBRACE):
+        p.eat(TokenKind.RBRACE)
+        return BraceLiteral(span=sp, elements=[])
+    first = _parse_expression(p)
+    if p.at(TokenKind.COLON):
+        p.eat(TokenKind.COLON)
+        first_val = _parse_expression(p)
+        entries: list[tuple[Expr, Expr]] = [(first, first_val)]
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            if p.at(TokenKind.RBRACE):
+                break
+            key = _parse_expression(p)
+            if not p.at(TokenKind.COLON):
+                raise FatalParseError(
+                    "Dict literal entries must all be `key: value`. "
+                    "Do not mix bare elements with keyed pairs.",
+                    p.cur().line,
+                    p.cur().column,
+                )
+            p.eat(TokenKind.COLON)
+            val = _parse_expression(p)
+            entries.append((key, val))
+        p.eat(TokenKind.RBRACE)
+        return DictLiteral(span=sp, entries=entries)
+    elems: list[Expr] = [first]
+    while p.at(TokenKind.COMMA):
+        p.eat(TokenKind.COMMA)
+        if p.at(TokenKind.RBRACE):
+            break
+        el = _parse_expression(p)
+        if p.at(TokenKind.COLON):
+            raise FatalParseError(
+                "Dict literal entries must all be `key: value`. "
+                "Do not mix bare elements with keyed pairs.",
+                p.cur().line,
+                p.cur().column,
+            )
+        elems.append(el)
+    p.eat(TokenKind.RBRACE)
+    return BraceLiteral(span=sp, elements=elems)
+
+
+def _parse_paren_primary(p: _Tok, sp: Span) -> Expr:
+    """Parse `(…)` as grouping or TupleLiteral."""
+    p.eat(TokenKind.LPAREN)
+    if p.at(TokenKind.RPAREN):
+        p.eat(TokenKind.RPAREN)
+        return TupleLiteral(span=sp, elements=[])
+    first = _parse_expression(p)
+    if p.at(TokenKind.COMMA):
+        elems: list[Expr] = [first]
+        while p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            if p.at(TokenKind.RPAREN):
+                break
+            elems.append(_parse_expression(p))
+        p.eat(TokenKind.RPAREN)
+        return TupleLiteral(span=sp, elements=elems)
+    p.eat(TokenKind.RPAREN)
+    return first

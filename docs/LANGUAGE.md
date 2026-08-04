@@ -130,11 +130,27 @@ brackets for element types:
 ```pys
 list<int> scores = [1, 2, 3]
 dict<string, int> ages = {}
+dict<string, int> known = {"Ada": 36, "Tom": 41}
 tuple<int, string, string> row = (1, "a", "b")
+tuple<int> one = (42,)
 set<string> tags = {"a", "b"}
+set<string> emptyTags = {}
 ```
 
 `list`, `dict`, `tuple`, and `set` map to the Python counterparts.
+
+**Brace dual-use:** unkeyed `{…}` and empty `{}` are resolved from the
+**expected type** of the binding (or `T[]` array context):
+
+| Expected type | `{}` / `{a, b}` |
+| --- | --- |
+| `dict<…>` | empty dict / must use `key: value` pairs |
+| `set<…>` | empty `set()` / set elements |
+| `list<…>` | empty list / list elements (braces allowed like `[…]`) |
+| `T[]` / nested array init | Java-style array initializer (CER-019) |
+
+Untyped `var x = {}` is an error — type the binding. Struct/data field brace
+literals are **not** supported (use constructors).
 
 ### Casts
 

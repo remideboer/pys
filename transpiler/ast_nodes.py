@@ -110,6 +110,36 @@ class InterpolatedString(Expr):
 
 @dataclass
 class ArrayLiteral(Expr):
+    """Bracket list literal ``[a, b]`` (and nested ``[[…]]``)."""
+
+    elements: list[Expr] = field(default_factory=list)
+
+
+@dataclass
+class BraceLiteral(Expr):
+    """Unresolved ``{…}`` without ``key: value`` pairs; resolved by expected type."""
+
+    elements: list[Expr] = field(default_factory=list)
+
+
+@dataclass
+class DictLiteral(Expr):
+    """Keyed brace literal ``{k: v, …}``."""
+
+    entries: list[tuple[Expr, Expr]] = field(default_factory=list)
+
+
+@dataclass
+class SetLiteral(Expr):
+    """Resolved set literal (usually after type-directed brace resolution)."""
+
+    elements: list[Expr] = field(default_factory=list)
+
+
+@dataclass
+class TupleLiteral(Expr):
+    """Parenthesized tuple ``(a, b)``, ``(a,)``, or ``()``."""
+
     elements: list[Expr] = field(default_factory=list)
 
 

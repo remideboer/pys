@@ -447,6 +447,9 @@ primary          = identifier
                  | "super"
                  | literal
                  | array_literal
+                 | dict_literal
+                 | brace_elements
+                 | tuple_literal
                  | "(" , expression , ")"
                  | constructor_call
                  | switch_expr
@@ -470,6 +473,18 @@ argument         = [ identifier , "=" ] , expression ;
 literal          = integer | float | boolean | null_lit | char_lit | string_lit ;
 
 array_literal    = "[" , [ expression , { "," , expression } ] , "]" ;
+
+(* Keyed dict — always a dict. Empty / unkeyed braces are brace_elements and
+   resolve by expected type: dict / set / list / T[] (see ADR-018). *)
+dict_literal     = "{" , dict_entry , { "," , dict_entry } , [ "," ] , "}" ;
+dict_entry       = expression , ":" , expression ;
+
+brace_elements   = "{" , [ expression , { "," , expression } , [ "," ] ] , "}" ;
+
+(* Tuple: empty, singleton with trailing comma, or two+ elements.
+   A single parenthesized expression without a comma remains grouping. *)
+tuple_literal    = "(" , ")"
+                 | "(" , expression , "," , [ expression , { "," , expression } ] , [ "," ] , ")" ;
 
 slice_or_index   = expression
                  | [ expression ] , ":" , [ expression ] , [ ":" , expression ] ;

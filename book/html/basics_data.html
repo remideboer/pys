@@ -136,17 +136,12 @@
 <p>Prefer <code>list&lt;T&gt;</code> when working with growing collections; prefer <code>T[]</code> when
 you want array-shaped teaching examples. Session 2 goes deeper.</p>
 <h2>Tuples and dicts (construction)</h2>
-<p>Typed <code>tuple&lt;…&gt;</code> / <code>dict&lt;…&gt;</code> names show up often on <strong>library return values</strong>.
-To <em>build</em> them in beginner programs, use the Python constructors (imported
-once at the top of the file):</p>
-<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">dict</span>
-<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">tuple</span>
-
-<span class="tok-mod">var</span> <span class="tok-ident">person</span> <span class="tok-op">=</span> <span class="tok-type">tuple</span>([<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-number">36</span>])
+<p>Build them with <strong>typed literals</strong> (same forms as in the language overview):</p>
+<pre><code class="language-pys"><span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">person</span> <span class="tok-op">=</span> (<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-number">36</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">0</span>])
 <span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">1</span>])
 
-<span class="tok-mod">var</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> <span class="tok-type">dict</span>()
+<span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">41</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])</code></pre>
@@ -156,11 +151,10 @@ once at the top of the file):</p>
 36
 </code></pre>
 <blockquote>
-<p><strong>Sidebar — typed empty <code>{}</code></strong></p>
-<p>Writing <code>dict&lt;string, int&gt; ages = {}</code> is the long-term typed form in the
-language docs, but empty <code>{}</code> is not a reliable dict constructor in the
-current toolchain (it can emit as a list). Prefer <code>dict()</code> here until you
-take dicts from libraries.</p>
+<p><strong>Sidebar — empty <code>{}</code> needs a type</strong></p>
+<p>Write <code>dict&lt;string, int&gt; ages = {}</code> (or <code>set&lt;string&gt; tags = {}</code>). Untyped
+<code>var x = {}</code> is ambiguous between dict, set, and list — PYS asks you to type
+the binding. Keyed dicts use <code>{"Ada": 36}</code>.</p>
 </blockquote>
 <h3>Exercise</h3>
 <blockquote>

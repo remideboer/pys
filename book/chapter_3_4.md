@@ -1,21 +1,16 @@
 # 4.4. Dicts, tuples, and sets
 
-Construct with Python builtins (see also [Data structures](basics_data.md));
-typed `dict` / `tuple` / `set` names still matter on library APIs.
+Use typed literals (see also [Data structures](basics_data.md)):
 
 ```pys
-from builtins import dict
-from builtins import tuple
-from builtins import set
-
-var ages = dict()
+dict<string, int> ages = {}
 ages["Ada"] = 36
 print(ages["Ada"])
 
-var row = tuple([1, "Ada"])
+tuple<int, string> row = (1, "Ada")
 print(row[1])
 
-var tags = set(["work", "home"])
+set<string> tags = {"work", "home"}
 print(len(tags))
 ```
 
@@ -28,9 +23,14 @@ Ada
 ```
 
 
-- **dict** — key → value lookup.
-- **tuple** — fixed-length sequence (often mixed types from libraries).
-- **set** — unique elements; order is not the point.
+- **dict** — key → value lookup (`{}` empty or `{"k": v}` keyed).
+- **tuple** — fixed-length sequence (`(a, b)` or singleton `(a,)`).
+- **set** — unique elements; order is not the point (`{}` empty when typed `set`).
+
+> **Sidebar — braces and arrays**
+>
+> The same `{ … }` shape initializes `int[][]` grids in array chapters. The
+> **declared type** decides whether braces mean dict, set, list, or array.
 
 ### Exercise
 

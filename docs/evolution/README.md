@@ -55,5 +55,6 @@ Each record then uses:
 | [CER-018](CER-018-ide-refactoring.md) | Binding-aware refs + educational IDE refactoring | IDE |
 | [CER-019](CER-019-multidim-arrays.md) | Multi-dimensional `T[][]…` + nested init / alloc | Language |
 | [CER-020](CER-020-source-roots-package.md) | Source-root package identity (`pys.toml`) | Language |
+| [CER-021](CER-021-collection-literals.md) | Collection literals (dict / set / tuple) | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
