@@ -106,28 +106,26 @@
 <h1>7.1. tasks, task, and await</h1>
 <p>A <code>tasks { … }</code> block starts concurrent units and <strong>waits</strong> until they all
 finish before the code after the block runs.</p>
-<pre><code class="language-pys">tasks {
-    task {
-        print(&quot;A&quot;)
+<pre><code class="language-pys"><span class="tok-kw">tasks</span> {
+    <span class="tok-kw">task</span> {
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">A</span><span class="tok-string">&quot;</span>)
     }
-    task {
-        print(&quot;B&quot;)
+    <span class="tok-kw">task</span> {
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">B</span><span class="tok-string">&quot;</span>)
     }
 }
-print(&quot;both finished&quot;)
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">both finished</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>Named tasks can return values; <code>await</code> waits for them (<strong>only inside a
 <code>task</code></strong>):</p>
-<pre><code class="language-pys">tasks {
-    task add(int a, int b) {
-        return a + b
+<pre><code class="language-pys"><span class="tok-kw">tasks</span> {
+    <span class="tok-kw">task</span> <span class="tok-ident">add</span>(<span class="tok-type">int</span> <span class="tok-ident">a</span>, <span class="tok-type">int</span> <span class="tok-ident">b</span>) {
+        <span class="tok-kw">return</span> <span class="tok-ident">a</span> <span class="tok-op">+</span> <span class="tok-ident">b</span>
     }
-    task {
-        int s = await add(10, 32)
-        print(s)
+    <span class="tok-kw">task</span> {
+        <span class="tok-type">int</span> <span class="tok-ident">s</span> <span class="tok-op">=</span> <span class="tok-kw">await</span> <span class="tok-ident">add</span>(<span class="tok-number">10</span>, <span class="tok-number">32</span>)
+        <span class="tok-builtin">print</span>(<span class="tok-ident">s</span>)
     }
-}
-</code></pre>
+}</code></pre>
 <p>Await edges inside a group must form a <strong>DAG</strong> — cycles are rejected.</p>
 <p>Prefer <strong>parameters</strong> to feed data into tasks instead of grabbing outer
 locals.</p>

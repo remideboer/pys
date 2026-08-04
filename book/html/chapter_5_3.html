@@ -105,17 +105,15 @@
     <main>
 <h1>6.3. Passing functions around</h1>
 <p>Because lambdas are values, you can pass them into helpers:</p>
-<pre><code class="language-pys">function int apply(int value, lambda&lt;int, int&gt; fn) {
-    return fn(value)
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">apply</span>(<span class="tok-type">int</span> <span class="tok-ident">value</span>, <span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">fn</span>) {
+    <span class="tok-kw">return</span> <span class="tok-ident">fn</span>(<span class="tok-ident">value</span>)
 }
 
-int doubled = apply(5, n =&gt; n * 2)
-print(doubled)
-</code></pre>
+<span class="tok-type">int</span> <span class="tok-ident">doubled</span> <span class="tok-op">=</span> <span class="tok-ident">apply</span>(<span class="tok-number">5</span>, <span class="tok-ident">n</span> <span class="tok-op">=&gt;</span> <span class="tok-ident">n</span> <span class="tok-op">*</span> <span class="tok-number">2</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">doubled</span>)</code></pre>
 <p>Arrays and lists also offer functional-style iteration via <code>.loop</code>:</p>
-<pre><code class="language-pys">int[] numbers = [1, 2, 3]
-numbers.loop(print)
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">numbers</span> <span class="tok-op">=</span> [<span class="tok-number">1</span>, <span class="tok-number">2</span>, <span class="tok-number">3</span>]
+<span class="tok-ident">numbers</span>.<span class="tok-kw">loop</span>(<span class="tok-builtin">print</span>)</code></pre>
 <p>Prefer named functions when the logic is non-trivial or reused; prefer
 lambdas for short adapters at the call site.</p>
 <h3>Exercise</h3>

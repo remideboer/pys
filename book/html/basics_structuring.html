@@ -131,15 +131,13 @@
 </table>
 <h2>Two files</h2>
 <p><code>greetings.pys</code>:</p>
-<pre><code class="language-pys">package function void greet(string name) {
-    print(&quot;Hello, &quot; + name + &quot;!&quot;)
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+}</code></pre>
 <p><code>app.pys</code> in the <strong>same folder</strong>:</p>
-<pre><code class="language-pys">import greet from greetings
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">greet</span> <span class="tok-kw">from</span> <span class="tok-ident">greetings</span>
 
-greet(&quot;Ada&quot;)
-</code></pre>
+<span class="tok-ident">greet</span>(<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>Rules that bite beginners:</p>
 <ol>
 <li>Imports must be at the <strong>top</strong> of the file.</li>

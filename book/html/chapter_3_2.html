@@ -105,24 +105,23 @@
     <main>
 <h1>4.2. Loops</h1>
 <p>Three shapes:</p>
-<pre><code class="language-pys"># C-style
-loop (int i = 0, i &lt; 3, i++) {
-    print(i)
+<pre><code class="language-pys"><span class="tok-comment"># C-style</span>
+<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
 }
 
-# while-style
-int n = 0
-loop (n &lt; 3) {
-    print(n)
-    n++
+<span class="tok-comment"># while-style</span>
+<span class="tok-type">int</span> <span class="tok-ident">n</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-kw">loop</span> (<span class="tok-ident">n</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
+    <span class="tok-ident">n</span><span class="tok-op">++</span>
 }
 
-# foreach
-list&lt;string&gt; xs = [&quot;a&quot;, &quot;b&quot;]
-loop (string x in xs) {
-    print(x)
-}
-</code></pre>
+<span class="tok-comment"># foreach</span>
+<span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">xs</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">a</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">b</span><span class="tok-string">&quot;</span>]
+<span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">x</span> <span class="tok-kw">in</span> <span class="tok-ident">xs</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">x</span>)
+}</code></pre>
 <p><code>break</code> leaves the loop early; <code>continue</code> skips to the next iteration.
 Names declared inside <code>{ … }</code> are <strong>block-scoped</strong> — they do not exist
 after the closing brace.</p>

@@ -105,20 +105,17 @@
     <main>
 <h1>4.3. Arrays and lists</h1>
 <h2>Arrays</h2>
-<pre><code class="language-pys">int[] numbers = [1, 2, 3, 4, 5]
-print(numbers[0])
-print(numbers[1:3])
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">numbers</span> <span class="tok-op">=</span> [<span class="tok-number">1</span>, <span class="tok-number">2</span>, <span class="tok-number">3</span>, <span class="tok-number">4</span>, <span class="tok-number">5</span>]
+<span class="tok-builtin">print</span>(<span class="tok-ident">numbers</span>[<span class="tok-number">0</span>])
+<span class="tok-builtin">print</span>(<span class="tok-ident">numbers</span>[<span class="tok-number">1</span>:<span class="tok-number">3</span>])</code></pre>
 <p>Slices use an <strong>inclusive</strong> end index in PYS source (adjusted when emitting
 Python). Multi-dimensional:</p>
-<pre><code class="language-pys">int[][] grid = [[1, 2], [3, 4]]
-print(grid[1][0])
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span>[][] <span class="tok-ident">grid</span> <span class="tok-op">=</span> [[<span class="tok-number">1</span>, <span class="tok-number">2</span>], [<span class="tok-number">3</span>, <span class="tok-number">4</span>]]
+<span class="tok-builtin">print</span>(<span class="tok-ident">grid</span>[<span class="tok-number">1</span>][<span class="tok-number">0</span>])</code></pre>
 <h2>Lists</h2>
-<pre><code class="language-pys">list&lt;int&gt; scores = [10, 20, 30]
-scores.append(40)
-print(len(scores))
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">scores</span> <span class="tok-op">=</span> [<span class="tok-number">10</span>, <span class="tok-number">20</span>, <span class="tok-number">30</span>]
+<span class="tok-ident">scores</span>.<span class="tok-ident">append</span>(<span class="tok-number">40</span>)
+<span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">scores</span>))</code></pre>
 <p>Prefer <code>list&lt;T&gt;</code> for growable sequences; prefer <code>T[]</code> when teaching
 array-shaped memory.</p>
 <h3>Exercise</h3>

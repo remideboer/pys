@@ -104,16 +104,15 @@
     </nav>
     <main>
 <h1>4.4. Dicts, tuples, and sets</h1>
-<pre><code class="language-pys">dict&lt;string, int&gt; ages = {}
-ages[&quot;Ada&quot;] = 36
-print(ages[&quot;Ada&quot;])
+<pre><code class="language-pys"><span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
+<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])
 
-tuple&lt;int, string&gt; row = (1, &quot;Ada&quot;)
-print(row[1])
+<span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">row</span> <span class="tok-op">=</span> (<span class="tok-number">1</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">row</span>[<span class="tok-number">1</span>])
 
-set&lt;string&gt; tags = {&quot;work&quot;, &quot;home&quot;}
-print(len(tags))
-</code></pre>
+<span class="tok-type">set</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">tags</span> <span class="tok-op">=</span> {<span class="tok-string">&quot;</span><span class="tok-string">work</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">home</span><span class="tok-string">&quot;</span>}
+<span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">tags</span>))</code></pre>
 <ul>
 <li><strong>dict</strong> — key → value lookup.</li>
 <li><strong>tuple</strong> — fixed-length, mixed types allowed in the type arguments.</li>

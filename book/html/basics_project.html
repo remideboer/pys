@@ -116,24 +116,23 @@ like — a file for persistence.</p>
    (<code>Path.write_text</code> / <code>read_text</code>).</li>
 </ol>
 <p>Sketch of the in-memory core:</p>
-<pre><code class="language-pys">import input from builtins
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">input</span> <span class="tok-kw">from</span> <span class="tok-ident">builtins</span>
 
-list&lt;string&gt; contacts = []
+<span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">contacts</span> <span class="tok-op">=</span> []
 
-function void showContacts() {
-    loop (string name in contacts) {
-        print(&quot;- &quot; + name)
+<span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">showContacts</span>() {
+    <span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">contacts</span>) {
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">- </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span>)
     }
 }
 
-function void addContact(string name) {
-    contacts.append(name)
+<span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">addContact</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+    <span class="tok-ident">contacts</span>.<span class="tok-ident">append</span>(<span class="tok-ident">name</span>)
 }
 
-string typed = input(&quot;New contact name: &quot;)
-addContact(typed)
-showContacts()
-</code></pre>
+<span class="tok-type">string</span> <span class="tok-ident">typed</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">New contact name: </span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">addContact</span>(<span class="tok-ident">typed</span>)
+<span class="tok-ident">showContacts</span>()</code></pre>
 <blockquote>
 <p><code>list.append</code> comes from Python’s list API available on <code>list&lt;T&gt;</code> values.
 If your tooling flags it, build the list with a fresh literal for the

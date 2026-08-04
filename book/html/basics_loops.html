@@ -107,10 +107,9 @@
 <p>A <strong>loop</strong> repeats a block until a condition says stop — or until every
 item in a collection has been visited.</p>
 <h2>Count with a C-style loop</h2>
-<pre><code class="language-pys">loop (int i = 0, i &lt; 3, i++) {
-    print(i)
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
+}</code></pre>
 <p>Reads as: start <code>i</code> at 0; while <code>i &lt; 3</code>; after each body, do <code>i++</code>
 (add one). Prints <code>0</code>, then <code>1</code>, then <code>2</code>.</p>
 <blockquote>
@@ -119,19 +118,17 @@ iteration — you advance it in the step clause (<code>i++</code>), not by rando
 assignments in the middle of the body.</p>
 </blockquote>
 <h2>While-style loop</h2>
-<pre><code class="language-pys">int counter = 0
-loop (counter &lt; 3) {
-    print(counter)
-    counter++
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">counter</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-kw">loop</span> (<span class="tok-ident">counter</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">counter</span>)
+    <span class="tok-ident">counter</span><span class="tok-op">++</span>
+}</code></pre>
 <p>Same three prints; the condition is checked before each pass.</p>
 <h2>Foreach — walk a collection</h2>
-<pre><code class="language-pys">list&lt;string&gt; names = [&quot;Ada&quot;, &quot;Tom&quot;, &quot;Lin&quot;]
-loop (string name in names) {
-    print(&quot;Hello, &quot; + name)
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>]
+<span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">names</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span>)
+}</code></pre>
 <p>Each pass binds <code>name</code> to the next element.</p>
 <h3>Exercise</h3>
 <blockquote>

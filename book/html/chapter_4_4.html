@@ -108,25 +108,24 @@
 <strong>not</strong> a type — you cannot write <code>Printable p = …</code> or <code>implements Printable</code>.</p>
 <p>Host state is declared with <code>requires</code> and accessed via <code>this</code>. All
 <code>requires</code> come before methods in the trait body.</p>
-<pre><code class="language-pys">trait Printable {
-    requires string name
+<pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">Printable</span> {
+    <span class="tok-kw">requires</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 
-    string label() {
-        return &quot;Item: &quot; + this.name
+    <span class="tok-type">string</span> <span class="tok-ident">label</span>() {
+        <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">Item: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-kw">this</span>.<span class="tok-ident">name</span>
     }
 }
 
-class Product uses Printable {
-    private string name
+<span class="tok-kw">class</span> <span class="tok-typename">Product</span> <span class="tok-kw">uses</span> <span class="tok-typename">Printable</span> {
+    <span class="tok-mod">private</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 
-    public Product(string name) {
-        this.name = name
+    <span class="tok-mod">public</span> <span class="tok-typename">Product</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">name</span> <span class="tok-op">=</span> <span class="tok-ident">name</span>
     }
 }
 
-Product p = Product(&quot;Mug&quot;)
-print(p.label())
-</code></pre>
+<span class="tok-typename">Product</span> <span class="tok-ident">p</span> <span class="tok-op">=</span> <span class="tok-typename">Product</span>(<span class="tok-string">&quot;</span><span class="tok-string">Mug</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">p</span>.<span class="tok-ident">label</span>())</code></pre>
 <p>If two traits define the same method name, the class must override it and
 can disambiguate with <code>TraitName.method(this)</code>.</p>
 <h3>Exercise</h3>

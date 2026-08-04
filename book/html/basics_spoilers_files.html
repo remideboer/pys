@@ -105,13 +105,12 @@
     <main>
 <h1>2.12.3. Spoiler — Files</h1>
 <p>Exercise: write your name to <code>me.txt</code>, read it back, print it.</p>
-<pre><code class="language-pys">from pathlib import Path
+<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">pathlib</span> <span class="tok-kw">import</span> <span class="tok-typename">Path</span>
 
-Path path = Path(&quot;me.txt&quot;)
-path.write_text(&quot;Ada\n&quot;, encoding=&quot;utf-8&quot;)
-string text = path.read_text(encoding=&quot;utf-8&quot;)
-print(text)
-</code></pre>
+<span class="tok-typename">Path</span> <span class="tok-ident">path</span> <span class="tok-op">=</span> <span class="tok-typename">Path</span>(<span class="tok-string">&quot;</span><span class="tok-string">me.txt</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">path</span>.<span class="tok-ident">write_text</span>(<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">\n</span><span class="tok-string">&quot;</span>, <span class="tok-ident">encoding</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">utf-8</span><span class="tok-string">&quot;</span>)
+<span class="tok-type">string</span> <span class="tok-ident">text</span> <span class="tok-op">=</span> <span class="tok-ident">path</span>.<span class="tok-ident">read_text</span>(<span class="tok-ident">encoding</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">utf-8</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">text</span>)</code></pre>
 <hr />
 <p><a href="basics_spoilers_structuring.html">Previous: Spoiler — structuring</a> · <a href="chapter_2.html">Next: Session 1</a></p>
     </main>

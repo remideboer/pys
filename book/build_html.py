@@ -8,6 +8,8 @@ from pathlib import Path
 
 import markdown
 
+from pys_highlight import highlight_html_document
+
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT
 OUT = ROOT / "html"
@@ -91,8 +93,24 @@ main pre {
   overflow-x: auto;
   border-radius: 6px;
   font-size: 0.88rem;
+  line-height: 1.45;
 }
 main pre code { background: transparent; padding: 0; color: inherit; }
+
+/* PYS syntax highlighting (token spans from pys_highlight.py) */
+.tok-kw { color: #c792ea; font-weight: 600; }
+.tok-mod { color: #82aaff; font-weight: 600; }
+.tok-type { color: #ffcb6b; }
+.tok-typename { color: #ffcb6b; }
+.tok-builtin { color: #82aaff; }
+.tok-const { color: #f78c6c; }
+.tok-number { color: #f78c6c; }
+.tok-string { color: #c3e88d; }
+.tok-interp { color: #89ddff; }
+.tok-comment { color: #697098; font-style: italic; }
+.tok-op { color: #89ddff; }
+.tok-ident { color: #eeffff; }
+
 main table {
   border-collapse: collapse;
   width: 100%;
@@ -261,6 +279,7 @@ def convert() -> None:
             out_name = md_path.stem + ".html"
 
         html = page(title, nav, body)
+        html = highlight_html_document(html)
         (OUT / out_name).write_text(html, encoding="utf-8", newline="\n")
         print(f"wrote {out_name}")
 

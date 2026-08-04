@@ -105,11 +105,10 @@
     <main>
 <h1>3.2. Variables: var, fix, and const</h1>
 <p>Three declaration styles you will use constantly:</p>
-<pre><code class="language-pys">int count = 0              # typed, reassignable
-var inferred = count + 1   # type taken from the initializer
-fix int locked = count    # assign once, then locked
-const int MAX = 100        # compile-time constant
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">count</span> <span class="tok-op">=</span> <span class="tok-number">0</span>              <span class="tok-comment"># typed, reassignable</span>
+<span class="tok-mod">var</span> <span class="tok-ident">inferred</span> <span class="tok-op">=</span> <span class="tok-ident">count</span> <span class="tok-op">+</span> <span class="tok-number">1</span>   <span class="tok-comment"># type taken from the initializer</span>
+<span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">locked</span> <span class="tok-op">=</span> <span class="tok-ident">count</span>    <span class="tok-comment"># assign once, then locked</span>
+<span class="tok-mod">const</span> <span class="tok-type">int</span> <span class="tok-typename">MAX</span> <span class="tok-op">=</span> <span class="tok-number">100</span>        <span class="tok-comment"># compile-time constant</span></code></pre>
 <table>
 <thead>
 <tr>
@@ -139,12 +138,11 @@ const int MAX = 100        # compile-time constant
 <p>Rule of thumb: reach for <code>fix</code> when the value should not change; use
 <code>var</code> or a typed binding when it must; use <code>const</code> for true constants
 like limits and configuration numbers.</p>
-<pre><code class="language-pys">const int MAX_RETRIES = 3
-fix string mode = &quot;demo&quot;
-var attempt = 0
-attempt = attempt + 1
-print(&quot;mode=#s{mode} attempt=#i{attempt} max=#i{MAX_RETRIES}&quot;)
-</code></pre>
+<pre><code class="language-pys"><span class="tok-mod">const</span> <span class="tok-type">int</span> <span class="tok-typename">MAX_RETRIES</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
+<span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">mode</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">demo</span><span class="tok-string">&quot;</span>
+<span class="tok-mod">var</span> <span class="tok-ident">attempt</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-ident">attempt</span> <span class="tok-op">=</span> <span class="tok-ident">attempt</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">mode=</span><span class="tok-interp">#s{mode}</span><span class="tok-string"> attempt=</span><span class="tok-interp">#i{attempt}</span><span class="tok-string"> max=</span><span class="tok-interp">#i{MAX_RETRIES}</span><span class="tok-string">&quot;</span>)</code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Declare <code>const int TEAM_SIZE = 4</code> and a <code>fix string coach</code> with your

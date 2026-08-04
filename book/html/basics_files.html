@@ -107,13 +107,12 @@
 <p>Saving data between runs means talking to the <strong>filesystem</strong>. PYS reaches
 Python’s <code>pathlib.Path</code> through an import (the same pattern real examples
 in this repo use).</p>
-<pre><code class="language-pys">from pathlib import Path
+<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">pathlib</span> <span class="tok-kw">import</span> <span class="tok-typename">Path</span>
 
-Path path = Path(&quot;note.txt&quot;)
-path.write_text(&quot;Hello from PYS\n&quot;, encoding=&quot;utf-8&quot;)
-string text = path.read_text(encoding=&quot;utf-8&quot;)
-print(text)
-</code></pre>
+<span class="tok-typename">Path</span> <span class="tok-ident">path</span> <span class="tok-op">=</span> <span class="tok-typename">Path</span>(<span class="tok-string">&quot;</span><span class="tok-string">note.txt</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">path</span>.<span class="tok-ident">write_text</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello from PYS</span><span class="tok-string">\n</span><span class="tok-string">&quot;</span>, <span class="tok-ident">encoding</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">utf-8</span><span class="tok-string">&quot;</span>)
+<span class="tok-type">string</span> <span class="tok-ident">text</span> <span class="tok-op">=</span> <span class="tok-ident">path</span>.<span class="tok-ident">read_text</span>(<span class="tok-ident">encoding</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">utf-8</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">text</span>)</code></pre>
 <ul>
 <li><code>Path("note.txt")</code> — a path relative to where you run the command.</li>
 <li><code>write_text</code> — create or overwrite the file with a string.</li>

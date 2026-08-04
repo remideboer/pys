@@ -107,10 +107,9 @@
 <p>One variable holds one value. Real programs juggle <strong>collections</strong> of values.</p>
 <h2>Lists</h2>
 <p>A <code>list</code> is an ordered row of items of one element type:</p>
-<pre><code class="language-pys">list&lt;string&gt; names = [&quot;Ada&quot;, &quot;Tom&quot;, &quot;Lin&quot;]
-print(names[0])
-print(len(names))
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>]
+<span class="tok-builtin">print</span>(<span class="tok-ident">names</span>[<span class="tok-number">0</span>])
+<span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">names</span>))</code></pre>
 <ul>
 <li><code>list&lt;string&gt;</code> — a list whose elements are strings.</li>
 <li><code>names[0]</code> — the first element (indexing starts at <strong>0</strong>).</li>
@@ -118,24 +117,21 @@ print(len(names))
 </ul>
 <h2>Arrays</h2>
 <p>For teaching fixed-element sequences of primitives, PYS also has arrays:</p>
-<pre><code class="language-pys">int[] scores = [10, 20, 30]
-print(scores[1])
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">scores</span> <span class="tok-op">=</span> [<span class="tok-number">10</span>, <span class="tok-number">20</span>, <span class="tok-number">30</span>]
+<span class="tok-builtin">print</span>(<span class="tok-ident">scores</span>[<span class="tok-number">1</span>])</code></pre>
 <p>Prefer <code>list&lt;T&gt;</code> when working with growing collections; prefer <code>T[]</code> when
 you want array-shaped teaching examples. Session 2 goes deeper.</p>
 <h2>Tuples</h2>
 <p>A <code>tuple</code> groups a fixed number of values that may have different types:</p>
-<pre><code class="language-pys">tuple&lt;string, int&gt; person = (&quot;Ada&quot;, 36)
-print(person[0])
-print(person[1])
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">person</span> <span class="tok-op">=</span> (<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-number">36</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">0</span>])
+<span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">1</span>])</code></pre>
 <h2>Dicts</h2>
 <p>A <code>dict</code> maps keys to values:</p>
-<pre><code class="language-pys">dict&lt;string, int&gt; ages = {}
-ages[&quot;Ada&quot;] = 36
-ages[&quot;Tom&quot;] = 41
-print(ages[&quot;Ada&quot;])
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
+<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
+<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">41</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])</code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Create a <code>list&lt;string&gt;</code> of three foods you like. Print the second item

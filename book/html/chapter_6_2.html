@@ -107,18 +107,17 @@
 <p>Outer locals are <strong>read-only</strong> inside a task unless marked <code>shared</code> (or
 <code>atomic</code>). <code>shared</code> is <strong>visibility</strong> for mutation across tasks — it does
 not by itself make updates race-free.</p>
-<pre><code class="language-pys">shared int hits = 0
+<pre><code class="language-pys"><span class="tok-mod">shared</span> <span class="tok-type">int</span> <span class="tok-ident">hits</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 
-tasks {
-    task {
-        hits = hits + 1
+<span class="tok-kw">tasks</span> {
+    <span class="tok-kw">task</span> {
+        <span class="tok-ident">hits</span> <span class="tok-op">=</span> <span class="tok-ident">hits</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
     }
-    task {
-        hits = hits + 1
+    <span class="tok-kw">task</span> {
+        <span class="tok-ident">hits</span> <span class="tok-op">=</span> <span class="tok-ident">hits</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
     }
 }
-print(hits)
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">hits</span>)</code></pre>
 <p>Use <code>shared</code> when two tasks must update the same outer name and you accept
 responsibility for the interaction — or prefer returning values with
 <code>await</code> instead of sharing.</p>

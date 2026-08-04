@@ -106,37 +106,34 @@
 <h1>2.3. Making choices</h1>
 <p>Programs often need to pick a path: <em>if this is true, do A; otherwise do B</em>.</p>
 <h2><code>if</code> / <code>else</code></h2>
-<pre><code class="language-pys">int temperature = 18
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">temperature</span> <span class="tok-op">=</span> <span class="tok-number">18</span>
 
-if (temperature &lt; 15) {
-    print(&quot;Wear a coat&quot;)
-} else {
-    print(&quot;A sweater is enough&quot;)
-}
-</code></pre>
+<span class="tok-kw">if</span> (<span class="tok-ident">temperature</span> <span class="tok-op">&lt;</span> <span class="tok-number">15</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Wear a coat</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">A sweater is enough</span><span class="tok-string">&quot;</span>)
+}</code></pre>
 <ul>
 <li>The condition sits in parentheses: <code>(temperature &lt; 15)</code>.</li>
 <li>If it is true, the first <code>{ ... }</code> block runs.</li>
 <li>If not, the <code>else</code> block runs.</li>
 </ul>
 <p>Chain more cases with <code>else if</code>:</p>
-<pre><code class="language-pys">int score = 75
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">score</span> <span class="tok-op">=</span> <span class="tok-number">75</span>
 
-if (score &gt;= 90) {
-    print(&quot;Excellent&quot;)
-} else if (score &gt;= 60) {
-    print(&quot;Pass&quot;)
-} else {
-    print(&quot;Try again&quot;)
-}
-</code></pre>
+<span class="tok-kw">if</span> (<span class="tok-ident">score</span> <span class="tok-op">&gt;=</span> <span class="tok-number">90</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Excellent</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> <span class="tok-kw">if</span> (<span class="tok-ident">score</span> <span class="tok-op">&gt;=</span> <span class="tok-number">60</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Pass</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Try again</span><span class="tok-string">&quot;</span>)
+}</code></pre>
 <h2><code>unless</code> — when you think in negatives</h2>
-<pre><code class="language-pys">int lives = 3
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">lives</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
 
-unless (lives == 0) {
-    print(&quot;Keep playing&quot;)
-}
-</code></pre>
+<span class="tok-kw">unless</span> (<span class="tok-ident">lives</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Keep playing</span><span class="tok-string">&quot;</span>)
+}</code></pre>
 <p><code>unless (condition)</code> means “if the condition is <strong>not</strong> true”. Same idea as
 <code>if not (lives == 0)</code>.</p>
 <h3>Exercise</h3>

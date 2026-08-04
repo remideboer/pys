@@ -107,41 +107,38 @@
 <h2>Enums</h2>
 <p>Closed sets of named constants — member names should be
 <code>SCREAMING_SNAKE_CASE</code>:</p>
-<pre><code class="language-pys">enum Day {
-    MONDAY
-    WEDNESDAY
-    FRIDAY
-    SUNDAY
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-kw">enum</span> <span class="tok-typename">Day</span> {
+    <span class="tok-typename">MONDAY</span>
+    <span class="tok-typename">WEDNESDAY</span>
+    <span class="tok-typename">FRIDAY</span>
+    <span class="tok-typename">SUNDAY</span>
+}</code></pre>
 <h2>Switch statement</h2>
 <p>No implicit fall-through. Use bare <code>continue</code> to fall into the next case
 when you mean it:</p>
-<pre><code class="language-pys">Day day = Day.FRIDAY
-int numLetters = 0
-switch (day) {
-    case MONDAY:
-        continue
-    case FRIDAY:
-        continue
-    case SUNDAY:
-        numLetters = 6
-    case WEDNESDAY:
-        numLetters = 9
-    default:
-        numLetters = 0
+<pre><code class="language-pys"><span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">FRIDAY</span>
+<span class="tok-type">int</span> <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-kw">switch</span> (<span class="tok-ident">day</span>) {
+    <span class="tok-kw">case</span> <span class="tok-typename">MONDAY</span>:
+        <span class="tok-kw">continue</span>
+    <span class="tok-kw">case</span> <span class="tok-typename">FRIDAY</span>:
+        <span class="tok-kw">continue</span>
+    <span class="tok-kw">case</span> <span class="tok-typename">SUNDAY</span>:
+        <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">6</span>
+    <span class="tok-kw">case</span> <span class="tok-typename">WEDNESDAY</span>:
+        <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">9</span>
+    <span class="tok-kw">default</span>:
+        <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 }
-print(numLetters)
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">numLetters</span>)</code></pre>
 <h2>Switch expression</h2>
-<pre><code class="language-pys">Day day = Day.WEDNESDAY
-int numLetters = switch (day) {
-    case MONDAY, SUNDAY, FRIDAY =&gt; 6
-    case WEDNESDAY =&gt; 9
-    default =&gt; 0
+<pre><code class="language-pys"><span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">WEDNESDAY</span>
+<span class="tok-type">int</span> <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-kw">switch</span> (<span class="tok-ident">day</span>) {
+    <span class="tok-kw">case</span> <span class="tok-typename">MONDAY</span>, <span class="tok-typename">SUNDAY</span>, <span class="tok-typename">FRIDAY</span> <span class="tok-op">=&gt;</span> <span class="tok-number">6</span>
+    <span class="tok-kw">case</span> <span class="tok-typename">WEDNESDAY</span> <span class="tok-op">=&gt;</span> <span class="tok-number">9</span>
+    <span class="tok-kw">default</span> <span class="tok-op">=&gt;</span> <span class="tok-number">0</span>
 }
-print(numLetters)
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">numLetters</span>)</code></pre>
 <p>Do not mix <code>:</code> arms and <code>=&gt;</code> arms in one switch.</p>
 <h3>Exercise</h3>
 <blockquote>

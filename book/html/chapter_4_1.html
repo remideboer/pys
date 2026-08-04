@@ -106,29 +106,28 @@
 <h1>5.1. Classes and member order</h1>
 <p>A <strong>class</strong> is a blueprint for objects with fields, a constructor, and
 methods.</p>
-<pre><code class="language-pys">class Counter {
-    public const int DEFAULT_STEP = 1
-    private fix string label
-    private int value
+<pre><code class="language-pys"><span class="tok-kw">class</span> <span class="tok-typename">Counter</span> {
+    <span class="tok-mod">public</span> <span class="tok-mod">const</span> <span class="tok-type">int</span> <span class="tok-typename">DEFAULT_STEP</span> <span class="tok-op">=</span> <span class="tok-number">1</span>
+    <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">label</span>
+    <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
 
-    public Counter(string label) {
-        this.label = label
-        this.value = 0
+    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>(<span class="tok-type">string</span> <span class="tok-ident">label</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">label</span> <span class="tok-op">=</span> <span class="tok-ident">label</span>
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
     }
 
-    public void bump() {
-        this.value = this.value + DEFAULT_STEP
+    <span class="tok-mod">public</span> <span class="tok-type">void</span> <span class="tok-ident">bump</span>() {
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-typename">DEFAULT_STEP</span>
     }
 
-    public int getValue() {
-        return this.value
+    <span class="tok-mod">public</span> <span class="tok-type">int</span> <span class="tok-ident">getValue</span>() {
+        <span class="tok-kw">return</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span>
     }
 }
 
-Counter c = Counter(&quot;demo&quot;)
-c.bump()
-print(c.getValue())
-</code></pre>
+<span class="tok-typename">Counter</span> <span class="tok-ident">c</span> <span class="tok-op">=</span> <span class="tok-typename">Counter</span>(<span class="tok-string">&quot;</span><span class="tok-string">demo</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">c</span>.<span class="tok-ident">bump</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">c</span>.<span class="tok-ident">getValue</span>())</code></pre>
 <h2>Why member order is enforced</h2>
 <p>Inside a class body, PYS requires this <strong>kind</strong> order:</p>
 <ol>

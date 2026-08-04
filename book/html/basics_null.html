@@ -106,14 +106,13 @@
 <h1>2.7. Null and missing values</h1>
 <p>Sometimes a drawer exists but is <strong>empty on purpose</strong>: “we do not have a
 value yet.” In PYS that empty marker is <code>null</code>.</p>
-<pre><code class="language-pys">string nickname = null
+<pre><code class="language-pys"><span class="tok-type">string</span> <span class="tok-ident">nickname</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
 
-if (nickname == null) {
-    print(&quot;No nickname yet&quot;)
-} else {
-    print(&quot;Hi, &quot; + nickname)
-}
-</code></pre>
+<span class="tok-kw">if</span> (<span class="tok-ident">nickname</span> <span class="tok-op">==</span> <span class="tok-const">null</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">No nickname yet</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hi, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">nickname</span>)
+}</code></pre>
 <ul>
 <li><code>null</code> means “no value”.</li>
 <li>Always <strong>check</strong> before you use a value that might be null. Using a null

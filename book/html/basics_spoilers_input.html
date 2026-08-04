@@ -106,13 +106,12 @@
 <h1>2.12.1. Spoiler — Processing input</h1>
 <p>Exercise: ask for a first name and a favorite number; print a sentence
 with both.</p>
-<pre><code class="language-pys">import input from builtins
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">input</span> <span class="tok-kw">from</span> <span class="tok-ident">builtins</span>
 
-string firstName = input(&quot;First name: &quot;)
-string raw = input(&quot;Favorite number: &quot;)
-int favorite = int(raw)
-print(firstName + &quot; likes #i{favorite}&quot;)
-</code></pre>
+<span class="tok-type">string</span> <span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">First name: </span><span class="tok-string">&quot;</span>)
+<span class="tok-type">string</span> <span class="tok-ident">raw</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">Favorite number: </span><span class="tok-string">&quot;</span>)
+<span class="tok-type">int</span> <span class="tok-ident">favorite</span> <span class="tok-op">=</span> <span class="tok-type">int</span>(<span class="tok-ident">raw</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string"> likes </span><span class="tok-interp">#i{favorite}</span><span class="tok-string">&quot;</span>)</code></pre>
 <hr />
 <p><a href="basics_spoilers.html">Previous: Spoilers</a> · <a href="basics_spoilers_structuring.html">Next: Spoiler — structuring</a></p>
     </main>

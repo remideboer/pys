@@ -105,22 +105,20 @@
     <main>
 <h1>8.1. Writing a first test</h1>
 <p>Suppose production code offers a pure function:</p>
-<pre><code class="language-pys"># billing.pys
-package function int addCents(int balance, int delta) {
-    return balance + delta
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-comment"># billing.pys</span>
+<span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">addCents</span>(<span class="tok-type">int</span> <span class="tok-ident">balance</span>, <span class="tok-type">int</span> <span class="tok-ident">delta</span>) {
+    <span class="tok-kw">return</span> <span class="tok-ident">balance</span> <span class="tok-op">+</span> <span class="tok-ident">delta</span>
+}</code></pre>
 <p>A test in the same package folder (or mirrored under <code>tests/</code> with source
 roots):</p>
-<pre><code class="language-pys">import addCents from billing
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">addCents</span> <span class="tok-kw">from</span> <span class="tok-ident">billing</span>
 
-int got = addCents(100, 50)
-if (got != 150) {
-    print(&quot;FAIL: expected 150&quot;)
-} else {
-    print(&quot;OK&quot;)
-}
-</code></pre>
+<span class="tok-type">int</span> <span class="tok-ident">got</span> <span class="tok-op">=</span> <span class="tok-ident">addCents</span>(<span class="tok-number">100</span>, <span class="tok-number">50</span>)
+<span class="tok-kw">if</span> (<span class="tok-ident">got</span> <span class="tok-op">!=</span> <span class="tok-number">150</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">FAIL: expected 150</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">OK</span><span class="tok-string">&quot;</span>)
+}</code></pre>
 <p>Run with <code>python -m transpiler run …</code>. A green print is a humble start;
 the important part is <strong>repeatability</strong>.</p>
 <p>Do not reach into <code>private</code> fields from tests — if you need a value,

@@ -111,11 +111,10 @@ library. You import it once at the top of the file.</p>
 <p>All <code>import</code> lines must appear <strong>before</strong> other declarations and
 statements in the file.</p>
 </blockquote>
-<pre><code class="language-pys">import input from builtins
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">input</span> <span class="tok-kw">from</span> <span class="tok-ident">builtins</span>
 
-string name = input(&quot;What is your name? &quot;)
-print(&quot;Hello, &quot; + name + &quot;!&quot;)
-</code></pre>
+<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">What is your name? </span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>What happens:</p>
 <ol>
 <li><code>import input from builtins</code> — make Python’s <code>input</code> available.</li>
@@ -127,12 +126,11 @@ print(&quot;Hello, &quot; + name + &quot;!&quot;)
 <h2>Numbers from text</h2>
 <p>What you type is always text first. To use it as a number, convert it
 (see also <a href="basics_conversion.html">Conversion</a>):</p>
-<pre><code class="language-pys">import input from builtins
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">input</span> <span class="tok-kw">from</span> <span class="tok-ident">builtins</span>
 
-string raw = input(&quot;How old are you? &quot;)
-int age = int(raw)
-print(&quot;Next year you will be #i{age + 1}&quot;)
-</code></pre>
+<span class="tok-type">string</span> <span class="tok-ident">raw</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">How old are you? </span><span class="tok-string">&quot;</span>)
+<span class="tok-type">int</span> <span class="tok-ident">age</span> <span class="tok-op">=</span> <span class="tok-type">int</span>(<span class="tok-ident">raw</span>)
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Next year you will be </span><span class="tok-interp">#i{age + 1}</span><span class="tok-string">&quot;</span>)</code></pre>
 <p><code>int(raw)</code> asks PYS/Python to parse the string as an integer. If the text
 is not a number, the program fails at that line — we will learn gentler
 patterns in <a href="basics_outcomes.html">Expressing success and failure</a>.</p>

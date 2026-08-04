@@ -106,10 +106,9 @@
 <h1>3.1. Formatting output</h1>
 <p>String concatenation with <code>+</code> works, but longer messages get noisy.
 PYS can <strong>interpolate</strong> expressions inside a string:</p>
-<pre><code class="language-pys">int a = 3
-float f = 1.5
-print(&quot;a is {a}, f is {f}&quot;)
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">a</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
+<span class="tok-type">float</span> <span class="tok-ident">f</span> <span class="tok-op">=</span> <span class="tok-number">1.5</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">a is </span><span class="tok-interp">{a}</span><span class="tok-string">, f is </span><span class="tok-interp">{f}</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>The <code>{a}</code> slot is replaced by the value of <code>a</code>.</p>
 <h2>Typed interpolation</h2>
 <p>Typed slots are a <strong>guard</strong>, not a cast. The expression must already have
@@ -148,11 +147,10 @@ the matching type or the transpile fails:</p>
 </tr>
 </tbody>
 </table>
-<pre><code class="language-pys">int x = 7
-string greeting = &quot;hi&quot;
-print(&quot;#i{x} is an int&quot;)
-print(&quot;#s{greeting} is a string&quot;)
-</code></pre>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">7</span>
+<span class="tok-type">string</span> <span class="tok-ident">greeting</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">hi</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string"> is an int</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#s{greeting}</span><span class="tok-string"> is a string</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>If you write <code>#i{greeting}</code>, the compiler rejects it — that is the point.</p>
 <h3>Exercise</h3>
 <blockquote>

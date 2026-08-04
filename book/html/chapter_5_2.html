@@ -106,18 +106,17 @@
 <h1>6.2. Lambdas</h1>
 <p>A lambda type lists parameter types and then the return type:
 <code>lambda&lt;int, bool&gt;</code> means “one <code>int</code> in, <code>bool</code> out”.</p>
-<pre><code class="language-pys">lambda&lt;int, bool&gt; isEven = n =&gt; n % 2 == 0
-print(isEven(4))
-print(isEven(5))
+<pre><code class="language-pys"><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">bool</span><span class="tok-op">&gt;</span> <span class="tok-ident">isEven</span> <span class="tok-op">=</span> <span class="tok-ident">n</span> <span class="tok-op">=&gt;</span> <span class="tok-ident">n</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">isEven</span>(<span class="tok-number">4</span>))
+<span class="tok-builtin">print</span>(<span class="tok-ident">isEven</span>(<span class="tok-number">5</span>))
 
-lambda&lt;int, int, int&gt; safeDivide = (int a, int b) =&gt; {
-    if (b == 0) {
-        return 0
+<span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">safeDivide</span> <span class="tok-op">=</span> (<span class="tok-type">int</span> <span class="tok-ident">a</span>, <span class="tok-type">int</span> <span class="tok-ident">b</span>) <span class="tok-op">=&gt;</span> {
+    <span class="tok-kw">if</span> (<span class="tok-ident">b</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+        <span class="tok-kw">return</span> <span class="tok-number">0</span>
     }
-    return a / b
+    <span class="tok-kw">return</span> <span class="tok-ident">a</span> <span class="tok-op">/</span> <span class="tok-ident">b</span>
 }
-print(safeDivide(10, 2))
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">safeDivide</span>(<span class="tok-number">10</span>, <span class="tok-number">2</span>))</code></pre>
 <p>Forms: <code>n =&gt; expr</code>, <code>(params) =&gt; expr</code>, <code>(params) =&gt; { … }</code>, <code>() =&gt; …</code>.</p>
 <p>Captures are <strong>by value</strong> at creation and read-only unless the outer name
 is <code>shared</code> or <code>atomic</code> (same idea as tasks — Session 5).</p>

@@ -105,16 +105,15 @@
     <main>
 <h1>6.1. Functions that return values</h1>
 <p>Return type sits after <code>function</code>:</p>
-<pre><code class="language-pys">function int multiply(int a, int b) {
-    return a * b
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">multiply</span>(<span class="tok-type">int</span> <span class="tok-ident">a</span>, <span class="tok-type">int</span> <span class="tok-ident">b</span>) {
+    <span class="tok-kw">return</span> <span class="tok-ident">a</span> <span class="tok-op">*</span> <span class="tok-ident">b</span>
 }
 
-function void logSum(int a, int b) {
-    print(multiply(a, b))
+<span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">logSum</span>(<span class="tok-type">int</span> <span class="tok-ident">a</span>, <span class="tok-type">int</span> <span class="tok-ident">b</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">multiply</span>(<span class="tok-ident">a</span>, <span class="tok-ident">b</span>))
 }
 
-logSum(6, 7)
-</code></pre>
+<span class="tok-ident">logSum</span>(<span class="tok-number">6</span>, <span class="tok-number">7</span>)</code></pre>
 <p>Visibility (<code>package</code> / <code>global</code>) controls imports — see the basics
 structuring chapter.</p>
 <h3>Exercise</h3>

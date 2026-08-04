@@ -105,15 +105,13 @@
     <main>
 <h1>2.12.2. Spoiler — Structuring code</h1>
 <p><code>mathUtils.pys</code>:</p>
-<pre><code class="language-pys">package function int double(int n) {
-    return n * 2
-}
-</code></pre>
+<pre><code class="language-pys"><span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">double</span>(<span class="tok-type">int</span> <span class="tok-ident">n</span>) {
+    <span class="tok-kw">return</span> <span class="tok-ident">n</span> <span class="tok-op">*</span> <span class="tok-number">2</span>
+}</code></pre>
 <p><code>app.pys</code> (same folder):</p>
-<pre><code class="language-pys">import double from mathUtils
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">double</span> <span class="tok-kw">from</span> <span class="tok-ident">mathUtils</span>
 
-print(double(21))
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">double</span>(<span class="tok-number">21</span>))</code></pre>
 <hr />
 <p><a href="basics_spoilers_input.html">Previous: Spoiler — input</a> · <a href="basics_spoilers_files.html">Next: Spoiler — files</a></p>
     </main>

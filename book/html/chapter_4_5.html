@@ -107,42 +107,39 @@
 <p>Three ways to bundle fields without “full” class identity semantics.</p>
 <h2><code>struct</code> — identity-free value bag</h2>
 <p>Fields only (no methods). Copy on assign; <code>==</code> compares fields.</p>
-<pre><code class="language-pys">struct Damage {
-    int amount
-    string type
+<pre><code class="language-pys"><span class="tok-kw">struct</span> <span class="tok-typename">Damage</span> {
+    <span class="tok-type">int</span> <span class="tok-ident">amount</span>
+    <span class="tok-type">string</span> <span class="tok-ident">type</span>
 }
 
-Damage d1 = Damage(20, &quot;physical&quot;)
-Damage d2 = Damage(amount=20, type=&quot;physical&quot;)
-print(d1 == d2)
-</code></pre>
+<span class="tok-typename">Damage</span> <span class="tok-ident">d1</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-number">20</span>, <span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
+<span class="tok-typename">Damage</span> <span class="tok-ident">d2</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-ident">amount</span><span class="tok-op">=</span><span class="tok-number">20</span>, <span class="tok-ident">type</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">d1</span> <span class="tok-op">==</span> <span class="tok-ident">d2</span>)</code></pre>
 <h2><code>data</code> — value object</h2>
 <p>All fields immutable; equality over <strong>all</strong> fields; generated contract.</p>
-<pre><code class="language-pys">data Money {
-    int amountCents
-    string currency
+<pre><code class="language-pys"><span class="tok-kw">data</span> <span class="tok-typename">Money</span> {
+    <span class="tok-type">int</span> <span class="tok-ident">amountCents</span>
+    <span class="tok-type">string</span> <span class="tok-ident">currency</span>
 }
 
-Money m1 = Money(10000, &quot;USD&quot;)
-Money m2 = Money(10000, &quot;USD&quot;)
-print(m1 == m2)
-</code></pre>
+<span class="tok-typename">Money</span> <span class="tok-ident">m1</span> <span class="tok-op">=</span> <span class="tok-typename">Money</span>(<span class="tok-number">10000</span>, <span class="tok-string">&quot;</span><span class="tok-string">USD</span><span class="tok-string">&quot;</span>)
+<span class="tok-typename">Money</span> <span class="tok-ident">m2</span> <span class="tok-op">=</span> <span class="tok-typename">Money</span>(<span class="tok-number">10000</span>, <span class="tok-string">&quot;</span><span class="tok-string">USD</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">m1</span> <span class="tok-op">==</span> <span class="tok-ident">m2</span>)</code></pre>
 <h2><code>entity</code> — identity key</h2>
 <p>Equality uses only <code>identity(...)</code> fields (must be <code>fix</code>).</p>
-<pre><code class="language-pys">entity Customer identity(customerId) {
-    private fix int customerId
-    public string name
+<pre><code class="language-pys"><span class="tok-kw">entity</span> <span class="tok-typename">Customer</span> <span class="tok-kw">identity</span>(<span class="tok-ident">customerId</span>) {
+    <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">customerId</span>
+    <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 
-    public Customer(int customerId, string name) {
-        this.customerId = customerId
-        this.name = name
+    <span class="tok-mod">public</span> <span class="tok-typename">Customer</span>(<span class="tok-type">int</span> <span class="tok-ident">customerId</span>, <span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">customerId</span> <span class="tok-op">=</span> <span class="tok-ident">customerId</span>
+        <span class="tok-kw">this</span>.<span class="tok-ident">name</span> <span class="tok-op">=</span> <span class="tok-ident">name</span>
     }
 }
 
-Customer a = Customer(7, &quot;Ana&quot;)
-Customer b = Customer(7, &quot;Ana B.&quot;)
-print(a == b)
-</code></pre>
+<span class="tok-typename">Customer</span> <span class="tok-ident">a</span> <span class="tok-op">=</span> <span class="tok-typename">Customer</span>(<span class="tok-number">7</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ana</span><span class="tok-string">&quot;</span>)
+<span class="tok-typename">Customer</span> <span class="tok-ident">b</span> <span class="tok-op">=</span> <span class="tok-typename">Customer</span>(<span class="tok-number">7</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ana B.</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">a</span> <span class="tok-op">==</span> <span class="tok-ident">b</span>)</code></pre>
 <p>Body order for entities: identity fields → other <code>fix</code> → mutable →
 constructors → methods.</p>
 <h3>Exercise</h3>

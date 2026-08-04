@@ -107,18 +107,17 @@
 <p><code>atomic</code> marks a cell whose <code>+=</code> / <code>-=</code> / <code>++</code> / <code>--</code> (and helpers like
 <code>get</code> / <code>compareAndSet</code>) are <strong>indivisible</strong>. It also implies shared
 capture.</p>
-<pre><code class="language-pys">atomic int counter = 0
+<pre><code class="language-pys"><span class="tok-mod">atomic</span> <span class="tok-type">int</span> <span class="tok-ident">counter</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 
-tasks {
-    task {
-        counter += 1
+<span class="tok-kw">tasks</span> {
+    <span class="tok-kw">task</span> {
+        <span class="tok-ident">counter</span> <span class="tok-op">+</span><span class="tok-op">=</span> <span class="tok-number">1</span>
     }
-    task {
-        counter += 1
+    <span class="tok-kw">task</span> {
+        <span class="tok-ident">counter</span> <span class="tok-op">+</span><span class="tok-op">=</span> <span class="tok-number">1</span>
     }
 }
-print(counter)
-</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-ident">counter</span>)</code></pre>
 <p>Reach for <code>atomic</code> when many tasks bump the same counter; reach for
 <code>await</code> pipelines when you can avoid shared mutation entirely.</p>
 <h3>Exercise</h3>
