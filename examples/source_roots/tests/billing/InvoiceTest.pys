@@ -1,0 +1,12 @@
+# Mirrored package billing under tests/ — same package as src/billing/Invoice.pys.
+# Can import package-scoped symbols without widening them to global/public.
+
+import Invoice, formatInvoice from ../../src/billing/Invoice.pys
+
+Invoice inv = Invoice("Ada", 100)
+inv.addCents(50)
+print(formatInvoice(inv))  # Ada: 150 cents
+
+# Contrast: private Invoice.cents is not accessible here (by design).
+# A test that "needs" private fields should push for a better public API instead
+# of a language bypass — see requirements/package_resolution_testing_philosophy.md.

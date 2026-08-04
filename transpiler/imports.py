@@ -68,10 +68,22 @@ def _error(
     line_number: int = 1,
     code_line: str = "",
     column: int | None = None,
+    *,
+    code: str | None = None,
+    suggested_fix: str | None = None,
+    tips: list[str] | None = None,
 ) -> None:
     from .transpiler import TranspileError
 
-    raise TranspileError(message, line_number, column, code_line)
+    raise TranspileError(
+        message,
+        line_number,
+        column,
+        code_line,
+        code=code,
+        suggested_fix=suggested_fix,
+        tips=tips,
+    )
 
 
 def pys_import_line(stmt: ImportStmt) -> str:
@@ -778,8 +790,15 @@ class ImportResolver:
                     f"Cannot import '{name}' from '{pys_path.name}': it is {visibility}-scoped "
                     f"(visible only in {where})."
                 )
+                suggested: str | None = None
+                tips: list[str] | None = None
+                err_code: str | None = None
                 if visibility == "package" and self.source_path is not None:
-                    from .project_manifest import package_mismatch_diagnostic
+                    from .project_manifest import (
+                        package_mismatch_diagnostic,
+                        package_identity,
+                        source_roots_for,
+                    )
 
                     hint = package_mismatch_diagnostic(
                         importer=self.source_path,
@@ -788,10 +807,31 @@ class ImportResolver:
                     )
                     if hint:
                         msg = f"{msg}\n{hint}"
+                        err_code = "pys.package-mismatch"
+                        tips = [
+                            "Place the test under the mirrored path for the same package "
+                            "(see pys.toml [source_roots])."
+                        ]
+                        roots = source_roots_for(self.source_path)
+                        id_dec = package_identity(pys_path, roots) if roots else None
+                        id_imp = package_identity(self.source_path, roots) if roots else None
+                        if roots and id_dec is not None and id_imp is not None:
+                            suggested_path = (
+                                id_imp.root_path / id_dec.rel_dir / self.source_path.name
+                            )
+                            try:
+                                suggested = suggested_path.relative_to(
+                                    roots.project_root
+                                ).as_posix()
+                            except ValueError:
+                                suggested = suggested_path.as_posix()
                 _error(
                     msg,
                     line_number,
                     raw_line.rstrip(),
+                    code=err_code,
+                    suggested_fix=suggested,
+                    tips=tips,
                 )
             selected.append(name)
         self._record_seen_module_exports(info, selected)

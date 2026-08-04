@@ -150,6 +150,7 @@ function activate(context) {
 
   const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
   const warningMeta = new Map(); // `${uri}:${line}:${code}` -> warning
+  const errorMeta = new Map(); // `${uri}:${line}:${code}` -> error payload (suggested_fix)
 
   const mainStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   mainStatus.command = 'pys.runMain';
@@ -229,8 +230,12 @@ function activate(context) {
     if (parsed.code) {
       diagnostic.code = parsed.code;
     }
-    if (parsed.suggested_fix) {
+    if (parsed.suggested_fix && !parsed.code) {
       diagnostic.code = diagnostic.code || 'pys.missing-type';
+    }
+    if (parsed.code === 'pys.package-mismatch' && parsed.suggested_fix) {
+      const key = `${document.uri.toString()}:${line}:pys.package-mismatch`;
+      errorMeta.set(key, parsed);
     }
     if (String(parsed.message || '').includes('Class methods must not use `function`')) {
       diagnostic.code = 'pys.invalid-class-function';
@@ -334,6 +339,11 @@ function activate(context) {
       for (const key of [...warningMeta.keys()]) {
         if (key.startsWith(`${document.uri.toString()}:`)) {
           warningMeta.delete(key);
+        }
+      }
+      for (const key of [...errorMeta.keys()]) {
+        if (key.startsWith(`${document.uri.toString()}:`)) {
+          errorMeta.delete(key);
         }
       }
       if (!parsed.ok && parsed.error) {
@@ -744,6 +754,27 @@ function activate(context) {
     provideCodeActions(document, range, context) {
       const diagnostics = context.diagnostics || [];
       const actions = [];
+
+      const packageMismatch = diagnostics.find((diagnostic) => diagnostic.code === 'pys.package-mismatch');
+      if (packageMismatch) {
+        const key = `${document.uri.toString()}:${packageMismatch.range.start.line + 1}:pys.package-mismatch`;
+        const meta = errorMeta.get(key);
+        const suggested = meta && meta.suggested_fix;
+        if (suggested) {
+          const fix = new vscode.CodeAction(
+            `Move file to ${suggested}`,
+            vscode.CodeActionKind.QuickFix,
+          );
+          fix.diagnostics = [packageMismatch];
+          fix.isPreferred = true;
+          fix.command = {
+            command: 'pys.moveToSuggestedPackagePath',
+            title: 'Move file to suggested package path',
+            arguments: [document.uri, suggested],
+          };
+          actions.push(fix);
+        }
+      }
 
       const functionDiag = diagnostics.find((diagnostic) => diagnostic.code === 'pys.invalid-class-function');
       if (functionDiag) {
@@ -1336,6 +1367,39 @@ function activate(context) {
       }
     }),
   );
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.moveToSuggestedPackagePath', async (uri, suggestedRel) => {
+    if (!uri || !suggestedRel) {
+      return;
+    }
+    const fsPath = uri.fsPath || uri;
+    let dir = path.dirname(fsPath);
+    let projectRoot = null;
+    while (true) {
+      if (fs.existsSync(path.join(dir, 'pys.toml'))) {
+        projectRoot = dir;
+        break;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        break;
+      }
+      dir = parent;
+    }
+    if (!projectRoot) {
+      const wf = vscode.workspace.getWorkspaceFolder(uri);
+      projectRoot = wf ? wf.uri.fsPath : path.dirname(fsPath);
+    }
+    const targetPath = path.join(projectRoot, suggestedRel);
+    const targetUri = vscode.Uri.file(targetPath);
+    await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+    const edit = new vscode.WorkspaceEdit();
+    edit.renameFile(uri, targetUri, { overwrite: false });
+    const ok = await vscode.workspace.applyEdit(edit);
+    if (!ok) {
+      vscode.window.showErrorMessage(`Could not move file to ${suggestedRel}`);
+    }
+  }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.findUsages', async () => {
     const editor = vscode.window.activeTextEditor;

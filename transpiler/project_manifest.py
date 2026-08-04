@@ -146,6 +146,23 @@ def package_identity(file_path: Path, roots: SourceRoots | None = None) -> Packa
     return PackageIdentity(rel_dir=rel_dir, root_name=root_name, root_path=root_path)
 
 
+def package_peer_files(file_path: Path) -> list[Path]:
+    """All ``.pys`` files in the same package (across source roots, or same folder)."""
+    path = file_path.resolve()
+    roots = source_roots_for(path)
+    if roots is None:
+        return sorted(p.resolve() for p in path.parent.glob("*.pys"))
+    ident = package_identity(path, roots)
+    if ident is None:
+        return sorted(p.resolve() for p in path.parent.glob("*.pys"))
+    peers: list[Path] = []
+    for _name, root in roots.roots:
+        pkg_dir = root / ident.rel_dir if ident.rel_dir else root
+        if pkg_dir.is_dir():
+            peers.extend(pkg_dir.glob("*.pys"))
+    return sorted({p.resolve() for p in peers})
+
+
 def same_package(a: Path, b: Path) -> bool:
     """True if both files share a package under declared roots, or same folder (legacy)."""
     roots = source_roots_for(a) or source_roots_for(b)

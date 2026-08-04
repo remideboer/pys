@@ -22,5 +22,8 @@ production-like `src/` + `tests/` trees (surfaced by `examples/webserver/`).
 - **Post-behavior:** With `[source_roots]`, package id is the directory path
   relative to the containing root; mirrored paths across roots match. Without
   a manifest, same-folder legacy remains. Mismatched package imports append
-  the educational “Did you mean …?” diagnostic (requirements §4).
+  the educational “Did you mean …?” diagnostic (requirements §4) with
+  `code=pys.package-mismatch`, `suggested_fix` path, and IDE quick fix to
+  move the file. Find Usages indexes package peers across roots
+  (`package_peer_files`). Teaching sample: `examples/source_roots/`.
 - **Tests:** `tests/test_source_roots_package.py`

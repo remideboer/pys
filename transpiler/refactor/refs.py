@@ -548,8 +548,10 @@ def build_index(entry: Path) -> RefIndex:
         if isinstance(ipath, Path) and str(ipath).endswith(".pys"):
             load(Path(ipath))
 
-    # Same-folder siblings (package) for exports used by imports without going through discover.
-    for sib in sorted(entry.parent.glob("*.pys")):
+    # Same-package peers (folder siblings, or mirrored dirs under pys.toml source_roots).
+    from ..project_manifest import package_peer_files
+
+    for sib in package_peer_files(entry):
         load(sib)
 
     # First pass: collect exports

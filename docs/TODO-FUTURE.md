@@ -99,7 +99,7 @@ Polymorphism, and other catalog entries not in the core DoD.
 
 | | |
 | --- | --- |
-| Status | **Active** — core resolution landed (CER-020); webserver refactor next |
+| Status | **Active** — core + teaching example + IDE QF landed; webserver refactor still pending |
 | Source | [`requirements/package_resolution_testing_philosophy.md`](../requirements/package_resolution_testing_philosophy.md); [ADR-017](adr/ADR-017-source-roots-same-package-tests.md); surfaced by `examples/webserver/` |
 
 ### Intent

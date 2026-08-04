@@ -89,10 +89,26 @@ def test_wrong_test_folder_diagnostic(tmp_path: Path) -> None:
     )
     with pytest.raises(TranspileError, match="Did you mean to place this file") as exc:
         transpile(wrong.read_text(encoding="utf-8"), source_path=wrong)
-    msg = str(exc.value)
+    err = exc.value
+    msg = str(err)
     assert "package 'test_utils'" in msg
     assert "package 'billing'" in msg
     assert "tests/billing/InvoiceTest.pys" in msg.replace("\\", "/")
+    assert err.code == "pys.package-mismatch"
+    assert err.suggested_fix == "tests/billing/InvoiceTest.pys"
+    assert err.tips
+
+
+def test_package_peer_files_across_roots(tmp_path: Path) -> None:
+    from transpiler.project_manifest import package_peer_files
+
+    root = _project(tmp_path)
+    inv = root / "src" / "billing" / "Invoice.pys"
+    test = root / "tests" / "billing" / "InvoiceTest.pys"
+    inv.write_text("package class Invoice {}\n", encoding="utf-8")
+    test.write_text("# test\n", encoding="utf-8")
+    peers = {p.name for p in package_peer_files(inv)}
+    assert peers == {"Invoice.pys", "InvoiceTest.pys"}
 
 
 def test_mismatch_diagnostic_helper(tmp_path: Path) -> None:
