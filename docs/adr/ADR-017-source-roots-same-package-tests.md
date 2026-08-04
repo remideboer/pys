@@ -2,9 +2,10 @@
 
 | | |
 | --- | --- |
-| Status | Proposed |
+| Status | Accepted (target; implementation Active as F-006) |
 | Date | 2026-08-04 |
-| Source | Webserver teaching example (same-folder `package` tests); [F-006](../TODO-FUTURE.md#f-006-source-roots-and-same-package-tests) |
+| Source | [`requirements/package_resolution_testing_philosophy.md`](../../requirements/package_resolution_testing_philosophy.md); [F-006](../TODO-FUTURE.md#f-006-source-roots-and-same-package-tests) |
+| Trigger | `examples/webserver/` flat same-folder tests — production-like layout gap |
 
 ## Context
 
@@ -12,12 +13,17 @@ Today a file’s `package` visibility is **same filesystem folder**. That forced
 `examples/webserver/test_*.pys` to sit beside production modules so they can
 see `package class` members without widening modifiers to `public` / `global`.
 
-That layout is a **PYS-level gap**, not an app preference: production trees
-want `src/…` and tests want `tests/…` while remaining the **same package**.
+The webserver was built partly to **discover** such PYS gaps under a
+production-like project. The layout gap is language/tooling work (F-006), not
+an app preference. Remaining webserver spec work is deferred ([F-007](../TODO-FUTURE.md#f-007-webserver-full-spec-remainder)) until this lands and the
+example is refactored.
 
-## Decision (target)
+## Decision
 
-Project-manifest level (non-normative layout; tooling enforces resolution):
+Normative philosophy and diagnostics: requirements doc §1–4.
+
+Project-manifest level (non-normative directory names; tooling enforces
+resolution):
 
 ```text
 pys.toml
@@ -42,16 +48,20 @@ identical. Package-scoped members in `src/billing/Invoice.pys` are therefore
 visible to `tests/billing/InvoiceTest.pys` without widening access modifiers
 and without either file naming the other.
 
+**Rejected with the requirements:** `private` test bypass; C# `namespace`;
+`partial class`.
+
+Without a `pys.toml` `[source_roots]` table, keep the legacy rule: same
+parent directory ⇒ same package (compat for flat examples).
+
 ## Consequences
 
-- Sem / import / IDE discovery must resolve packages via declared roots, not
-  only `dirname(file)`.
-- `examples/webserver/` (and similar flat examples) should be **refactored**
-  once this lands: move app code under a main root and tests under a test root
-  with mirrored relative paths.
-- Until then, same-folder `test_*.pys` remain the supported pattern.
-- Manifest name (`pys.toml` vs extending `pys.deps`) is implementation detail;
-  the resolution rule above is the contract.
+- Sem / import / IDE discovery resolve packages via declared roots, not only
+  `dirname(file)`.
+- Access errors for mismatched packages include the educational diagnostic
+  (requirements §4): name both packages/roots and suggest the mirrored path.
+- After F-006: refactor `examples/webserver/` to `src/` + `tests/`.
+- Manifest filename is `pys.toml` (requirements); may coexist with `pys.deps`.
 
 ## Rejected alternatives
 

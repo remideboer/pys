@@ -4385,7 +4385,7 @@ def _check_seen_name_calls(body: list[Any], resolver: Any) -> None:
             )
         where = {
             "module": "only within its own module",
-            "package": "only within its package (same folder)",
+            "package": "only within its package (same folder, or same root-relative path under pys.toml source_roots)",
             "global": "across the whole project",
         }.get(visibility, f"as {visibility}")
         _transpile_error(

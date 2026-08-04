@@ -13,7 +13,8 @@ mark it done here.
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
 | [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
-| [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | Deferred | `pys.toml` source roots; same package across `src`/`tests` |
+| [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Active** | `pys.toml` source roots; same package across `src`/`tests` |
+| [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | Deferred | FR8 re-checkout, Toxiproxy, 1k-scale soak — after F-006 refactor |
 
 ---
 
@@ -98,8 +99,8 @@ Polymorphism, and other catalog entries not in the core DoD.
 
 | | |
 | --- | --- |
-| Status | Deferred |
-| Source | [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) (Proposed); surfaced by `examples/webserver/` |
+| Status | **Active** — core resolution landed (CER-020); webserver refactor next |
+| Source | [`requirements/package_resolution_testing_philosophy.md`](../requirements/package_resolution_testing_philosophy.md); [ADR-017](adr/ADR-017-source-roots-same-package-tests.md); surfaced by `examples/webserver/` |
 
 ### Intent
 
@@ -121,8 +122,33 @@ test = "tests"
 **Resolution:** package = path relative to the containing declared source root.
 Same package across roots iff those relative paths are identical.
 
+**Also:** no `private` bypass for tests; no C# `namespace` / `partial class`
+(see requirements §1–2). Wrong-folder tests get an educational diagnostic (§4).
+
 ### Follow-up refactor
 
 When F-006 / ADR-017 is implemented, **refactor `examples/webserver/`** (and
 any other flat same-folder test examples) into main/test roots with mirrored
 paths. Do not widen access modifiers as a substitute.
+
+---
+
+## F-007: Webserver full-spec remainder
+
+| | |
+| --- | --- |
+| Status | Deferred (halted) |
+| Source | `examples/webserver/`; [DEFERRED.md](../examples/webserver/DEFERRED.md) |
+| Blocked by | [F-006](#f-006-source-roots-and-same-package-tests) + layout refactor |
+
+Teaching increments 1–6 are shipped. Remaining vs full concurrent-webserver
+spec/testplan (not scheduled until after F-006):
+
+- **FR8** — each retry acquires a new downstream pool checkout
+- **Toxiproxy** (or equivalent) for D/E/H fault scenarios
+- **FR4** — broader 429 capacity shedding if distinct from 503 queue-full
+- **FR1 / soak** — real ≥1k concurrent / memory-FD soak (H1–H3)
+- Write-timeout enforcement parity with read/idle/handler
+
+Do not resume webserver feature work until the example uses source-root
+packages; the example exists to validate PYS under production-like layout.

@@ -512,9 +512,12 @@ class ImportResolver:
     def _same_package(self, other: Path) -> bool:
         # source_path / ModuleInfo.path are already resolved; re-resolve here was
         # hundreds of filesystem hits per analyze with no semantic gain.
+        # With pys.toml [source_roots], package identity is root-relative (ADR-017).
         if self.source_path is None:
             return False
-        return self.source_path.parent == other.parent
+        from .project_manifest import same_package
+
+        return same_package(self.source_path, other)
 
     def _load_module(self, module_path: Path) -> ModuleInfo:
         from .transpiler import TranspileError
@@ -771,9 +774,22 @@ class ImportResolver:
             visibility = info.exports[name]
             if name not in visible:
                 where = "this package" if visibility == "package" else "this module"
-                _error(
+                msg = (
                     f"Cannot import '{name}' from '{pys_path.name}': it is {visibility}-scoped "
-                    f"(visible only in {where}).",
+                    f"(visible only in {where})."
+                )
+                if visibility == "package" and self.source_path is not None:
+                    from .project_manifest import package_mismatch_diagnostic
+
+                    hint = package_mismatch_diagnostic(
+                        importer=self.source_path,
+                        declaree=pys_path,
+                        symbol=name,
+                    )
+                    if hint:
+                        msg = f"{msg}\n{hint}"
+                _error(
+                    msg,
                     line_number,
                     raw_line.rstrip(),
                 )

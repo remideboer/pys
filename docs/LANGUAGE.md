@@ -714,7 +714,7 @@ Rules:
 | Keyword | Who can import it |
 |---------|-------------------|
 | (default / omit) | Nobody outside this file (module-private) |
-| `package` | Other `.pys` files in the same folder |
+| `package` | Other `.pys` files in the **same package**: same folder by default, or the same path relative to a declared `pys.toml` `[source_roots]` entry (e.g. `src/billing` and `tests/billing`) — see [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) |
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 

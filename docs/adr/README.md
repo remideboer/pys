@@ -60,6 +60,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-014](ADR-014-pys-dap-stepping.md) | PYS source-level debug stepping | Accepted |
 | [ADR-015](ADR-015-enforced-ordering.md) | Grammar-level member / import kind ordering | Accepted |
 | [ADR-016](ADR-016-ide-refactoring.md) | IDE educational refactoring (binding-aware plans) | Accepted |
-| [ADR-017](ADR-017-source-roots-same-package-tests.md) | Declared source roots and same-package tests | Proposed |
+| [ADR-017](ADR-017-source-roots-same-package-tests.md) | Declared source roots and same-package tests | Accepted (impl Active) |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

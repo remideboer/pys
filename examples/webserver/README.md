@@ -110,6 +110,11 @@ for FR9/FR12 demos, not a 1k-VU production tune.
 5. HTTP/1.1 keep-alive (FR2) — done  
 6. Timeout hierarchy (FR6) — done  
 
+**Further webserver implementation is deferred** — see [`DEFERRED.md`](DEFERRED.md)
+and [F-007](../../docs/TODO-FUTURE.md#f-007-webserver-full-spec-remainder).
+This example surfaced the PYS package/test layout gap; **next work is F-006**,
+then refactor this tree to `src/` + `tests/`.
+
 ## Pending refactor (PYS-level)
 
 `test_*.pys` live in this folder only so they share `package` visibility with
