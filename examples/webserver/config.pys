@@ -27,12 +27,18 @@ package class ServerConfig {
     public bool tlsEnabled
     public string tlsCertFile
     public string tlsKeyFile
+    public int idleTimeoutMs
+    public int readTimeoutMs
+    public int writeTimeoutMs
 
     public ServerConfig() {
-        # downstream < handler < client
+        # downstream < handler < client (FR6 / NFR timeout hierarchy)
         this.downstreamTimeoutMs = 100
         this.handlerTimeoutMs = 300
         this.clientTimeoutMs = 500
+        this.idleTimeoutMs = 500
+        this.readTimeoutMs = 500
+        this.writeTimeoutMs = 500
         this.workerTasks = 32
         this.poolSize = 8
         this.poolMaxQueue = 16
@@ -55,5 +61,16 @@ package class ServerConfig {
         this.tlsEnabled = false
         this.tlsCertFile = "certs/localhost.pem"
         this.tlsKeyFile = "certs/localhost-key.pem"
+    }
+
+    # Strict ordering: downstream < handler < client (testplan G1).
+    public bool timeoutsOrdered() {
+        if (this.downstreamTimeoutMs >= this.handlerTimeoutMs) {
+            return false
+        }
+        if (this.handlerTimeoutMs >= this.clientTimeoutMs) {
+            return false
+        }
+        return true
     }
 }

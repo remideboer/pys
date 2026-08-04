@@ -34,6 +34,8 @@ package class ConnHandler {
     }
 
     public void serveHttp11(var conn) {
+        # FR6 read timeout on the socket; idle wait also uses select in readRaw.
+        conn.settimeout(this.idleTimeoutSec)
         bool open = true
         loop (open) {
             string raw = this.http.readRaw(conn, this.idleTimeoutSec)

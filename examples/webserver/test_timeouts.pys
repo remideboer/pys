@@ -1,0 +1,65 @@
+# examples/webserver/test_timeouts.pys
+# FR6 / testplan G1–G2: timeout hierarchy and downstream timeout before client.
+
+import time
+
+import ServerConfig from config
+import AppContext, Router from router
+import HttpRequest from http11
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== webserver timeouts (FR6) ===")
+
+ServerConfig cfg = ServerConfig()
+assertTrue("G1 default hierarchy", cfg.timeoutsOrdered())
+
+ServerConfig bad = ServerConfig()
+bad.downstreamTimeoutMs = 400
+bad.handlerTimeoutMs = 300
+bad.clientTimeoutMs = 500
+assertTrue("G1 rejects inverted hierarchy", !bad.timeoutsOrdered())
+
+# G2: latency above downstream timeout, below handler/client → error before client budget.
+cfg.downstreamTimeoutMs = 80
+cfg.handlerTimeoutMs = 300
+cfg.clientTimeoutMs = 500
+assertTrue("G2 hierarchy still ordered", cfg.timeoutsOrdered())
+
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+ctx.mockA.setLatencyMs(200)
+float t0 = time.monotonic()
+var resp = router.handle(HttpRequest("GET", "/proxy/data", "", "t-g2", true))
+float elapsed = time.monotonic() - t0
+ctx.mockA.setLatencyMs(0)
+
+assertTrue("G2 status is gateway error", resp.status == 502 || resp.status == 504)
+assertTrue("G2 finished before client timeout", elapsed < (cfg.clientTimeoutMs / 1000.0))
+assertTrue("G2 took about downstream budget", elapsed >= 0.05)
+print("G2 elapsed_ms ~ " + str((int)(elapsed * 1000.0)) + " status=" + str(resp.status))
+
+# Handler budget exhausted via retries + backoff should surface timeout, not hang past client.
+ServerConfig cfg2 = ServerConfig()
+cfg2.downstreamTimeoutMs = 50
+cfg2.handlerTimeoutMs = 120
+cfg2.clientTimeoutMs = 500
+cfg2.retryMaxAttempts = 3
+cfg2.retryBaseMs = 40
+AppContext ctx2 = AppContext(cfg2)
+Router router2 = Router(ctx2)
+ctx2.mockA.setFailNext(5)
+float t1 = time.monotonic()
+var resp2 = router2.handle(HttpRequest("GET", "/proxy/data", "", "t-h", true))
+float elapsed2 = time.monotonic() - t1
+assertTrue("handler path finishes under client", elapsed2 < (cfg2.clientTimeoutMs / 1000.0))
+assertTrue("handler path status not 200", resp2.status != 200)
+print("handler elapsed_ms ~ " + str((int)(elapsed2 * 1000.0)) + " status=" + str(resp2.status))
+
+print("=== timeouts done ===")

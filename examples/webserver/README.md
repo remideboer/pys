@@ -17,6 +17,7 @@ python -m transpiler run examples/webserver/test_core.pys
 python -m transpiler run examples/webserver/test_integration.pys
 python -m transpiler run examples/webserver/test_http_e2e.pys
 python -m transpiler run examples/webserver/test_http_keepalive_e2e.pys
+python -m transpiler run examples/webserver/test_timeouts.pys
 python -m transpiler run examples/webserver/test_https_e2e.pys
 python -m transpiler run examples/webserver/test_http2_e2e.pys
 python examples/webserver/scripts/check_idempotency.py
@@ -107,6 +108,7 @@ for FR9/FR12 demos, not a 1k-VU production tune.
 4a. TLS termination (FR5) — done  
 4b. HTTP/2 multiplex over TLS ALPN (FR2) — done  
 5. HTTP/1.1 keep-alive (FR2) — done  
+6. Timeout hierarchy (FR6) — done  
 
 ## Pending refactor (PYS-level)
 

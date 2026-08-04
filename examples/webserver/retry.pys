@@ -54,10 +54,16 @@ package class RetryPolicy {
         return delay * jitter
     }
 
-    public string execute(string method, string path, var call) {
+    # handlerBudgetSec: remaining wall time for the handler (FR6); skip retry sleep if exhausted.
+    public string execute(string method, string path, var call, float handlerBudgetSec) {
         bool canRetry = this.cfg.retriesEnabled && this.idem.mayRetry(method, path)
+        float started = time.monotonic()
         int attempt = 0
         loop (attempt < this.cfg.retryMaxAttempts) {
+            float elapsed = time.monotonic() - started
+            if (elapsed >= handlerBudgetSec) {
+                return "timeout"
+            }
             if (!this.breaker.allow()) {
                 return "circuit_open"
             }
@@ -80,10 +86,15 @@ package class RetryPolicy {
             if (!this.breaker.allow()) {
                 return "circuit_open"
             }
+            float backoff = this.backoffSeconds(attempt)
+            elapsed = time.monotonic() - started
+            if (elapsed + backoff >= handlerBudgetSec) {
+                return "timeout"
+            }
             this.lock.acquire()
             this.retryAttemptsTotal = this.retryAttemptsTotal + 1
             this.lock.release()
-            time.sleep(this.backoffSeconds(attempt))
+            time.sleep(backoff)
             attempt = attempt + 1
         }
         return "retryable"

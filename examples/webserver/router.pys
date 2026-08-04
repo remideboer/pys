@@ -1,5 +1,7 @@
 # examples/webserver/router.pys
-# Method+path routing to handlers (FR3).
+# Method+path routing to handlers (FR3). Timeout hierarchy FR6.
+
+import time
 
 import HttpRequest, HttpResponse from http11
 import ServerConfig from config
@@ -60,15 +62,17 @@ package class Router {
                 resp = HttpResponse(200, "OK", body, "")
             } else {
                 if (req.method == "GET" && req.path == "/proxy/data") {
-                    resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA)
+                    resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA, this.ctx.cfg.downstreamTimeoutMs)
                 } else {
                     if (req.method == "GET" && req.path == "/proxy/slow") {
-                        this.ctx.mockA.setLatencyMs(300)
-                        resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA)
+                        # Hold pool slots for load demos; budget stays under handler timeout.
+                        this.ctx.mockA.setLatencyMs(250)
+                        int slowBudget = this.ctx.cfg.handlerTimeoutMs - 20
+                        resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA, slowBudget)
                         this.ctx.mockA.setLatencyMs(0)
                     } else {
                         if (req.method == "GET" && req.path == "/proxy/b") {
-                            resp = this.proxyThrough(req, this.ctx.bulkheads.b(), this.ctx.mockB)
+                            resp = this.proxyThrough(req, this.ctx.bulkheads.b(), this.ctx.mockB, this.ctx.cfg.downstreamTimeoutMs)
                         } else {
                             if (req.method == "POST" && req.path == "/orders") {
                                 resp = this.createOrder(req)
@@ -84,15 +88,22 @@ package class Router {
         return resp
     }
 
-    public HttpResponse proxyThrough(HttpRequest req, DownstreamPool pool, MockDownstream mock) {
+    public HttpResponse proxyThrough(HttpRequest req, DownstreamPool pool, MockDownstream mock, int downstreamBudgetMs) {
+        float handlerBudget = this.ctx.cfg.handlerTimeoutMs / 1000.0
+        float started = time.monotonic()
         if (!pool.acquire()) {
             this.ctx.metrics.onQueueFull()
             print("reject queue_full corr=" + req.correlationId)
             return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
         }
-        MockCall call = MockCall(mock)
-        string result = this.ctx.retries.execute(req.method, req.path, call)
+        MockCall call = MockCall(mock, downstreamBudgetMs)
+        string result = this.ctx.retries.execute(req.method, req.path, call, handlerBudget)
         pool.release()
+        float elapsed = time.monotonic() - started
+        if (elapsed >= handlerBudget || result == "timeout") {
+            print("reject handler_timeout corr=" + req.correlationId)
+            return HttpResponse(504, "Gateway Timeout", "handler timeout", "handler_timeout")
+        }
         if (result == "ok") {
             return HttpResponse(200, "OK", "data-ok", "")
         }
@@ -105,13 +116,19 @@ package class Router {
     }
 
     public HttpResponse createOrder(HttpRequest req) {
+        float handlerBudget = this.ctx.cfg.handlerTimeoutMs / 1000.0
+        float started = time.monotonic()
         if (!this.ctx.pool.acquire()) {
             this.ctx.metrics.onQueueFull()
             return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
         }
-        MockCall call = MockCall(this.ctx.mockA)
-        string result = this.ctx.retries.execute(req.method, req.path, call)
+        MockCall call = MockCall(this.ctx.mockA, this.ctx.cfg.downstreamTimeoutMs)
+        string result = this.ctx.retries.execute(req.method, req.path, call, handlerBudget)
         this.ctx.pool.release()
+        float elapsed = time.monotonic() - started
+        if (elapsed >= handlerBudget || result == "timeout") {
+            return HttpResponse(504, "Gateway Timeout", "handler timeout", "handler_timeout")
+        }
         if (result == "ok") {
             return HttpResponse(201, "Created", "order-created", "")
         }
