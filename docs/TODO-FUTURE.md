@@ -13,6 +13,7 @@ mark it done here.
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
 | [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
+| [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | Deferred | `pys.toml` source roots; same package across `src`/`tests` |
 
 ---
 
@@ -90,3 +91,38 @@ Educational core (Rename, Extract Variable/Function, Inline Variable/Function,
 Safe Delete, Introduce Parameter) shipped under ADR-016. Deferred examples:
 Change Signature, Move Function/Field, Extract Class, Replace Conditional with
 Polymorphism, and other catalog entries not in the core DoD.
+
+---
+
+## F-006: Source roots and same-package tests
+
+| | |
+| --- | --- |
+| Status | Deferred |
+| Source | [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) (Proposed); surfaced by `examples/webserver/` |
+
+### Intent
+
+Project-manifest source roots so production and tests can share a package
+without living in the same folder or widening `package` → `public`:
+
+```text
+pys.toml
+src/billing/Invoice.pys       # package billing
+tests/billing/InvoiceTest.pys # same package (mirrored relative path)
+```
+
+```toml
+[source_roots]
+main = "src"
+test = "tests"
+```
+
+**Resolution:** package = path relative to the containing declared source root.
+Same package across roots iff those relative paths are identical.
+
+### Follow-up refactor
+
+When F-006 / ADR-017 is implemented, **refactor `examples/webserver/`** (and
+any other flat same-folder test examples) into main/test roots with mirrored
+paths. Do not widen access modifiers as a substitute.
