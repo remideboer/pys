@@ -1,0 +1,10 @@
+[book]
+title = "PYS Development Classes"
+description = "A beginner programming book for the PYS teaching language"
+authors = ["PYS project"]
+language = "en"
+src = "book"
+
+[output.html]
+default-theme = "light"
+git-repository-url = "https://github.com/remideboer/python-transpiler"
