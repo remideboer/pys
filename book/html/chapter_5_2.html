@@ -119,7 +119,9 @@
 <span class="tok-builtin">print</span>(<span class="tok-ident">safeDivide</span>(<span class="tok-number">10</span>, <span class="tok-number">2</span>))</code></pre>
 <p>Forms: <code>n =&gt; expr</code>, <code>(params) =&gt; expr</code>, <code>(params) =&gt; { … }</code>, <code>() =&gt; …</code>.</p>
 <p>Captures are <strong>by value</strong> at creation and read-only unless the outer name
-is <code>shared</code> or <code>atomic</code> (same idea as tasks — Session 5).</p>
+is <code>shared</code> or <code>atomic</code> — concurrency keywords taught in
+<a href="chapter_6_2.html">shared state</a> and <a href="chapter_6_3.html">atomic updates</a>. Until
+then, treat captured names as snapshots you can read, not reassign.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Write <code>lambda&lt;string, string&gt; shout</code> that adds <code>"!"</code> and call it on

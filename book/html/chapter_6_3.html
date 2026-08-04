@@ -104,9 +104,14 @@
     </nav>
     <main>
 <h1>7.3. atomic updates</h1>
-<p><code>atomic</code> marks a cell whose <code>+=</code> / <code>-=</code> / <code>++</code> / <code>--</code> (and helpers like
-<code>get</code> / <code>compareAndSet</code>) are <strong>indivisible</strong>. It also implies shared
-capture.</p>
+<p><code>atomic</code> marks a cell whose <code>+=</code> / <code>-=</code> / <code>++</code> / <code>--</code> updates are
+<strong>indivisible</strong>. It also implies shared capture for tasks.</p>
+<blockquote>
+<p><strong>Sidebar — <code>get</code> / <code>compareAndSet</code></strong></p>
+<p>Beyond <code>+=</code>, atomics expose <code>get()</code> and <code>compareAndSet(expected, new)</code>.
+Those deserve their own walkthrough — see
+<a href="../docs/CONCURRENCY.md"><code>docs/CONCURRENCY.md</code></a> when you need them.</p>
+</blockquote>
 <pre><code class="language-pys"><span class="tok-mod">atomic</span> <span class="tok-type">int</span> <span class="tok-ident">counter</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 
 <span class="tok-kw">tasks</span> {

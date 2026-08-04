@@ -20,7 +20,9 @@ print(safeDivide(10, 2))
 Forms: `n => expr`, `(params) => expr`, `(params) => { … }`, `() => …`.
 
 Captures are **by value** at creation and read-only unless the outer name
-is `shared` or `atomic` (same idea as tasks — Session 5).
+is `shared` or `atomic` — concurrency keywords taught in
+[shared state](chapter_6_2.md) and [atomic updates](chapter_6_3.md). Until
+then, treat captured names as snapshots you can read, not reassign.
 
 ### Exercise
 

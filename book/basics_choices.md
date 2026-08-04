@@ -42,8 +42,21 @@ unless (lives == 0) {
 }
 ```
 
-`unless (condition)` means “if the condition is **not** true”. Same idea as
-`if not (lives == 0)`.
+`unless (condition)` means “if the condition is **not** true”. The same
+idea with different words:
+
+```pys
+int lives = 3
+
+if not (lives == 0) {
+    print("Keep playing")
+}
+```
+
+> **Sidebar — modulo `%`**
+>
+> `n % 2` is the remainder after dividing `n` by 2. If the remainder is
+> `0`, `n` is even; otherwise it is odd.
 
 ### Exercise
 

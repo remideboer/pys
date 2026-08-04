@@ -122,13 +122,62 @@
 <span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">x</span> <span class="tok-kw">in</span> <span class="tok-ident">xs</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-ident">x</span>)
 }</code></pre>
-<p><code>break</code> leaves the loop early; <code>continue</code> skips to the next iteration.
-Names declared inside <code>{ … }</code> are <strong>block-scoped</strong> — they do not exist
-after the closing brace.</p>
+<h2>Leaving early: <code>break</code></h2>
+<p><code>break</code> stops the loop <strong>immediately</strong>. Use it when you have found what you
+were looking for and further passes would waste work.</p>
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Sam</span><span class="tok-string">&quot;</span>]
+<span class="tok-type">string</span> <span class="tok-ident">target</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>
+<span class="tok-type">bool</span> <span class="tok-ident">found</span> <span class="tok-op">=</span> <span class="tok-const">false</span>
+
+<span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">names</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">name</span> <span class="tok-op">==</span> <span class="tok-ident">target</span>) {
+        <span class="tok-ident">found</span> <span class="tok-op">=</span> <span class="tok-const">true</span>
+        <span class="tok-kw">break</span>
+    }
+}
+
+<span class="tok-kw">if</span> (<span class="tok-ident">found</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">found </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">target</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">not in the list</span><span class="tok-string">&quot;</span>)
+}</code></pre>
+<p>Without <code>break</code>, the loop would keep walking <code>"Sam"</code> after <code>"Lin"</code> was
+already found. With <code>break</code>, control jumps to the first statement <strong>after</strong>
+the loop’s closing <code>}</code>.</p>
+<h2>Skipping one pass: <code>continue</code></h2>
+<p><code>continue</code> ends <strong>only the current iteration</strong> and jumps to the next one
+(the next value, or the next C-style step). Use it to skip work you do not
+want for some items.</p>
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">1</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;=</span> <span class="tok-number">6</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">i</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+        <span class="tok-kw">continue</span>
+    }
+    <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
+}</code></pre>
+<p>Even numbers hit <code>continue</code> and never reach <code>print</code>. Odd numbers print:
+<code>1</code>, <code>3</code>, <code>5</code>.</p>
+<blockquote>
+<p><strong>Sidebar — modulo <code>%</code></strong></p>
+<p><code>i % 2</code> is the remainder after dividing <code>i</code> by 2. Remainder <code>0</code> means
+even. You will use <code>%</code> often in filters and “every Nth item” logic.</p>
+<p><strong>Sidebar — <code>continue</code> in <code>switch</code></strong></p>
+<p>Inside a <code>switch</code> statement, bare <code>continue</code> means something else:
+fall through to the next <code>case</code> (see <a href="chapter_3_5.html">Enums and switch</a>).
+In a <code>loop</code>, <code>continue</code> always means “next iteration.”</p>
+</blockquote>
+<h2>Block scope</h2>
+<p>Names declared inside a loop’s <code>{ … }</code> exist only until that closing
+brace. After the loop, they are gone — that is <strong>block scope</strong>.</p>
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">1</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-type">int</span> <span class="tok-ident">scratch</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+    <span class="tok-builtin">print</span>(<span class="tok-ident">scratch</span>)
+}
+<span class="tok-comment"># print(scratch)  # does not compile — scratch lived only inside the loop</span></code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Sum the numbers 1..10 into <code>int total</code> with a C-style loop and print the
-total with <code>#i{total}</code>.</p>
+total. Then change the loop so that when <code>total</code> reaches or exceeds <code>20</code>,
+you <code>break</code> early — confirm the printed total is less than <code>55</code>.</p>
 </blockquote>
 <hr />
 <p><a href="chapter_3_1.html">Previous: Control flow</a> · <a href="chapter_3_3.html">Next: Arrays and lists</a></p>

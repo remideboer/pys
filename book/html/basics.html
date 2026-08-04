@@ -174,8 +174,14 @@ that:</p>
 <p><code>fix</code> locks the drawer after the first value is placed. Trying to reopen
 it is a <strong>compile error</strong>, not a silent bug later. Prefer <code>fix</code> when the
 value should stay put; use <code>var</code> when you already know it must change.</p>
-<p>You will also meet <code>const</code> later: a compile-time constant (often written
-in <code>SCREAMING_SNAKE_CASE</code>).</p>
+<p>You will also meet <code>const</code> later — a compile-time constant, usually in
+<code>SCREAMING_SNAKE_CASE</code>. Details: <a href="chapter_2_2.html">Variables: var, fix, and const</a>.</p>
+<blockquote>
+<p><strong>Sidebar — typed drawers</strong></p>
+<p>Writing <code>string label = "hi"</code> or <code>int n = 3</code> declares a reassignable
+binding with an explicit type. Prefer that form once you know the type;
+keep <code>var</code> for obvious initializers. Session 1 goes deeper.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Modify the changing-drawer example so it greets three different people

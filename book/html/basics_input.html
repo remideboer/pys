@@ -130,7 +130,13 @@ statements in the file.</p>
 
 <span class="tok-type">string</span> <span class="tok-ident">raw</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">How old are you? </span><span class="tok-string">&quot;</span>)
 <span class="tok-type">int</span> <span class="tok-ident">age</span> <span class="tok-op">=</span> <span class="tok-type">int</span>(<span class="tok-ident">raw</span>)
-<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Next year you will be </span><span class="tok-interp">#i{age + 1}</span><span class="tok-string">&quot;</span>)</code></pre>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Next year you will be </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-type">str</span>(<span class="tok-ident">age</span> <span class="tok-op">+</span> <span class="tok-number">1</span>))</code></pre>
+<blockquote>
+<p><strong>Sidebar — typed declarations</strong></p>
+<p><code>string name = …</code> and <code>int age = …</code> name the type on the left. That is
+the usual PYS style (more in <a href="chapter_2_2.html">Session 1 — Variables</a>).
+<code>var</code> still works when the right-hand side makes the type obvious.</p>
+</blockquote>
 <p><code>int(raw)</code> asks PYS/Python to parse the string as an integer. If the text
 is not a number, the program fails at that line — we will learn gentler
 patterns in <a href="basics_outcomes.html">Expressing success and failure</a>.</p>

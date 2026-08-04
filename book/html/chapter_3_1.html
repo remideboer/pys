@@ -116,11 +116,31 @@
 } <span class="tok-kw">else</span> {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">x is greater than y</span><span class="tok-string">&quot;</span>)
 }</code></pre>
-<p>Logical operators: <code>and</code> / <code>or</code> / <code>not</code> (and <code>&amp;&amp;</code> / <code>||</code> / <code>!</code>).</p>
+<p>Logical operators combine conditions. Prefer the word forms while learning:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">hour</span> <span class="tok-op">=</span> <span class="tok-number">23</span>
+
+<span class="tok-kw">if</span> (<span class="tok-ident">hour</span> <span class="tok-op">&lt;</span> <span class="tok-number">6</span> <span class="tok-kw">or</span> <span class="tok-ident">hour</span> <span class="tok-op">&gt;=</span> <span class="tok-number">22</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">night</span><span class="tok-string">&quot;</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">day</span><span class="tok-string">&quot;</span>)
+}
+
+<span class="tok-kw">if</span> (<span class="tok-ident">hour</span> <span class="tok-op">&gt;=</span> <span class="tok-number">9</span> <span class="tok-kw">and</span> <span class="tok-ident">hour</span> <span class="tok-op">&lt;</span> <span class="tok-number">17</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">office hours</span><span class="tok-string">&quot;</span>)
+}
+
+<span class="tok-kw">if</span> (<span class="tok-kw">not</span> (<span class="tok-ident">hour</span> <span class="tok-op">==</span> <span class="tok-number">12</span>)) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">not noon</span><span class="tok-string">&quot;</span>)
+}</code></pre>
+<p>Symbols <code>&amp;&amp;</code> / <code>||</code> / <code>!</code> mean the same as <code>and</code> / <code>or</code> / <code>not</code>.</p>
 <h2><code>unless</code> / <code>if not</code></h2>
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">50</span>
 <span class="tok-kw">unless</span> (<span class="tok-ident">x</span> <span class="tok-op">&gt;</span> <span class="tok-number">100</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">not greater than 100</span><span class="tok-string">&quot;</span>)
+}
+
+<span class="tok-kw">if</span> <span class="tok-kw">not</span> (<span class="tok-ident">x</span> <span class="tok-op">&gt;</span> <span class="tok-number">100</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">same idea with if not</span><span class="tok-string">&quot;</span>)
 }</code></pre>
 <h3>Exercise</h3>
 <blockquote>

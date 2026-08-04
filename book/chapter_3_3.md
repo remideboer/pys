@@ -8,8 +8,14 @@ print(numbers[0])
 print(numbers[1:3])
 ```
 
-Slices use an **inclusive** end index in PYS source (adjusted when emitting
-Python). Multi-dimensional:
+> **Sidebar — inclusive slice end**
+>
+> In PYS source, `numbers[1:3]` includes index `3`. So for
+> `[1, 2, 3, 4, 5]` that prints the three values at indexes 1, 2, and 3
+> (`2`, `3`, `4`). Python’s own slices exclude the end index — the
+> transpiler adjusts when emitting Python.
+
+Multi-dimensional:
 
 ```pys
 int[][] grid = [[1, 2], [3, 4]]

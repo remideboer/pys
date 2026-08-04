@@ -35,10 +35,9 @@ addContact(typed)
 showContacts()
 ```
 
-> `list.append` comes from Python’s list API available on `list<T>` values.
-> If your tooling flags it, build the list with a fresh literal for the
-> exercise (`contacts = contacts + [typed]` style) — Session 2 covers
-> collections more carefully.
+> `list.append` adds one item (taught in [Data structures](basics_data.md)).
+> If your tooling flags it, build a new list with
+> `contacts = contacts + [typed]` instead.
 
 Work in small steps. Get print-and-add working before you touch files.
 

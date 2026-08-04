@@ -17,6 +17,12 @@ Damage d2 = Damage(amount=20, type="physical")
 print(d1 == d2)
 ```
 
+> **Sidebar — named constructor arguments**
+>
+> `Damage(20, "physical")` fills fields in declaration order.
+> `Damage(amount=20, type="physical")` names each field — handy when
+> optional trailing fields appear later.
+
 ## `data` — value object
 
 All fields immutable; equality over **all** fields; generated contract.

@@ -119,9 +119,11 @@ value yet.” In PYS that empty marker is <code>null</code>.</p>
   where a real object is required blows up at runtime.</li>
 </ul>
 <blockquote>
-<p>Not every type happily accepts <code>null</code>. Struct fields, for example, reject
-null — structs are meant to be complete values. Classes and many reference
-types can be null; follow the compiler when it refuses an assignment.</p>
+<p><strong>Sidebar — not every type likes <code>null</code></strong></p>
+<p>Struct fields reject <code>null</code> (structs are complete values). Class-typed
+variables often may be null. Follow the compiler; details belong with
+<a href="chapter_4_5.html">Structs, data, and entity</a> and
+<a href="chapter_4_1.html">Classes</a>.</p>
 </blockquote>
 <h3>Exercise</h3>
 <blockquote>

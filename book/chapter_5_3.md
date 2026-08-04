@@ -11,15 +11,20 @@ int doubled = apply(5, n => n * 2)
 print(doubled)
 ```
 
-Arrays and lists also offer functional-style iteration via `.loop`:
+Prefer named functions when the logic is non-trivial or reused; prefer
+lambdas for short adapters at the call site.
+
+> **Sidebar — `.loop` on arrays**
+>
+> `numbers.loop(print)` means “call `print` once per element” (it maps to
+> Python’s `list(map(...))`). Use an ordinary `loop (… in …)` when you need
+> an `if`, `break`, or more than one statement per item — see
+> [Loops](chapter_3_2.md).
 
 ```pys
 int[] numbers = [1, 2, 3]
 numbers.loop(print)
 ```
-
-Prefer named functions when the logic is non-trivial or reused; prefer
-lambdas for short adapters at the call site.
 
 ### Exercise
 

@@ -134,8 +134,18 @@
 <span class="tok-kw">unless</span> (<span class="tok-ident">lives</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Keep playing</span><span class="tok-string">&quot;</span>)
 }</code></pre>
-<p><code>unless (condition)</code> means “if the condition is <strong>not</strong> true”. Same idea as
-<code>if not (lives == 0)</code>.</p>
+<p><code>unless (condition)</code> means “if the condition is <strong>not</strong> true”. The same
+idea with different words:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">lives</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
+
+<span class="tok-kw">if</span> <span class="tok-kw">not</span> (<span class="tok-ident">lives</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Keep playing</span><span class="tok-string">&quot;</span>)
+}</code></pre>
+<blockquote>
+<p><strong>Sidebar — modulo <code>%</code></strong></p>
+<p><code>n % 2</code> is the remainder after dividing <code>n</code> by 2. If the remainder is
+<code>0</code>, <code>n</code> is even; otherwise it is odd.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Ask for an integer with <code>input</code> (import from <code>builtins</code>). If it is even,

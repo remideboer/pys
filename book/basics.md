@@ -97,8 +97,14 @@ print("Born in " + birthYear)
 it is a **compile error**, not a silent bug later. Prefer `fix` when the
 value should stay put; use `var` when you already know it must change.
 
-You will also meet `const` later: a compile-time constant (often written
-in `SCREAMING_SNAKE_CASE`).
+You will also meet `const` later — a compile-time constant, usually in
+`SCREAMING_SNAKE_CASE`. Details: [Variables: var, fix, and const](chapter_2_2.md).
+
+> **Sidebar — typed drawers**
+>
+> Writing `string label = "hi"` or `int n = 3` declares a reassignable
+> binding with an explicit type. Prefer that form once you know the type;
+> keep `var` for obvious initializers. Session 1 goes deeper.
 
 ### Exercise
 

@@ -33,8 +33,14 @@ import input from builtins
 
 string raw = input("How old are you? ")
 int age = int(raw)
-print("Next year you will be #i{age + 1}")
+print("Next year you will be " + str(age + 1))
 ```
+
+> **Sidebar — typed declarations**
+>
+> `string name = …` and `int age = …` name the type on the left. That is
+> the usual PYS style (more in [Session 1 — Variables](chapter_2_2.md)).
+> `var` still works when the right-hand side makes the type obvious.
 
 `int(raw)` asks PYS/Python to parse the string as an integer. If the text
 is not a number, the program fails at that line — we will learn gentler

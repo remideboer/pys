@@ -37,6 +37,13 @@ switch (day) {
 print(numLetters)
 ```
 
+> **Sidebar — loop `continue` vs switch `continue`**
+>
+> In a **loop**, `continue` means “skip to the next iteration”
+> ([Loops](chapter_3_2.md)). In a **switch statement**, bare `continue`
+> means “fall through into the next `case`.” Same word, different jobs —
+> read the surrounding keyword (`loop` vs `switch`) to know which.
+
 ## Switch expression
 
 ```pys

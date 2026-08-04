@@ -1,8 +1,13 @@
 # 7.3. atomic updates
 
-`atomic` marks a cell whose `+=` / `-=` / `++` / `--` (and helpers like
-`get` / `compareAndSet`) are **indivisible**. It also implies shared
-capture.
+`atomic` marks a cell whose `+=` / `-=` / `++` / `--` updates are
+**indivisible**. It also implies shared capture for tasks.
+
+> **Sidebar — `get` / `compareAndSet`**
+>
+> Beyond `+=`, atomics expose `get()` and `compareAndSet(expected, new)`.
+> Those deserve their own walkthrough — see
+> [`docs/CONCURRENCY.md`](../docs/CONCURRENCY.md) when you need them.
 
 ```pys
 atomic int counter = 0

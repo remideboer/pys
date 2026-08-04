@@ -8,8 +8,19 @@ One giant file becomes hard to read. PYS lets you split code across
 | Keyword | Who can import it |
 |---------|-------------------|
 | (omit) | Nobody outside this file |
-| `package` | Other files in the **same package** (same folder, or mirrored under `pys.toml` source roots) |
+| `package` | Other files in the **same package** (same folder for now) |
 | `global` | Any importer |
+
+> **Sidebar — source roots (later)**
+>
+> Larger projects can mirror `src/` and `tests/` with a `pys.toml`
+> `[source_roots]` table so the same package path exists in both trees.
+> That is Session 6: [Packages and source roots](chapter_7_3.md).
+
+> **Sidebar — `global` in one line**
+>
+> `global function void hello() { … }` can be imported from any file.
+> Prefer `package` when only same-folder teammates should see the name.
 
 ## Two files
 

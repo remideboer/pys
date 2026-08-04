@@ -16,6 +16,14 @@ print(len(names))
 - `names[0]` — the first element (indexing starts at **0**).
 - `len(names)` — how many items are in the list.
 
+Growing a list: call `append` to add one item at the end.
+
+```pys
+list<string> names = ["Ada"]
+names.append("Tom")
+print(len(names))
+```
+
 ## Arrays
 
 For teaching fixed-element sequences of primitives, PYS also has arrays:

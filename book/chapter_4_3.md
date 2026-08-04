@@ -4,6 +4,19 @@ An **abstract class** is a nominal type that can hold shared fields and
 concrete methods, plus `abstract` methods subclasses must implement. You
 cannot construct it directly.
 
+> **Sidebar — `inherits` and `super`**
+>
+> `inherits AbstractList` means “this class is a specialized version of
+> that one.” In the subclass constructor, `super()` runs the parent
+> constructor first so inherited fields (like `size`) are set up. Pass
+> arguments inside `super(...)` when the parent needs them.
+
+> **Sidebar — `protected`**
+>
+> `protected` members are visible inside this class **and** its subclasses,
+> but not to unrelated code. Compare: `private` = this class only;
+> `public` = anyone.
+
 ```pys
 abstract class AbstractList {
     protected int size

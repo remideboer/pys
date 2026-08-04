@@ -115,6 +115,12 @@
 <span class="tok-typename">Damage</span> <span class="tok-ident">d1</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-number">20</span>, <span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
 <span class="tok-typename">Damage</span> <span class="tok-ident">d2</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-ident">amount</span><span class="tok-op">=</span><span class="tok-number">20</span>, <span class="tok-ident">type</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">d1</span> <span class="tok-op">==</span> <span class="tok-ident">d2</span>)</code></pre>
+<blockquote>
+<p><strong>Sidebar — named constructor arguments</strong></p>
+<p><code>Damage(20, "physical")</code> fills fields in declaration order.
+<code>Damage(amount=20, type="physical")</code> names each field — handy when
+optional trailing fields appear later.</p>
+</blockquote>
 <h2><code>data</code> — value object</h2>
 <p>All fields immutable; equality over <strong>all</strong> fields; generated contract.</p>
 <pre><code class="language-pys"><span class="tok-kw">data</span> <span class="tok-typename">Money</span> {

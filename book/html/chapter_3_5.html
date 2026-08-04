@@ -131,6 +131,13 @@ when you mean it:</p>
         <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">numLetters</span>)</code></pre>
+<blockquote>
+<p><strong>Sidebar — loop <code>continue</code> vs switch <code>continue</code></strong></p>
+<p>In a <strong>loop</strong>, <code>continue</code> means “skip to the next iteration”
+(<a href="chapter_3_2.html">Loops</a>). In a <strong>switch statement</strong>, bare <code>continue</code>
+means “fall through into the next <code>case</code>.” Same word, different jobs —
+read the surrounding keyword (<code>loop</code> vs <code>switch</code>) to know which.</p>
+</blockquote>
 <h2>Switch expression</h2>
 <pre><code class="language-pys"><span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">WEDNESDAY</span>
 <span class="tok-type">int</span> <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-kw">switch</span> (<span class="tok-ident">day</span>) {

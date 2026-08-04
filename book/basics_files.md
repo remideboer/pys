@@ -4,6 +4,11 @@ Saving data between runs means talking to the **filesystem**. PYS reaches
 Python’s `pathlib.Path` through an import (the same pattern real examples
 in this repo use).
 
+> **Sidebar — two import spellings**
+>
+> `import input from builtins` is PYS’s usual “bring this name from that
+> module” form. `from pathlib import Path` is the Python-shaped form some
+> library modules expect. Both must stay at the **top** of the file.
 ```pys
 from pathlib import Path
 

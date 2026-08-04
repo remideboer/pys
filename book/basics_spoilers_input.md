@@ -9,7 +9,7 @@ import input from builtins
 string firstName = input("First name: ")
 string raw = input("Favorite number: ")
 int favorite = int(raw)
-print(firstName + " likes #i{favorite}")
+print(firstName + " likes " + str(favorite))
 ```
 
 ---

@@ -17,7 +17,27 @@ if (x < y) {
 }
 ```
 
-Logical operators: `and` / `or` / `not` (and `&&` / `||` / `!`).
+Logical operators combine conditions. Prefer the word forms while learning:
+
+```pys
+int hour = 23
+
+if (hour < 6 or hour >= 22) {
+    print("night")
+} else {
+    print("day")
+}
+
+if (hour >= 9 and hour < 17) {
+    print("office hours")
+}
+
+if (not (hour == 12)) {
+    print("not noon")
+}
+```
+
+Symbols `&&` / `||` / `!` mean the same as `and` / `or` / `not`.
 
 ## `unless` / `if not`
 
@@ -25,6 +45,10 @@ Logical operators: `and` / `or` / `not` (and `&&` / `||` / `!`).
 int x = 50
 unless (x > 100) {
     print("not greater than 100")
+}
+
+if not (x > 100) {
+    print("same idea with if not")
 }
 ```
 

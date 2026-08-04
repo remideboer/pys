@@ -121,7 +121,7 @@
 </tr>
 <tr>
 <td><code>package</code></td>
-<td>Other files in the <strong>same package</strong> (same folder, or mirrored under <code>pys.toml</code> source roots)</td>
+<td>Other files in the <strong>same package</strong> (same folder for now)</td>
 </tr>
 <tr>
 <td><code>global</code></td>
@@ -129,6 +129,15 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Sidebar — source roots (later)</strong></p>
+<p>Larger projects can mirror <code>src/</code> and <code>tests/</code> with a <code>pys.toml</code>
+<code>[source_roots]</code> table so the same package path exists in both trees.
+That is Session 6: <a href="chapter_7_3.html">Packages and source roots</a>.</p>
+<p><strong>Sidebar — <code>global</code> in one line</strong></p>
+<p><code>global function void hello() { … }</code> can be imported from any file.
+Prefer <code>package</code> when only same-folder teammates should see the name.</p>
+</blockquote>
 <h2>Two files</h2>
 <p><code>greetings.pys</code>:</p>
 <pre><code class="language-pys"><span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {

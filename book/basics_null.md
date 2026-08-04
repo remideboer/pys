@@ -17,9 +17,12 @@ if (nickname == null) {
 - Always **check** before you use a value that might be null. Using a null
   where a real object is required blows up at runtime.
 
-> Not every type happily accepts `null`. Struct fields, for example, reject
-> null — structs are meant to be complete values. Classes and many reference
-> types can be null; follow the compiler when it refuses an assignment.
+> **Sidebar — not every type likes `null`**
+>
+> Struct fields reject `null` (structs are complete values). Class-typed
+> variables often may be null. Follow the compiler; details belong with
+> [Structs, data, and entity](chapter_4_5.md) and
+> [Classes](chapter_4_1.md).
 
 ### Exercise
 

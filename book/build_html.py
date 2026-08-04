@@ -79,6 +79,9 @@ main blockquote {
   border-left: 3px solid var(--border);
   color: var(--muted);
 }
+main blockquote strong:first-child {
+  color: var(--fg);
+}
 main code {
   font-family: Consolas, "Cascadia Mono", monospace;
   font-size: 0.9em;

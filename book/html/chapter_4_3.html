@@ -107,6 +107,17 @@
 <p>An <strong>abstract class</strong> is a nominal type that can hold shared fields and
 concrete methods, plus <code>abstract</code> methods subclasses must implement. You
 cannot construct it directly.</p>
+<blockquote>
+<p><strong>Sidebar — <code>inherits</code> and <code>super</code></strong></p>
+<p><code>inherits AbstractList</code> means “this class is a specialized version of
+that one.” In the subclass constructor, <code>super()</code> runs the parent
+constructor first so inherited fields (like <code>size</code>) are set up. Pass
+arguments inside <code>super(...)</code> when the parent needs them.</p>
+<p><strong>Sidebar — <code>protected</code></strong></p>
+<p><code>protected</code> members are visible inside this class <strong>and</strong> its subclasses,
+but not to unrelated code. Compare: <code>private</code> = this class only;
+<code>public</code> = anyone.</p>
+</blockquote>
 <pre><code class="language-pys"><span class="tok-mod">abstract</span> <span class="tok-kw">class</span> <span class="tok-typename">AbstractList</span> {
     <span class="tok-mod">protected</span> <span class="tok-type">int</span> <span class="tok-ident">size</span>
 
