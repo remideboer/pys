@@ -1,8 +1,8 @@
-# examples/webserver/main.pys
+# examples/webserver/src/main.pys
 # Concurrent HTTP server: acceptor + workers; HTTP/1.1 or HTTP/2 via ALPN.
 #
-# Run:
-#   python -m transpiler run examples/webserver/main.pys
+# Run (from repo root):
+#   python -m transpiler run examples/webserver/src/main.pys
 #
 # HTTPS + HTTP/2:
 #   python examples/webserver/scripts/gen_dev_certs.py

@@ -4,7 +4,7 @@
  *   k6 run -e BASE_URL=https://127.0.0.1:8080 examples/webserver/load/k6/tls_handshake.js
  *
  * Start the server with TLS enabled (uncomment cfg.tlsEnabled in main.pys), from repo root:
- *   python -m transpiler run examples/webserver/main.pys
+ *   python -m transpiler run examples/webserver/src/main.pys
  *
  * Self-signed certs: examples/webserver/certs/ (insecureSkipTLSVerify below).
  */

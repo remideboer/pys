@@ -510,7 +510,30 @@ class ImportResolver:
             path = path.with_suffix(".pys")
         if not path.is_absolute():
             base = self.source_path.parent if self.source_path is not None else Path.cwd()
-            path = base / path
+            candidate = (base / path)
+            workspace_root = workspace_root_from_env()
+            if workspace_root is not None:
+                resolved = resolve_workspace_path(candidate, workspace_root)
+                if resolved is not None:
+                    return resolved
+            else:
+                try:
+                    return candidate.resolve(strict=True)
+                except OSError:
+                    pass
+            # Bare module (e.g. `config`): resolve among same-package peers under
+            # pys.toml [source_roots] so tests/ can import src/ without relative paths.
+            if self.source_path is not None and not (
+                "/" in ref or "\\" in ref or ref.startswith(".")
+            ):
+                from .project_manifest import package_peer_files
+
+                stem = path.stem
+                here = self.source_path.resolve()
+                for peer in package_peer_files(here):
+                    if peer.stem == stem and peer != here:
+                        return peer
+            return None
 
         workspace_root = workspace_root_from_env()
         if workspace_root is not None:

@@ -1,7 +1,7 @@
 # Mirrored package billing under tests/ — same package as src/billing/Invoice.pys.
 # Can import package-scoped symbols without widening them to global/public.
 
-import Invoice, formatInvoice from ../../src/billing/Invoice.pys
+import Invoice, formatInvoice from Invoice
 
 Invoice inv = Invoice("Ada", 100)
 inv.addCents(50)

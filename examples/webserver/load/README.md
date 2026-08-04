@@ -9,7 +9,7 @@ Maps to `concurrent-webserver-testplan.md` scenarios A/B/C at teaching scale
 2. From the **repo root**, start the server:
 
 ```bash
-python -m transpiler run examples/webserver/main.pys
+python -m transpiler run examples/webserver/src/main.pys
 ```
 
 3. OS notes (spec §4): on Linux/macOS raise FDs before large runs (`ulimit -n 65535`).
@@ -23,10 +23,10 @@ python -m transpiler run examples/webserver/main.pys
 | `k6/baseline.js` | A1 subset | `k6 run -e BASE_URL=http://127.0.0.1:8080 examples/webserver/load/k6/baseline.js` |
 | `k6/overload.js` | B1 subset | `k6 run -e BASE_URL=http://127.0.0.1:8080 examples/webserver/load/k6/overload.js` |
 | `k6/pool_exhaust.js` | C1 subset | `k6 run -e BASE_URL=http://127.0.0.1:8080 examples/webserver/load/k6/pool_exhaust.js` |
-| `k6/tls_handshake.js` | A3 subset | Generate certs (`scripts/gen_dev_certs.py`), enable `cfg.tlsEnabled` in `main.pys`, then `k6 run -e BASE_URL=https://127.0.0.1:8080 examples/webserver/load/k6/tls_handshake.js` |
+| `k6/tls_handshake.js` | A3 subset | Generate certs (`scripts/gen_dev_certs.py`), enable `cfg.tlsEnabled` in `src/main.pys`, then `k6 run -e BASE_URL=https://127.0.0.1:8080 examples/webserver/load/k6/tls_handshake.js` |
 | `k6/http2_multiplex.js` | A2 subset | Same TLS setup, then `k6 run -e BASE_URL=https://127.0.0.1:8080 examples/webserver/load/k6/http2_multiplex.js` |
 
-For faster pool saturation, lower `poolSize` in `config.pys` before starting `main.pys`,
+For faster pool saturation, lower `poolSize` in `src/config.pys` before starting `src/main.pys`,
 and prefer `/proxy/slow` (300ms mock latency).
 
 ## Metrics during load

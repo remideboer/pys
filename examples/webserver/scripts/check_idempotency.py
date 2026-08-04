@@ -35,9 +35,19 @@ def _endpoints_from_idem_code(text: str) -> set[str]:
 
 def check(root: Path) -> list[str]:
     errors: list[str] = []
-    router = (root / "router.pys").read_text(encoding="utf-8")
-    table = (root / "idempotency.md").read_text(encoding="utf-8")
-    code = (root / "idempotency.pys").read_text(encoding="utf-8")
+    src = root / "src"
+    if (src / "router.pys").is_file():
+        router_path = src / "router.pys"
+        table_path = src / "idempotency.md"
+        code_path = src / "idempotency.pys"
+    else:
+        # Flat layout (tests / older trees)
+        router_path = root / "router.pys"
+        table_path = root / "idempotency.md"
+        code_path = root / "idempotency.pys"
+    router = router_path.read_text(encoding="utf-8")
+    table = table_path.read_text(encoding="utf-8")
+    code = code_path.read_text(encoding="utf-8")
 
     routes = _endpoints_from_router(router)
     classified = _endpoints_from_table(table)

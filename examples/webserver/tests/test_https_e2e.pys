@@ -18,7 +18,8 @@ import ConnHandler from conn_handler
 import AppContext, Router from router
 import TlsTerminator from tls_term
 
-subprocess.check_call([sys.executable, "scripts/gen_dev_certs.py"])
+subprocess.check_call([sys.executable, "../scripts/gen_dev_certs.py"])
+
 
 ServerConfig cfg = ServerConfig()
 cfg.poolSize = 4

@@ -59,8 +59,8 @@ package class ServerConfig {
         this.listenHost = "127.0.0.1"
         this.mockPort = 8081
         this.tlsEnabled = false
-        this.tlsCertFile = "certs/localhost.pem"
-        this.tlsKeyFile = "certs/localhost-key.pem"
+        this.tlsCertFile = "../certs/localhost.pem"
+        this.tlsKeyFile = "../certs/localhost-key.pem"
     }
 
     # Strict ordering: downstream < handler < client (testplan G1).

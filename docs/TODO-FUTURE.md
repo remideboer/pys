@@ -13,7 +13,7 @@ mark it done here.
 | [F-003](#f-003-enum-value-aliases) | Language / enums | Deferred | Duplicate enum values via real syntax (not `@`) |
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
 | [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
-| [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Active** | `pys.toml` source roots; same package across `src`/`tests` |
+| [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Done** | `pys.toml` source roots; same package across `src`/`tests` |
 | [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | Deferred | FR8 re-checkout, Toxiproxy, 1k-scale soak — after F-006 refactor |
 
 ---
@@ -99,7 +99,7 @@ Polymorphism, and other catalog entries not in the core DoD.
 
 | | |
 | --- | --- |
-| Status | **Active** — core + teaching example + IDE QF landed; webserver refactor still pending |
+| Status | **Done** (core + DoD example/QF + webserver `src`/`tests` layout); product remainder → F-007 |
 | Source | [`requirements/package_resolution_testing_philosophy.md`](../requirements/package_resolution_testing_philosophy.md); [ADR-017](adr/ADR-017-source-roots-same-package-tests.md); surfaced by `examples/webserver/` |
 
 ### Intent
@@ -131,6 +131,9 @@ When F-006 / ADR-017 is implemented, **refactor `examples/webserver/`** (and
 any other flat same-folder test examples) into main/test roots with mirrored
 paths. Do not widen access modifiers as a substitute.
 
+**Done:** `examples/webserver/` now uses `src/` + `tests/` + `pys.toml`.
+Remaining webserver product work is [F-007](#f-007-webserver-full-spec-remainder).
+
 ---
 
 ## F-007: Webserver full-spec remainder
@@ -139,7 +142,7 @@ paths. Do not widen access modifiers as a substitute.
 | --- | --- |
 | Status | Deferred (halted) |
 | Source | `examples/webserver/`; [DEFERRED.md](../examples/webserver/DEFERRED.md) |
-| Blocked by | [F-006](#f-006-source-roots-and-same-package-tests) + layout refactor |
+| Blocked by | ~~[F-006](#f-006-source-roots-and-same-package-tests)~~ (layout done) |
 
 Teaching increments 1–6 are shipped. Remaining vs full concurrent-webserver
 spec/testplan (not scheduled until after F-006):

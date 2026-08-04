@@ -58,6 +58,22 @@ def test_legacy_same_folder_without_manifest(tmp_path: Path) -> None:
     assert not same_package(a, c)
 
 
+def test_bare_module_resolves_across_source_roots(tmp_path: Path) -> None:
+    root = _project(tmp_path)
+    inv = root / "src" / "billing" / "Invoice.pys"
+    test = root / "tests" / "billing" / "InvoiceTest.pys"
+    inv.write_text(
+        "package function recalculateTotal(){\n    print(\"ok\")\n}\n",
+        encoding="utf-8",
+    )
+    test.write_text(
+        "import recalculateTotal from Invoice\nrecalculateTotal()\n",
+        encoding="utf-8",
+    )
+    py = transpile(test.read_text(encoding="utf-8"), source_path=test)
+    assert "from Invoice import recalculateTotal" in py
+
+
 def test_import_package_export_across_mirrored_roots(tmp_path: Path) -> None:
     root = _project(tmp_path)
     inv = root / "src" / "billing" / "Invoice.pys"

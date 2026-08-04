@@ -4,7 +4,7 @@
  *   k6 run -e BASE_URL=http://127.0.0.1:8080 examples/webserver/load/k6/baseline.js
  *
  * Start the server first:
- *   python -m transpiler run examples/webserver/main.pys
+ *   python -m transpiler run examples/webserver/src/main.pys
  */
 import http from "k6/http";
 import { check, sleep } from "k6";

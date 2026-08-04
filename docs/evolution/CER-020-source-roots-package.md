@@ -25,5 +25,7 @@ production-like `src/` + `tests/` trees (surfaced by `examples/webserver/`).
   the educational “Did you mean …?” diagnostic (requirements §4) with
   `code=pys.package-mismatch`, `suggested_fix` path, and IDE quick fix to
   move the file. Find Usages indexes package peers across roots
-  (`package_peer_files`). Teaching sample: `examples/source_roots/`.
+  (`package_peer_files`). Bare module imports (e.g. `from config`) resolve
+  among same-package peers under other source roots. Teaching sample:
+  `examples/source_roots/`; webserver uses `src/` + `tests/`.
 - **Tests:** `tests/test_source_roots_package.py`
