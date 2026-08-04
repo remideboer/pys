@@ -1,0 +1,99 @@
+:root {
+  --bg: #f7f5f0;
+  --fg: #1a1a1a;
+  --muted: #555;
+  --accent: #0b5fff;
+  --code-bg: #ece8e1;
+  --border: #d4cfc4;
+  --pre-bg: #1e1e1e;
+  --pre-fg: #e8e8e8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Iowan Old Style", Georgia, serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.55;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(12rem, 16rem) 1fr;
+  min-height: 100vh;
+}
+nav.toc {
+  background: #efebe3;
+  border-right: 1px solid var(--border);
+  padding: 1.25rem 1rem 2rem;
+  font-size: 0.9rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+nav.toc h1 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+nav.toc ul { list-style: none; padding-left: 0.75rem; margin: 0.25rem 0; }
+nav.toc > ul { padding-left: 0; }
+nav.toc a { color: var(--fg); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+nav.toc .section {
+  display: block;
+  font-weight: 650;
+  margin: 0.85rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+main {
+  max-width: 46rem;
+  padding: 2rem 2.5rem 4rem;
+}
+main h1 { font-size: 1.85rem; line-height: 1.25; }
+main h2 { margin-top: 1.75rem; font-size: 1.35rem; }
+main h3 { margin-top: 1.35rem; font-size: 1.15rem; }
+main a { color: var(--accent); }
+main blockquote {
+  margin: 1rem 0;
+  padding: 0.15rem 0 0.15rem 1rem;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+main code {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+main pre {
+  background: var(--pre-bg);
+  color: var(--pre-fg);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  border-radius: 6px;
+  font-size: 0.88rem;
+}
+main pre code { background: transparent; padding: 0; color: inherit; }
+main table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.95rem;
+}
+main th, main td {
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+main th { background: #efebe3; }
+main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+.nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+  nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+}
