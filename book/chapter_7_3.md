@@ -28,4 +28,4 @@ Teaching example: [`examples/source_roots/`](../examples/source_roots/).
 
 ---
 
-[Previous: Better PYS with TDD](chapter_7_2.md) · [Next: Session 7](chapter_8.md)
+[Previous: Better PYS with TDD](chapter_7_2.md) · [Next: Types and declarations](chapter_8_1.md)

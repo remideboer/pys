@@ -35,4 +35,4 @@ That third step is the seed of testing — Session 6 grows it into a habit.
 
 ---
 
-[Previous: Static types](chapter_2_3.md) · [Next: Session 2](chapter_3.md)
+[Previous: Static types](chapter_2_3.md) · [Next: Control flow](chapter_3_1.md)

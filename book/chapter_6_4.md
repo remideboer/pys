@@ -37,4 +37,4 @@ otherwise treat captures as snapshots.
 
 ---
 
-[Previous: atomic updates](chapter_6_3.md) · [Next: Session 6](chapter_7.md)
+[Previous: atomic updates](chapter_6_3.md) · [Next: Writing a first test](chapter_7_1.md)

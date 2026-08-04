@@ -13,6 +13,7 @@ from pys_highlight import highlight_html_document
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT
 OUT = ROOT / "html"
+REPOSITORY_URL = "https://github.com/remideboer/pys"
 
 CSS = """\
 :root {
@@ -151,13 +152,19 @@ def md_href_to_html(match: re.Match[str]) -> str:
     if href.startswith(("http://", "https://", "mailto:", "#")):
         return match.group(0)
     if href.startswith("../"):
-        # Keep repo-relative links as-is (may 404 when browsing file://)
-        return match.group(0)
+        path, frag = (href[3:].split("#", 1) + [""])[:2]
+        is_directory = path.endswith("/")
+        kind = "tree" if is_directory else "blob"
+        path = path.rstrip("/")
+        out = f"{REPOSITORY_URL}/{kind}/main/{path}"
+        if frag:
+            out += "#" + frag
+        return f'href="{out}"'
     path, frag = (href.split("#", 1) + [""])[:2]
-    if path.endswith(".md"):
-        path = path[:-3] + ".html"
-    elif path == "SUMMARY.md":
+    if path == "SUMMARY.md":
         path = "index.html"
+    elif path.endswith(".md"):
+        path = path[:-3] + ".html"
     out = path
     if frag:
         out += "#" + frag

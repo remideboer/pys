@@ -103,4 +103,4 @@ Do not mix `:` arms and `=>` arms in one switch.
 
 ---
 
-[Previous: Dicts, tuples, and sets](chapter_3_4.md) · [Next: Session 3](chapter_4.md)
+[Previous: Dicts, tuples, and sets](chapter_3_4.md) · [Next: Classes and member order](chapter_4_1.md)

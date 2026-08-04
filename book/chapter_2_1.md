@@ -73,4 +73,4 @@ If you write `#i{greeting}`, the compiler rejects it — that is the point.
 
 ---
 
-[Previous: Session 1](chapter_2.md) · [Next: Variables: var, fix, and const](chapter_2_2.md)
+[Previous: Spoiler — files](basics_spoilers_files.md) · [Next: Variables: var, fix, and const](chapter_2_2.md)

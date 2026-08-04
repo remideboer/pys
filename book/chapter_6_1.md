@@ -100,4 +100,4 @@ locals.
 
 ---
 
-[Previous: Session 5](chapter_6.md) · [Next: shared state](chapter_6_2.md)
+[Previous: Passing functions around](chapter_5_3.md) · [Next: shared state](chapter_6_2.md)

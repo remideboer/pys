@@ -29,4 +29,4 @@ story becomes clear — Session 6’s tests make that safer.
 
 ---
 
-[Previous: Structs, data, and entity](chapter_4_5.md) · [Next: Session 4](chapter_5.md)
+[Previous: Structs, data, and entity](chapter_4_5.md) · [Next: Functions that return values](chapter_5_1.md)

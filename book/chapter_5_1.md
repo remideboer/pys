@@ -31,4 +31,4 @@ structuring chapter.
 
 ---
 
-[Previous: Session 4](chapter_5.md) · [Next: Lambdas](chapter_5_2.md)
+[Previous: Choosing the right construct](chapter_4_6.md) · [Next: Lambdas](chapter_5_2.md)

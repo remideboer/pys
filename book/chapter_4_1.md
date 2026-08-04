@@ -61,4 +61,4 @@ Constructor name equals the class name. Use `this.field` for members.
 
 ---
 
-[Previous: Session 3](chapter_4.md) · [Next: Interfaces](chapter_4_2.md)
+[Previous: Enums and switch](chapter_3_5.md) · [Next: Interfaces](chapter_4_2.md)

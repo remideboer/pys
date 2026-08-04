@@ -49,4 +49,4 @@ Output:
 
 ---
 
-[Previous: Lambdas](chapter_5_2.md) · [Next: Session 5](chapter_6.md)
+[Previous: Lambdas](chapter_5_2.md) · [Next: tasks, task, and await](chapter_6_1.md)

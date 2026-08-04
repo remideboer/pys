@@ -26,4 +26,4 @@ Casing you already use:
 
 ---
 
-[Previous: Session 7](chapter_8.md) · [Next: Classes, interfaces, and members](chapter_8_2.md)
+[Previous: Packages and source roots](chapter_7_3.md) · [Next: Classes, interfaces, and members](chapter_8_2.md)

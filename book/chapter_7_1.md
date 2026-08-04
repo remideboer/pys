@@ -48,4 +48,4 @@ expose a query method on the public/`package` API instead.
 
 ---
 
-[Previous: Session 6](chapter_7.md) · [Next: Better PYS with TDD](chapter_7_2.md)
+[Previous: Lambdas and capture rules](chapter_6_4.md) · [Next: Better PYS with TDD](chapter_7_2.md)

@@ -82,4 +82,4 @@ same idea with if not
 
 ---
 
-[Previous: Session 2](chapter_3.md) · [Next: Loops](chapter_3_2.md)
+[Previous: Running and checking](chapter_2_4.md) · [Next: Loops](chapter_3_2.md)
