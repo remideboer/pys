@@ -16,7 +16,9 @@ straight into those languages.
    variable is.
 3. **Sessions** — deeper PYS topics in class-sized chunks.
 4. **Spoilers** — worked solutions for selected basics exercises (try first!).
-5. **Exercises** and **Resources** — practice and where to go next.
+5. **Under the hood (optional)** — how entrypoints, processes, calls, memory,
+   and threads connect the language to the computer running it.
+6. **Exercises** and **Resources** — practice and where to go next.
 
 Each section usually follows the same rhythm: a short explanation, a
 concrete analogy when it helps, a small runnable example, a line-by-line

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10.2. Processes, calls, and memory — PYS Development Classes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc">
+      <h1><a href="index.html">PYS Development Classes</a></h1>
+      <ul>
+<li><a href="preface.html">Preface</a></li>
+</ul>
+<span class="section">1. Preparation</span>
+<ul>
+<li><a href="chapter_1_1.html">1.1. Getting ready</a></li>
+</ul>
+<span class="section">2. Back to the basics</span>
+<ul>
+<li><a href="basics.html">Back to the basics</a></li>
+<li><a href="basics_functions.html">2.1. Functions</a></li>
+<li><a href="basics_input.html">2.2. Processing input</a></li>
+<li><a href="basics_choices.html">2.3. Making choices</a></li>
+<li><a href="basics_data.html">2.4. Data structures</a></li>
+<li><a href="basics_loops.html">2.5. Loops</a></li>
+<li><a href="basics_conversion.html">2.6. Conversion</a></li>
+<li><a href="basics_null.html">2.7. Null and missing values</a></li>
+<li><a href="basics_outcomes.html">2.8. Expressing success and failure</a></li>
+<li><a href="basics_structuring.html">2.9. Structuring code</a></li>
+<li><a href="basics_files.html">2.10. Files</a></li>
+<li><a href="basics_project.html">2.11. A small contact book</a></li>
+<li><a href="basics_spoilers.html">2.12. Spoilers</a></li>
+<li><a href="basics_spoilers_input.html">2.12.1. Processing input</a></li>
+<li><a href="basics_spoilers_structuring.html">2.12.2. Structuring code</a></li>
+<li><a href="basics_spoilers_files.html">2.12.3. Files</a></li>
+</ul>
+<span class="section">3. Session 1 — Types that protect you</span>
+<ul>
+<li><a href="chapter_2.html">Session 1 — Types that protect you</a></li>
+<li><a href="chapter_2_1.html">3.1. Formatting output</a></li>
+<li><a href="chapter_2_2.html">3.2. Variables: var, fix, and const</a></li>
+<li><a href="chapter_2_3.html">3.3. Static types and casts</a></li>
+<li><a href="chapter_2_4.html">3.4. Running and checking your work</a></li>
+</ul>
+<span class="section">4. Session 2 — Control flow and collections</span>
+<ul>
+<li><a href="chapter_3.html">Session 2 — Control flow and collections</a></li>
+<li><a href="chapter_3_1.html">4.1. Control flow</a></li>
+<li><a href="chapter_3_2.html">4.2. Loops</a></li>
+<li><a href="chapter_3_3.html">4.3. Arrays and lists</a></li>
+<li><a href="chapter_3_4.html">4.4. Dicts, tuples, and sets</a></li>
+<li><a href="chapter_3_5.html">4.5. Enums and switch</a></li>
+</ul>
+<span class="section">5. Session 3 — Objects and composition</span>
+<ul>
+<li><a href="chapter_4.html">Session 3 — Objects and composition</a></li>
+<li><a href="chapter_4_1.html">5.1. Classes and member order</a></li>
+<li><a href="chapter_4_2.html">5.2. Interfaces</a></li>
+<li><a href="chapter_4_3.html">5.3. Abstract classes</a></li>
+<li><a href="chapter_4_4.html">5.4. Traits</a></li>
+<li><a href="chapter_4_5.html">5.5. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6.html">5.6. Choosing the right construct</a></li>
+</ul>
+<span class="section">6. Session 4 — Functions and lambdas</span>
+<ul>
+<li><a href="chapter_5.html">Session 4 — Functions and lambdas</a></li>
+<li><a href="chapter_5_1.html">6.1. Functions that return values</a></li>
+<li><a href="chapter_5_2.html">6.2. Lambdas</a></li>
+<li><a href="chapter_5_3.html">6.3. Passing functions around</a></li>
+</ul>
+<span class="section">7. Session 5 — Doing several things at once</span>
+<ul>
+<li><a href="chapter_6.html">Session 5 — Doing several things at once</a></li>
+<li><a href="chapter_6_1.html">7.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2.html">7.2. shared state</a></li>
+<li><a href="chapter_6_3.html">7.3. atomic updates</a></li>
+<li><a href="chapter_6_4.html">7.4. Lambdas and capture rules</a></li>
+</ul>
+<span class="section">8. Session 6 — Tests you can trust</span>
+<ul>
+<li><a href="chapter_7.html">Session 6 — Tests you can trust</a></li>
+<li><a href="chapter_7_1.html">8.1. Writing a first test</a></li>
+<li><a href="chapter_7_2.html">8.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3.html">8.3. Packages and source roots</a></li>
+</ul>
+<span class="section">9. Session 7 — From PYS to C# and Java</span>
+<ul>
+<li><a href="chapter_8.html">Session 7 — From PYS to C# and Java</a></li>
+<li><a href="chapter_8_1.html">9.1. Types and declarations</a></li>
+<li><a href="chapter_8_2.html">9.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3.html">9.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4.html">9.4. What has no direct twin</a></li>
+</ul>
+<span class="section">10. Under the hood (optional)</span>
+<ul>
+<li><a href="under_the_hood_entrypoint.html">10.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">10.2. Processes, calls, and memory</a></li>
+</ul>
+<span class="section">11. Exercises</span>
+<ul>
+<li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
+</ul>
+<span class="section">12. Resources</span>
+<ul>
+<li><a href="resources.html">Resources</a></li>
+</ul>
+    </nav>
+    <main>
+<h1>10.2. Processes, calls, and memory</h1>
+<blockquote>
+<p><strong>Optional background.</strong> This chapter gives you a useful mental model, not a
+promise about the exact byte address of every PYS value. PYS currently emits
+Python, so Python and the operating system decide many physical storage
+details.</p>
+</blockquote>
+<h2>A process sees a private address space</h2>
+<p>RAM is physical storage made from addressable bytes. A modern operating system
+normally gives each process a <strong>virtual address space</strong>: addresses that look
+private and continuous to that process while the OS and hardware map them to
+physical memory.</p>
+<p>This isolation is why two programs can use the same-looking virtual address
+without sharing a variable. Normal code in one process cannot accidentally
+read an unrelated process&rsquo;s memory.</p>
+<p>Operating systems and runtimes commonly organize process memory into areas
+with roles such as:</p>
+<ul>
+<li>executable machine code;</li>
+<li>static or global runtime data;</li>
+<li>dynamically managed memory, commonly called the <strong>heap</strong>;</li>
+<li>one <strong>call stack</strong> per thread.</li>
+</ul>
+<p>Real layouts vary by operating system, CPU, runtime, and optimization. Treat
+these names as a map for reasoning, not as a PYS storage guarantee.</p>
+<h2>Function calls form a stack</h2>
+<p>When one function calls another, the runtime must remember where to return,
+which arguments were passed, and which local names belong to that call. This
+record is a <strong>stack frame</strong>. A later call sits above its caller and finishes
+first: last in, first out.</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">addOne</span>(<span class="tok-type">int</span> <span class="tok-ident">number</span>) {
+    <span class="tok-type">int</span> <span class="tok-type">result</span> <span class="tok-op">=</span> <span class="tok-ident">number</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+    <span class="tok-kw">return</span> <span class="tok-type">result</span>
+}
+
+<span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">doubledAfterAddingOne</span>(<span class="tok-type">int</span> <span class="tok-ident">number</span>) {
+    <span class="tok-type">int</span> <span class="tok-ident">changed</span> <span class="tok-op">=</span> <span class="tok-ident">addOne</span>(<span class="tok-ident">number</span>)
+    <span class="tok-kw">return</span> <span class="tok-ident">changed</span> <span class="tok-op">*</span> <span class="tok-number">2</span>
+}
+
+<span class="tok-builtin">print</span>(<span class="tok-ident">doubledAfterAddingOne</span>(<span class="tok-number">5</span>))</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">12
+</code></pre>
+<p>Conceptually, the active calls are:</p>
+<pre><code class="language-text">top-level entrypoint
+└─ doubledAfterAddingOne(number = 5)
+   └─ addOne(number = 5)
+</code></pre>
+<p><code>addOne</code> returns first, then <code>doubledAfterAddingOne</code>, then control returns to
+the entrypoint. Debugger stack views show this same relationship, even though
+the emitted Python runtime controls the concrete frame representation.</p>
+<p>Uncontrolled recursion keeps adding frames until the runtime refuses another
+one. That failure is called a <strong>stack overflow</strong> (or, in Python, may first
+appear as a recursion-depth error).</p>
+<h2>The heap and reachability</h2>
+<p>Data often needs to outlive the function that created it or have a size that
+is known only while the program runs. Runtimes commonly manage such data in
+heap storage.</p>
+<p>Python—and therefore the current PYS backend—uses automatic memory
+management. When an object is no longer reachable, the runtime may reclaim
+its storage. You do not write <code>free(...)</code> in PYS.</p>
+<p>Garbage collection prevents common manual-memory mistakes such as using an
+object after freeing it, but it does not make memory unlimited. A program can
+still retain too much reachable data and run out of memory.</p>
+<h2>Language meaning is not physical location</h2>
+<p>It is tempting to teach “local means stack” and “object means heap” as an
+absolute rule. That shortcut breaks under optimization, managed runtimes,
+closures, and captured variables. PYS specifies how values behave; it does
+not currently promise where each value is physically stored.</p>
+<p>For example, class variables share an object reference, while structs have
+copy-on-assignment value behavior:</p>
+<pre><code class="language-pys"><span class="tok-kw">class</span> <span class="tok-typename">Counter</span> {
+    <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
+
+    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>(<span class="tok-type">int</span> <span class="tok-ident">value</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-ident">value</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-ident">increment</span>() {
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">int</span> <span class="tok-ident">current</span>() {
+        <span class="tok-kw">return</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span>
+    }
+}
+
+<span class="tok-kw">struct</span> <span class="tok-typename">Point</span> {
+    <span class="tok-type">int</span> <span class="tok-ident">x</span>
+    <span class="tok-type">int</span> <span class="tok-ident">y</span>
+}
+
+<span class="tok-typename">Counter</span> <span class="tok-ident">firstCounter</span> <span class="tok-op">=</span> <span class="tok-typename">Counter</span>(<span class="tok-number">1</span>)
+<span class="tok-typename">Counter</span> <span class="tok-ident">secondCounter</span> <span class="tok-op">=</span> <span class="tok-ident">firstCounter</span>
+<span class="tok-ident">secondCounter</span>.<span class="tok-ident">increment</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">firstCounter</span>.<span class="tok-ident">current</span>())
+
+<span class="tok-typename">Point</span> <span class="tok-ident">firstPoint</span> <span class="tok-op">=</span> <span class="tok-typename">Point</span>(<span class="tok-number">1</span>, <span class="tok-number">2</span>)
+<span class="tok-typename">Point</span> <span class="tok-ident">secondPoint</span> <span class="tok-op">=</span> <span class="tok-ident">firstPoint</span>
+<span class="tok-ident">secondPoint</span>.<span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">9</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">firstPoint</span>.<span class="tok-ident">x</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">secondPoint</span>.<span class="tok-ident">x</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+1
+9
+</code></pre>
+<p>Both counter names reach the same class instance, so mutation through one name
+is visible through the other. Assigning the struct creates an independent
+value, so changing <code>secondPoint</code> leaves <code>firstPoint</code> unchanged.</p>
+<p>This is a <strong>semantic</strong> distinction. The Python emitter may represent both with
+Python objects internally while preserving PYS&rsquo;s different assignment rules.
+Likewise:</p>
+<ul>
+<li><code>data</code> is an immutable value object with all-fields equality;</li>
+<li><code>entity</code> is a reference-like domain object whose declared identity fields
+  determine equality;</li>
+<li><code>class</code> has ordinary object identity and mutable encapsulated state;</li>
+<li><code>struct</code> is an identity-free copied value.</li>
+</ul>
+<p>Choose among them for those language meanings, not because you are guessing a
+stack or heap address.</p>
+<h2>A process can contain several threads</h2>
+<p>A process owns an address space. A <strong>thread</strong> is one flow of execution inside
+that process. Each thread has its own instruction position and call stack, but
+threads in the same process can reach shared runtime data.</p>
+<p>That shared reachability creates races: two flows can read and update the same
+state in an unsafe order. PYS makes the intent visible:</p>
+<ul>
+<li><code>tasks</code> / <code>task</code> describe concurrent work;</li>
+<li><code>shared</code> says state is deliberately reachable from concurrent work;</li>
+<li><code>atomic</code> provides indivisible operations for supported primitive counters
+  and flags;</li>
+<li><code>await</code> expresses dependencies between tasks.</li>
+</ul>
+<p>The current backend may implement these constructs with Python runtime
+facilities, but the PYS contract is higher-level. Code should rely on PYS&rsquo;s
+<code>shared</code>, <code>atomic</code>, and <code>await</code> rules rather than on backend accidents such as
+one particular Python implementation&rsquo;s scheduling.</p>
+<h2>Failure modes now have a mechanical meaning</h2>
+<ul>
+<li><strong>Stack overflow:</strong> too many unfinished nested calls.</li>
+<li><strong>Out of memory:</strong> the process cannot obtain more memory.</li>
+<li><strong>Race condition:</strong> concurrent behavior depends on an unsafe ordering.</li>
+<li><strong>Panic:</strong> a PYS error outcome reached the entrypoint; this is a language
+  boundary outcome, not a memory failure.</li>
+</ul>
+<p>Keeping these categories separate makes diagnostics easier to understand. A
+panic is not automatically a crash caused by corrupt memory, and a stack
+overflow is not a recoverable <code>result&lt;T,E&gt;</code> business error.</p>
+<h2>Check your understanding</h2>
+<blockquote>
+<p>Without running code, explain why <code>secondCounter.increment()</code> changes what
+<code>firstCounter.current()</code> returns, while changing <code>secondPoint.x</code> does not
+change <code>firstPoint.x</code>. Then name the resource exhausted by uncontrolled
+recursion and the concurrency problem prevented by a suitable atomic
+update.</p>
+</blockquote>
+<hr />
+<p><a href="under_the_hood_entrypoint.html">Previous: From source file to running process</a> · <a href="exercises_contact_book.html">Next: Exercise — Contact book</a></p>
+    </main>
+  </div>
+</body>
+</html>

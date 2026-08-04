@@ -77,3 +77,33 @@ def test_book_highlighter_recognizes_result_language_surface() -> None:
     assert '<span class="tok-type">result</span>' in highlighted
     assert '<span class="tok-builtin">ok</span>' in highlighted
     assert '<span class="tok-kw">propagate</span>' in highlighted
+
+
+def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None:
+    from transpiler.transpiler import transpile
+
+    summary = (BOOK / "SUMMARY.md").read_text(encoding="utf-8")
+    under_the_hood = summary.index("# 10. Under the hood")
+    assert summary.index("# 9. Session 7") < under_the_hood
+    assert under_the_hood < summary.index("# 11. Exercises")
+
+    for name in ("under_the_hood_entrypoint.md", "under_the_hood_memory.md"):
+        text = (BOOK / name).read_text(encoding="utf-8")
+        blocks = re.findall(r"```pys\n(.*?)```", text, flags=re.DOTALL)
+        assert blocks, f"No PYS teaching blocks found in {name}"
+        for source in blocks:
+            exec(transpile(source, source_path=BOOK / name), {})
+
+    assert capsys.readouterr().out.splitlines() == [
+        "program started",
+        "12",
+        "2",
+        "1",
+        "9",
+    ]
+
+    index = (BOOK / "html" / "index.html").read_text(encoding="utf-8")
+    assert 'href="under_the_hood_entrypoint.html"' in index
+    assert 'href="under_the_hood_memory.html"' in index
+    assert (BOOK / "html" / "under_the_hood_entrypoint.html").is_file()
+    assert (BOOK / "html" / "under_the_hood_memory.html").is_file()

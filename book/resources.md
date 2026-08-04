@@ -11,6 +11,14 @@
 - JIT tutorials: [`tutorials/`](../tutorials/)
 - Runnable examples: [`examples/`](../examples/)
 
+## How the computer runs your code
+
+These optional book chapters explain the machinery without interrupting the
+core language path:
+
+- [From source file to running process](under_the_hood_entrypoint.md)
+- [Processes, calls, and memory](under_the_hood_memory.md)
+
 ## Tooling
 
 - Editor extension: `pys-language/` (install via `python -m transpiler install extension`)

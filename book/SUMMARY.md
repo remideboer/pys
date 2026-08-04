@@ -82,10 +82,15 @@
   - [9.3. Control flow and collections](chapter_8_3.md)
   - [9.4. What has no direct twin](chapter_8_4.md)
 
-# 10. Exercises
+# 10. Under the hood (optional)
+
+- [10.1. From source file to running process](under_the_hood_entrypoint.md)
+- [10.2. Processes, calls, and memory](under_the_hood_memory.md)
+
+# 11. Exercises
 
 - [Exercise: Contact book](exercises_contact_book.md)
 
-# 11. Resources
+# 12. Resources
 
 - [Resources](resources.md)
