@@ -1,0 +1,72 @@
+# examples/webserver/metrics.pys
+# Lightweight counters + Prometheus text (§7).
+
+import threading
+
+package class Metrics {
+    private var lock
+    private int requests
+    private int errors
+    private int queueFull
+    private int circuitOpen
+    private int active
+
+    public Metrics() {
+        this.lock = threading.Lock()
+        this.requests = 0
+        this.errors = 0
+        this.queueFull = 0
+        this.circuitOpen = 0
+        this.active = 0
+    }
+
+    public void onRequest() {
+        this.lock.acquire()
+        this.requests = this.requests + 1
+        this.active = this.active + 1
+        this.lock.release()
+    }
+
+    public void onDone() {
+        this.lock.acquire()
+        if (this.active > 0) {
+            this.active = this.active - 1
+        }
+        this.lock.release()
+    }
+
+    public void onQueueFull() {
+        this.lock.acquire()
+        this.queueFull = this.queueFull + 1
+        this.errors = this.errors + 1
+        this.lock.release()
+    }
+
+    public void onCircuitOpen() {
+        this.lock.acquire()
+        this.circuitOpen = this.circuitOpen + 1
+        this.errors = this.errors + 1
+        this.lock.release()
+    }
+
+    public string prometheusText(int poolBusy, string cbState) {
+        this.lock.acquire()
+        string out = ""
+        out = out + "# TYPE pys_requests_total counter\n"
+        out = out + "pys_requests_total " + str(this.requests) + "\n"
+        out = out + "# TYPE pys_errors_total counter\n"
+        out = out + "pys_errors_total " + str(this.errors) + "\n"
+        out = out + "# TYPE pys_reject_queue_full_total counter\n"
+        out = out + "pys_reject_queue_full_total " + str(this.queueFull) + "\n"
+        out = out + "# TYPE pys_reject_circuit_open_total counter\n"
+        out = out + "pys_reject_circuit_open_total " + str(this.circuitOpen) + "\n"
+        out = out + "# TYPE pys_active_requests gauge\n"
+        out = out + "pys_active_requests " + str(this.active) + "\n"
+        out = out + "# TYPE pys_pool_busy gauge\n"
+        out = out + "pys_pool_busy " + str(poolBusy) + "\n"
+        out = out + "# TYPE pys_circuit_state info\n"
+        out = out + "pys_circuit_state{state=\"" + cbState + "\"} 1\n"
+        this.lock.release()
+        return out
+    }
+}

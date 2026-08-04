@@ -1,0 +1,123 @@
+# examples/webserver/test_core.pys
+# Same-package tests for OO core types (least privilege: package imports only).
+
+import time
+
+import ServerConfig from config
+import CircuitBreaker from circuit_breaker
+import DownstreamPool from pool
+import Bulkheads from bulkhead
+import IdempotencyTable from idempotency
+import RetryPolicy from retry
+
+# Test double — same package; duck-types DownstreamCall.invoke (import-implements
+# across files is not wired for interface registry yet).
+package class FakeDownstream {
+    private int failRemaining
+    private int calls
+
+    public FakeDownstream(int failRemaining) {
+        this.failRemaining = failRemaining
+        this.calls = 0
+    }
+
+    public string invoke() {
+        this.calls = this.calls + 1
+        if (this.failRemaining > 0) {
+            this.failRemaining = this.failRemaining - 1
+            return "retryable"
+        }
+        return "ok"
+    }
+
+    public int callCount() {
+        return this.calls
+    }
+}
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== webserver core tests (OO) ===")
+
+ServerConfig cfg = ServerConfig()
+IdempotencyTable idem = IdempotencyTable()
+CircuitBreaker breaker = CircuitBreaker(cfg)
+RetryPolicy retries = RetryPolicy(cfg, breaker, idem)
+
+# --- Idempotency ---
+assertTrue("GET proxy Safe", idem.retryClassFor("GET", "/proxy/data") == "Safe")
+assertTrue("POST orders Unsafe", idem.retryClassFor("POST", "/orders") == "Unsafe")
+assertTrue("unclassified Unsafe", idem.retryClassFor("PUT", "/unknown") == "Unsafe")
+assertTrue("mayRetry Safe", idem.mayRetry("GET", "/proxy/data"))
+assertTrue("noRetry Unsafe", !idem.mayRetry("POST", "/orders"))
+
+# --- Circuit breaker ---
+assertTrue("cb closed", breaker.stateName() == "closed")
+breaker.forceOpen()
+assertTrue("cb open", breaker.stateName() == "open")
+float t0 = time.time()
+bool allowed = breaker.allow()
+float dt = time.time() - t0
+assertTrue("open denies", !allowed)
+assertTrue("fail-fast <10ms", dt < 0.01)
+breaker.reset()
+breaker.onFailure()
+breaker.onFailure()
+breaker.onFailure()
+assertTrue("threshold opens", breaker.stateName() == "open")
+breaker.reset()
+
+# --- Pool ---
+DownstreamPool pool = DownstreamPool(2, 1, 30)
+assertTrue("acq1", pool.acquire())
+assertTrue("acq2", pool.acquire())
+bool third = pool.acquire()
+assertTrue("third fails wait/queue", !third)
+pool.release()
+pool.release()
+
+DownstreamPool tight = DownstreamPool(1, 0, 50)
+assertTrue("solo", tight.acquire())
+assertTrue("queue0 reject", !tight.acquire())
+tight.release()
+
+# --- Bulkheads independent instances ---
+Bulkheads bh = Bulkheads(cfg)
+assertTrue("bh A acquire", bh.a().acquire())
+assertTrue("bh B still free", bh.b().busyCount() == 0)
+bh.a().release()
+
+# --- Retry Safe vs Unsafe ---
+FakeDownstream fakeOk = FakeDownstream(1)
+retries.resetCounters()
+string r1 = retries.execute("GET", "/proxy/data", fakeOk)
+assertTrue("Safe ok after retry", r1 == "ok")
+assertTrue("Safe two calls", fakeOk.callCount() == 2)
+assertTrue("retry counted", retries.attemptsTotal() >= 1)
+
+breaker.reset()
+FakeDownstream fakeUnsafe = FakeDownstream(1)
+retries.resetCounters()
+string r2 = retries.execute("POST", "/orders", fakeUnsafe)
+assertTrue("Unsafe stops", r2 == "retryable")
+assertTrue("Unsafe one call", fakeUnsafe.callCount() == 1)
+
+breaker.forceOpen()
+FakeDownstream fakeBlocked = FakeDownstream(0)
+retries.resetCounters()
+string r3 = retries.execute("GET", "/proxy/data", fakeBlocked)
+assertTrue("open -> circuit_open", r3 == "circuit_open")
+assertTrue("no call when open", fakeBlocked.callCount() == 0)
+breaker.reset()
+
+float delay = retries.backoffSeconds(0)
+assertTrue("backoff > 0", delay > 0.0)
+print("backoff0_ms ~ " + str((int)(delay * 1000.0)))
+
+print("=== core tests done ===")

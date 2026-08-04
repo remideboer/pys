@@ -1,0 +1,97 @@
+# examples/webserver/test_http_e2e.pys
+# One real TCP request against an in-process acceptor + worker (tasks).
+
+import socket
+import select
+import time
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11, HttpRequest from http11
+import AppContext, Router from router
+
+ServerConfig cfg = ServerConfig()
+cfg.poolSize = 4
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+Http11 http = Http11()
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared int listenPort = 0
+shared Router sharedRouter = router
+shared Http11 sharedHttp = http
+atomic int served = 0
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = ["127.0.0.1", 0]
+        srv.bind(tuple(bindAddr))
+        srv.listen(16)
+        srv.setblocking(false)
+        listenPort = srv.getsockname()[1]
+        var empty = []
+        int left = 1
+        loop (running && left > 0) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.05)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                work.putConn(client)
+                left = left - 1
+            }
+        }
+        work.putPoison()
+        running = false
+        srv.close()
+    }
+
+    task worker {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+                served += 1
+            }
+        }
+    }
+
+    task client {
+        loop (listenPort == 0) {
+            time.sleep(0.01)
+        }
+        int port = listenPort
+        var addr = ["127.0.0.1", port]
+        var s = socket.create_connection(tuple(addr), 2.0)
+        string req = "GET /health HTTP/1.1\r\nHost: localhost\r\nX-Correlation-Id: e2e-1\r\nConnection: close\r\n\r\n"
+        s.sendall(req.encode("utf-8"))
+        string data = s.recv(4096).decode("utf-8")
+        s.close()
+        if (data.find("200 OK") >= 0 && data.find("ok") >= 0) {
+            print("PASS e2e health over TCP")
+        } else {
+            print("FAIL e2e health over TCP")
+            print(data)
+        }
+        time.sleep(0.05)
+        running = false
+    }
+}
+
+if (served.get() >= 1) {
+    print("PASS e2e served count")
+} else {
+    print("FAIL e2e served count")
+}
+print("=== http e2e done ===")

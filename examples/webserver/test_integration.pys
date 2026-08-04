@@ -1,0 +1,61 @@
+# examples/webserver/test_integration.pys
+# Router + pool + CB + retry without sockets (Increment 2).
+
+import ServerConfig from config
+import AppContext, Router from router
+import HttpRequest from http11
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== webserver integration (router) ===")
+
+ServerConfig cfg = ServerConfig()
+# tiny pool so queue-full is easy to hit
+cfg.poolSize = 1
+cfg.poolMaxQueue = 0
+cfg.poolMaxWaitMs = 20
+
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+
+var health = router.handle(HttpRequest("GET", "/health", "", "c1"))
+assertTrue("health 200", health.status == 200)
+
+ctx.mockA.setFailNext(0)
+var ok = router.handle(HttpRequest("GET", "/proxy/data", "", "c2"))
+assertTrue("proxy ok", ok.status == 200 && ok.body == "data-ok")
+
+# Hold the only pool slot, then force queue-full on next request.
+assertTrue("hold slot", ctx.pool.acquire())
+var full = router.handle(HttpRequest("GET", "/proxy/data", "", "c3"))
+assertTrue("queue_full 503", full.status == 503 && full.rejectReason == "queue_full")
+ctx.pool.release()
+
+ctx.breaker.forceOpen()
+var openResp = router.handle(HttpRequest("GET", "/proxy/data", "", "c4"))
+assertTrue("circuit_open 503", openResp.status == 503 && openResp.rejectReason == "circuit_open")
+ctx.breaker.reset()
+
+ctx.mockA.setFailNext(1)
+var unsafe = router.handle(HttpRequest("POST", "/orders", "order", "c5"))
+assertTrue("unsafe no retry success path fails once", unsafe.status == 502 || unsafe.status == 201)
+# With one fail then... Unsafe should not retry, so 502 after first retryable
+assertTrue("unsafe is 502", unsafe.status == 502)
+
+var metrics = router.handle(HttpRequest("GET", "/metrics", "", "c6"))
+assertTrue("metrics 200", metrics.status == 200)
+assertTrue("metrics has queue_full", metrics.body.find("pys_reject_queue_full_total") >= 0)
+assertTrue("metrics has circuit", metrics.body.find("pys_reject_circuit_open_total") >= 0)
+
+# Bulkhead B independent
+assertTrue("bh B acquire", ctx.bulkheads.b().acquire())
+assertTrue("pool A still free-ish", ctx.pool.busyCount() == 0)
+ctx.bulkheads.b().release()
+
+print("=== integration done ===")

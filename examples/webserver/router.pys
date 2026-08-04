@@ -1,0 +1,124 @@
+# examples/webserver/router.pys
+# Method+path routing to handlers (FR3).
+
+import HttpRequest, HttpResponse from http11
+import ServerConfig from config
+import CircuitBreaker from circuit_breaker
+import DownstreamPool from pool
+import Bulkheads from bulkhead
+import IdempotencyTable from idempotency
+import RetryPolicy from retry
+import Metrics from metrics
+import MockDownstream, MockCall from mock_downstream
+
+package class AppContext {
+    public ServerConfig cfg
+    public CircuitBreaker breaker
+    public DownstreamPool pool
+    public Bulkheads bulkheads
+    public IdempotencyTable idem
+    public RetryPolicy retries
+    public Metrics metrics
+    public MockDownstream mockA
+    public MockDownstream mockB
+
+    public AppContext(ServerConfig cfg) {
+        this.cfg = cfg
+        this.breaker = CircuitBreaker(cfg)
+        this.pool = DownstreamPool(cfg.poolSize, cfg.poolMaxQueue, cfg.poolMaxWaitMs)
+        this.bulkheads = Bulkheads(cfg)
+        this.idem = IdempotencyTable()
+        this.retries = RetryPolicy(cfg, this.breaker, this.idem)
+        this.metrics = Metrics()
+        this.mockA = MockDownstream()
+        this.mockB = MockDownstream()
+    }
+}
+
+package class Router {
+    private AppContext ctx
+
+    public Router(AppContext ctx) {
+        this.ctx = ctx
+    }
+
+    public AppContext context() {
+        return this.ctx
+    }
+
+    public HttpResponse handle(HttpRequest req) {
+        this.ctx.metrics.onRequest()
+        HttpResponse resp = HttpResponse(500, "Error", "bug", "")
+        if (req.method == "GET" && req.path == "/health") {
+            resp = HttpResponse(200, "OK", "ok", "")
+        } else {
+            if (req.method == "GET" && req.path == "/metrics") {
+                string body = this.ctx.metrics.prometheusText(
+                    this.ctx.pool.busyCount(),
+                    this.ctx.breaker.stateName()
+                )
+                resp = HttpResponse(200, "OK", body, "")
+            } else {
+                if (req.method == "GET" && req.path == "/proxy/data") {
+                    resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA)
+                } else {
+                    if (req.method == "GET" && req.path == "/proxy/slow") {
+                        this.ctx.mockA.setLatencyMs(300)
+                        resp = this.proxyThrough(req, this.ctx.pool, this.ctx.mockA)
+                        this.ctx.mockA.setLatencyMs(0)
+                    } else {
+                        if (req.method == "GET" && req.path == "/proxy/b") {
+                            resp = this.proxyThrough(req, this.ctx.bulkheads.b(), this.ctx.mockB)
+                        } else {
+                            if (req.method == "POST" && req.path == "/orders") {
+                                resp = this.createOrder(req)
+                            } else {
+                                resp = HttpResponse(404, "Not Found", "not found", "")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        this.ctx.metrics.onDone()
+        return resp
+    }
+
+    public HttpResponse proxyThrough(HttpRequest req, DownstreamPool pool, MockDownstream mock) {
+        if (!pool.acquire()) {
+            this.ctx.metrics.onQueueFull()
+            print("reject queue_full corr=" + req.correlationId)
+            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
+        }
+        MockCall call = MockCall(mock)
+        string result = this.ctx.retries.execute(req.method, req.path, call)
+        pool.release()
+        if (result == "ok") {
+            return HttpResponse(200, "OK", "data-ok", "")
+        }
+        if (result == "circuit_open") {
+            this.ctx.metrics.onCircuitOpen()
+            print("reject circuit_open corr=" + req.correlationId)
+            return HttpResponse(503, "Service Unavailable", "circuit open", "circuit_open")
+        }
+        return HttpResponse(502, "Bad Gateway", "downstream " + result, "")
+    }
+
+    public HttpResponse createOrder(HttpRequest req) {
+        if (!this.ctx.pool.acquire()) {
+            this.ctx.metrics.onQueueFull()
+            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
+        }
+        MockCall call = MockCall(this.ctx.mockA)
+        string result = this.ctx.retries.execute(req.method, req.path, call)
+        this.ctx.pool.release()
+        if (result == "ok") {
+            return HttpResponse(201, "Created", "order-created", "")
+        }
+        if (result == "circuit_open") {
+            this.ctx.metrics.onCircuitOpen()
+            return HttpResponse(503, "Service Unavailable", "circuit open", "circuit_open")
+        }
+        return HttpResponse(502, "Bad Gateway", "order failed", "")
+    }
+}

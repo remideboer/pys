@@ -1,0 +1,28 @@
+# examples/webserver/bulkhead.pys
+# FR11: named pools — exhaustion of A must not starve B.
+
+import ServerConfig from config
+import DownstreamPool from pool
+
+package class Bulkheads {
+    private DownstreamPool poolA
+    private DownstreamPool poolB
+
+    public Bulkheads(ServerConfig cfg) {
+        this.poolA = DownstreamPool(cfg.poolSize, cfg.poolMaxQueue, cfg.poolMaxWaitMs)
+        this.poolB = DownstreamPool(cfg.poolBSize, cfg.poolBMaxQueue, cfg.poolBMaxWaitMs)
+    }
+
+    public DownstreamPool a() {
+        return this.poolA
+    }
+
+    public DownstreamPool b() {
+        return this.poolB
+    }
+
+    public void reset() {
+        this.poolA.reset()
+        this.poolB.reset()
+    }
+}

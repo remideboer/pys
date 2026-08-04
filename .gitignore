@@ -59,3 +59,10 @@ htmlcov/
 pys-language/bundled/
 pys-language/*.vsix
 pys-language/LICENSE
+examples/test_area/refactor.pys
+
+# Webserver local TLS (ops/dev generate; never commit)
+examples/webserver/certs/*.pem
+examples/webserver/certs/*.key
+examples/webserver/certs/openssl.cnf
+examples/webserver/certs/openssl.conf

@@ -1,0 +1,114 @@
+# examples/webserver/test_https_e2e.pys
+# Given TLS terminator + self-signed certs,
+# When a client completes a TLS handshake and GET /health,
+# Then the server returns HTTP 200 (FR5).
+
+import socket
+import select
+import time
+import ssl
+import subprocess
+import sys
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11, HttpRequest from http11
+import AppContext, Router from router
+import TlsTerminator from tls_term
+
+# Local certs are gitignored — generate on demand (ops/dev).
+subprocess.check_call([sys.executable, "scripts/gen_dev_certs.py"])
+
+ServerConfig cfg = ServerConfig()
+cfg.poolSize = 4
+cfg.tlsEnabled = true
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+Http11 http = Http11()
+TlsTerminator tls = TlsTerminator(cfg.tlsEnabled, cfg.tlsCertFile, cfg.tlsKeyFile)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared int listenPort = 0
+shared Router sharedRouter = router
+shared Http11 sharedHttp = http
+shared TlsTerminator sharedTls = tls
+atomic int served = 0
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = ["127.0.0.1", 0]
+        srv.bind(tuple(bindAddr))
+        srv.listen(16)
+        srv.setblocking(false)
+        listenPort = srv.getsockname()[1]
+        var empty = []
+        int left = 1
+        loop (running && left > 0) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.05)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                client = sharedTls.wrap(client)
+                work.putConn(client)
+                left = left - 1
+            }
+        }
+        work.putPoison()
+        running = false
+        srv.close()
+    }
+
+    task worker {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+                served += 1
+            }
+        }
+    }
+
+    task client {
+        loop (listenPort == 0) {
+            time.sleep(0.01)
+        }
+        int port = listenPort
+        var addr = ["127.0.0.1", port]
+        var raw = socket.create_connection(tuple(addr), 2.0)
+        var cctx = ssl.create_default_context()
+        cctx.check_hostname = false
+        cctx.verify_mode = ssl.CERT_NONE
+        var s = cctx.wrap_socket(raw, false, true, true, "localhost")
+        string req = "GET /health HTTP/1.1\r\nHost: localhost\r\nX-Correlation-Id: https-1\r\nConnection: close\r\n\r\n"
+        s.sendall(req.encode("utf-8"))
+        string data = s.recv(4096).decode("utf-8")
+        s.close()
+        if (data.find("200 OK") >= 0 && data.find("ok") >= 0) {
+            print("PASS e2e health over HTTPS")
+        } else {
+            print("FAIL e2e health over HTTPS")
+            print(data)
+        }
+        time.sleep(0.05)
+        running = false
+    }
+}
+
+if (served.get() >= 1) {
+    print("PASS https e2e served count")
+} else {
+    print("FAIL https e2e served count")
+}
+print("=== https e2e done ===")

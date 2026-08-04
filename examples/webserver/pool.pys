@@ -1,0 +1,88 @@
+# examples/webserver/pool.pys
+# FR9/FR12 downstream pool: capacity independent of inbound workers; bounded wait.
+
+import time
+import threading
+
+package class DownstreamPool {
+    private var lock
+    private int busy
+    private int waiting
+    private int capacity
+    private int maxQueue
+    private int maxWaitMs
+
+    public DownstreamPool(int capacity, int maxQueue, int maxWaitMs) {
+        this.lock = threading.Lock()
+        this.busy = 0
+        this.waiting = 0
+        this.capacity = capacity
+        this.maxQueue = maxQueue
+        this.maxWaitMs = maxWaitMs
+    }
+
+    public int busyCount() {
+        this.lock.acquire()
+        int b = this.busy
+        this.lock.release()
+        return b
+    }
+
+    public int waitingCount() {
+        this.lock.acquire()
+        int w = this.waiting
+        this.lock.release()
+        return w
+    }
+
+    public void reset() {
+        this.lock.acquire()
+        this.busy = 0
+        this.waiting = 0
+        this.lock.release()
+    }
+
+    # true = slot granted; false = queue full or wait exceeded (FR12).
+    public bool acquire() {
+        float deadline = time.time() + (this.maxWaitMs / 1000.0)
+        bool queued = false
+        loop (true) {
+            this.lock.acquire()
+            if (this.busy < this.capacity) {
+                this.busy = this.busy + 1
+                if (queued) {
+                    this.waiting = this.waiting - 1
+                }
+                this.lock.release()
+                return true
+            }
+            if (!queued) {
+                if (this.waiting >= this.maxQueue) {
+                    this.lock.release()
+                    return false
+                }
+                this.waiting = this.waiting + 1
+                queued = true
+            }
+            this.lock.release()
+            if (time.time() >= deadline) {
+                if (queued) {
+                    this.lock.acquire()
+                    this.waiting = this.waiting - 1
+                    this.lock.release()
+                }
+                return false
+            }
+            time.sleep(0.001)
+        }
+        return false
+    }
+
+    public void release() {
+        this.lock.acquire()
+        if (this.busy > 0) {
+            this.busy = this.busy - 1
+        }
+        this.lock.release()
+    }
+}

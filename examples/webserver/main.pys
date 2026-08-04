@@ -1,0 +1,132 @@
+# examples/webserver/main.pys
+# Concurrent HTTP/1.1 server: acceptor task + worker tasks (canonical PYS).
+#
+# Run:
+#   python -m transpiler run examples/webserver/main.pys
+#
+# Then: curl http://127.0.0.1:8080/health
+
+import socket
+import select
+import time
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11, HttpRequest from http11
+import AppContext, Router from router
+import TlsTerminator from tls_term
+
+ServerConfig cfg = ServerConfig()
+# Set tlsEnabled = true and run from repo root to serve HTTPS (FR5).
+# cfg.tlsEnabled = true
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+Http11 http = Http11()
+TlsTerminator tls = TlsTerminator(cfg.tlsEnabled, cfg.tlsCertFile, cfg.tlsKeyFile)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared Router sharedRouter = router
+shared Http11 sharedHttp = http
+shared AppContext sharedCtx = ctx
+shared TlsTerminator sharedTls = tls
+
+print("starting concurrent webserver on " + cfg.listenHost + ":" + str(cfg.listenPort))
+print("workers=4 (tasks) pool=" + str(cfg.poolSize) + " tls=" + str(cfg.tlsEnabled))
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = [cfg.listenHost, cfg.listenPort]
+        srv.bind(tuple(bindAddr))
+        srv.listen(128)
+        srv.setblocking(false)
+        print("listening")
+        var empty = []
+        loop (running) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.5)
+            var readable = ready[0]
+            if (len(readable) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                client = sharedTls.wrap(client)
+                work.putConn(client)
+            }
+        }
+        int w = 0
+        loop (w < cfg.workerTasks) {
+            work.putPoison()
+            w = w + 1
+        }
+        srv.close()
+    }
+
+    task worker0 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+            }
+        }
+    }
+
+    task worker1 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+            }
+        }
+    }
+
+    task worker2 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+            }
+        }
+    }
+
+    task worker3 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                string raw = sharedHttp.readRaw(conn)
+                HttpRequest req = sharedHttp.parse(raw)
+                var resp = sharedRouter.handle(req)
+                sharedHttp.write(conn, resp)
+                conn.close()
+            }
+        }
+    }
+}
+
+print("server stopped")

@@ -1,0 +1,91 @@
+# examples/webserver/retry.pys
+# §6 retry policy + DownstreamCall contract (same package).
+
+import time
+import random
+import threading
+
+import ServerConfig from config
+import CircuitBreaker from circuit_breaker
+import IdempotencyTable from idempotency
+
+# DownstreamCall: implement invoke() → "ok" | "retryable" | "fatal" (ISP via package interface).
+package interface DownstreamCall {
+    string invoke()
+}
+
+package class RetryPolicy {
+    private ServerConfig cfg
+    private CircuitBreaker breaker
+    private IdempotencyTable idem
+    private int retryAttemptsTotal
+    private var lock
+
+    public RetryPolicy(ServerConfig cfg, CircuitBreaker breaker, IdempotencyTable idem) {
+        this.cfg = cfg
+        this.breaker = breaker
+        this.idem = idem
+        this.retryAttemptsTotal = 0
+        this.lock = threading.Lock()
+    }
+
+    public void resetCounters() {
+        this.lock.acquire()
+        this.retryAttemptsTotal = 0
+        this.lock.release()
+    }
+
+    public int attemptsTotal() {
+        this.lock.acquire()
+        int n = this.retryAttemptsTotal
+        this.lock.release()
+        return n
+    }
+
+    public float backoffSeconds(int attemptIndex) {
+        float base = this.cfg.retryBaseMs / 1000.0
+        float delay = base
+        int i = 0
+        loop (i < attemptIndex) {
+            delay = delay * this.cfg.retryFactor
+            i = i + 1
+        }
+        float jitter = 1.0 + (random.random() * 2.0 - 1.0) * this.cfg.retryJitter
+        return delay * jitter
+    }
+
+    public string execute(string method, string path, var call) {
+        bool canRetry = this.cfg.retriesEnabled && this.idem.mayRetry(method, path)
+        int attempt = 0
+        loop (attempt < this.cfg.retryMaxAttempts) {
+            if (!this.breaker.allow()) {
+                return "circuit_open"
+            }
+            string result = call.invoke()
+            if (result == "ok") {
+                this.breaker.onSuccess()
+                return "ok"
+            }
+            if (result == "fatal") {
+                this.breaker.onFailure()
+                return "fatal"
+            }
+            this.breaker.onFailure()
+            if (!canRetry) {
+                return "retryable"
+            }
+            if (attempt + 1 >= this.cfg.retryMaxAttempts) {
+                return "retryable"
+            }
+            if (!this.breaker.allow()) {
+                return "circuit_open"
+            }
+            this.lock.acquire()
+            this.retryAttemptsTotal = this.retryAttemptsTotal + 1
+            this.lock.release()
+            time.sleep(this.backoffSeconds(attempt))
+            attempt = attempt + 1
+        }
+        return "retryable"
+    }
+}

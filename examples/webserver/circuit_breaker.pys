@@ -1,0 +1,117 @@
+# examples/webserver/circuit_breaker.pys
+# FR10 circuit breaker as a package type (instance state + lock for cross-task use).
+
+import time
+import threading
+
+import ServerConfig from config
+
+package class CircuitBreaker {
+    private var lock
+    private int state
+    private int failures
+    private int halfSuccesses
+    private int openedAtMs
+    private int failureThreshold
+    private int openMs
+    private int halfOpenSuccess
+
+    public CircuitBreaker(ServerConfig cfg) {
+        this.lock = threading.Lock()
+        this.state = 0
+        this.failures = 0
+        this.halfSuccesses = 0
+        this.openedAtMs = 0
+        this.failureThreshold = cfg.cbFailureThreshold
+        this.openMs = cfg.cbOpenMs
+        this.halfOpenSuccess = cfg.cbHalfOpenSuccess
+    }
+
+    private int _nowMs() {
+        return (int)(time.time() * 1000.0)
+    }
+
+    public string stateName() {
+        this.lock.acquire()
+        int s = this.state
+        this.lock.release()
+        if (s == 1) {
+            return "open"
+        }
+        if (s == 2) {
+            return "half_open"
+        }
+        return "closed"
+    }
+
+    public bool allow() {
+        this.lock.acquire()
+        int s = this.state
+        if (s == 0) {
+            this.lock.release()
+            return true
+        }
+        if (s == 1) {
+            if (this._nowMs() - this.openedAtMs >= this.openMs) {
+                this.state = 2
+                this.halfSuccesses = 0
+                this.lock.release()
+                return true
+            }
+            this.lock.release()
+            return false
+        }
+        this.lock.release()
+        return true
+    }
+
+    public void onSuccess() {
+        this.lock.acquire()
+        if (this.state == 2) {
+            this.halfSuccesses = this.halfSuccesses + 1
+            if (this.halfSuccesses >= this.halfOpenSuccess) {
+                this.state = 0
+                this.failures = 0
+            }
+        } else {
+            if (this.state == 0) {
+                this.failures = 0
+            }
+        }
+        this.lock.release()
+    }
+
+    public void onFailure() {
+        this.lock.acquire()
+        if (this.state == 2) {
+            this.state = 1
+            this.openedAtMs = this._nowMs()
+            this.lock.release()
+            return
+        }
+        if (this.state == 0) {
+            this.failures = this.failures + 1
+            if (this.failures >= this.failureThreshold) {
+                this.state = 1
+                this.openedAtMs = this._nowMs()
+            }
+        }
+        this.lock.release()
+    }
+
+    public void forceOpen() {
+        this.lock.acquire()
+        this.state = 1
+        this.openedAtMs = this._nowMs()
+        this.lock.release()
+    }
+
+    public void reset() {
+        this.lock.acquire()
+        this.state = 0
+        this.failures = 0
+        this.halfSuccesses = 0
+        this.openedAtMs = 0
+        this.lock.release()
+    }
+}

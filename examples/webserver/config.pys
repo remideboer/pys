@@ -1,0 +1,59 @@
+# examples/webserver/config.pys
+# Tunables for the concurrent webserver package (same-folder visibility).
+
+package class ServerConfig {
+    public int downstreamTimeoutMs
+    public int handlerTimeoutMs
+    public int clientTimeoutMs
+    public int workerTasks
+    public int poolSize
+    public int poolMaxQueue
+    public int poolMaxWaitMs
+    public int poolBSize
+    public int poolBMaxQueue
+    public int poolBMaxWaitMs
+    public int cbFailureThreshold
+    public int cbOpenMs
+    public int cbHalfOpenSuccess
+    public bool retriesEnabled
+    public int retryMaxAttempts
+    public int retryBaseMs
+    public float retryFactor
+    public float retryJitter
+    public float retryBudget
+    public int listenPort
+    public string listenHost
+    public int mockPort
+    public bool tlsEnabled
+    public string tlsCertFile
+    public string tlsKeyFile
+
+    public ServerConfig() {
+        # downstream < handler < client
+        this.downstreamTimeoutMs = 100
+        this.handlerTimeoutMs = 300
+        this.clientTimeoutMs = 500
+        this.workerTasks = 32
+        this.poolSize = 8
+        this.poolMaxQueue = 16
+        this.poolMaxWaitMs = 50
+        this.poolBSize = 4
+        this.poolBMaxQueue = 8
+        this.poolBMaxWaitMs = 50
+        this.cbFailureThreshold = 3
+        this.cbOpenMs = 200
+        this.cbHalfOpenSuccess = 1
+        this.retriesEnabled = true
+        this.retryMaxAttempts = 3
+        this.retryBaseMs = 50
+        this.retryFactor = 2.0
+        this.retryJitter = 0.2
+        this.retryBudget = 0.10
+        this.listenPort = 8080
+        this.listenHost = "127.0.0.1"
+        this.mockPort = 8081
+        this.tlsEnabled = false
+        this.tlsCertFile = "certs/localhost.pem"
+        this.tlsKeyFile = "certs/localhost-key.pem"
+    }
+}

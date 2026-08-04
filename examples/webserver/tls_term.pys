@@ -1,0 +1,26 @@
+# examples/webserver/tls_term.pys
+# TLS 1.2/1.3 termination helper (FR5). Wrap accepted sockets before workers read HTTP.
+
+import ssl
+
+package class TlsTerminator {
+    public var context
+    public bool enabled
+
+    public TlsTerminator(bool enabled, string certFile, string keyFile) {
+        this.enabled = enabled
+        this.context = null
+        if (enabled) {
+            this.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            this.context.minimum_version = ssl.TLSVersion.TLSv1_2
+            this.context.load_cert_chain(certFile, keyFile)
+        }
+    }
+
+    public var wrap(var conn) {
+        if (!this.enabled) {
+            return conn
+        }
+        return this.context.wrap_socket(conn, true)
+    }
+}

@@ -1,0 +1,35 @@
+# examples/webserver/idempotency.pys
+# §5 classification gate — unclassified defaults to Unsafe (no retry).
+
+package class IdempotencyTable {
+    public IdempotencyTable() {
+    }
+
+    public string retryClassFor(string method, string path) {
+        string key = method + " " + path
+        if (key == "GET /health") {
+            return "Safe"
+        }
+        if (key == "GET /proxy/data") {
+            return "Safe"
+        }
+        if (key == "GET /proxy/slow") {
+            return "Safe"
+        }
+        if (key == "GET /proxy/b") {
+            return "Safe"
+        }
+        if (key == "GET /metrics") {
+            return "Safe"
+        }
+        if (key == "POST /orders") {
+            return "Unsafe"
+        }
+        return "Unsafe"
+    }
+
+    public bool mayRetry(string method, string path) {
+        string c = this.retryClassFor(method, path)
+        return c == "Safe" || c == "Safe-with-key"
+    }
+}

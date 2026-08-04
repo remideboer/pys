@@ -1,0 +1,70 @@
+# examples/webserver/mock_downstream.pys
+# Local mock dependency with latency/error injection via query flags on the
+# *inbound* proxy path (Toxiproxy stand-in for Increment 2).
+
+import time
+import threading
+
+package class MockDownstream {
+    private var lock
+    private int calls
+    private int failNext
+    private int latencyMs
+
+    public MockDownstream() {
+        this.lock = threading.Lock()
+        this.calls = 0
+        this.failNext = 0
+        this.latencyMs = 0
+    }
+
+    public void setFailNext(int n) {
+        this.lock.acquire()
+        this.failNext = n
+        this.lock.release()
+    }
+
+    public void setLatencyMs(int ms) {
+        this.lock.acquire()
+        this.latencyMs = ms
+        this.lock.release()
+    }
+
+    public int callCount() {
+        this.lock.acquire()
+        int n = this.calls
+        this.lock.release()
+        return n
+    }
+
+    # Returns DownstreamCall-style status: ok | retryable | fatal
+    public string invoke() {
+        this.lock.acquire()
+        this.calls = this.calls + 1
+        int fail = this.failNext
+        int delay = this.latencyMs
+        if (fail > 0) {
+            this.failNext = fail - 1
+        }
+        this.lock.release()
+        if (delay > 0) {
+            time.sleep(delay / 1000.0)
+        }
+        if (fail > 0) {
+            return "retryable"
+        }
+        return "ok"
+    }
+}
+
+package class MockCall {
+    private MockDownstream mock
+
+    public MockCall(MockDownstream mock) {
+        this.mock = mock
+    }
+
+    public string invoke() {
+        return this.mock.invoke()
+    }
+}
