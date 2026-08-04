@@ -56,5 +56,6 @@ Each record then uses:
 | [CER-019](CER-019-multidim-arrays.md) | Multi-dimensional `T[][]…` + nested init / alloc | Language |
 | [CER-020](CER-020-source-roots-package.md) | Source-root package identity (`pys.toml`) | Language |
 | [CER-021](CER-021-collection-literals.md) | Collection literals (dict / set / tuple) | Language |
+| [CER-022](CER-022-run-deps-context-menu.md) | Run Deps from `pys.deps` context menu | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

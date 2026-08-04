@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.65",
+  "version": "0.0.66",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -152,6 +152,12 @@
         "icon": "$(debug-alt)"
       },
       {
+        "command": "pys.lockDeps",
+        "title": "Run Deps",
+        "category": "PYS",
+        "icon": "$(package)"
+      },
+      {
         "command": "pys.setAsMainFile",
         "title": "Set as Main File",
         "category": "PYS"
@@ -246,6 +252,11 @@
       ],
       "editor/title": [
         {
+          "command": "pys.lockDeps",
+          "when": "resourceFilename == 'pys.deps' && !isInDiffEditor",
+          "group": "navigation@100"
+        },
+        {
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys && !isInDiffEditor",
           "group": "navigation@100"
@@ -274,6 +285,11 @@
         }
       ],
       "editor/context": [
+        {
+          "command": "pys.lockDeps",
+          "when": "resourceFilename == 'pys.deps'",
+          "group": "navigation@1"
+        },
         {
           "command": "pys.refactor.rename",
           "when": "resourceExtname == .pys",
@@ -362,6 +378,11 @@
       ],
       "explorer/context": [
         {
+          "command": "pys.lockDeps",
+          "when": "resourceFilename == 'pys.deps'",
+          "group": "navigation@1"
+        },
+        {
           "command": "pys.runFile",
           "when": "resourceExtname == .pys",
           "group": "navigation@1"
@@ -373,6 +394,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "pys.lockDeps",
+          "when": "resourceFilename == 'pys.deps'"
+        },
         {
           "command": "pys.runMain",
           "when": "pys.hasMainFile"
@@ -423,6 +448,7 @@
     "onCommand:pys.runMain",
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",
+    "onCommand:pys.lockDeps",
     "onCommand:pys.clearAllBreakpoints",
     "onCommand:pys.addLogpoint",
     "onStartupFinished"

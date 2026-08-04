@@ -977,6 +977,77 @@ function activate(context) {
     return resolveWorkspaceFile(workspace.uri.fsPath, filePath);
   }
 
+  async function lockDepsFile(filePath) {
+    if (!filePath) {
+      vscode.window.showErrorMessage('No pys.deps file selected. Right-click pys.deps in the explorer.');
+      return;
+    }
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage('Trust this workspace before locking PYS dependencies.');
+      return;
+    }
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!workspace) {
+      vscode.window.showErrorMessage('Open a workspace before locking PYS dependencies.');
+      return;
+    }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('pys.deps must resolve inside the workspace.');
+      return;
+    }
+    const base = path.basename(filePath);
+    if (base !== 'pys.deps') {
+      vscode.window.showErrorMessage('Run Deps only works on a pys.deps file.');
+      return;
+    }
+    const bundled = ensureBundledTranspiler();
+    if (!bundled) {
+      return;
+    }
+    if (!fs.existsSync(filePath)) {
+      vscode.window.showErrorMessage(`Dependency file not found: ${filePath}`);
+      return;
+    }
+    const saved = await saveAllFiles();
+    if (!saved) {
+      vscode.window.showErrorMessage('Unable to save files before locking dependencies.');
+      return;
+    }
+    filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+    if (!filePath) {
+      vscode.window.showErrorMessage('pys.deps left the workspace before lock.');
+      return;
+    }
+    const pythonExecutable = getPythonExecutable();
+    const workDir = path.dirname(filePath);
+    const term = vscode.window.createTerminal({
+      name: 'PYS Deps',
+      cwd: workDir,
+      env: buildRunEnv(bundled, workspace.uri.fsPath),
+    });
+    term.show();
+    term.sendText(
+      `${pythonExecutable} -m transpiler deps lock ${shellQuote(filePath)}`,
+      true
+    );
+  }
+
+  function resolveTargetDepsFile(file) {
+    let filePath = resolveFilePath(file);
+    if (!filePath && vscode.window.activeTextEditor) {
+      const active = vscode.window.activeTextEditor.document;
+      if (path.basename(active.uri.fsPath) === 'pys.deps') {
+        filePath = active.uri.fsPath;
+      }
+    }
+    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    if (!filePath || !workspace) {
+      return null;
+    }
+    return resolveWorkspaceFile(workspace.uri.fsPath, filePath);
+  }
+
   async function runPysFile(filePath) {
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to run. Set pys.mainFile or open a .pys file.');
@@ -1408,6 +1479,10 @@ function activate(context) {
     }
     // Uses the ReferenceProvider registered above (Peek / References view).
     await vscode.commands.executeCommand('editor.action.referenceSearch.trigger');
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.lockDeps', async (file) => {
+    await lockDepsFile(resolveTargetDepsFile(file));
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {

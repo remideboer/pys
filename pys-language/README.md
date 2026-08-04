@@ -18,6 +18,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
   - `Ctrl+Alt+R` / `Ctrl+Alt+D` — run/debug configured main file
   - Setting `pys.mainFile` (or right-click **Set as Main File**)
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
+  - Right-click **`pys.deps`** → **PYS: Run Deps** (runs `deps lock` / refreshes `pys.lock`)
 
 ## Install (students)
 
