@@ -105,13 +105,18 @@ type_expr        = primitive_type
                  | collection_type , [ type_args ]
                  | named_type , [ type_args ]
                  | array_type
-                 | lambda_type ;
+                 | lambda_type
+                 | result_type ;
 
 collection_type  = "list" | "dict" | "tuple" | "set" ;
 
 lambda_type      = "lambda" , "<" , type_expr , { "," , type_expr } , ">" ;
 (* Last type_expr is the return type; preceding are parameter types.
    lambda<int> = () => int; lambda<int, bool> = (int) => bool. *)
+
+result_type      = "result" , "<" , result_value_type , "," , type_expr , ">" ;
+result_value_type = type_expr | "void" ;
+(* Exactly two arguments: success type T and error type E. *)
 
 type_name        = type_expr ;
 
@@ -134,6 +139,8 @@ declaration      = var_decl
 var_decl         = type_name , identifier , "=" , expression
                  | "var" , identifier , "=" , expression
                  | array_type , identifier , "=" , array_literal ;
+(* One declaration binds one identifier. Comma-separated declarators and
+   shared/multi-target initializers are intentionally not part of PYS. *)
 
 const_decl       = [ top_visibility ] , "const" , primitive_type ,
                    identifier , "=" , expression ;
@@ -158,7 +165,7 @@ function_decl    = [ top_visibility ] , "function" , [ return_type ] ,
    Form:  global function AppStore openStore()
 *)
 
-return_type      = primitive_type | named_type | array_type | "void" ;
+return_type      = type_name | "void" ;
 (* void: method must not return a value (bare `return` / fall-off OK). *)
 
 parameter_list   = parameter , { "," , parameter } ;
@@ -356,9 +363,15 @@ switch_expr      = "switch" , "(" , expression , ")" , "{" , switch_expr_arm , {
 switch_expr_arm  = "case" , case_label , { "," , case_label } , "=>" , expression
                  | "default" , "=>" , expression ;
 
-case_label       = identifier
+case_label       = result_pattern
+                 | identifier
                  | identifier , "." , identifier
                  | integer | string_lit | char_lit | boolean | null_lit ;
+
+result_pattern   = "ok" , "(" , [ identifier ] , ")"
+                 | "err" , "(" , identifier , ")" ;
+(* Only for a result-typed switch. Both ok and err are required unless
+   default is present. ok() is the result<void,E> success pattern. *)
 
 loop_stmt        = c_for_loop | while_loop | foreach_loop ;
 
@@ -439,7 +452,8 @@ postfix_expr     = primary ,
                    | "[" , slice_or_index , "]"
                    | call_suffix
                    | "++"
-                   | "--" } ;
+                   | "--"
+                   | "propagate" } ;
 
 call_suffix      = "(" , [ arg_list ] , ")" ;
 
@@ -453,8 +467,12 @@ primary          = identifier
                  | tuple_literal
                  | "(" , expression , ")"
                  | constructor_call
+                 | result_ctor_call
                  | switch_expr
                  | lambda_expr ;
+
+result_ctor_call = ( "ok" | "err" ) , "(" , [ expression ] , ")" ;
+(* Contextually typed. ok() requires result<void,E>; err always has a payload. *)
 
 (* ------------------------- Lambdas ------------------------- *)
 

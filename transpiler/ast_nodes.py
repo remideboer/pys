@@ -68,6 +68,30 @@ class Call(Expr):
 
 
 @dataclass
+class ResultCtor(Expr):
+    """Built-in ``ok(value)`` or ``err(error)`` result constructor."""
+
+    kind: str = ""
+    value: Expr | None = None
+
+
+@dataclass
+class PropagateExpr(Expr):
+    """Postfix ``expr propagate`` early-returning result unwrap."""
+
+    operand: Expr | None = None
+
+
+@dataclass
+class ResultPattern(Expr):
+    """Result switch pattern: ``ok(value)``, ``ok()``, or ``err(error)``."""
+
+    kind: str = ""
+    binding: str = ""
+    binding_span: Span | None = None
+
+
+@dataclass
 class KeywordArg(Expr):
     """Named argument in a call: `host="localhost"`."""
 

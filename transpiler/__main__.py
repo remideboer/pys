@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from .transpiler import transpile_path, run_source
+from .transpiler import TranspileError, transpile_path, run_source
 
 
 def main() -> None:
@@ -51,10 +51,16 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "transpile":
-        transpile_path(args.source, args.target)
+        try:
+            transpile_path(args.source, args.target)
+        except TranspileError as exc:
+            parser.error(str(exc))
         print(f"Transpiled {args.source} -> {args.target}")
     elif args.command == "run":
-        raise SystemExit(run_source(args.source))
+        try:
+            raise SystemExit(run_source(args.source))
+        except TranspileError as exc:
+            parser.error(str(exc))
     elif args.command == "deps" and args.deps_command == "lock":
         from .deps import DepsError, generate_lock, load_deps
 

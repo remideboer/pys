@@ -45,6 +45,27 @@
     ],
     "description": "PYS function with return type"
   },
+  "Result function": {
+    "prefix": "resultfn",
+    "body": [
+      "function result<${1:Value}, ${2:string}> ${3:name}(${4:args}) {",
+      "\t${0:return ok(value)}",
+      "}"
+    ],
+    "description": "PYS function returning a recoverable result"
+  },
+  "Handle result": {
+    "prefix": "resultswitch",
+    "body": [
+      "switch (${1:outcome}) {",
+      "\tcase ok(${2:value}):",
+      "\t\t${3}",
+      "\tcase err(${4:error}):",
+      "\t\t${0}",
+      "}"
+    ],
+    "description": "Exhaustively handle ok and err payloads"
+  },
   "If statement": {
     "prefix": "if",
     "body": [

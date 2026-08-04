@@ -31,6 +31,7 @@ from ..ast_nodes import (
     Module,
     PrintStmt,
     ReturnStmt,
+    ResultPattern,
     SharedDecl,
     Span,
     StructDef,
@@ -243,9 +244,21 @@ def _walk_expr(index: RefIndex, scopes: list[_Scope], file: str, expr: Expr | No
     if isinstance(expr, SwitchExpr):
         _walk_expr(index, scopes, file, expr.subject)
         for case in expr.cases:
+            scopes.append(_Scope())
+            for label in case.labels:
+                if isinstance(label, ResultPattern) and label.binding:
+                    _declare(
+                        index,
+                        scopes,
+                        file=file,
+                        name=label.binding,
+                        span=label.binding_span or label.span or Span(1, 1),
+                        kind="result_pattern",
+                    )
             _walk_expr(index, scopes, file, case.value)
             if case.body:
-                _walk_block(index, scopes, file, case.body, nest=True)
+                _walk_block(index, scopes, file, case.body, nest=False)
+            scopes.pop()
         return
     if isinstance(expr, LambdaExpr):
         scopes.append(_Scope())
@@ -478,8 +491,20 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
     if isinstance(stmt, SwitchStmt):
         _walk_expr(index, scopes, file, stmt.subject)
         for case in stmt.cases or []:
+            scopes.append(_Scope())
+            for label in case.labels:
+                if isinstance(label, ResultPattern) and label.binding:
+                    _declare(
+                        index,
+                        scopes,
+                        file=file,
+                        name=label.binding,
+                        span=label.binding_span or label.span or Span(1, 1),
+                        kind="result_pattern",
+                    )
             _walk_expr(index, scopes, file, case.value)
-            _walk_block(index, scopes, file, case.body, nest=True)
+            _walk_block(index, scopes, file, case.body, nest=False)
+            scopes.pop()
         return
     if isinstance(stmt, Block):
         _walk_block(index, scopes, file, stmt, nest=True)

@@ -90,17 +90,17 @@ class Widget inherits Named uses Printable {
 Widget w = Widget("gauge")
 print(w.label())  # Item: gauge
 
-# --- Same-trait method call: status() uses ok() without requires ok ---
+# --- Same-trait method call: status() uses isWithinLimit() ---
 trait Bounded {
     requires int value
     requires int max
 
-    bool ok() {
+    bool isWithinLimit() {
         return this.value <= this.max
     }
 
     string status() {
-        if (this.ok()) {
+        if (this.isWithinLimit()) {
             return "within limit"
         }
         return "overflow"

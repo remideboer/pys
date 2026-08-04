@@ -132,6 +132,13 @@ You will also meet `const` later — a compile-time constant, usually in
 > binding with an explicit type. Prefer that form once you know the type;
 > keep `var` for obvious initializers. Session 1 goes deeper.
 
+> **Sidebar — one drawer per declaration**
+>
+> Give every variable its own line: `int x = 10`, then `int y = 10`.
+> PYS rejects `int x, y = 10` because it is unclear at a glance whether
+> `10` belongs to `y` only or to both names. Separate lines keep one label,
+> one drawer, and one starting value together.
+
 ### Exercise
 
 > Modify the changing-drawer example so it greets three different people

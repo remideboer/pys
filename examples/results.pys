@@ -1,0 +1,76 @@
+# Recoverable errors with result<T, E>.
+#
+# Use a result when a caller can react to failure. The success and error types
+# are part of the function contract, so neither outcome is hidden.
+#
+# Expected output:
+# after propagate
+# 8
+# invalid count
+# 0
+# saved
+# save accepted
+
+function result<int, string> readCount(bool valid) {
+    if (valid == false) {
+        return err("invalid count")
+    }
+    return ok(7)
+}
+
+# propagate gives this function the success payload, or returns the same error
+# immediately. "after propagate" therefore prints only on the success path.
+function result<int, string> addOne(bool valid) {
+    int count = readCount(valid) propagate
+    print("after propagate")
+    return ok(count + 1)
+}
+
+# Handle both outcomes with exhaustive, payload-binding patterns.
+result<int, string> success = addOne(true)
+switch (success) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+
+result<int, string> failure = addOne(false)
+switch (failure) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+
+# A result switch is also an expression. Both arms yield int here.
+int fallback = switch (failure) {
+    case ok(value) => value
+    case err(error) => 0
+}
+print(fallback)
+
+# A void success has no payload and is matched with ok().
+function result<void, string> save(bool allowed) {
+    if (allowed == false) {
+        return err("save denied")
+    }
+    print("saved")
+    return ok()
+}
+
+result<void, string> saved = save(true)
+switch (saved) {
+    case ok():
+        print("save accepted")
+    case err(error):
+        print(error)
+}
+
+# Compile-error contrasts (shown as comments so this example stays runnable):
+# - int count = readCount(true)
+#   Error: a result never implicitly converts to its success payload.
+# - function int wrong() { return readCount(true) propagate }
+#   Error: propagate needs an enclosing result-returning function.
+# - result<int, void> impossible = err(1)
+#   Error: the error type E must be concrete, not void.

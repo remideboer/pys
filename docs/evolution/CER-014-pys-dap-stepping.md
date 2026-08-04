@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode) |
+| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode + manifest entrypoint) |
 | Commits | (F-004 increment; debug UX maturity; deps on Debug) |
 | Scope | `emit/python.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; docs |
 | ADRs | [ADR-014](../adr/ADR-014-pys-dap-stepping.md) |
@@ -80,11 +80,23 @@ Follow-up maturity: verified gutter glyphs, stop-on-entry, Variables/Watch names
 - `debug-mode.js` keeps the launch contract pure and unit-tested.
 - Extension **0.0.68**.
 
+### Post-behavior (manifest entrypoint parity)
+
+- `prepare_debug` resolves contained `[project].main` through the same helper
+  as Run/transpile and marks only that module as the entrypoint.
+- Debugging a conflicting selected file is rejected or reconciled through the
+  extension's Set as entrypoint action.
+- Result propagation maps remain PYS source sites; imported top-level code
+  cannot gain panic handling from a debug launch.
+- Extension **0.0.69**.
+
 ### Evidence
 
 `tests/test_line_map.py`; `tests/test_prepare_debug.py`;
+`tests/test_entrypoint_panic.py`;
 `pys-language/test/debug-map.test.js`;
-`pys-language/test/debug-mode.test.js`.
+`pys-language/test/debug-mode.test.js`;
+`pys-language/test/project-main.test.js`.
 
 ## Trade-offs / deferred
 

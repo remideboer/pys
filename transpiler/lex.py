@@ -112,6 +112,10 @@ KEYWORDS = frozenset(
         "await",
         "shared",
         "atomic",
+        "result",
+        "ok",
+        "err",
+        "propagate",
         "in",
         "as",
     }

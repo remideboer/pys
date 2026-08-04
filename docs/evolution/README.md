@@ -59,5 +59,6 @@ Each record then uses:
 | [CER-022](CER-022-run-deps-context-menu.md) | Run Deps from `pys.deps` context menu | IDE |
 | [CER-023](CER-023-create-pys-project.md) | Create PYS Project from activity bar | IDE |
 | [CER-024](CER-024-book-link-rewrite.md) | Published book link rewriting | Docs |
+| [CER-025](CER-025-result-propagate-panic.md) | Result, propagation, panic, and entrypoint resolution | Language / IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

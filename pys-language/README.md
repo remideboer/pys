@@ -7,7 +7,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
 
 - `*.pys` language association and TextMate syntax highlighting
 - Brace-based indentation and `##` … `/#` block comments
-- Snippets for functions, classes, loops, `inherits`, and interpolation
+- Snippets for functions, classes, loops, results, `inherits`, and interpolation
 - Keyword / type completions and hover hints
 - Go to Definition / **Find Usages** (editor context menu on the identifier under the cursor)
 - Language / file icons for `.pys`
@@ -18,10 +18,16 @@ bundled** in the VSIX — students do not `pip install` this repo.
   - Halts at BPs; Clear All Breakpoints in context/gutter/tab; needs Microsoft Python extension
   - `Ctrl+Shift+R` / `Ctrl+Shift+D` — run/debug current `.pys` file
   - `Ctrl+Alt+R` / `Ctrl+Alt+D` — run/debug configured main file
-  - Setting `pys.mainFile` (or right-click **Set as Main File**)
+  - `[project].main` in `pys.toml` is authoritative; right-click
+    **Set as entrypoint** updates it
+  - `pys.mainFile` is a deprecated fallback only when no manifest exists
+- `result<T,E>`, `ok` / `err`, `propagate`, and result-pattern highlighting,
+  completions, hovers, snippets, diagnostics, and entrypoint conflict fixes
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
   - Right-click **`pys.deps`** → **PYS: Run Deps** (runs `deps lock` / refreshes `pys.lock`)
-- **PYS activity bar** (sidebar icon): **Create PYS Project** — scaffolds `src/`, `tests/`, `pys.toml` (`[source_roots]`), and a template `pys.deps`
+- **PYS activity bar** (sidebar icon): **Create PYS Project** — scaffolds a
+  runnable `src/main.pys`, `tests/`, `pys.toml` (`[project].main` and
+  `[source_roots]`), and a template `pys.deps`
 
 ## Install (students)
 

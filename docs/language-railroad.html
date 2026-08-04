@@ -349,13 +349,14 @@
     {
       id: 'type_expr',
       title: 'type_expr',
-      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type | lambda_type ;',
+      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type | lambda_type | result_type ;',
       node: Choice(
         N('primitive_type'),
         Seq(N('collection_type'), Opt(N('type_args'))),
         Seq(N('named_type'), Opt(N('type_args'))),
         N('array_type'),
-        N('lambda_type')
+        N('lambda_type'),
+        N('result_type')
       )
     },
     {
@@ -363,6 +364,15 @@
       title: 'lambda_type',
       ebnf: 'lambda_type = "lambda" "<" type_expr { "," type_expr } ">" ;',
       node: Seq(T('lambda'), T('<'), N('type_expr'), Star(Seq(T(','), N('type_expr'))), T('>'))
+    },
+    {
+      id: 'result_type',
+      title: 'result_type',
+      ebnf: 'result_type = "result" "<" (type_expr|"void") "," type_expr ">" ;',
+      node: Seq(
+        T('result'), T('<'), Choice(N('type_expr'), T('void')),
+        T(','), N('type_expr'), T('>')
+      )
     },
     {
       id: 'array_type',
@@ -704,8 +714,9 @@
     {
       id: 'case_label',
       title: 'case_label',
-      ebnf: 'identifier | identifier "." identifier | integer | string_lit | char_lit | boolean | null_lit ;',
+      ebnf: 'result_pattern | identifier | identifier "." identifier | integer | string_lit | char_lit | boolean | null_lit ;',
       node: Choice(
+        N('result_pattern'),
         N('identifier'),
         Seq(N('identifier'), T('.'), N('identifier')),
         N('integer'),
@@ -713,6 +724,15 @@
         N('char_lit'),
         N('boolean'),
         N('null_lit')
+      )
+    },
+    {
+      id: 'result_pattern',
+      title: 'result_pattern',
+      ebnf: '"ok" "(" [ identifier ] ")" | "err" "(" identifier ")" ;',
+      node: Choice(
+        Seq(T('ok'), T('('), Opt(N('identifier')), T(')')),
+        Seq(T('err'), T('('), N('identifier'), T(')'))
       )
     },
     {
@@ -958,6 +978,26 @@
       title: 'constructor_call',
       ebnf: 'named_type [ type_args ] "(" [ arg_list ] ")" ;',
       node: Seq(N('named_type'), Opt(N('type_args')), T('('), Opt(N('arg_list')), T(')'))
+    },
+    {
+      id: 'result_ctor_call',
+      title: 'result_ctor_call',
+      ebnf: '("ok"|"err") "(" [ expression ] ")" ;',
+      node: Seq(Choice(T('ok'), T('err')), T('('), Opt(N('expression')), T(')'))
+    },
+    {
+      id: 'postfix_expr',
+      title: 'postfix_expr',
+      ebnf: 'primary { "." identifier [call_suffix] | "[" slice_or_index "]" | call_suffix | "propagate" } ;',
+      node: Seq(
+        N('primary'),
+        Star(Choice(
+          Seq(T('.'), N('identifier'), Opt(N('call_suffix'))),
+          Seq(T('['), N('slice_or_index'), T(']')),
+          N('call_suffix'),
+          T('propagate')
+        ))
+      )
     },
     {
       id: 'slice_or_index',

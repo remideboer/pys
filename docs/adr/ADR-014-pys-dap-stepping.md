@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity; deps; inline values; logpoints); 2026-08-04 (PYS-only default + explicit Python depth) |
+| Amended | 2026-08-03 (UX maturity; deps; inline values; logpoints); 2026-08-04 (PYS-only default + explicit Python depth; manifest entrypoint parity) |
 | Code detail | [CER-014](../evolution/CER-014-pys-dap-stepping.md) |
 | Source | [TODO-FUTURE F-004](../TODO-FUTURE.md); [pipeline-migration C2](../pipeline-migration.md) |
 
@@ -55,10 +55,14 @@ There was also no `.pys` ↔ generated-Python line map.
     source/name remapping, and stops on generated entry. This is a separate
     session mode so beginner debugging never falls through into Python by
     accident.
+13. **Entrypoint parity:** debug preparation resolves authoritative
+    `[project].main` through the same contained path contract as Run. Selecting
+    another file is rejected or explicitly reconciled through Set as
+    entrypoint; imported files never receive top-level panic semantics.
 
 ## Consequences
 
-- Extension ≥ 0.0.68; JIT `J-debug`; example `examples/debug_step.pys`.
+- Extension ≥ 0.0.69; JIT `J-debug`; example `examples/debug_step.pys`.
 - Requires the Microsoft Python extension at debug time.
 - Concurrency preamble / `_Pys*` frames may appear unmapped; task/thread
   debugging remains deferred.

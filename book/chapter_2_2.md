@@ -38,6 +38,40 @@ Output:
 mode=demo attempt=1 max=3
 ```
 
+## One declaration per name
+
+When two variables need the same starting value, write two complete
+declarations:
+
+```pys
+int x = 10
+int y = 10
+print("#i{x}, #i{y}")
+```
+
+Output:
+
+```text
+10, 10
+```
+
+These compact forms are intentionally **not** PYS:
+
+```text
+int x, y = 10
+int x = 10, y = 10
+```
+
+*Both lines are compile errors in PYS.*
+
+Why reject even the second, unambiguous form? It saves one line but adds no
+new capability, while every PYS declaration currently introduces exactly one
+name. More importantly, comma declarations teach conflicting habits: in a
+Java or C-style local declaration, `int x, y = 10;` initializes only `y`;
+Python's different `x, y = 10, 10` assignment gives both names a value by
+position. Separate PYS declarations avoid making punctuation carry a
+language-dependent guess.
+
 
 ### Exercise
 

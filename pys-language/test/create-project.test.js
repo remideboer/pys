@@ -3,17 +3,27 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { createPysProjectScaffold, PYSTOML, PYS_DEPS } = require('../create-project');
+const {
+  createPysProjectScaffold,
+  MAIN_SOURCE,
+  PYSTOML,
+  PYS_DEPS,
+} = require('../create-project');
 
 test('createPysProjectScaffold writes src, tests, pys.toml, and template pys.deps', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pys-scaffold-'));
   try {
     const result = createPysProjectScaffold(root);
     assert.equal(result.root, path.resolve(root));
-    assert.ok(fs.existsSync(path.join(root, 'src', '.gitkeep')));
+    assert.equal(
+      fs.readFileSync(path.join(root, 'src', 'main.pys'), 'utf8'),
+      MAIN_SOURCE,
+    );
     assert.ok(fs.existsSync(path.join(root, 'tests', '.gitkeep')));
     assert.equal(fs.readFileSync(path.join(root, 'pys.toml'), 'utf8'), PYSTOML);
+    assert.match(PYSTOML, /\[project\]\nmain = "src\/main\.pys"/);
     assert.equal(fs.readFileSync(path.join(root, 'pys.deps'), 'utf8'), PYS_DEPS);
+    assert.ok(result.created.includes(path.join('src', 'main.pys')));
     assert.ok(result.created.includes('pys.toml'));
     assert.ok(result.created.includes('pys.deps'));
   } finally {

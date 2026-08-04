@@ -44,7 +44,10 @@ from ..ast_nodes import (
     Module,
     PassStmt,
     PrintStmt,
+    PropagateExpr,
     RepeatStmt,
+    ResultCtor,
+    ResultPattern,
     ReturnStmt,
     SharedDecl,
     AtomicDecl,
@@ -66,6 +69,50 @@ from ..ast_nodes import (
 _STRUCT_COPY_HELPER = '''def _pys_struct_copy(value):
     copy = getattr(value, "_pys_copy", None)
     return copy() if callable(copy) else value
+'''
+_RESULT_PREAMBLE = '''class _PysResult:
+    __slots__ = ("_pys_result_kind", "value", "sites")
+
+    def __init__(self, kind, value, sites=None):
+        self._pys_result_kind = kind
+        self.value = value
+        self.sites = list(sites or ())
+
+    def __repr__(self):
+        return f"{self._pys_result_kind}({self.value!r})"
+
+
+class _PysPropagateSignal(BaseException):
+    __slots__ = ("result",)
+
+    def __init__(self, result):
+        self.result = result
+
+
+def _pys_ok(value=None):
+    return _PysResult("ok", value)
+
+
+def _pys_err(value):
+    return _PysResult("err", value)
+
+
+def _pys_propagate(result, file, line, function):
+    kind = getattr(result, "_pys_result_kind", None)
+    if kind == "ok":
+        return result.value
+    if kind != "err":
+        raise TypeError("propagate expected a PYS result value")
+    sites = [*result.sites, (file, line, function)]
+    raise _PysPropagateSignal(_PysResult("err", result.value, sites))
+
+
+def _pys_panic(result):
+    import sys as _pys_sys
+    print(f"PYS panic: {result.value}", file=_pys_sys.stderr)
+    for file, line, function in result.sites:
+        print(f"  at {file}:{line} in {function}", file=_pys_sys.stderr)
+    raise SystemExit(1)
 '''
 from ..language_spec import _default_value_for_type, _translate_string_literal
 
@@ -116,7 +163,10 @@ def emit(module: Module, *, source_path: Path | None = None) -> str:
 
 
 def emit_with_map(
-    module: Module, *, source_path: Path | None = None
+    module: Module,
+    *,
+    source_path: Path | None = None,
+    is_entrypoint: bool = False,
 ) -> tuple[str, list[dict[str, int]], dict[str, str]]:
     """Emit Python, a statement-level line map, and debug display names.
 
@@ -126,6 +176,7 @@ def emit_with_map(
     emitter = _Emitter(
         source=module.source,
         source_path=source_path,
+        is_entrypoint=is_entrypoint,
     )
     raw_text, origins = emitter.emit_module_with_origins(module)
     from .overloads import rewrite_overloaded_methods
@@ -191,8 +242,15 @@ def _ctor_chains_to_parent(body: Block | None) -> bool:
 
 
 class _Emitter:
-    def __init__(self, *, source: str = "", source_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        source: str = "",
+        source_path: Path | None = None,
+        is_entrypoint: bool = False,
+    ) -> None:
         self.source_path = source_path
+        self.is_entrypoint = is_entrypoint
         self.lines: list[str] = []
         self.needs_array = False
         self.needs_abc = False
@@ -200,6 +258,7 @@ class _Emitter:
         self.needs_dataclass = False
         self.needs_struct_copy = False
         self.needs_enum = False
+        self.needs_result = False
         self.shared_vars: set[str] = set()
         self.atomic_vars: set[str] = set()
         self.tg_name: str | None = None
@@ -213,6 +272,8 @@ class _Emitter:
         self.trait_defs: dict[str, TraitDef] = {}
         self.trait_names: set[str] = set()
         self.lambda_serial = 0
+        self.result_switch_serial = 0
+        self._current_function = "<module>"
         self._expr_indent = 0
         self._lambda_rename: dict[str, str] = {}
         self._brace_depth = 0
@@ -229,6 +290,29 @@ class _Emitter:
     def emit_module(self, module: Module) -> str:
         text, _origins = self.emit_module_with_origins(module)
         return text
+
+    def _has_top_level_propagate(self, node: object | None) -> bool:
+        if node is None:
+            return False
+        if isinstance(node, PropagateExpr):
+            return True
+        if isinstance(node, (FunctionDef, ClassDef, TraitDef, TasksBlock, LambdaExpr)):
+            return False
+        if isinstance(node, SwitchCase):
+            return self._has_top_level_propagate(node.value) or self._has_top_level_propagate(
+                node.body
+            )
+        if isinstance(node, list):
+            return any(self._has_top_level_propagate(item) for item in node)
+        if isinstance(node, tuple):
+            return any(self._has_top_level_propagate(item) for item in node)
+        if hasattr(node, "__dict__"):
+            return any(
+                self._has_top_level_propagate(value)
+                for name, value in vars(node).items()
+                if name not in {"span", "source", "analysis_warnings"}
+            )
+        return False
 
     def emit_module_with_origins(self, module: Module) -> tuple[str, list[int | None]]:
         self.lines = []
@@ -259,10 +343,28 @@ class _Emitter:
         }
         if self._import_resolver is not None:
             self.struct_names |= set(getattr(self._import_resolver, "structs", set()))
+            self.fn_return_types.update(
+                getattr(self._import_resolver, "function_returns", {})
+            )
             for name, ftypes in getattr(self._import_resolver, "struct_field_types", {}).items():
                 self.struct_field_types.setdefault(name, dict(ftypes))
-        for stmt in module.body:
-            self._stmt(stmt, 0)
+        wrap_entrypoint = self.is_entrypoint and self._has_top_level_propagate(
+            module.body
+        )
+        if wrap_entrypoint:
+            self.needs_result = True
+            self._current_function = "<entrypoint>"
+            self._emit(0, "try:")
+            if module.body:
+                for stmt in module.body:
+                    self._stmt(stmt, 1)
+            else:
+                self._emit(1, "pass")
+            self._emit(0, "except _PysPropagateSignal as _pys_signal:")
+            self._emit(1, "_pys_panic(_pys_signal.result)")
+        else:
+            for stmt in module.body:
+                self._stmt(stmt, 0)
         preamble: list[str] = []
         if self.needs_concurrency:
             from ..concurrency import CONCURRENCY_PREAMBLE
@@ -278,6 +380,8 @@ class _Emitter:
             preamble.append("import enum")
         if self.needs_struct_copy:
             preamble.extend(_STRUCT_COPY_HELPER.splitlines())
+        if self.needs_result:
+            preamble.extend(_RESULT_PREAMBLE.splitlines())
         out = preamble + self.lines
         origins: list[int | None] = [None] * len(preamble) + list(self.line_origins)
         return "\n".join(out) + ("\n" if out else ""), origins
@@ -412,10 +516,20 @@ class _Emitter:
                 self.fn_return_types[stmt.name] = stmt.return_type
             self._emit(indent, f"def {stmt.name}({params}):")
             prev_types = dict(self.var_types)
+            prev_function = self._current_function
+            self._current_function = stmt.name
             for i, pname in enumerate(stmt.params):
                 if i < len(stmt.param_types) and stmt.param_types[i]:
                     self.var_types[pname] = stmt.param_types[i]
-            self._block(stmt.body, indent + 1)
+            if self._is_result_type(stmt.return_type):
+                self.needs_result = True
+                self._emit(indent + 1, "try:")
+                self._block(stmt.body, indent + 2)
+                self._emit(indent + 1, "except _PysPropagateSignal as _pys_signal:")
+                self._emit(indent + 2, "return _pys_signal.result")
+            else:
+                self._block(stmt.body, indent + 1)
+            self._current_function = prev_function
             self.var_types = prev_types
         elif isinstance(stmt, InterfaceDef):
             self._interface(stmt, indent)
@@ -550,6 +664,9 @@ class _Emitter:
     @staticmethod
     def _base_type(type_name: str) -> str:
         return type_name.split("<", 1)[0] if type_name else ""
+
+    def _is_result_type(self, type_name: str) -> bool:
+        return self._base_type(type_name) == "result"
 
     def _is_struct_type(self, type_name: str) -> bool:
         return self._base_type(type_name) in self.struct_names
@@ -982,15 +1099,26 @@ class _Emitter:
                 self.fn_return_types[m.name] = m.return_type
         need_super = inject_super and not _ctor_chains_to_parent(m.body)
         prev_types = dict(self.var_types)
+        prev_function = self._current_function
+        self._current_function = name
         for i, pname in enumerate(m.params):
             if i < len(m.param_types) and m.param_types[i]:
                 self.var_types[pname] = m.param_types[i]
-        if need_super:
-            self._emit(indent + 1, "super().__init__()")
-            if m.body is None or not m.body.statements:
-                self.var_types = prev_types
-                return
-        self._block(m.body, indent + 1)
+        if not m.is_constructor and self._is_result_type(m.return_type):
+            self.needs_result = True
+            self._emit(indent + 1, "try:")
+            self._block(m.body, indent + 2)
+            self._emit(indent + 1, "except _PysPropagateSignal as _pys_signal:")
+            self._emit(indent + 2, "return _pys_signal.result")
+        else:
+            if need_super:
+                self._emit(indent + 1, "super().__init__()")
+                if m.body is None or not m.body.statements:
+                    self._current_function = prev_function
+                    self.var_types = prev_types
+                    return
+            self._block(m.body, indent + 1)
+        self._current_function = prev_function
         self.var_types = prev_types
 
     def _if(self, stmt: IfStmt, indent: int, *, first: bool) -> None:
@@ -1051,6 +1179,13 @@ class _Emitter:
         return groups
 
     def _switch_stmt(self, stmt: SwitchStmt, indent: int) -> None:
+        if any(
+            isinstance(label, ResultPattern)
+            for case in stmt.cases
+            for label in case.labels
+        ):
+            self._result_switch_stmt(stmt, indent)
+            return
         subject = self._expr(stmt.subject)
         groups = self._switch_stmt_groups(stmt.cases)
         first = True
@@ -1066,7 +1201,60 @@ class _Emitter:
             self._block(body, indent + 1, brace_scope=True)
             first = False
 
+    def _result_switch_case_body(
+        self,
+        case: SwitchCase,
+        subject: str,
+        indent: int,
+    ) -> None:
+        prev_rename = dict(self._lambda_rename)
+        self._brace_depth += 1
+        try:
+            pattern = case.labels[0] if case.labels else None
+            if isinstance(pattern, ResultPattern) and pattern.binding:
+                bound = self._bind_brace_local(pattern.binding)
+                self._emit(indent, f"{bound} = {subject}.value")
+            if case.body is None or not case.body.statements:
+                if not isinstance(pattern, ResultPattern) or not pattern.binding:
+                    self._emit(indent, "pass")
+            else:
+                for child in case.body.statements:
+                    self._stmt(child, indent)
+        finally:
+            self._brace_depth -= 1
+            self._lambda_rename = prev_rename
+
+    def _result_switch_stmt(self, stmt: SwitchStmt, indent: int) -> None:
+        self.needs_result = True
+        serial = self.result_switch_serial
+        self.result_switch_serial += 1
+        subject = f"_pys_result_{serial}"
+        self._emit(indent, f"{subject} = {self._expr(stmt.subject)}")
+        patterns = [case for case in stmt.cases if not case.is_default]
+        default = next((case for case in stmt.cases if case.is_default), None)
+        for index, case in enumerate(patterns):
+            pattern = case.labels[0]
+            assert isinstance(pattern, ResultPattern)
+            head = "if" if index == 0 else "elif"
+            self._emit(
+                indent,
+                f"{head} {subject}._pys_result_kind == {pattern.kind!r}:",
+            )
+            self._result_switch_case_body(case, subject, indent + 1)
+        if default is not None:
+            if patterns:
+                self._emit(indent, "else:")
+                self._result_switch_case_body(default, subject, indent + 1)
+            else:
+                self._result_switch_case_body(default, subject, indent)
+
     def _switch_expr(self, expr: SwitchExpr) -> str:
+        if any(
+            isinstance(label, ResultPattern)
+            for case in expr.cases
+            for label in case.labels
+        ):
+            return self._result_switch_expr(expr)
         subject = self._expr(expr.subject)
         # Build nested conditional from last arm to first for readability.
         arms: list[tuple[list[Expr] | None, Expr | None]] = []
@@ -1087,6 +1275,40 @@ class _Emitter:
                 cond = self._switch_labels_cond(subject, labels)
                 result = f"({val} if {cond} else {result})"
         return result
+
+    def _result_switch_expr(self, expr: SwitchExpr) -> str:
+        self.needs_result = True
+        serial = self.result_switch_serial
+        self.result_switch_serial += 1
+        name = f"_pys_result_switch_{serial}"
+        arg = "_pys_result_value"
+        indent = self._expr_indent
+        self._emit(indent, f"def {name}({arg}):")
+        patterns = [case for case in expr.cases if not case.is_default]
+        default = next((case for case in expr.cases if case.is_default), None)
+        for index, case in enumerate(patterns):
+            pattern = case.labels[0]
+            assert isinstance(pattern, ResultPattern)
+            head = "if" if index == 0 else "elif"
+            self._emit(
+                indent + 1,
+                f"{head} {arg}._pys_result_kind == {pattern.kind!r}:",
+            )
+            prev_rename = self._lambda_rename
+            if pattern.binding:
+                self._lambda_rename = {**prev_rename, pattern.binding: pattern.binding}
+                self._emit(indent + 2, f"{pattern.binding} = {arg}.value")
+            self._emit(indent + 2, f"return {self._expr(case.value)}")
+            self._lambda_rename = prev_rename
+        if default is not None:
+            if patterns:
+                self._emit(indent + 1, "else:")
+                self._emit(indent + 2, f"return {self._expr(default.value)}")
+            else:
+                self._emit(indent + 1, f"return {self._expr(default.value)}")
+        else:
+            self._emit(indent + 1, "raise RuntimeError('invalid PYS result tag')")
+        return f"{name}({self._expr(expr.subject)})"
 
     def _bind_brace_local(self, name: str) -> str:
         """Mangle a name declared inside `{ }` so it cannot leak in Python."""
@@ -1180,6 +1402,20 @@ class _Emitter:
             if isinstance(expr.right, BinaryOp) and _BINOP_PREC.get(expr.right.op, 0) <= prec:
                 right = f"({right})"
             return f"{left} {expr.op} {right}"
+        if isinstance(expr, ResultCtor):
+            self.needs_result = True
+            if expr.kind == "ok" and expr.value is None:
+                return "_pys_ok()"
+            return f"_pys_{expr.kind}({self._expr(expr.value)})"
+        if isinstance(expr, PropagateExpr):
+            self.needs_result = True
+            span = expr.span
+            file = str(self.source_path) if self.source_path is not None else "<memory>"
+            line = span.line if span else 1
+            return (
+                f"_pys_propagate({self._expr(expr.operand)}, {file!r}, "
+                f"{line}, {self._current_function!r})"
+            )
         if isinstance(expr, Call):
             # Atomic synthesized accessors: avoid Identifier → .get() on the receiver.
             if (
@@ -1249,7 +1485,7 @@ class _Emitter:
         if isinstance(expr, SwitchExpr):
             return self._switch_expr(expr)
         if isinstance(expr, LambdaExpr):
-            return self._lambda(expr)
+            return self._lambda(expr, expected_type=expected_type)
         raise TypeError(f"unsupported expr {type(expr).__name__}")
 
     def _tuple_literal_py(self, expr: TupleLiteral) -> str:
@@ -1404,7 +1640,26 @@ class _Emitter:
             walk_expr(expr.body)
         return sorted(used)
 
-    def _lambda(self, expr: LambdaExpr) -> str:
+    @staticmethod
+    def _lambda_return_type(type_name: str | None) -> str:
+        text = (type_name or "").strip()
+        if not text.startswith("lambda<") or not text.endswith(">"):
+            return ""
+        inner = text[len("lambda<") : -1]
+        depth = 0
+        last_comma = -1
+        for index, char in enumerate(inner):
+            if char == "<":
+                depth += 1
+            elif char == ">":
+                depth -= 1
+            elif char == "," and depth == 0:
+                last_comma = index
+        return inner[last_comma + 1 :].strip()
+
+    def _lambda(
+        self, expr: LambdaExpr, *, expected_type: str | None = None
+    ) -> str:
         name = f"_pys_lam_{self.lambda_serial}"
         self.lambda_serial += 1
         frees = self._lambda_free_names(expr)
@@ -1418,16 +1673,35 @@ class _Emitter:
             parts.append(f"{rename[f]}={outer}")
         self._emit(self._expr_indent, f"def {name}({', '.join(parts)}):")
         prev_rename = self._lambda_rename
+        prev_function = self._current_function
+        self._current_function = name
         self._lambda_rename = {**prev_rename, **rename}
         body_indent = self._expr_indent + 1
-        if isinstance(expr.body, Block):
-            if not expr.body.statements:
-                self._emit(body_indent, "pass")
+        result_return = self._lambda_return_type(expected_type)
+        if self._is_result_type(result_return):
+            self.needs_result = True
+            self._emit(body_indent, "try:")
+            inner_indent = body_indent + 1
+            if isinstance(expr.body, Block):
+                if not expr.body.statements:
+                    self._emit(inner_indent, "pass")
+                else:
+                    for st in expr.body.statements:
+                        self._stmt(st, inner_indent)
             else:
-                for st in expr.body.statements:
-                    self._stmt(st, body_indent)
+                self._emit(inner_indent, f"return {self._expr(expr.body)}")
+            self._emit(body_indent, "except _PysPropagateSignal as _pys_signal:")
+            self._emit(body_indent + 1, "return _pys_signal.result")
         else:
-            self._emit(body_indent, f"return {self._expr(expr.body)}")
+            if isinstance(expr.body, Block):
+                if not expr.body.statements:
+                    self._emit(body_indent, "pass")
+                else:
+                    for st in expr.body.statements:
+                        self._stmt(st, body_indent)
+            else:
+                self._emit(body_indent, f"return {self._expr(expr.body)}")
+        self._current_function = prev_function
         self._lambda_rename = prev_rename
         return name
 

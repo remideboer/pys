@@ -8,9 +8,18 @@
 const path = require('path');
 const fs = require('fs');
 
-const PYSTOML = `[source_roots]
+const PYSTOML = `[project]
+main = "src/main.pys"
+
+[source_roots]
 main = "src"
 test = "tests"
+`;
+
+const MAIN_SOURCE = `# Expected output:
+# Hello from PYS
+
+print("Hello from PYS")
 `;
 
 const PYS_DEPS = `[interpreter]
@@ -45,11 +54,18 @@ function createPysProjectScaffold(projectRoot, io = fs) {
       io.mkdirSync(dir, { recursive: true });
       created.push(rel + path.sep);
     }
-    const keep = path.join(dir, '.gitkeep');
-    if (!io.existsSync(keep)) {
-      io.writeFileSync(keep, '', 'utf8');
-      created.push(path.join(rel, '.gitkeep'));
+    if (rel === 'tests') {
+      const keep = path.join(dir, '.gitkeep');
+      if (!io.existsSync(keep)) {
+        io.writeFileSync(keep, '', 'utf8');
+        created.push(path.join(rel, '.gitkeep'));
+      }
     }
+  }
+  const mainPath = path.join(root, 'src', 'main.pys');
+  if (!io.existsSync(mainPath)) {
+    io.writeFileSync(mainPath, MAIN_SOURCE, 'utf8');
+    created.push(path.join('src', 'main.pys'));
   }
   io.writeFileSync(tomlPath, PYSTOML, 'utf8');
   created.push('pys.toml');
@@ -61,6 +77,7 @@ function createPysProjectScaffold(projectRoot, io = fs) {
 
 module.exports = {
   createPysProjectScaffold,
+  MAIN_SOURCE,
   PYSTOML,
   PYS_DEPS,
 };

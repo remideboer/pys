@@ -1,0 +1,19 @@
+function result<int, string> readNumber(bool valid) {
+    if (valid == false) {
+        return err("invalid")
+    }
+    return ok(4)
+}
+
+function result<int, string> addOne(bool valid) {
+    int value = readNumber(valid) propagate
+    return ok(value + 1)
+}
+
+result<int, string> outcome = addOne(true)
+switch (outcome) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}

@@ -104,43 +104,153 @@
     </nav>
     <main>
 <h1>2.8. Expressing success and failure</h1>
-<p>PYS has no Rust-style <code>Result</code> type and no <code>try</code> / <code>catch</code> keywords. When
-an operation can succeed or fail in a <em>business</em> sense, name those outcomes
-explicitly — often with an <strong>enum</strong> and a <code>switch</code>.</p>
-<pre><code class="language-pys"><span class="tok-kw">enum</span> <span class="tok-typename">ParseResult</span> {
-    <span class="tok-typename">OK</span>
-    <span class="tok-typename">BAD_INPUT</span>
-}
-
-<span class="tok-kw">function</span> <span class="tok-typename">ParseResult</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
+<p>Some operations have two honest outcomes: a value, or a problem the caller can
+handle. PYS writes both in the type:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
-        <span class="tok-kw">return</span> <span class="tok-typename">ParseResult</span>.<span class="tok-typename">BAD_INPUT</span>
+        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
     }
-    <span class="tok-kw">return</span> <span class="tok-typename">ParseResult</span>.<span class="tok-typename">OK</span>
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
+}</code></pre>
+<ul>
+<li><code>result&lt;int, string&gt;</code> means “success contains an <code>int</code>; failure contains a
+  <code>string</code>”.</li>
+<li><code>ok(age)</code> constructs the success outcome.</li>
+<li><code>err("...")</code> constructs the failure outcome.</li>
+<li><code>ok</code> and <code>err</code> are PYS words. You cannot reuse them as names.</li>
+</ul>
+<p>This function only declares behavior, so it produces no output by itself.</p>
+<h2>Handle both outcomes</h2>
+<p>A result does <strong>not</strong> silently become its success value. Use a result <code>switch</code>
+to handle it:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
+        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+    }
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
 }
 
-<span class="tok-typename">ParseResult</span> <span class="tok-ident">result</span> <span class="tok-op">=</span> <span class="tok-ident">checkAge</span>(<span class="tok-number">15</span>)
-<span class="tok-kw">switch</span> (<span class="tok-ident">result</span>) {
-    <span class="tok-kw">case</span> <span class="tok-typename">OK</span>:
-        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">age looks fine</span><span class="tok-string">&quot;</span>)
-    <span class="tok-kw">case</span> <span class="tok-typename">BAD_INPUT</span>:
-        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">accepted</span> <span class="tok-op">=</span> <span class="tok-ident">checkAge</span>(<span class="tok-number">15</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">accepted</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+}
+
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">rejected</span> <span class="tok-op">=</span> <span class="tok-ident">checkAge</span>(<span class="tok-op">-</span><span class="tok-number">2</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">rejected</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
 }</code></pre>
 <p>Output:</p>
-<pre><code class="language-text">age looks fine
+<pre><code class="language-text">15
+age cannot be negative
 </code></pre>
-<ul>
-<li><code>enum ParseResult</code> — a closed set of named outcomes.</li>
-<li>Members use <code>SCREAMING_SNAKE_CASE</code> by convention.</li>
-<li>The function returns which case happened; the caller switches on it.</li>
-</ul>
-<p>This pattern scales: add more enum members when you need more distinct
-failures, instead of overloading a single magic number.</p>
+<p><code>case ok(value)</code> gives that arm the success payload. <code>case err(error)</code> gives
+that arm the error payload. The names <code>value</code> and <code>error</code> exist only in their
+own arm.</p>
+<p>The switch must cover both outcomes. A <code>default</code> arm may stand in for one, but
+naming both is usually clearer. A plain value such as <code>case 15:</code> is not a
+result pattern.</p>
+<h2>Return the error early with <code>propagate</code></h2>
+<p>Sometimes a function cannot solve a failure but its caller can. Postfix
+<code>propagate</code> says:</p>
+<blockquote>
+<p>Give me the success payload. If this is an error, stop this function and
+return the same error now.</p>
+</blockquote>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
+        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+    }
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
+}
+
+<span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">ageNextYear</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
+    <span class="tok-type">int</span> <span class="tok-ident">checked</span> <span class="tok-op">=</span> <span class="tok-ident">checkAge</span>(<span class="tok-ident">age</span>) <span class="tok-kw">propagate</span>
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">age accepted</span><span class="tok-string">&quot;</span>)
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">checked</span> <span class="tok-op">+</span> <span class="tok-number">1</span>)
+}
+
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">first</span> <span class="tok-op">=</span> <span class="tok-ident">ageNextYear</span>(<span class="tok-number">15</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">first</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+}
+
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">second</span> <span class="tok-op">=</span> <span class="tok-ident">ageNextYear</span>(<span class="tok-op">-</span><span class="tok-number">2</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">second</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">age accepted
+16
+age cannot be negative
+</code></pre>
+<p>The second call skips <code>print("age accepted")</code>: propagation leaves the function
+first. The error type must match exactly. For example, a function returning
+<code>result&lt;int, string&gt;</code> cannot directly propagate <code>result&lt;int, int&gt;</code>.</p>
+<h2>Success without a payload</h2>
+<p>Use <code>result&lt;void, E&gt;</code> when success only means “completed”:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">void</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">save</span>(<span class="tok-type">bool</span> <span class="tok-ident">allowed</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">allowed</span> <span class="tok-op">==</span> <span class="tok-const">false</span>) {
+        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">save denied</span><span class="tok-string">&quot;</span>)
+    }
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>()
+}
+
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">void</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">outcome</span> <span class="tok-op">=</span> <span class="tok-ident">save</span>(<span class="tok-const">true</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">outcome</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>():
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">saved</span><span class="tok-string">&quot;</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">saved
+</code></pre>
+<p>Only a <code>void</code> success uses <code>ok()</code> and <code>case ok()</code> without a payload. <code>err</code>
+always needs an error value.</p>
+<h2>When an error reaches the program boundary</h2>
+<p>The directly run file is the <strong>entrypoint</strong>. It may propagate at top level:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">readCount</span>() {
+    <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">count is missing</span><span class="tok-string">&quot;</span>)
+}
+
+<span class="tok-type">int</span> <span class="tok-ident">count</span> <span class="tok-op">=</span> <span class="tok-ident">readCount</span>() <span class="tok-kw">propagate</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">count</span>)</code></pre>
+<p>Expected stdout: no output. Expected stderr starts with:</p>
+<pre><code class="language-text">PYS panic: count is missing
+  at ... in &lt;entrypoint&gt;
+</code></pre>
+<p>Expected exit status: non-zero. PYS calls this outcome a <strong>panic</strong>. It is not a
+<code>panic(...)</code> command: it means an error reached the entrypoint with nobody left
+to handle it. Statements after the failing propagation do not run.</p>
+<p>Larger projects put the authoritative entrypoint in <code>pys.toml</code>:</p>
+<pre><code class="language-toml">[project]
+main = &quot;src/app.pys&quot;
+</code></pre>
+<p>Run and Debug use that same file. Imported files may return results from
+functions, but may not propagate at top level.</p>
+<blockquote>
+<p><strong>Do not confuse <code>result</code> and <code>enum</code>.</strong> A result always models success versus
+recoverable failure and carries payloads. An enum, taught later, models any
+fixed set of named choices such as colors or order states.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
-<p>Write <code>function ParseResult checkPassword(string password)</code> that returns
-<code>BAD_INPUT</code> if the password length is less than 8 (<code>len(password) &lt; 8</code>),
-otherwise <code>OK</code>. Print a message for each outcome.</p>
+<p>Write <code>function result&lt;int, string&gt; half(int number)</code>. Return
+<code>err("must be even")</code> when <code>number % 2 != 0</code>; otherwise return
+<code>ok(number / 2)</code>. Handle calls with <code>8</code> and <code>7</code>. Expected output: <code>4</code>, then
+<code>must be even</code>.</p>
 </blockquote>
 <hr />
 <p><a href="basics_null.html">Previous: Null and missing values</a> · <a href="basics_structuring.html">Next: Structuring code</a></p>

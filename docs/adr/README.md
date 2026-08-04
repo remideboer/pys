@@ -63,5 +63,7 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-017](ADR-017-source-roots-same-package-tests.md) | Declared source roots and same-package tests | Accepted (impl Active) |
 | [ADR-018](ADR-018-collection-literals.md) | Collection literals + type-directed braces | Accepted |
 | [ADR-019](ADR-019-single-counter-loops.md) | C-style loops have one immutable counter | Accepted |
+| [ADR-020](ADR-020-one-name-per-declaration.md) | One name per declaration | Accepted |
+| [ADR-021](ADR-021-result-propagate-panic.md) | Result, propagation, panic, and project entrypoints | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

@@ -108,6 +108,7 @@ def transpile(
     *,
     source_path: Path | None = None,
     allow_runtime_introspection: bool = False,
+    is_entrypoint: bool = False,
 ) -> str:
     """Convert teaching language source into valid Python source."""
     from .pipeline import compile_pys
@@ -117,6 +118,7 @@ def transpile(
         target="python",
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
+        is_entrypoint=is_entrypoint,
     )
 
 
@@ -144,8 +146,9 @@ def transpile_with_modules_and_maps(
     """Transpile entry + imports; return Python text, line maps, and debug names."""
     from .imports import discover_imported_modules
     from .pipeline import compile_pys_with_map
+    from .project_manifest import resolve_entrypoint
 
-    source_path = source_path.resolve()
+    source_path = resolve_entrypoint(source_path)
     text = source_path.read_text(encoding="utf-8")
     module_cache = discover_imported_modules(
         source_path,
@@ -159,6 +162,7 @@ def transpile_with_modules_and_maps(
         target="python",
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
+        is_entrypoint=True,
     )
     modules[source_path.stem] = py
     maps[source_path.stem] = line_map
@@ -169,6 +173,7 @@ def transpile_with_modules_and_maps(
             target="python",
             source_path=path,
             allow_runtime_introspection=allow_runtime_introspection,
+            is_entrypoint=False,
         )
         modules[path.stem] = py
         maps[path.stem] = line_map
@@ -179,6 +184,10 @@ def transpile_with_modules_and_maps(
 def transpile_path(source_path: Path, target_path: Path) -> None:
     """Transpile a file to Python and write the output (plus imported modules)."""
     source_path = source_path.resolve()
+    if source_path.is_dir() or source_path.suffix == ".pys":
+        from .project_manifest import resolve_entrypoint
+
+        source_path = resolve_entrypoint(source_path)
     if source_path.suffix == ".pys":
         modules = transpile_with_modules(source_path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -204,7 +213,9 @@ def run_source(source_path: Path) -> int:
         resolve_site_paths,
     )
 
-    source_path = source_path.resolve()
+    from .project_manifest import resolve_entrypoint
+
+    source_path = resolve_entrypoint(source_path)
     env = dict(os.environ)
     python_exe = sys.executable
     workspace_value = os.environ.get(WORKSPACE_ROOT_ENV)

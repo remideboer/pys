@@ -49,7 +49,10 @@ from .ast_nodes import (
     Module,
     PassStmt,
     PrintStmt,
+    PropagateExpr,
     RepeatStmt,
+    ResultCtor,
+    ResultPattern,
     ReturnStmt,
     SharedDecl,
     Slice,
@@ -939,7 +942,8 @@ def _looks_like_typed_name(p: _Tok) -> bool:
 
 def _parse_type_name(p: _Tok) -> str:
     """Parse `Type` or `Type<Arg, Nested<T>>` type references."""
-    base = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    base_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+    base = base_tok.text
     if not p.at(TokenKind.LT):
         return base
     p.eat(TokenKind.LT)
@@ -948,6 +952,23 @@ def _parse_type_name(p: _Tok) -> str:
         p.eat(TokenKind.COMMA)
         args.append(_parse_type_name(p))
     p.eat_gt()
+    if base == "result" and len(args) != 2:
+        raise FatalParseError(
+            "`result<T, E>` requires exactly two type arguments: "
+            "the success type T and error type E.",
+            base_tok.line,
+            base_tok.column,
+            code="pys.result-arity",
+            tips=["Write `result<SuccessType, ErrorType>`."],
+        )
+    if base == "result" and args[1] == "void":
+        raise FatalParseError(
+            "`result<T, E>` requires a concrete error type; E cannot be `void`.",
+            base_tok.line,
+            base_tok.column,
+            code="pys.result-error-type",
+            tips=["Choose an error value type such as `string` or an enum."],
+        )
     return f"{base}<{', '.join(args)}>"
 
 
@@ -2340,6 +2361,30 @@ def _skip_switch_noise(p: _Tok) -> None:
 def _parse_case_label(p: _Tok) -> Expr:
     """Parse a case label: literal, bare name, or ``Enum.MEMBER``."""
     sp = p.span()
+    if p.at_kw("ok", "err") and p.peek(1).kind == TokenKind.LPAREN:
+        kind = p.eat(TokenKind.KEYWORD).text
+        p.eat(TokenKind.LPAREN)
+        binding = ""
+        binding_span: Span | None = None
+        if not p.at(TokenKind.RPAREN):
+            token = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            binding = token.text
+            binding_span = p.token_span(token)
+        elif kind == "err":
+            raise FatalParseError(
+                "`err` switch patterns require an error binding.",
+                sp.line,
+                sp.column,
+                code="pys.result-pattern",
+                tips=["Write `case err(errorName)`."],
+            )
+        p.eat(TokenKind.RPAREN)
+        return ResultPattern(
+            span=sp,
+            kind=kind,
+            binding=binding,
+            binding_span=binding_span,
+        )
     if p.at(TokenKind.INT):
         return Literal(span=sp, kind="int", text=p.eat(TokenKind.INT).text)
     if p.at(TokenKind.STRING):
@@ -2998,6 +3043,9 @@ def _parse_postfix(p: _Tok) -> Expr:
             else:
                 p.eat(TokenKind.RBRACK)
                 expr = Index(span=expr.span, object=expr, index=start)
+        elif p.at_kw("propagate"):
+            p.eat_kw("propagate")
+            expr = PropagateExpr(span=expr.span, operand=expr)
         else:
             break
     return expr
@@ -3025,6 +3073,22 @@ def _parse_primary(p: _Tok) -> Expr:
     if p.at_kw("null"):
         p.eat_kw("null")
         return Literal(span=sp, kind="null", text="null")
+    if p.at_kw("ok", "err"):
+        kind = p.eat(TokenKind.KEYWORD).text
+        p.eat(TokenKind.LPAREN)
+        value: Expr | None = None
+        if not p.at(TokenKind.RPAREN):
+            value = _parse_expression(p)
+        elif kind == "err":
+            raise FatalParseError(
+                "`err` requires an error value.",
+                sp.line,
+                sp.column,
+                code="pys.result-err-value",
+                tips=["Write `err(errorValue)`."],
+            )
+        p.eat(TokenKind.RPAREN)
+        return ResultCtor(span=sp, kind=kind, value=value)
     if p.at_kw("this"):
         p.eat_kw("this")
         return Identifier(span=sp, name="self")

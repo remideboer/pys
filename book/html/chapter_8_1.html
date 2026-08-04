@@ -160,6 +160,83 @@
 </tr>
 </tbody>
 </table>
+<h2>Why PYS declares one name at a time</h2>
+<p>PYS keeps a declaration one-to-one:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+<span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string">, </span><span class="tok-interp">#i{y}</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">10, 10
+</code></pre>
+<p>Several other languages use commas, but they do not all mean the same thing:</p>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Example</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C / C++ local</td>
+<td><code>int x, y = 10;</code></td>
+<td>Only <code>y</code> is initialized; reading automatic local <code>x</code> before assignment is unsafe</td>
+</tr>
+<tr>
+<td>Java / C# local</td>
+<td><code>int x, y = 10;</code></td>
+<td>Only <code>y</code> is initialized; the compiler rejects reading <code>x</code> before assignment</td>
+</tr>
+<tr>
+<td>Go</td>
+<td><code>var x, y int = 10, 10</code></td>
+<td>Initializer values are matched to names by position</td>
+</tr>
+<tr>
+<td>Python</td>
+<td><code>x, y = 10, 10</code></td>
+<td>Two values are unpacked into two assignment targets</td>
+</tr>
+</tbody>
+</table>
+<p>The C/Java-shaped declaration is especially easy to misread as “both are
+10.” This Java example proves that the initializer belongs only to <code>y</code>:</p>
+<pre><code class="language-java">int x, y = 10;
+System.out.println(y);
+// System.out.println(x); // compile error: x may not have been initialized
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">10
+</code></pre>
+<p>The declaration itself is legal; Java reports the problem only when code
+tries to read <code>x</code>. C# locals behave similarly. For C and C++, an uninitialized
+automatic local has an indeterminate value, so reading it does not have a
+reliable output. Static-storage variables and fields follow different default-
+initialization rules, another reason not to import this syntax into PYS.</p>
+<p>Go and Python avoid that exact “only the last name” interpretation, but with
+different constructs:</p>
+<pre><code class="language-go">var x, y int = 10, 10
+fmt.Println(x, y)
+</code></pre>
+<p>Go output:</p>
+<pre><code class="language-text">10 10
+</code></pre>
+<pre><code class="language-python">x, y = 10, 10
+print(x, y)
+</code></pre>
+<p>Python output:</p>
+<pre><code class="language-text">10 10
+</code></pre>
+<p>Go declares names against initializer values; Python performs assignment with
+iterable unpacking and has no PYS-style type declaration here. Similar commas
+do not create one transferable rule.</p>
+<p>PYS therefore rejects both <code>int x, y = 10</code> and the clearer
+<code>int x = 10, y = 10</code>. The latter saves a line but adds no expressive power and
+would break the consistent one-name shape of <code>var</code>, <code>fix</code>, <code>const</code>, fields,
+<code>shared</code>, and <code>atomic</code>. Function parameter lists are different: every
+parameter already has its own type-and-name position, with no initializer to
+attach to the wrong name.</p>
 <p>Casing you already use:</p>
 <ul>
 <li>Types: <code>PascalCase</code> → same in C#/Java.</li>

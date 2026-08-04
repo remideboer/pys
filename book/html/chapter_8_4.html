@@ -134,22 +134,119 @@
 <td>Test projects / source sets in the IDE</td>
 </tr>
 <tr>
+<td><code>pys.toml</code> <code>[project].main</code></td>
+<td>C# startup object / top-level project entry; Java <code>main</code> class or build-tool main class</td>
+</tr>
+<tr>
 <td>Top-level statements</td>
 <td>C# has top-level statements; Java traditionally wants <code>main</code></td>
 </tr>
 <tr>
-<td>No <code>try</code>/<code>catch</code> in PYS grammar</td>
-<td>You <strong>will</strong> learn exceptions in C#/Java — treat them as a new chapter, not a PYS gap to invent</td>
+<td><code>result&lt;T,E&gt;</code> + <code>propagate</code></td>
+<td>C#/Java usually use exceptions; map the intent deliberately, because the control-flow model differs</td>
 </tr>
 </tbody>
 </table>
 <p>When you hit a wall in C# or Java, ask: “Is this a new platform rule, or
 the same design idea with different spelling?” Most of Session 1–4 was
 the second kind.</p>
+<h2>Transferring recoverable-error code</h2>
+<p>PYS puts an expected failure in the return type:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">readCount</span>(<span class="tok-type">bool</span> <span class="tok-ident">valid</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">valid</span> <span class="tok-op">==</span> <span class="tok-const">false</span>) {
+        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">invalid count</span><span class="tok-string">&quot;</span>)
+    }
+    <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-number">7</span>)
+}
+
+<span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">outcome</span> <span class="tok-op">=</span> <span class="tok-ident">readCount</span>(<span class="tok-const">false</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">outcome</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">invalid count
+</code></pre>
+<p>The caller can see <code>string</code> as the exact error type. It must either match both
+outcomes or write <code>propagate</code> in another function whose error type is exactly
+the same.</p>
+<p>Everyday C# more often expresses the same <em>user story</em> with an exception:</p>
+<pre><code class="language-csharp">static int ReadCount(bool valid)
+{
+    if (!valid)
+        throw new FormatException(&quot;invalid count&quot;);
+    return 7;
+}
+
+try
+{
+    Console.WriteLine(ReadCount(false));
+}
+catch (FormatException error)
+{
+    Console.WriteLine(error.Message);
+}
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">invalid count
+</code></pre>
+<p>This is not a spelling-only translation:</p>
+<ul>
+<li><code>int</code> does not advertise <code>FormatException</code> in the C# signature.</li>
+<li>The exception is not a normal return value.</li>
+<li>Control jumps up the stack until a matching <code>catch</code> is found.</li>
+<li>An uncaught exception ends the process, roughly the observable role of a PYS
+  panic, but it may come from any throwing operation rather than only an
+  unhandled result at the entrypoint.</li>
+</ul>
+<p>Java has both unchecked and checked exceptions. A checked declaration makes
+one possibility visible:</p>
+<pre><code class="language-java">static int readCount(boolean valid) throws java.io.IOException {
+    if (!valid) {
+        throw new java.io.IOException(&quot;invalid count&quot;);
+    }
+    return 7;
+}
+
+public static void main(String[] args) {
+    try {
+        System.out.println(readCount(false));
+    } catch (java.io.IOException error) {
+        System.out.println(error.getMessage());
+    }
+}
+</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">invalid count
+</code></pre>
+<p><code>throws IOException</code> is closer to visible failure than the C# signature, but
+it still uses stack unwinding and does not make success/error variants into a
+value that can be switched over. Java unchecked exceptions need not appear in
+the signature at all.</p>
+<h2>A transfer checklist</h2>
+<p>When moving a PYS result API:</p>
+<ol>
+<li>Decide which <code>err(E)</code> values are expected, recoverable conditions.</li>
+<li>In C#/Java, choose a specific exception type or a project-specific result
+   class according to the target codebase&rsquo;s conventions.</li>
+<li>Translate a handling <code>switch</code> to a narrow <code>catch</code> (or explicit result
+   inspection), not a blanket <code>catch (Exception)</code>.</li>
+<li>Translate <code>propagate</code> to deliberate exception propagation or rethrowing.
+   Do not add an empty catch merely to silence the compiler.</li>
+<li>Put the final handler at the application boundary when the program can
+   report the problem usefully. Do not assume every uncaught exception is an
+   intentional equivalent of PYS panic.</li>
+</ol>
 <h3>Exercise</h3>
 <blockquote>
 <p>List three PYS habits you will keep on day one of C# or Java (casing,
 member order, preferring immutable locals, …). Keep the list.</p>
+<p>Then map one <code>result&lt;int,string&gt;</code> function to C# or Java. Write down whether
+its error is represented by a specific exception or an explicit result
+class, and why. Expected deliverable: both the target signature and its
+handling call site.</p>
 </blockquote>
 <hr />
 <p><a href="chapter_8_3.html">Previous: Control flow and collections</a> · <a href="exercises_contact_book.html">Next: Exercise — Contact book</a></p>

@@ -1,50 +1,195 @@
 # 2.8. Expressing success and failure
 
-PYS has no Rust-style `Result` type and no `try` / `catch` keywords. When
-an operation can succeed or fail in a *business* sense, name those outcomes
-explicitly — often with an **enum** and a `switch`.
+Some operations have two honest outcomes: a value, or a problem the caller can
+handle. PYS writes both in the type:
 
 ```pys
-enum ParseResult {
-    OK
-    BAD_INPUT
-}
-
-function ParseResult checkAge(int age) {
+function result<int, string> checkAge(int age) {
     if (age < 0) {
-        return ParseResult.BAD_INPUT
+        return err("age cannot be negative")
     }
-    return ParseResult.OK
+    return ok(age)
+}
+```
+
+- `result<int, string>` means “success contains an `int`; failure contains a
+  `string`”.
+- `ok(age)` constructs the success outcome.
+- `err("...")` constructs the failure outcome.
+- `ok` and `err` are PYS words. You cannot reuse them as names.
+
+This function only declares behavior, so it produces no output by itself.
+
+## Handle both outcomes
+
+A result does **not** silently become its success value. Use a result `switch`
+to handle it:
+
+```pys
+function result<int, string> checkAge(int age) {
+    if (age < 0) {
+        return err("age cannot be negative")
+    }
+    return ok(age)
 }
 
-ParseResult result = checkAge(15)
-switch (result) {
-    case OK:
-        print("age looks fine")
-    case BAD_INPUT:
-        print("age cannot be negative")
+result<int, string> accepted = checkAge(15)
+switch (accepted) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+
+result<int, string> rejected = checkAge(-2)
+switch (rejected) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
 }
 ```
 
 Output:
 
 ```text
-age looks fine
+15
+age cannot be negative
 ```
 
+`case ok(value)` gives that arm the success payload. `case err(error)` gives
+that arm the error payload. The names `value` and `error` exist only in their
+own arm.
 
-- `enum ParseResult` — a closed set of named outcomes.
-- Members use `SCREAMING_SNAKE_CASE` by convention.
-- The function returns which case happened; the caller switches on it.
+The switch must cover both outcomes. A `default` arm may stand in for one, but
+naming both is usually clearer. A plain value such as `case 15:` is not a
+result pattern.
 
-This pattern scales: add more enum members when you need more distinct
-failures, instead of overloading a single magic number.
+## Return the error early with `propagate`
+
+Sometimes a function cannot solve a failure but its caller can. Postfix
+`propagate` says:
+
+> Give me the success payload. If this is an error, stop this function and
+> return the same error now.
+
+```pys
+function result<int, string> checkAge(int age) {
+    if (age < 0) {
+        return err("age cannot be negative")
+    }
+    return ok(age)
+}
+
+function result<int, string> ageNextYear(int age) {
+    int checked = checkAge(age) propagate
+    print("age accepted")
+    return ok(checked + 1)
+}
+
+result<int, string> first = ageNextYear(15)
+switch (first) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+
+result<int, string> second = ageNextYear(-2)
+switch (second) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+```
+
+Output:
+
+```text
+age accepted
+16
+age cannot be negative
+```
+
+The second call skips `print("age accepted")`: propagation leaves the function
+first. The error type must match exactly. For example, a function returning
+`result<int, string>` cannot directly propagate `result<int, int>`.
+
+## Success without a payload
+
+Use `result<void, E>` when success only means “completed”:
+
+```pys
+function result<void, string> save(bool allowed) {
+    if (allowed == false) {
+        return err("save denied")
+    }
+    return ok()
+}
+
+result<void, string> outcome = save(true)
+switch (outcome) {
+    case ok():
+        print("saved")
+    case err(error):
+        print(error)
+}
+```
+
+Output:
+
+```text
+saved
+```
+
+Only a `void` success uses `ok()` and `case ok()` without a payload. `err`
+always needs an error value.
+
+## When an error reaches the program boundary
+
+The directly run file is the **entrypoint**. It may propagate at top level:
+
+```pys
+function result<int, string> readCount() {
+    return err("count is missing")
+}
+
+int count = readCount() propagate
+print(count)
+```
+
+Expected stdout: no output. Expected stderr starts with:
+
+```text
+PYS panic: count is missing
+  at ... in <entrypoint>
+```
+
+Expected exit status: non-zero. PYS calls this outcome a **panic**. It is not a
+`panic(...)` command: it means an error reached the entrypoint with nobody left
+to handle it. Statements after the failing propagation do not run.
+
+Larger projects put the authoritative entrypoint in `pys.toml`:
+
+```toml
+[project]
+main = "src/app.pys"
+```
+
+Run and Debug use that same file. Imported files may return results from
+functions, but may not propagate at top level.
+
+> **Do not confuse `result` and `enum`.** A result always models success versus
+> recoverable failure and carries payloads. An enum, taught later, models any
+> fixed set of named choices such as colors or order states.
 
 ### Exercise
 
-> Write `function ParseResult checkPassword(string password)` that returns
-> `BAD_INPUT` if the password length is less than 8 (`len(password) < 8`),
-> otherwise `OK`. Print a message for each outcome.
+> Write `function result<int, string> half(int number)`. Return
+> `err("must be even")` when `number % 2 != 0`; otherwise return
+> `ok(number / 2)`. Handle calls with `8` and `7`. Expected output: `4`, then
+> `must be even`.
 
 ---
 

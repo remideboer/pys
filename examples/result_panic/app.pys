@@ -1,0 +1,19 @@
+# Panic is an outcome, not PYS syntax. This file is the entrypoint selected by
+# pys.toml, so its top-level propagation may hand an error to the runtime.
+#
+# Expected stdout: no output
+# Expected stderr:
+# PYS panic: missing count
+#   at <project>/app.pys:14 in start
+#   at <project>/app.pys:18 in <entrypoint>
+# Expected exit status: 1
+
+import loadCount from loader.pys
+
+function result<int, string> start() {
+    int count = loadCount() propagate
+    return ok(count)
+}
+
+int count = start() propagate
+print(count) # Not reached.

@@ -116,6 +116,36 @@ Rules:
 3. `const` — fixed at compile time; no reassignment
 4. `fix` — evaluated once, then immutable
 
+#### One declaration, one name
+
+Every PYS declaration binds exactly one name; an initializer, when present,
+belongs only to that name. Write separate statements when two variables start
+with the same value:
+
+```pys
+int x = 10
+int y = 10
+```
+
+PYS rejects both `int x, y = 10` and `int x = 10, y = 10`. Neither form adds
+expressive power, and the first has conflicting cross-language expectations:
+
+| Language | Local declaration or assignment | Result |
+| --- | --- | --- |
+| C / C++ | `int x, y = 10;` | Only `y` is initialized; an automatic local `x` has an indeterminate value and must not be read |
+| Java / C# | `int x, y = 10;` | Only `y` is initialized; reading local `x` before assignment is a compile-time error |
+| Go | `var x, y int = 10, 10` | Initializer values correspond to names by position |
+| Python | `x, y = 10, 10` | Assignment unpacks two values by position; this is not a typed declaration |
+
+C/C++ objects with static storage and Java/C# fields have separate default-
+initialization rules; the table describes local variables. PYS avoids making
+students infer whether one initializer belongs to one name or several. This
+single-name rule also applies to `var`, `fix`, `const`, `shared`, `atomic`, and
+fields. Parameter lists remain comma-separated because each parameter has its
+own explicit type-and-name slot and no declaration-time initializer.
+
+See [ADR-020](adr/ADR-020-one-name-per-declaration.md).
+
 Top-level `const` / `fix` may take a visibility prefix (`global`, `package`, `module`):
 
 ```pys
@@ -404,6 +434,66 @@ Rules:
 
 Inside a **class**, do not write `function` / `func` — methods use member access
 modifiers instead (`public name(…) { … }` or `public void name(…) { … }`).
+
+### Recoverable errors: `result<T, E>`
+
+`result<T, E>` makes recoverable failure visible in a function signature:
+
+- `ok(value)` carries a success value of type `T`
+- `err(error)` carries an error value of type `E`
+- `ok()` is valid only for `result<void, E>`; `err` always needs a payload
+- `ok` and `err` are reserved constructors, not user-declarable names
+
+Constructors are contextually typed by a declared binding, parameter, lambda,
+or return type:
+
+```pys
+function result<int, string> parseCount(bool valid) {
+    if (valid == false) {
+        return err("count is invalid")
+    }
+    return ok(3)
+}
+
+result<int, string> outcome = parseCount(true)
+switch (outcome) {
+    case ok(value):
+        print(value)
+    case err(error):
+        print(error)
+}
+```
+
+Output:
+
+```text
+3
+```
+
+A result switch uses `case ok(name)` and `case err(name)`. Each payload name
+exists only inside its arm and has the corresponding `T` or `E` type. The
+switch must contain both patterns or a `default`; duplicate patterns and
+literal labels on a result are errors. Expression arms must also yield one
+common type.
+
+Postfix `propagate` unwraps success and returns failure immediately:
+
+```pys
+function result<int, string> doubled(bool valid) {
+    int count = parseCount(valid) propagate
+    return ok(count * 2)
+}
+```
+
+The operand must be a result. The enclosing function (or result-typed lambda)
+must return a result with **exactly the same error type `E`**. `propagate` is
+illegal across `task` boundaries. A `result<T,E>` never implicitly converts to
+`T`; handle it with `switch` or `propagate`.
+
+At a resolved entrypoint, top-level `propagate` may pass an `err` to the
+runtime. This outcome is a **panic**: remaining statements are skipped, stderr
+shows the error and PYS propagation sites, and the process exits non-zero.
+`panic` is not source syntax.
 
 ---
 
@@ -770,13 +860,19 @@ Rules:
 |---------|-------------------|
 | (default / omit) | Nobody outside this file (module-private) |
 | `package` | Other `.pys` files in the **same package**: same folder by default, or the same path relative to a declared `pys.toml` `[source_roots]` entry (e.g. `src/billing` and `tests/billing`) — see [ADR-017](adr/ADR-017-source-roots-same-package-tests.md) and `examples/source_roots/` |
+| `global` | Any importer |
+| `module` | Explicit module scope (same file family) |
 
 ### Project source roots (`pys.toml`)
 
 Optional project-manifest (not a language keyword). Declares roots whose
-relative paths define package identity:
+relative paths define package identity, and may declare the authoritative
+entrypoint:
 
 ```toml
+[project]
+main = "src/app.pys"
+
 [source_roots]
 main = "src"
 test = "tests"
@@ -784,8 +880,16 @@ test = "tests"
 
 Without `[source_roots]`, same-folder remains the package rule. Mismatched
 packages emit `pys.package-mismatch` with a move-file quick fix in the IDE.
-| `global` | Any importer |
-| `module` | Explicit module scope (same file family) |
+
+When `[project].main` exists, Run and Debug reject a different selected file.
+Without it, a directly invoked `.pys` file is the entrypoint. A bare directory
+run requires `[project].main`. The configured path must resolve to an existing
+`.pys` file inside the manifest directory; lexical and realpath escapes are
+rejected. The IDE action **Set as entrypoint** writes this same field.
+
+Only the resolved entrypoint receives top-level `propagate`/panic semantics.
+Imported modules do not: top-level `propagate` in an imported file is a compile
+error and must be replaced by explicit result handling.
 
 Applies to functions, classes, structs, `data`, `entity`, enums, interfaces, and top-level `const` / `fix`.
 (`lambda<…>` bindings use the same top-level visibility rules as other typed decls.)

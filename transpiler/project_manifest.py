@@ -67,6 +67,179 @@ def find_manifest(start: Path) -> Path | None:
     return None
 
 
+def _manifest_error(
+    message: str,
+    *,
+    manifest: Path,
+    code: str,
+    suggested_fix: str | None = None,
+) -> None:
+    from .transpiler import TranspileError
+
+    raise TranspileError(
+        message,
+        source_file=manifest,
+        code=code,
+        suggested_fix=suggested_fix,
+        tips=["Set `[project].main` to a contained `.pys` file."],
+    )
+
+
+def _parse_project_main_text(text: str, manifest: Path) -> str | None:
+    """Return the optional `[project].main` string."""
+    if sys.version_info >= (3, 11):
+        import tomllib
+
+        try:
+            data = tomllib.loads(text)
+        except tomllib.TOMLDecodeError as exc:
+            _manifest_error(
+                f"Invalid {MANIFEST_NAME}: {exc}",
+                manifest=manifest,
+                code="pys.manifest-invalid",
+            )
+        project = data.get("project")
+        if project is None:
+            return None
+        if not isinstance(project, dict):
+            _manifest_error(
+                "`[project]` must be a TOML table.",
+                manifest=manifest,
+                code="pys.manifest-project",
+            )
+        raw = project.get("main")
+        if raw is None:
+            return None
+        if not isinstance(raw, str) or not raw.strip():
+            _manifest_error(
+                "`[project].main` must be a non-empty path string.",
+                manifest=manifest,
+                code="pys.entrypoint-main",
+            )
+        return raw.strip()
+
+    in_project = False
+    project_main: str | None = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_project = stripped.lower() == "[project]"
+            continue
+        if in_project:
+            match = _ROOT_ASSIGN.match(line)
+            if match and match.group(1) == "main":
+                if project_main is not None:
+                    _manifest_error(
+                        "`[project].main` may be declared only once.",
+                        manifest=manifest,
+                        code="pys.manifest-invalid",
+                    )
+                project_main = match.group(2).strip()
+            elif re.match(r"^\s*main\s*=", line):
+                _manifest_error(
+                    "`[project].main` must be a non-empty path string.",
+                    manifest=manifest,
+                    code="pys.entrypoint-main",
+                )
+    return project_main
+
+
+@lru_cache(maxsize=64)
+def _load_project_main_cached(manifest_path: str, text: str) -> Path | None:
+    manifest = Path(manifest_path)
+    raw = _parse_project_main_text(text, manifest)
+    if raw is None:
+        return None
+    project_root = manifest.parent.resolve()
+    candidate = (project_root / raw.replace("\\", "/")).resolve()
+    try:
+        candidate.relative_to(project_root)
+    except ValueError:
+        _manifest_error(
+            f"`[project].main` resolves outside the project: {raw}",
+            manifest=manifest,
+            code="pys.entrypoint-outside",
+        )
+    if candidate.suffix.lower() != ".pys":
+        _manifest_error(
+            f"`[project].main` must name a `.pys` file: {raw}",
+            manifest=manifest,
+            code="pys.entrypoint-suffix",
+        )
+    if not candidate.is_file():
+        _manifest_error(
+            f"Configured entrypoint does not exist: {raw}",
+            manifest=manifest,
+            code="pys.entrypoint-missing",
+        )
+    return candidate
+
+
+def load_project_main(manifest_path: Path) -> Path | None:
+    """Load and safely resolve `[project].main` from one manifest."""
+    manifest = manifest_path.resolve()
+    if not manifest.is_file():
+        _manifest_error(
+            f"Project manifest not found: {manifest}",
+            manifest=manifest,
+            code="pys.manifest-missing",
+        )
+    text = manifest.read_text(encoding="utf-8")
+    return _load_project_main_cached(str(manifest), text)
+
+
+def resolve_entrypoint(selected: Path) -> Path:
+    """Resolve a selected file/directory against authoritative manifest main."""
+    choice = selected.expanduser().resolve()
+    if not choice.exists():
+        from .transpiler import TranspileError
+
+        raise TranspileError(
+            f"Selected path does not exist: {choice}",
+            source_file=choice,
+            code="pys.entrypoint-missing",
+        )
+    manifest = find_manifest(choice)
+    configured = load_project_main(manifest) if manifest is not None else None
+    if configured is not None:
+        if choice.is_file() and choice != configured:
+            from .transpiler import TranspileError
+
+            raise TranspileError(
+                f"Selected file '{choice.name}' conflicts with the configured "
+                f"entrypoint '{configured.name}'.",
+                source_file=choice,
+                code="pys.entrypoint-conflict",
+                suggested_fix=str(configured),
+                tips=[
+                    "Run the configured entrypoint, or use “Set as entrypoint” "
+                    "to update pys.toml."
+                ],
+            )
+        return configured
+    if choice.is_file():
+        if choice.suffix.lower() != ".pys":
+            from .transpiler import TranspileError
+
+            raise TranspileError(
+                f"Entrypoint must be a `.pys` file: {choice}",
+                source_file=choice,
+                code="pys.entrypoint-suffix",
+            )
+        return choice
+    from .transpiler import TranspileError
+
+    raise TranspileError(
+        "Running a directory requires `[project].main` in pys.toml.",
+        source_file=manifest or choice / MANIFEST_NAME,
+        code="pys.entrypoint-main",
+        suggested_fix='[project]\nmain = "main.pys"',
+        tips=["Choose the project entry file explicitly."],
+    )
+
+
 def _parse_source_roots_text(text: str, project_root: Path) -> SourceRoots | None:
     """Parse ``[source_roots]`` from pys.toml (stdlib tomllib on 3.11+, else line scan)."""
     section: dict[str, str] = {}

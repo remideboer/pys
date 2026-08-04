@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.68",
+  "version": "0.0.69",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -46,7 +46,8 @@
         "pys.mainFile": {
           "type": "string",
           "default": "",
-          "description": "Workspace-relative path to the main .pys entry file (for example examples/main.pys). Used by Run/Debug Main."
+          "description": "Deprecated fallback entry file used only when no pys.toml exists.",
+          "deprecationMessage": "Use [project].main in pys.toml or PYS: Set as entrypoint."
         },
         "pys.libraryTyping.usageTips": {
           "type": "boolean",
@@ -194,8 +195,8 @@
         "icon": "$(package)"
       },
       {
-        "command": "pys.setAsMainFile",
-        "title": "Set as Main File",
+        "command": "pys.setAsEntrypoint",
+        "title": "Set as entrypoint",
         "category": "PYS"
       },
       {
@@ -389,7 +390,7 @@
           "group": "navigation@4"
         },
         {
-          "command": "pys.setAsMainFile",
+          "command": "pys.setAsEntrypoint",
           "when": "resourceExtname == .pys",
           "group": "navigation@5"
         }
@@ -441,7 +442,7 @@
           "group": "navigation@1"
         },
         {
-          "command": "pys.setAsMainFile",
+          "command": "pys.setAsEntrypoint",
           "when": "resourceExtname == .pys",
           "group": "navigation@2"
         }
@@ -508,6 +509,7 @@
     "onCommand:pys.debugTranspiledFile",
     "onCommand:pys.runMain",
     "onCommand:pys.debugMain",
+    "onCommand:pys.setAsEntrypoint",
     "onCommand:pys.setAsMainFile",
     "onCommand:pys.createProject",
     "onCommand:pys.lockDeps",

@@ -326,8 +326,8 @@ package class PokemonQtApp inherits QMainWindow {
             QMessageBox.information(this, "Decks", "Enter a deck name.")
             return
         }
-        bool ok = this.appStore.getDecks().createDeck(name)
-        if (ok == false) {
+        bool succeeded = this.appStore.getDecks().createDeck(name)
+        if (succeeded == false) {
             QMessageBox.critical(this, "Decks", "A deck with that name already exists.")
             return
         }
@@ -380,8 +380,8 @@ package class PokemonQtApp inherits QMainWindow {
             current = d.quantityOf(cardId)
         }
         int nextQty = current + 1
-        bool ok = this.appStore.getDecks().setDeckCard(name, cardId, nextQty, this.appStore.getCollection())
-        if (ok == false) {
+        bool succeeded = this.appStore.getDecks().setDeckCard(name, cardId, nextQty, this.appStore.getCollection())
+        if (succeeded == false) {
             QMessageBox.critical(this, "Decks", "Not enough owned copies for this deck.")
             return
         }

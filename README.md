@@ -203,9 +203,16 @@ before you `import` them from `.pys`.
 Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
 editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
 **PYS** icon offers **Create PYS Project** (`src` / `tests` + `pys.toml` + template
-`pys.deps`).
+`pys.deps`), including a runnable manifest-selected `src/main.pys`.
 
-- Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
+- Put the authoritative entrypoint in `pys.toml`, for example
+  `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.
+  `pys.mainFile` remains only as a deprecated fallback for folders without a
+  manifest.
+- Recoverable errors use `result<T,E>`, `ok` / `err`, exhaustive result
+  switches, and postfix `propagate`. An unhandled entrypoint error becomes a
+  non-zero panic; see [`examples/results.pys`](examples/results.pys) and
+  [`examples/result_panic/`](examples/result_panic/).
 - Debug prepares generated Python + line maps, launches debugpy on the program,
   and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
   Normal Step Into stays in PYS/user code. **PYS Advanced: Debug Transpiled

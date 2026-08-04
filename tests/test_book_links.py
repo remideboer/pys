@@ -45,3 +45,35 @@ def test_repo_directory_link_rewrites_to_github_tree() -> None:
         "href="
         '"https://github.com/remideboer/pys/tree/main/examples/source_roots"'
     )
+
+
+def test_result_teaching_snippets_stay_compilable() -> None:
+    from transpiler.transpiler import transpile
+
+    for name in ("basics_outcomes.md", "chapter_8_4.md"):
+        text = (BOOK / name).read_text(encoding="utf-8")
+        blocks = re.findall(r"```pys\n(.*?)```", text, flags=re.DOTALL)
+        assert blocks, f"No PYS teaching blocks found in {name}"
+        for source in blocks:
+            transpile(
+                source,
+                source_path=BOOK / name,
+                is_entrypoint="int count = readCount() propagate" in source,
+            )
+
+
+def test_book_highlighter_recognizes_result_language_surface() -> None:
+    sys.path.insert(0, str(BOOK))
+    try:
+        from pys_highlight import highlight_pys
+
+        highlighted = highlight_pys(
+            "result<int, string> outcome = ok(1)\n"
+            "int value = outcome propagate\n"
+        )
+    finally:
+        sys.path.remove(str(BOOK))
+
+    assert '<span class="tok-type">result</span>' in highlighted
+    assert '<span class="tok-builtin">ok</span>' in highlighted
+    assert '<span class="tok-kw">propagate</span>' in highlighted

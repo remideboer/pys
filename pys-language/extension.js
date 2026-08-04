@@ -21,6 +21,13 @@ const {
 } = require('./debug-map');
 const { createPysProjectScaffold } = require('./create-project');
 const {
+  findProjectManifest,
+  normalizedRelativeMain,
+  readProjectMain,
+  resolveManifestMain,
+  setProjectMain,
+} = require('./project-main');
+const {
   PYS_DEBUG_SESSION_NAME,
   debugModeOptions,
   isPysDebugSession,
@@ -36,12 +43,13 @@ const PYS_KEYWORDS = [
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate',
 ];
 
 const PYS_TYPES = [
   'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
+  'result',
 ];
 
 const PYS_MD_KEYWORDS = new Set([
@@ -49,12 +57,12 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate',
 ]);
 const PYS_MD_TYPES = new Set([
   'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
-  'list', 'dict', 'tuple', 'set',
+  'list', 'dict', 'tuple', 'set', 'result',
 ]);
 const PYS_MD_CONSTANTS = new Set(['true', 'false', 'null']);
 
@@ -119,20 +127,35 @@ function resolveFilePath(file) {
 }
 
 function getConfiguredMainRelative() {
+  const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+  if (workspace) {
+    const activePath = vscode.window.activeTextEditor?.document?.uri?.fsPath || workspace.uri.fsPath;
+    const manifest = findProjectManifest(activePath, workspace.uri.fsPath)
+      || findProjectManifest(workspace.uri.fsPath, workspace.uri.fsPath);
+    if (manifest) {
+      return readProjectMain(fs.readFileSync(manifest, 'utf8'));
+    }
+  }
   const value = vscode.workspace.getConfiguration('pys').get('mainFile', '');
   return typeof value === 'string' ? value.trim() : '';
 }
 
 function resolveMainFilePath() {
-  const relative = getConfiguredMainRelative();
-  if (!relative) {
-    return null;
-  }
   const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
   if (!workspace) {
     return null;
   }
   const workspacePath = workspace.uri.fsPath;
+  const activePath = vscode.window.activeTextEditor?.document?.uri?.fsPath || workspacePath;
+  const manifest = findProjectManifest(activePath, workspacePath)
+    || findProjectManifest(workspacePath, workspacePath);
+  if (manifest) {
+    return resolveManifestMain(manifest);
+  }
+  const relative = getConfiguredMainRelative();
+  if (!relative) {
+    return null;
+  }
   const candidate = path.isAbsolute(relative)
     ? relative
     : path.join(workspacePath, relative);
@@ -495,6 +518,10 @@ function activate(context) {
         await: 'Wait until a value is ready (named task handle / future). Only inside a `task` body.',
         shared: 'Visibility of cross-task mutation: `shared int counter = 0`. Does **not** make `+=` race-free — use `atomic` for indivisible RMW.',
         atomic: 'Indivisible RMW cell: `atomic int counter = 0`.\nImplies shared for capture. Ops: `+=`/`-=`/`++`/`--`, `get()`, `compareAndSet(expected, new)`. Rejects `*=`/`/=`/`%=`.',
+        result: 'Recoverable outcome: `result<Value, Error>`. Construct with `ok(value)` or `err(error)`; handle with exhaustive `switch` or postfix `propagate`.',
+        ok: 'Success constructor for an expected `result<T, E>`: `ok(value)`. Use `ok()` only for `result<void, E>`.',
+        err: 'Failure constructor for an expected `result<T, E>`: `err(error)`. An error payload is always required.',
+        propagate: 'Postfix result handling: `load() propagate`. Success yields the value; failure immediately returns the same error. At the entrypoint, an unhandled error becomes a panic.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type. Literals: `10`, `0b1010`, `0xFF` (optional `_` separators).',
         float: 'Floating-point type',
@@ -771,6 +798,24 @@ function activate(context) {
       const diagnostics = context.diagnostics || [];
       const actions = [];
 
+      const entrypointConflict = diagnostics.find(
+        (diagnostic) => diagnostic.code === 'pys.entrypoint-conflict',
+      );
+      if (entrypointConflict) {
+        const fix = new vscode.CodeAction(
+          'Set this file as entrypoint',
+          vscode.CodeActionKind.QuickFix,
+        );
+        fix.diagnostics = [entrypointConflict];
+        fix.isPreferred = true;
+        fix.command = {
+          command: 'pys.setAsEntrypoint',
+          title: 'Set as entrypoint',
+          arguments: [document.uri],
+        };
+        actions.push(fix);
+      }
+
       const packageMismatch = diagnostics.find((diagnostic) => diagnostic.code === 'pys.package-mismatch');
       if (packageMismatch) {
         const key = `${document.uri.toString()}:${packageMismatch.range.start.line + 1}:pys.package-mismatch`;
@@ -903,6 +948,7 @@ function activate(context) {
     }
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
+    refreshMainFileUi();
     if (editor && editor.document.languageId === 'pys') {
       refreshRunnableContext(editor.document);
       scheduleValidate(editor.document);
@@ -930,6 +976,13 @@ function activate(context) {
       refreshMainFileUi();
     }
   }));
+  const manifestWatcher = vscode.workspace.createFileSystemWatcher('**/pys.toml');
+  context.subscriptions.push(
+    manifestWatcher,
+    manifestWatcher.onDidCreate(refreshMainFileUi),
+    manifestWatcher.onDidChange(refreshMainFileUi),
+    manifestWatcher.onDidDelete(refreshMainFileUi),
+  );
 
   for (const document of vscode.workspace.textDocuments) {
     if (document.languageId === 'pys') {
@@ -1064,9 +1117,30 @@ function activate(context) {
     return resolveWorkspaceFile(workspace.uri.fsPath, filePath);
   }
 
+  async function reconcileConfiguredEntrypoint(filePath, workspacePath, verb) {
+    const manifest = findProjectManifest(filePath, workspacePath);
+    const configured = resolveManifestMain(manifest);
+    if (!configured || path.resolve(configured) === path.resolve(filePath)) {
+      return filePath;
+    }
+    const choice = await vscode.window.showErrorMessage(
+      `${path.basename(filePath)} is not the configured entrypoint (${path.basename(configured)}).`,
+      `${verb} configured entrypoint`,
+      'Set as entrypoint',
+    );
+    if (choice === 'Set as entrypoint') {
+      await vscode.commands.executeCommand('pys.setAsEntrypoint', vscode.Uri.file(filePath));
+      return null;
+    }
+    if (choice === `${verb} configured entrypoint`) {
+      return configured;
+    }
+    return null;
+  }
+
   async function runPysFile(filePath) {
     if (!filePath) {
-      vscode.window.showErrorMessage('No PYS file to run. Set pys.mainFile or open a .pys file.');
+      vscode.window.showErrorMessage('No PYS file to run. Set an entrypoint or open a .pys file.');
       return;
     }
     if (!vscode.workspace.isTrusted) {
@@ -1081,6 +1155,14 @@ function activate(context) {
     filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
     if (!filePath) {
       vscode.window.showErrorMessage('PYS file must resolve inside the workspace.');
+      return;
+    }
+    filePath = await reconcileConfiguredEntrypoint(
+      filePath,
+      workspace.uri.fsPath,
+      'Run',
+    );
+    if (!filePath) {
       return;
     }
     const bundled = ensureBundledTranspiler();
@@ -1118,7 +1200,7 @@ function activate(context) {
   async function debugPysFile(filePath, mode = 'pys') {
     const debugMode = debugModeOptions(mode);
     if (!filePath) {
-      vscode.window.showErrorMessage('No PYS file to debug. Set pys.mainFile or open a .pys file.');
+      vscode.window.showErrorMessage('No PYS file to debug. Set an entrypoint or open a .pys file.');
       return;
     }
     if (!vscode.workspace.isTrusted) {
@@ -1133,6 +1215,14 @@ function activate(context) {
     filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
     if (!filePath) {
       vscode.window.showErrorMessage('PYS file must resolve inside the workspace.');
+      return;
+    }
+    filePath = await reconcileConfiguredEntrypoint(
+      filePath,
+      workspace.uri.fsPath,
+      'Debug',
+    );
+    if (!filePath) {
       return;
     }
     const bundled = ensureBundledTranspiler();
@@ -1625,7 +1715,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('pys.runMain', async () => {
     const mainPath = resolveMainFilePath();
     if (!mainPath) {
-      vscode.window.showErrorMessage('No main file set. Use "PYS: Set as Main File" or set pys.mainFile.');
+      vscode.window.showErrorMessage('No entrypoint set. Use “PYS: Set as entrypoint” to update pys.toml.');
       return;
     }
     await runPysFile(mainPath);
@@ -1634,45 +1724,63 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugMain', async () => {
     const mainPath = resolveMainFilePath();
     if (!mainPath) {
-      vscode.window.showErrorMessage('No main file set. Use "PYS: Set as Main File" or set pys.mainFile.');
+      vscode.window.showErrorMessage('No entrypoint set. Use “PYS: Set as entrypoint” to update pys.toml.');
       return;
     }
     await debugPysFile(mainPath);
   }));
 
-  context.subscriptions.push(vscode.commands.registerCommand('pys.setAsMainFile', async (file) => {
+  async function setAsEntrypoint(file) {
     let filePath = resolveFilePath(file);
     if (!filePath && vscode.window.activeTextEditor) {
       filePath = vscode.window.activeTextEditor.document.uri.fsPath;
     }
     if (!filePath || !filePath.toLowerCase().endsWith('.pys')) {
-      vscode.window.showErrorMessage('Select a .pys file to set as main.');
+      vscode.window.showErrorMessage('Select a .pys file to set as entrypoint.');
+      return;
+    }
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage('Trust this workspace before updating pys.toml.');
       return;
     }
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
-      vscode.window.showErrorMessage('Open a workspace folder to set a main file.');
+      vscode.window.showErrorMessage('Open a workspace folder to set an entrypoint.');
       return;
     }
     filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
     if (!filePath) {
-      vscode.window.showErrorMessage('Main file must resolve inside the workspace folder.');
+      vscode.window.showErrorMessage('Entrypoint must resolve inside the workspace folder.');
       return;
     }
-    let relative = path.relative(workspace.uri.fsPath, filePath);
-    if (!relative || relative.startsWith('..')) {
-      vscode.window.showErrorMessage('Main file must be inside the workspace folder.');
+    const manifestPath = findProjectManifest(filePath, workspace.uri.fsPath)
+      || path.join(workspace.uri.fsPath, 'pys.toml');
+    const projectRoot = path.dirname(manifestPath);
+    let relative;
+    try {
+      relative = normalizedRelativeMain(projectRoot, filePath);
+    } catch (error) {
+      vscode.window.showErrorMessage(error.message || String(error));
       return;
     }
-    relative = relative.replace(/\\/g, '/');
-    await vscode.workspace.getConfiguration('pys').update(
-      'mainFile',
-      relative,
-      vscode.ConfigurationTarget.Workspace,
-    );
+    try {
+      const current = fs.existsSync(manifestPath)
+        ? fs.readFileSync(manifestPath, 'utf8')
+        : '';
+      fs.writeFileSync(manifestPath, setProjectMain(current, relative), 'utf8');
+    } catch (error) {
+      vscode.window.showErrorMessage(`Could not update pys.toml: ${error.message || error}`);
+      return;
+    }
     refreshMainFileUi();
-    vscode.window.showInformationMessage(`PYS main file set to ${relative}`);
-  }));
+    vscode.window.showInformationMessage(`PYS entrypoint set to ${relative}`);
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pys.setAsEntrypoint', setAsEntrypoint),
+    // Compatibility alias for older keybindings and command URIs.
+    vscode.commands.registerCommand('pys.setAsMainFile', setAsEntrypoint),
+  );
 
   // Markdown preview highlighter for ```pys fences (editor uses TextMate injection).
   return {

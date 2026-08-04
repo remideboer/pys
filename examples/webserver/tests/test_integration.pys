@@ -28,8 +28,8 @@ var health = router.handle(HttpRequest("GET", "/health", "", "c1", true))
 assertTrue("health 200", health.status == 200)
 
 ctx.mockA.setFailNext(0)
-var ok = router.handle(HttpRequest("GET", "/proxy/data", "", "c2", true))
-assertTrue("proxy ok", ok.status == 200 && ok.body == "data-ok")
+var response = router.handle(HttpRequest("GET", "/proxy/data", "", "c2", true))
+assertTrue("proxy ok", response.status == 200 && response.body == "data-ok")
 
 # Hold the only pool slot, then force queue-full on next request.
 assertTrue("hold slot", ctx.pool.acquire())

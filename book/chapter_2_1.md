@@ -36,12 +36,12 @@ the matching type or the transpile fails:
 int x = 7
 string greeting = "hi"
 float ratio = 0.5
-bool ok = true
+bool active = true
 char grade = 'B'
 print("#i{x} is an int")
 print("#s{greeting} is a string")
 print("#f{ratio} is a float")
-print("#b{ok} is a bool")
+print("#b{active} is a bool")
 print("#c{grade} is a char")
 ```
 

@@ -147,6 +147,27 @@ like limits and configuration numbers.</p>
 <p>Output:</p>
 <pre><code class="language-text">mode=demo attempt=1 max=3
 </code></pre>
+<h2>One declaration per name</h2>
+<p>When two variables need the same starting value, write two complete
+declarations:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+<span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string">, </span><span class="tok-interp">#i{y}</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">10, 10
+</code></pre>
+<p>These compact forms are intentionally <strong>not</strong> PYS:</p>
+<pre><code class="language-text">int x, y = 10
+int x = 10, y = 10
+</code></pre>
+<p><em>Both lines are compile errors in PYS.</em></p>
+<p>Why reject even the second, unambiguous form? It saves one line but adds no
+new capability, while every PYS declaration currently introduces exactly one
+name. More importantly, comma declarations teach conflicting habits: in a
+Java or C-style local declaration, <code>int x, y = 10;</code> initializes only <code>y</code>;
+Python&rsquo;s different <code>x, y = 10, 10</code> assignment gives both names a value by
+position. Separate PYS declarations avoid making punctuation carry a
+language-dependent guess.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Declare <code>const int TEAM_SIZE = 4</code> and a <code>fix string coach</code> with your

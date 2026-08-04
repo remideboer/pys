@@ -39,7 +39,10 @@ from .ast_nodes import (
     Member,
     Module,
     PrintStmt,
+    PropagateExpr,
     RepeatStmt,
+    ResultCtor,
+    ResultPattern,
     ReturnStmt,
     SharedDecl,
     StructDef,
@@ -88,6 +91,7 @@ def analyze(
     *,
     source_path: Path | None = None,
     allow_runtime_introspection: bool = False,
+    is_entrypoint: bool = False,
 ) -> Module:
     """Validate module; raise TranspileError on known AST-checkable faults.
 
@@ -178,6 +182,30 @@ def analyze(
         class_names=class_names,
         class_implements=class_implements,
         interfaces=interfaces,
+    )
+    function_returns = {
+        stmt.name: stmt.return_type
+        for stmt in module.body
+        if isinstance(stmt, FunctionDef)
+    }
+    function_params = {
+        stmt.name: list(stmt.param_types)
+        for stmt in module.body
+        if isinstance(stmt, FunctionDef)
+    }
+    if import_resolver is not None:
+        function_returns.update(import_resolver.function_returns)
+        function_params.update(import_resolver.function_params)
+    _check_results(
+        module.body,
+        types=types,
+        function_returns=function_returns,
+        function_params=function_params,
+        class_names=class_names,
+        class_parents=class_parents,
+        class_implements=class_implements,
+        interfaces=interfaces,
+        is_entrypoint=is_entrypoint,
     )
     _check_width_ranges(module.body, types=types)
     _check_int_ops(module.body, types=types, class_names=class_names)
@@ -576,6 +604,7 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         "tuple",
         "set",
         "lambda",
+        "result",
         "var",
     }
     if not base or base in primitives:
@@ -718,6 +747,8 @@ def _is_assignable_type(
         return True
     a_base = _base_type_name(actual)
     d_base = _base_type_name(declared)
+    if "result" in {a_base, d_base}:
+        return False
     if a_base == d_base:
         return True
     if a_base in _INT_LIKE and d_base in _INT_LIKE:
@@ -988,6 +1019,634 @@ def _extract_type_args(type_name: str) -> list[str]:
     if lt < 0 or not t.endswith(">"):
         return []
     return _split_angled_commas(t[lt + 1 : -1])
+
+
+def _result_type_parts(type_name: str | None) -> tuple[str, str] | None:
+    if not type_name or _base_type_name(type_name) != "result":
+        return None
+    args = _extract_type_args(type_name)
+    if len(args) != 2:
+        return None
+    return args[0], args[1]
+
+
+def _check_results(
+    body: list[Any],
+    *,
+    types: dict[str, str],
+    function_returns: dict[str, str],
+    function_params: dict[str, list[str]],
+    class_names: set[str],
+    class_parents: dict[str, str | None],
+    class_implements: dict[str, list[str]],
+    interfaces: set[str],
+    is_entrypoint: bool,
+) -> None:
+    """Validate contextual result construction and postfix propagation."""
+
+    reserved = {"ok", "err"}
+    entry_error_type: str | None = None
+    method_returns: dict[tuple[str, str], str] = {}
+    method_params: dict[tuple[str, str], list[str]] = {}
+    for stmt in body:
+        if not isinstance(stmt, ClassDef):
+            continue
+        for method in stmt.methods:
+            if method.return_type:
+                method_returns[(stmt.name, method.name)] = method.return_type
+            method_params[(stmt.name, method.name)] = list(method.param_types)
+
+    def method_owner(type_name: str | None, method_name: str) -> str | None:
+        owner = _base_type_name(type_name or "")
+        seen: set[str] = set()
+        while owner and owner not in seen:
+            seen.add(owner)
+            if (owner, method_name) in method_params:
+                return owner
+            owner = class_parents.get(owner) or ""
+        return None
+
+    def fail(
+        message: str,
+        expr: Expr | Any,
+        *,
+        code: str,
+        tips: list[str] | None = None,
+        suggested_fix: str | None = None,
+    ) -> None:
+        span = getattr(expr, "span", None)
+        _transpile_error(
+            message,
+            span.line if span else 1,
+            span.column if span else 1,
+            "",
+            code=code,
+            tips=tips,
+            suggested_fix=suggested_fix,
+        )
+
+    def check_name(name: str, node: Any) -> None:
+        if name not in reserved:
+            return
+        fail(
+            f"'{name}' is a reserved result constructor and cannot be redeclared.",
+            node,
+            code="pys.result-reserved",
+            tips=["Choose a domain name that does not shadow PYS result syntax."],
+        )
+
+    def expr_type(
+        expr: Expr | None,
+        env: dict[str, str],
+        *,
+        return_type: str | None,
+        scope_kind: str,
+        expected_result: str | None = None,
+    ) -> str | None:
+        if expr is None:
+            return None
+        if isinstance(expr, Identifier):
+            return env.get(expr.name)
+        if isinstance(expr, Member):
+            receiver_type = expr_type(
+                expr.object,
+                env,
+                return_type=return_type,
+                scope_kind=scope_kind,
+            )
+            owner = method_owner(receiver_type, expr.name)
+            return method_returns.get((owner, expr.name)) if owner else None
+        if isinstance(expr, ResultCtor):
+            expected_parts = _result_type_parts(expected_result)
+            if expected_parts is None:
+                fail(
+                    f"`{expr.kind}(...)` needs an expected `result<T, E>` type.",
+                    expr,
+                    code="pys.result-context",
+                    tips=[
+                        "Declare a `result<T, E>` binding or return it from a "
+                        "`result<T, E>` function."
+                    ],
+                )
+            success_type, error_type = expected_parts
+            if expr.kind == "ok":
+                if expr.value is None:
+                    if success_type != "void":
+                        fail(
+                            f"`ok()` is only valid for `result<void, E>`, not "
+                            f"`{expected_result}`.",
+                            expr,
+                            code="pys.result-ok-value",
+                            tips=[f"Pass a value of type `{success_type}` to `ok(...)`."],
+                        )
+                else:
+                    actual = expr_type(
+                        expr.value,
+                        env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                    )
+                    if success_type == "void" or (
+                        actual
+                        and not _is_assignable_type(
+                            actual,
+                            success_type,
+                            class_parents,
+                            class_implements=class_implements,
+                            interfaces=interfaces,
+                        )
+                    ):
+                        fail(
+                            f"Result success payload has type {actual or 'unknown'}, "
+                            f"expected {success_type}.",
+                            expr,
+                            code="pys.result-success-type",
+                        )
+            else:
+                actual = expr_type(
+                    expr.value,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+                if actual and not _is_assignable_type(
+                    actual,
+                    error_type,
+                    class_parents,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
+                ):
+                    fail(
+                        f"Result error payload has type {actual}, expected {error_type}.",
+                        expr,
+                        code="pys.result-error-type",
+                    )
+            return expected_result
+        if isinstance(expr, PropagateExpr):
+            nonlocal entry_error_type
+            operand_type = expr_type(
+                expr.operand,
+                env,
+                return_type=return_type,
+                scope_kind=scope_kind,
+            )
+            operand_parts = _result_type_parts(operand_type)
+            if operand_parts is None:
+                fail(
+                    f"`propagate` only applies to result values, not "
+                    f"{operand_type or 'an unknown type'}.",
+                    expr,
+                    code="pys.propagate-type",
+                    tips=["Remove `propagate` or make the expression return `result<T, E>`."],
+                )
+            if scope_kind == "task":
+                fail(
+                    "`propagate` cannot cross a task boundary.",
+                    expr,
+                    code="pys.propagate-task",
+                    tips=["Handle the result inside the task body."],
+                )
+            success_type, error_type = operand_parts
+            if scope_kind == "entrypoint":
+                if entry_error_type is None:
+                    entry_error_type = error_type
+                elif entry_error_type != error_type:
+                    fail(
+                        f"Entrypoint propagation mixes error type {error_type} "
+                        f"with {entry_error_type}.",
+                        expr,
+                        code="pys.propagate-error-type",
+                        tips=["Use exactly one error type at the entrypoint boundary."],
+                    )
+                return success_type
+            enclosing_parts = _result_type_parts(return_type)
+            if enclosing_parts is None:
+                fail(
+                    "`propagate` requires an enclosing function that returns "
+                    "`result<T, E>`.",
+                    expr,
+                    code="pys.propagate-return",
+                    tips=["Change the function return type or handle the result with `switch`."],
+                )
+            enclosing_error = enclosing_parts[1]
+            if error_type != enclosing_error:
+                fail(
+                    f"Cannot propagate error type {error_type} from a function "
+                    f"returning error type {enclosing_error}.",
+                    expr,
+                    code="pys.propagate-error-type",
+                    tips=["Use exactly the same error type on both result types."],
+                )
+            return success_type
+        if isinstance(expr, SwitchExpr):
+            subject_type = expr_type(
+                expr.subject,
+                env,
+                return_type=return_type,
+                scope_kind=scope_kind,
+            )
+            result_parts = _result_type_parts(subject_type)
+            arm_types: list[str | None] = []
+            for case in expr.cases:
+                case_env = dict(env)
+                if result_parts:
+                    for label in case.labels:
+                        if isinstance(label, ResultPattern) and label.binding:
+                            case_env[label.binding] = (
+                                result_parts[0]
+                                if label.kind == "ok"
+                                else result_parts[1]
+                            )
+                arm_types.append(
+                    expr_type(
+                        case.value,
+                        case_env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                        expected_result=expected_result,
+                    )
+                )
+            if arm_types and all(t == arm_types[0] for t in arm_types):
+                return arm_types[0]
+            return None
+        if isinstance(expr, Call):
+            expected_params: list[str] = []
+            if isinstance(expr.callee, Identifier):
+                expected_params = function_params.get(expr.callee.name, [])
+            elif isinstance(expr.callee, Member):
+                receiver_type = expr_type(
+                    expr.callee.object,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+                owner = method_owner(receiver_type, expr.callee.name)
+                if owner:
+                    expected_params = method_params.get(
+                        (owner, expr.callee.name),
+                        [],
+                    )
+            for index, arg in enumerate(expr.args):
+                value = arg.value if isinstance(arg, KeywordArg) else arg
+                expected_param = (
+                    expected_params[index] if index < len(expected_params) else None
+                )
+                actual_arg = expr_type(
+                    value,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                    expected_result=(
+                        expected_param
+                        if _result_type_parts(expected_param)
+                        else None
+                    ),
+                )
+                if (
+                    expected_param
+                    and actual_arg
+                    and (
+                        _result_type_parts(expected_param)
+                        or _result_type_parts(actual_arg)
+                    )
+                    and not _is_assignable_type(
+                        actual_arg,
+                        expected_param,
+                        class_parents,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    )
+                ):
+                    fail(
+                        f"Argument {index + 1} has type {actual_arg}, expected "
+                        f"{expected_param}.",
+                        value,
+                        code="pys.result-argument-type",
+                        tips=(
+                            ["Handle the result with `propagate` or `switch` first."]
+                            if _result_type_parts(actual_arg)
+                            and not _result_type_parts(expected_param)
+                            else None
+                        ),
+                    )
+            if isinstance(expr.callee, Identifier):
+                return function_returns.get(expr.callee.name) or (
+                    expr.callee.name if expr.callee.name in class_names else None
+                )
+            if isinstance(expr.callee, Member):
+                return expr_type(
+                    expr.callee,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+        if isinstance(expr, Cast):
+            expr_type(
+                expr.expr,
+                env,
+                return_type=return_type,
+                scope_kind=scope_kind,
+            )
+            return expr.type_name
+        if isinstance(expr, BinaryOp):
+            left = expr_type(
+                expr.left, env, return_type=return_type, scope_kind=scope_kind
+            )
+            right = expr_type(
+                expr.right, env, return_type=return_type, scope_kind=scope_kind
+            )
+            if expr.op == "+" and "string" in {left, right}:
+                return "string"
+            return left if left == right else _infer_type(expr, class_names)
+        if isinstance(expr, UnaryOp):
+            return expr_type(
+                expr.operand,
+                env,
+                return_type=return_type,
+                scope_kind=scope_kind,
+            )
+        for attr in ("value", "expr", "cond", "callee", "object", "index", "subject"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                expr_type(
+                    child,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+        for attr in ("args", "elements"):
+            children = getattr(expr, attr, None)
+            if isinstance(children, list):
+                for child in children:
+                    value = child.value if isinstance(child, KeywordArg) else child
+                    if isinstance(value, Expr):
+                        expr_type(
+                            value,
+                            env,
+                            return_type=return_type,
+                            scope_kind=scope_kind,
+                        )
+        return _infer_type(expr, class_names)
+
+    def check_value(
+        value: Expr | None,
+        expected: str | None,
+        env: dict[str, str],
+        *,
+        return_type: str | None,
+        scope_kind: str,
+        owner: Any,
+    ) -> str | None:
+        if isinstance(value, LambdaExpr) and expected:
+            lambda_parts = _parse_lambda_type_parts(expected)
+            if lambda_parts is not None:
+                param_types, lambda_return = lambda_parts
+                local = dict(env)
+                for index, name in enumerate(value.params):
+                    if index < len(param_types):
+                        local[name] = param_types[index]
+                if isinstance(value.body, Block):
+                    walk(
+                        value.body.statements,
+                        local,
+                        return_type=lambda_return,
+                        scope_kind="lambda",
+                    )
+                else:
+                    check_value(
+                        value.body,
+                        lambda_return,
+                        local,
+                        return_type=lambda_return,
+                        scope_kind="lambda",
+                        owner=value,
+                    )
+                return expected
+        expected_result = expected if _result_type_parts(expected) else None
+        actual = expr_type(
+            value,
+            env,
+            return_type=return_type,
+            scope_kind=scope_kind,
+            expected_result=expected_result,
+        )
+        if expected_result and actual and actual != expected_result:
+            fail(
+                f"Result type mismatch: cannot use {actual} where "
+                f"{expected_result} is required.",
+                owner,
+                code="pys.result-type",
+            )
+        if expected and not expected_result and _result_type_parts(actual):
+            fail(
+                f"A {actual} value must be handled before it can be used as {expected}.",
+                owner,
+                code="pys.result-unhandled",
+                tips=["Use postfix `propagate` or an exhaustive `switch`."],
+            )
+        if (
+            expected
+            and actual
+            and isinstance(value, PropagateExpr)
+            and not _is_assignable_type(
+                actual,
+                expected,
+                class_parents,
+                class_implements=class_implements,
+                interfaces=interfaces,
+            )
+        ):
+            fail(
+                f"Propagated success value has type {actual}, expected {expected}.",
+                owner,
+                code="pys.propagate-success-type",
+            )
+        return actual
+
+    def walk(
+        statements: list[Any],
+        env: dict[str, str],
+        *,
+        return_type: str | None,
+        scope_kind: str,
+    ) -> None:
+        for stmt in statements:
+            if isinstance(stmt, AssignStmt):
+                check_name(stmt.name, stmt)
+                expected = None if stmt.declare_type == "var" else stmt.declare_type
+                if not expected and not stmt.declare_type:
+                    expected = env.get(stmt.name)
+                actual = check_value(
+                    stmt.value,
+                    expected,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                    owner=stmt,
+                )
+                if stmt.declare_type == "var" and actual:
+                    env[stmt.name] = actual
+                elif stmt.declare_type:
+                    env[stmt.name] = stmt.declare_type
+            elif isinstance(stmt, ReturnStmt):
+                if _result_type_parts(return_type):
+                    if stmt.value is None:
+                        fail(
+                            f"A function returning {return_type} must return a result value.",
+                            stmt,
+                            code="pys.result-return",
+                        )
+                    check_value(
+                        stmt.value,
+                        return_type,
+                        env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                        owner=stmt,
+                    )
+                elif stmt.value is not None:
+                    actual = check_value(
+                        stmt.value,
+                        return_type or None,
+                        env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                        owner=stmt,
+                    )
+                    if _result_type_parts(actual):
+                        fail(
+                            f"A function returning {return_type or 'no value'} cannot "
+                            f"return {actual}; the result must be handled.",
+                            stmt,
+                            code="pys.result-unhandled",
+                        )
+            elif isinstance(stmt, (PrintStmt, ExprStmt)):
+                value = stmt.value if isinstance(stmt, PrintStmt) else stmt.expr
+                check_value(
+                    value,
+                    None,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                    owner=stmt,
+                )
+            elif isinstance(stmt, FunctionDef):
+                check_name(stmt.name, stmt)
+                local = dict(env)
+                for name, type_name in zip(stmt.params, stmt.param_types):
+                    check_name(name, stmt)
+                    local[name] = type_name
+                if stmt.body:
+                    walk(
+                        stmt.body.statements,
+                        local,
+                        return_type=stmt.return_type,
+                        scope_kind="function",
+                    )
+            elif isinstance(stmt, ClassDef):
+                check_name(stmt.name, stmt)
+                for field in stmt.fields:
+                    check_name(field.name, field)
+                for method in stmt.methods:
+                    check_name(method.name, method)
+                    local = dict(env)
+                    local["self"] = stmt.name
+                    if class_parents.get(stmt.name):
+                        local["super"] = class_parents[stmt.name] or ""
+                    local.update(zip(method.params, method.param_types))
+                    if method.body:
+                        walk(
+                            method.body.statements,
+                            local,
+                            return_type=method.return_type,
+                            scope_kind="function",
+                        )
+            elif isinstance(stmt, (StructDef, DataDef, EntityDef, EnumDef, InterfaceDef, TraitDef)):
+                check_name(stmt.name, stmt)
+            elif isinstance(stmt, TasksBlock):
+                for task in stmt.tasks:
+                    check_name(task.name, task)
+                    if task.body:
+                        walk(
+                            task.body.statements,
+                            dict(env),
+                            return_type=None,
+                            scope_kind="task",
+                        )
+            elif isinstance(stmt, IfStmt):
+                expr_type(
+                    stmt.cond,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+                if stmt.then_body:
+                    walk(
+                        stmt.then_body.statements,
+                        dict(env),
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                    )
+                if stmt.else_body:
+                    walk(
+                        stmt.else_body.statements,
+                        dict(env),
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                    )
+            elif isinstance(stmt, SwitchStmt):
+                subject_type = expr_type(
+                    stmt.subject,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+                result_parts = _result_type_parts(subject_type)
+                for case in stmt.cases:
+                    if case.body:
+                        case_env = dict(env)
+                        if result_parts:
+                            for label in case.labels:
+                                if isinstance(label, ResultPattern) and label.binding:
+                                    case_env[label.binding] = (
+                                        result_parts[0]
+                                        if label.kind == "ok"
+                                        else result_parts[1]
+                                    )
+                        walk(
+                            case.body.statements,
+                            case_env,
+                            return_type=return_type,
+                            scope_kind=scope_kind,
+                        )
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                subject = (
+                    stmt.cond
+                    if isinstance(stmt, WhileStmt)
+                    else stmt.iterable
+                    if isinstance(stmt, ForEachStmt)
+                    else None
+                )
+                expr_type(
+                    subject,
+                    env,
+                    return_type=return_type,
+                    scope_kind=scope_kind,
+                )
+                if stmt.body:
+                    walk(
+                        stmt.body.statements,
+                        dict(env),
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                    )
+
+    walk(
+        body,
+        types,
+        return_type=None,
+        scope_kind="entrypoint" if is_entrypoint else "module",
+    )
 
 
 def _lookup_name_type(expr: str, types: dict[str, str]) -> str | None:
@@ -1361,12 +2020,30 @@ def _check_bindings(
                     interfaces=interfaces,
                 )
         elif isinstance(stmt, SwitchStmt):
+            subject_type = (
+                types.get(stmt.subject.name, "")
+                if isinstance(stmt.subject, Identifier)
+                else ""
+            )
+            result_parts = _result_type_parts(subject_type)
             for case in stmt.cases:
                 if case.body:
+                    case_types = dict(types)
+                    case_declared = set(declared)
+                    if result_parts:
+                        for label in case.labels:
+                            if isinstance(label, ResultPattern) and label.binding:
+                                payload_type = (
+                                    result_parts[0]
+                                    if label.kind == "ok"
+                                    else result_parts[1]
+                                )
+                                case_types[label.binding] = payload_type
+                                case_declared.add(label.binding)
                     _check_bindings(
                         case.body.statements,
-                        types=dict(types),
-                        declared=set(declared),
+                        types=case_types,
+                        declared=case_declared,
                         constants=set(constants),
                         fixed=set(fixed),
                         loop_counters=set(loop_counters),
@@ -3142,7 +3819,10 @@ def _switch_subject_type(
     if expr is None:
         return None
     if isinstance(expr, Identifier):
-        t = _base_type_name(types.get(expr.name, "") or "")
+        declared = types.get(expr.name, "") or ""
+        if _result_type_parts(declared):
+            return declared
+        t = _base_type_name(declared)
         if t:
             return t
     if isinstance(expr, Member) and isinstance(expr.object, Identifier):
@@ -3297,6 +3977,139 @@ def _check_one_switch(
             code="pys.switch-subject",
             tips=["Declare the subject with a type (enum, int, string, char, or bool)."],
         )
+    result_parts = _result_type_parts(subject_type)
+    if result_parts:
+        success_type, error_type = result_parts
+        seen_patterns: set[str] = set()
+        has_default = False
+        arm_value_types: list[str | None] = []
+
+        def result_arm_type(case: SwitchCase) -> str | None:
+            value = case.value
+            if isinstance(value, Identifier):
+                for label in case.labels:
+                    if (
+                        isinstance(label, ResultPattern)
+                        and label.binding == value.name
+                    ):
+                        return (
+                            success_type if label.kind == "ok" else error_type
+                        )
+            return _infer_type(value, class_names)
+
+        for case in cases:
+            line = case.span.line if case.span else span_line
+            col = case.span.column if case.span else span_col
+            if case.is_default:
+                if has_default:
+                    _transpile_error(
+                        "Switch may have at most one `default` arm.",
+                        line,
+                        col,
+                        "default",
+                        code="pys.switch-default",
+                    )
+                has_default = True
+                if is_expr:
+                    arm_value_types.append(result_arm_type(case))
+                continue
+            if len(case.labels) != 1 or not isinstance(
+                case.labels[0], ResultPattern
+            ):
+                _transpile_error(
+                    "Switch on a result requires `ok(value)` and `err(error)` "
+                    "case patterns.",
+                    line,
+                    col,
+                    "case",
+                    code="pys.result-pattern",
+                    tips=["Use `case ok(value)` or `case err(error)`."],
+                )
+            pattern = case.labels[0]
+            if pattern.kind in seen_patterns:
+                _transpile_error(
+                    f"Duplicate result pattern '{pattern.kind}'.",
+                    pattern.span.line if pattern.span else line,
+                    pattern.span.column if pattern.span else col,
+                    pattern.kind,
+                    code="pys.switch-duplicate",
+                )
+            seen_patterns.add(pattern.kind)
+            if pattern.binding in {"ok", "err"}:
+                _transpile_error(
+                    f"'{pattern.binding}' is reserved and cannot be a pattern binding.",
+                    pattern.span.line if pattern.span else line,
+                    pattern.span.column if pattern.span else col,
+                    pattern.binding,
+                    code="pys.result-reserved",
+                )
+            if pattern.kind == "ok":
+                if success_type == "void" and pattern.binding:
+                    _transpile_error(
+                        "`result<void, E>` uses `case ok()` without a payload binding.",
+                        line,
+                        col,
+                        pattern.binding,
+                        code="pys.result-pattern",
+                    )
+                if success_type != "void" and not pattern.binding:
+                    _transpile_error(
+                        f"`ok` contains a {success_type} value; bind it as "
+                        "`case ok(value)`.",
+                        line,
+                        col,
+                        "ok",
+                        code="pys.result-pattern",
+                    )
+            elif not pattern.binding:
+                _transpile_error(
+                    "`err` requires an error payload binding.",
+                    line,
+                    col,
+                    "err",
+                    code="pys.result-pattern",
+                )
+            if case.fallthrough:
+                _transpile_error(
+                    "Result pattern cases cannot fall through with `continue`.",
+                    line,
+                    col,
+                    "continue",
+                    code="pys.result-pattern",
+                )
+            if is_expr:
+                arm_value_types.append(result_arm_type(case))
+
+        missing = [kind for kind in ("ok", "err") if kind not in seen_patterns]
+        if missing and not has_default:
+            _transpile_error(
+                "Result switch is not exhaustive "
+                f"(missing {', '.join(missing)}); add the pattern or `default`.",
+                span_line,
+                span_col,
+                "switch",
+                code="pys.switch-exhaustive",
+                tips=["Handle both success and failure explicitly."],
+            )
+        if is_expr:
+            if any(t is None for t in arm_value_types):
+                _transpile_error(
+                    "Cannot infer a common type for result switch expression arms.",
+                    span_line,
+                    span_col,
+                    "switch",
+                    code="pys.switch-type",
+                )
+            first = arm_value_types[0] if arm_value_types else None
+            if any(t != first for t in arm_value_types):
+                _transpile_error(
+                    "All result switch expression arms must yield the same type.",
+                    span_line,
+                    span_col,
+                    "switch",
+                    code="pys.switch-type",
+                )
+        return
     if subject_type not in enum_info and subject_type not in _SWITCH_PRIMITIVES:
         _transpile_error(
             f"Switch subject type '{subject_type}' is not supported "
@@ -3334,7 +4147,11 @@ def _check_one_switch(
                 )
             has_default = True
             if is_expr:
-                arm_value_types.append(_infer_type(case.value, class_names))
+                arm_value_types.append(
+                    "result"
+                    if isinstance(case.value, ResultCtor)
+                    else _infer_type(case.value, class_names)
+                )
             continue
 
         resolved: list[Expr] = []
@@ -3370,7 +4187,11 @@ def _check_one_switch(
                 covered_members.add(new_label.name)
         case.labels = resolved
         if is_expr:
-            arm_value_types.append(_infer_type(case.value, class_names))
+            arm_value_types.append(
+                "result"
+                if isinstance(case.value, ResultCtor)
+                else _infer_type(case.value, class_names)
+            )
 
     if is_expr:
         if any(t is None for t in arm_value_types):

@@ -19,6 +19,7 @@ def compile_pys(
     target: Target = "python",
     source_path: Path | None = None,
     allow_runtime_introspection: bool = False,
+    is_entrypoint: bool = False,
 ) -> str:
     """Compile PYS to the requested backend. Only `python` is implemented."""
     text, _maps, _names = compile_pys_with_map(
@@ -26,6 +27,7 @@ def compile_pys(
         target=target,
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
+        is_entrypoint=is_entrypoint,
     )
     return text
 
@@ -36,6 +38,7 @@ def compile_pys_with_map(
     target: Target = "python",
     source_path: Path | None = None,
     allow_runtime_introspection: bool = False,
+    is_entrypoint: bool = False,
 ) -> tuple[str, list[dict[str, int]], dict[str, str]]:
     """Compile PYS and return ``(python_text, line_map, debug_names)``.
 
@@ -50,8 +53,13 @@ def compile_pys_with_map(
         tree,
         source_path=source_path,
         allow_runtime_introspection=allow_runtime_introspection,
+        is_entrypoint=is_entrypoint,
     )
     if os.environ.get("PYS_SUPPRESS_WARNINGS", "").strip() not in {"1", "true", "yes"}:
         for warn in getattr(tree, "analysis_warnings", []) or []:
             print(str(warn), file=sys.stderr)
-    return emit_python.emit_with_map(tree, source_path=source_path)
+    return emit_python.emit_with_map(
+        tree,
+        source_path=source_path,
+        is_entrypoint=is_entrypoint,
+    )

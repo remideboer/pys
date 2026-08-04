@@ -77,6 +77,7 @@ KEYWORDS = frozenset(
         "tasks",
         "task",
         "await",
+        "propagate",
         "in",
         "as",
         "new",
@@ -102,11 +103,14 @@ TYPES = frozenset(
         "int32",
         "int64",
         "dword",
+        "result",
     }
 )
 
 CONSTANTS = frozenset({"true", "false", "null"})
-BUILTINS = frozenset({"print", "len", "range", "str", "int", "float", "bool"})
+BUILTINS = frozenset(
+    {"print", "len", "range", "str", "int", "float", "bool", "ok", "err"}
+)
 
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _NUMBER = re.compile(

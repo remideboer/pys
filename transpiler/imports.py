@@ -31,6 +31,8 @@ class ModuleInfo:
     path: Path
     python: str = ""
     exports: dict[str, str] = field(default_factory=dict)
+    function_returns: dict[str, str] = field(default_factory=dict)
+    function_params: dict[str, list[str]] = field(default_factory=dict)
     constants: set[str] = field(default_factory=set)
     fixed_vars: set[str] = field(default_factory=set)
     types: dict[str, str] = field(default_factory=dict)
@@ -143,6 +145,8 @@ def extract_module_info(path: Path, source: str) -> ModuleInfo:
 
 def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
     exports: dict[str, str] = {}
+    function_returns: dict[str, str] = {}
+    function_params: dict[str, list[str]] = {}
     constants: set[str] = set()
     fixed_vars: set[str] = set()
     types: dict[str, str] = {}
@@ -177,6 +181,8 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
         if isinstance(stmt, FunctionDef):
             vis = stmt.visibility or "module"
             exports[stmt.name] = vis
+            function_returns[stmt.name] = stmt.return_type
+            function_params[stmt.name] = list(stmt.param_types)
             symbol_locations[stmt.name] = (path, line, col)
         elif isinstance(stmt, InterfaceDef):
             vis = stmt.visibility or "module"
@@ -348,6 +354,8 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
     return ModuleInfo(
         path=path,
         exports=exports,
+        function_returns=function_returns,
+        function_params=function_params,
         constants=constants,
         fixed_vars=fixed_vars,
         types=types,
@@ -404,6 +412,8 @@ class ImportResolver:
         self.transpiling = transpiling if transpiling is not None else set()
         self.allow_runtime_introspection = allow_runtime_introspection
         self.exports: dict[str, str] = {}
+        self.function_returns: dict[str, str] = {}
+        self.function_params: dict[str, list[str]] = {}
         self.constants: set[str] = set()
         self.fixed_vars: set[str] = set()
         self.imported_names: set[str] = set()
@@ -440,6 +450,10 @@ class ImportResolver:
         if self.source_path is not None:
             info = _parse_module(self.source_path, source).info
             self.exports = dict(info.exports)
+            self.function_returns = dict(info.function_returns)
+            self.function_params = {
+                name: list(params) for name, params in info.function_params.items()
+            }
             self.constants = set(info.constants)
             self.fixed_vars = set(info.fixed_vars)
             self.class_parents = dict(info.class_parents)
@@ -602,6 +616,10 @@ class ImportResolver:
             self.declared_variables.add(name)
             if name in info.types:
                 self.variable_types[name] = info.types[name]
+            if name in info.function_returns:
+                self.function_returns[name] = info.function_returns[name]
+            if name in info.function_params:
+                self.function_params[name] = list(info.function_params[name])
             if name in info.constants:
                 self.constants.add(name)
             if name in info.fixed_vars:

@@ -326,11 +326,18 @@ def analyze_file(
     source = source_path.read_text(encoding="utf-8")
     error = None
     warnings: list[dict] = []
+    is_entrypoint = False
     try:
+        from .project_manifest import find_manifest, load_project_main
+
+        manifest = find_manifest(source_path)
+        configured = load_project_main(manifest) if manifest is not None else None
+        is_entrypoint = configured == source_path
         compile_pys(
             source,
             source_path=source_path,
             allow_runtime_introspection=allow_runtime_introspection,
+            is_entrypoint=is_entrypoint,
         )
     except TranspileError as exc:
         error = _error_dict(exc)
@@ -362,6 +369,7 @@ def analyze_file(
                 tree,
                 source_path=source_path,
                 allow_runtime_introspection=allow_runtime_introspection,
+                is_entrypoint=is_entrypoint,
             )
             warnings = [
                 _warning_dict(w) for w in getattr(tree, "analysis_warnings", []) or []
@@ -572,6 +580,7 @@ def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
     dict for the extension debug launch path.
     """
     from .imports import discover_imported_modules
+    from .project_manifest import resolve_entrypoint
     from .transpiler import transpile_with_modules_and_maps
 
     source_path = source_path.resolve()
@@ -588,6 +597,10 @@ def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
                 },
             }
         source_path = contained
+    try:
+        source_path = resolve_entrypoint(source_path)
+    except TranspileError as exc:
+        return {"ok": False, "error": _error_dict(exc)}
 
     out_dir = out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
