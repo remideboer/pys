@@ -10,7 +10,8 @@
 | `interface` | `interface` | `interface` |
 | `public` / `private` / `protected` | same idea | same idea |
 | `package` (type export) | `internal` (assembly) | package-private (default) |
-| Constructor `Foo(...)` | `Foo(...)` | `Foo(...)` |
+| Constructor declaration `Foo(...)` | `Foo(...)` — same idea | `Foo(...)` — same idea |
+| Create instance | `Foo(...)` (**no** `new`) | `new Foo(...)` | `new Foo(...)` |
 | `this` / `super` | `this` / `base` | `this` / `super` |
 | Enforced member order | Style / analyzers | Style / Checkstyle |
 
