@@ -28,11 +28,24 @@ the matching type or the transpile fails:
 ```pys
 int x = 7
 string greeting = "hi"
+float ratio = 0.5
+bool ok = true
+char grade = 'B'
 print("#i{x} is an int")
 print("#s{greeting} is a string")
+print("#f{ratio} is a float")
+print("#b{ok} is a bool")
+print("#c{grade} is a char")
 ```
 
 If you write `#i{greeting}`, the compiler rejects it — that is the point.
+
+> **Sidebar — `#o{…}` for objects**
+>
+> `#o{…}` guards **non-primitive** values (class / struct / `data` /
+> `entity` instances). You will use it once those types appear in
+> [Session 3](chapter_4.md). Until then, stick to `#s` / `#i` / `#f` /
+> `#b` / `#c`.
 
 ### Exercise
 

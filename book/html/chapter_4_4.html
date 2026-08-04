@@ -126,8 +126,34 @@
 
 <span class="tok-typename">Product</span> <span class="tok-ident">p</span> <span class="tok-op">=</span> <span class="tok-typename">Product</span>(<span class="tok-string">&quot;</span><span class="tok-string">Mug</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">p</span>.<span class="tok-ident">label</span>())</code></pre>
-<p>If two traits define the same method name, the class must override it and
-can disambiguate with <code>TraitName.method(this)</code>.</p>
+<h2>When two traits collide</h2>
+<p>If two traits define the same method name, the host class <strong>must</strong> override
+it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:</p>
+<pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">Loud</span> {
+    <span class="tok-type">string</span> <span class="tok-ident">greet</span>() {
+        <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">HEY</span><span class="tok-string">&quot;</span>
+    }
+}
+
+<span class="tok-kw">trait</span> <span class="tok-typename">Soft</span> {
+    <span class="tok-type">string</span> <span class="tok-ident">greet</span>() {
+        <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">hi</span><span class="tok-string">&quot;</span>
+    }
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">Greeter</span> <span class="tok-kw">uses</span> <span class="tok-typename">Loud</span>, <span class="tok-typename">Soft</span> {
+    <span class="tok-mod">public</span> <span class="tok-typename">Greeter</span>() {
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">greet</span>() {
+        <span class="tok-kw">return</span> <span class="tok-typename">Loud</span>.<span class="tok-ident">greet</span>(<span class="tok-kw">this</span>) <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">/</span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-typename">Soft</span>.<span class="tok-ident">greet</span>(<span class="tok-kw">this</span>)
+    }
+}
+
+<span class="tok-typename">Greeter</span> <span class="tok-ident">g</span> <span class="tok-op">=</span> <span class="tok-typename">Greeter</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">g</span>.<span class="tok-ident">greet</span>())</code></pre>
+<p>Without the override, the transpile fails: two traits both want to own
+<code>greet</code>. The override is where <em>you</em> decide the story.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Add <code>requires int priceCents</code> and a method <code>string priceTag()</code> that

@@ -30,7 +30,39 @@ tasks {
 }
 ```
 
-Await edges inside a group must form a **DAG** — cycles are rejected.
+## Await edges form a DAG
+
+`await` draws an arrow: “this task needs that task’s result first.” Those
+arrows must form a **DAG** (directed acyclic graph) — a one-way pipeline,
+never a loop.
+
+Valid (a pipeline):
+
+```pys
+tasks {
+    task stepOne() {
+        return 2
+    }
+    task stepTwo() {
+        int x = await stepOne()
+        return x + 3
+    }
+    task {
+        int y = await stepTwo()
+        print(y)
+    }
+}
+```
+
+Illegal (a cycle) — rejected at transpile time (`pys.await-cycle`):
+
+```text
+task a awaits b
+task b awaits a
+```
+
+Neither task could ever finish; PYS refuses to emit that program. Deeper
+notes: [`docs/CONCURRENCY.md`](../docs/CONCURRENCY.md).
 
 Prefer **parameters** to feed data into tasks instead of grabbing outer
 locals.

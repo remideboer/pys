@@ -126,7 +126,30 @@ finish before the code after the block runs.</p>
         <span class="tok-builtin">print</span>(<span class="tok-ident">s</span>)
     }
 }</code></pre>
-<p>Await edges inside a group must form a <strong>DAG</strong> — cycles are rejected.</p>
+<h2>Await edges form a DAG</h2>
+<p><code>await</code> draws an arrow: “this task needs that task’s result first.” Those
+arrows must form a <strong>DAG</strong> (directed acyclic graph) — a one-way pipeline,
+never a loop.</p>
+<p>Valid (a pipeline):</p>
+<pre><code class="language-pys"><span class="tok-kw">tasks</span> {
+    <span class="tok-kw">task</span> <span class="tok-ident">stepOne</span>() {
+        <span class="tok-kw">return</span> <span class="tok-number">2</span>
+    }
+    <span class="tok-kw">task</span> <span class="tok-ident">stepTwo</span>() {
+        <span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-kw">await</span> <span class="tok-ident">stepOne</span>()
+        <span class="tok-kw">return</span> <span class="tok-ident">x</span> <span class="tok-op">+</span> <span class="tok-number">3</span>
+    }
+    <span class="tok-kw">task</span> {
+        <span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-kw">await</span> <span class="tok-ident">stepTwo</span>()
+        <span class="tok-builtin">print</span>(<span class="tok-ident">y</span>)
+    }
+}</code></pre>
+<p>Illegal (a cycle) — rejected at transpile time (<code>pys.await-cycle</code>):</p>
+<pre><code class="language-text">task a awaits b
+task b awaits a
+</code></pre>
+<p>Neither task could ever finish; PYS refuses to emit that program. Deeper
+notes: <a href="../docs/CONCURRENCY.md"><code>docs/CONCURRENCY.md</code></a>.</p>
 <p>Prefer <strong>parameters</strong> to feed data into tasks instead of grabbing outer
 locals.</p>
 <h3>Exercise</h3>

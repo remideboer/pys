@@ -27,8 +27,39 @@ Product p = Product("Mug")
 print(p.label())
 ```
 
-If two traits define the same method name, the class must override it and
-can disambiguate with `TraitName.method(this)`.
+## When two traits collide
+
+If two traits define the same method name, the host class **must** override
+it. Call `TraitName.method(this)` to pick a side — or combine both:
+
+```pys
+trait Loud {
+    string greet() {
+        return "HEY"
+    }
+}
+
+trait Soft {
+    string greet() {
+        return "hi"
+    }
+}
+
+class Greeter uses Loud, Soft {
+    public Greeter() {
+    }
+
+    public string greet() {
+        return Loud.greet(this) + "/" + Soft.greet(this)
+    }
+}
+
+Greeter g = Greeter()
+print(g.greet())
+```
+
+Without the override, the transpile fails: two traits both want to own
+`greet`. The override is where *you* decide the story.
 
 ### Exercise
 

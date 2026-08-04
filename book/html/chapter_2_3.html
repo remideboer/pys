@@ -144,9 +144,16 @@ obvious.</p>
 <span class="tok-builtin">print</span>(<span class="tok-ident">whole</span>)</code></pre>
 <p>Casts are explicit on purpose — silent narrowing is a common bug in less
 strict languages.</p>
-<p>Width aliases like <code>byte</code>, <code>nibble</code>, <code>int16</code> exist for teaching bit-sized
-values; they still emit as Python <code>int</code>, but out-of-range literals are
-rejected.</p>
+<h2>Width aliases</h2>
+<p>Aliases like <code>byte</code>, <code>nibble</code>, and <code>int16</code> teach bit-sized ranges. They
+still emit as Python <code>int</code>, but <strong>out-of-range literals are rejected</strong>.</p>
+<pre><code class="language-pys"><span class="tok-type">byte</span> <span class="tok-ident">flags</span> <span class="tok-op">=</span> <span class="tok-number">0b1011_1101</span>
+<span class="tok-type">nibble</span> <span class="tok-ident">n</span> <span class="tok-op">=</span> <span class="tok-number">0xA</span>
+<span class="tok-type">int16</span> <span class="tok-ident">port</span> <span class="tok-op">=</span> <span class="tok-number">8080</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">flags</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">port</span>)
+<span class="tok-comment"># byte tooBig = 300   # does not compile — outside 0..255</span></code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Store <code>9.81</code> as a <code>float</code>, cast to <code>int</code>, and print both with typed

@@ -25,9 +25,20 @@ print(whole)
 Casts are explicit on purpose — silent narrowing is a common bug in less
 strict languages.
 
-Width aliases like `byte`, `nibble`, `int16` exist for teaching bit-sized
-values; they still emit as Python `int`, but out-of-range literals are
-rejected.
+## Width aliases
+
+Aliases like `byte`, `nibble`, and `int16` teach bit-sized ranges. They
+still emit as Python `int`, but **out-of-range literals are rejected**.
+
+```pys
+byte flags = 0b1011_1101
+nibble n = 0xA
+int16 port = 8080
+print(flags)
+print(n)
+print(port)
+# byte tooBig = 300   # does not compile — outside 0..255
+```
 
 ### Exercise
 
