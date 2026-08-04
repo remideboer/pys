@@ -24,6 +24,18 @@ with roles such as:
 - dynamically managed memory, commonly called the **heap**;
 - one **call stack** per thread.
 
+<figure class="concept-diagram" role="img" aria-label="Simplified regions in one process virtual address space">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>Virtual address space</strong><span>private process view</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box"><strong>Executable code</strong><span>machine instructions and runtime code</span></div>
+    <div class="diagram-box"><strong>Static runtime data</strong><span>long-lived process state</span></div>
+    <div class="diagram-box"><strong>Managed heap</strong><span>dynamically managed, reachable data</span></div>
+    <div class="diagram-box"><strong>Thread call stacks</strong><span>active calls and return relationships</span></div>
+  </div>
+  <figcaption>A useful process-memory map; exact layouts vary by runtime and platform.</figcaption>
+</figure>
+
 Real layouts vary by operating system, CPU, runtime, and optimization. Treat
 these names as a map for reasoning, not as a PYS storage guarantee.
 
@@ -61,6 +73,15 @@ top-level entrypoint
 └─ doubledAfterAddingOne(number = 5)
    └─ addOne(number = 5)
 ```
+
+<figure class="concept-diagram" role="img" aria-label="Three nested call stack frames with the newest function on top">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>Top: addOne(5)</strong><span>returns 6 first</span></div>
+    <div class="diagram-box"><strong>doubledAfterAddingOne(5)</strong><span>receives 6 and returns 12</span></div>
+    <div class="diagram-box"><strong>Bottom: entrypoint</strong><span>prints 12</span></div>
+  </div>
+  <figcaption>The newest call is the first frame to return.</figcaption>
+</figure>
 
 `addOne` returns first, then `doubledAfterAddingOne`, then control returns to
 the entrypoint. Debugger stack views show this same relationship, even though
@@ -158,6 +179,15 @@ stack or heap address.
 A process owns an address space. A **thread** is one flow of execution inside
 that process. Each thread has its own instruction position and call stack, but
 threads in the same process can reach shared runtime data.
+
+<figure class="concept-diagram" role="img" aria-label="Two threads with separate call stacks accessing shared runtime data in one process">
+  <div class="diagram-threads">
+    <div class="diagram-box"><strong>Thread 1</strong><span>instruction position<br>own call stack</span></div>
+    <div class="diagram-box diagram-shared"><strong>Shared runtime data</strong><span>objects and state reachable by both threads</span></div>
+    <div class="diagram-box"><strong>Thread 2</strong><span>instruction position<br>own call stack</span></div>
+  </div>
+  <figcaption>Separate call flows can still reach the same mutable state.</figcaption>
+</figure>
 
 That shared reachability creates races: two flows can read and update the same
 state in an unsafe order. PYS makes the intent visible:

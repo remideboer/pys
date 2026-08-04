@@ -105,5 +105,16 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     index = (BOOK / "html" / "index.html").read_text(encoding="utf-8")
     assert 'href="under_the_hood_entrypoint.html"' in index
     assert 'href="under_the_hood_memory.html"' in index
-    assert (BOOK / "html" / "under_the_hood_entrypoint.html").is_file()
-    assert (BOOK / "html" / "under_the_hood_memory.html").is_file()
+    entrypoint_html = (
+        BOOK / "html" / "under_the_hood_entrypoint.html"
+    ).read_text(encoding="utf-8")
+    memory_html = (BOOK / "html" / "under_the_hood_memory.html").read_text(
+        encoding="utf-8"
+    )
+    assert entrypoint_html.count('class="concept-diagram"') >= 2
+    assert "Operating system" in entrypoint_html
+    assert "Browser host" in entrypoint_html
+    assert memory_html.count('class="concept-diagram"') >= 3
+    assert "Virtual address space" in memory_html
+    assert "Thread 1" in memory_html
+    assert "Shared runtime data" in memory_html

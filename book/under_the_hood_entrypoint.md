@@ -20,6 +20,19 @@ There are several layers between a PYS file and that first CPU instruction:
 4. Imported modules provide declarations and initialization, but they do not
    become the application's entrypoint.
 
+<figure class="concept-diagram" role="img" aria-label="The operating system starts Python, which runs the generated PYS entrypoint and loads imported modules">
+  <div class="diagram-flow">
+    <div class="diagram-box"><strong>Operating system</strong><span>creates a process</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Python runtime</strong><span>starts at native machine code</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>PYS entrypoint</strong><span>generated module runs top to bottom</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Imported modules</strong><span>supply declarations and initialization</span></div>
+  </div>
+  <figcaption>The OS-level and PYS-level entrypoints are different layers.</figcaption>
+</figure>
+
 This distinction matters: the OS-level entrypoint belongs to the Python
 executable, while the **PYS project entrypoint** answers which `.pys` file is
 the application boundary.
@@ -109,6 +122,19 @@ A browser is already a running process before it loads your JavaScript. It
 owns the event loop and calls your handlers after clicks, timers, and network
 responses. A plugin, game script, or spreadsheet macro is similar: a **host**
 already controls execution.
+
+<figure class="concept-diagram" role="img" aria-label="A browser host loads a script and its event loop invokes registered handlers">
+  <div class="diagram-flow">
+    <div class="diagram-box"><strong>Browser host</strong><span>process and event loop already running</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Load script</strong><span>evaluate once and register callbacks</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Event loop</strong><span>wait for work</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Your handlers</strong><span>click, timer, or network response</span></div>
+  </div>
+  <figcaption>Hosted code joins control flow that already exists.</figcaption>
+</figure>
 
 Those environments still have a starting boundary, but it belongs partly to
 the host. A standalone C, C#, Java, Dart, or PYS application makes its own
