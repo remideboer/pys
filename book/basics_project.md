@@ -35,6 +35,10 @@ addContact(typed)
 showContacts()
 ```
 
+*Interactive — type answers at the prompts; output depends on your input.*
+
+
+
 > `list.append` adds one item (taught in [Data structures](basics_data.md)).
 > If your tooling flags it, build a new list with
 > `contacts = contacts + [typed]` instead.

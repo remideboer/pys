@@ -13,6 +13,13 @@ string label = str(n)
 print(label)
 ```
 
+Output:
+
+```text
+42
+```
+
+
 - `int(...)` — parse an integer (or convert from another numeric form).
 - `float(...)` — parse a floating-point number.
 - `str(...)` — turn a value into a string for printing or concatenation.
@@ -27,6 +34,13 @@ float temperature = 18.7
 int whole = (int) temperature
 print(whole)
 ```
+
+Output:
+
+```text
+18
+```
+
 
 `(int) temperature` truncates toward zero for this kind of cast — you get
 `18`, not a rounded `19`.

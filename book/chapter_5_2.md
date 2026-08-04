@@ -17,6 +17,15 @@ lambda<int, int, int> safeDivide = (int a, int b) => {
 print(safeDivide(10, 2))
 ```
 
+Output:
+
+```text
+True
+False
+5.0
+```
+
+
 Forms: `n => expr`, `(params) => expr`, `(params) => { … }`, `() => …`.
 
 Captures are **by value** at creation and read-only unless the outer name

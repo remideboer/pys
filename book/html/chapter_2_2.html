@@ -109,6 +109,7 @@
 <span class="tok-mod">var</span> <span class="tok-ident">inferred</span> <span class="tok-op">=</span> <span class="tok-ident">count</span> <span class="tok-op">+</span> <span class="tok-number">1</span>   <span class="tok-comment"># type taken from the initializer</span>
 <span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">locked</span> <span class="tok-op">=</span> <span class="tok-ident">count</span>    <span class="tok-comment"># assign once, then locked</span>
 <span class="tok-mod">const</span> <span class="tok-type">int</span> <span class="tok-typename">MAX</span> <span class="tok-op">=</span> <span class="tok-number">100</span>        <span class="tok-comment"># compile-time constant</span></code></pre>
+<p><em>Compiles; no output.</em></p>
 <table>
 <thead>
 <tr>
@@ -143,6 +144,9 @@ like limits and configuration numbers.</p>
 <span class="tok-mod">var</span> <span class="tok-ident">attempt</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 <span class="tok-ident">attempt</span> <span class="tok-op">=</span> <span class="tok-ident">attempt</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">mode=</span><span class="tok-interp">#s{mode}</span><span class="tok-string"> attempt=</span><span class="tok-interp">#i{attempt}</span><span class="tok-string"> max=</span><span class="tok-interp">#i{MAX_RETRIES}</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">mode=demo attempt=1 max=3
+</code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Declare <code>const int TEAM_SIZE = 4</code> and a <code>fix string coach</code> with your

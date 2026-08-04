@@ -117,7 +117,7 @@ methods.</p>
     }
 
     <span class="tok-mod">public</span> <span class="tok-type">void</span> <span class="tok-ident">bump</span>() {
-        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-typename">DEFAULT_STEP</span>
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-typename">Counter</span>.<span class="tok-typename">DEFAULT_STEP</span>
     }
 
     <span class="tok-mod">public</span> <span class="tok-type">int</span> <span class="tok-ident">getValue</span>() {
@@ -128,6 +128,9 @@ methods.</p>
 <span class="tok-typename">Counter</span> <span class="tok-ident">c</span> <span class="tok-op">=</span> <span class="tok-typename">Counter</span>(<span class="tok-string">&quot;</span><span class="tok-string">demo</span><span class="tok-string">&quot;</span>)
 <span class="tok-ident">c</span>.<span class="tok-ident">bump</span>()
 <span class="tok-builtin">print</span>(<span class="tok-ident">c</span>.<span class="tok-ident">getValue</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">1
+</code></pre>
 <h2>Why member order is enforced</h2>
 <p>Inside a class body, PYS requires this <strong>kind</strong> order:</p>
 <ol>

@@ -12,7 +12,17 @@ enum Day {
     FRIDAY
     SUNDAY
 }
+
+Day today = Day.FRIDAY
+print(today == Day.FRIDAY)
 ```
+
+Output:
+
+```text
+True
+```
+
 
 ## Switch statement
 
@@ -20,6 +30,13 @@ No implicit fall-through. Use bare `continue` to fall into the next case
 when you mean it:
 
 ```pys
+enum Day {
+    MONDAY
+    WEDNESDAY
+    FRIDAY
+    SUNDAY
+}
+
 Day day = Day.FRIDAY
 int numLetters = 0
 switch (day) {
@@ -37,6 +54,13 @@ switch (day) {
 print(numLetters)
 ```
 
+Output:
+
+```text
+6
+```
+
+
 > **Sidebar — loop `continue` vs switch `continue`**
 >
 > In a **loop**, `continue` means “skip to the next iteration”
@@ -47,6 +71,13 @@ print(numLetters)
 ## Switch expression
 
 ```pys
+enum Day {
+    MONDAY
+    WEDNESDAY
+    FRIDAY
+    SUNDAY
+}
+
 Day day = Day.WEDNESDAY
 int numLetters = switch (day) {
     case MONDAY, SUNDAY, FRIDAY => 6
@@ -55,6 +86,13 @@ int numLetters = switch (day) {
 }
 print(numLetters)
 ```
+
+Output:
+
+```text
+9
+```
+
 
 Do not mix `:` arms and `=>` arms in one switch.
 

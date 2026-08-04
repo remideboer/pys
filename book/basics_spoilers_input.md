@@ -12,6 +12,10 @@ int favorite = int(raw)
 print(firstName + " likes " + str(favorite))
 ```
 
+*Interactive — type answers at the prompts; output depends on your input.*
+
+
+
 ---
 
 [Previous: Spoilers](basics_spoilers.md) · [Next: Spoiler — structuring](basics_spoilers_structuring.md)

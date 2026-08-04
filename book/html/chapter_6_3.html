@@ -123,6 +123,10 @@ Those deserve their own walkthrough — see
     }
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">counter</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+</code></pre>
+<p><em>(Concurrent task print order may vary.)</em></p>
 <p>Reach for <code>atomic</code> when many tasks bump the same counter; reach for
 <code>await</code> pipelines when you can avoid shared mutation entirely.</p>
 <h3>Exercise</h3>

@@ -13,6 +13,13 @@ if (nickname == null) {
 }
 ```
 
+Output:
+
+```text
+No nickname yet
+```
+
+
 - `null` means “no value”.
 - Always **check** before you use a value that might be null. Using a null
   where a real object is required blows up at runtime.

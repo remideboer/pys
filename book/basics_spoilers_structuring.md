@@ -8,6 +8,10 @@ package function int double(int n) {
 }
 ```
 
+*Declaration only — runs when another file imports and calls it.*
+
+
+
 `app.pys` (same folder):
 
 ```pys
@@ -15,6 +19,10 @@ import double from mathUtils
 
 print(double(21))
 ```
+
+*Needs the companion `.pys` file from the same section; then prints the call result.*
+
+
 
 ---
 

@@ -9,6 +9,10 @@ package function int addCents(int balance, int delta) {
 }
 ```
 
+*Compiles; no output.*
+
+
+
 A test in the same package folder (or mirrored under `tests/` with source
 roots):
 
@@ -22,6 +26,14 @@ if (got != 150) {
     print("OK")
 }
 ```
+
+*With `billing.pys` in the same folder, running this file prints:*
+
+```text
+OK
+```
+
+
 
 Run with `python -m transpiler run …`. A green print is a humble start;
 the important part is **repeatability**.

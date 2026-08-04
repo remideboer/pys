@@ -108,10 +108,12 @@
 <pre><code class="language-pys"><span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">double</span>(<span class="tok-type">int</span> <span class="tok-ident">n</span>) {
     <span class="tok-kw">return</span> <span class="tok-ident">n</span> <span class="tok-op">*</span> <span class="tok-number">2</span>
 }</code></pre>
+<p><em>Declaration only — runs when another file imports and calls it.</em></p>
 <p><code>app.pys</code> (same folder):</p>
 <pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">double</span> <span class="tok-kw">from</span> <span class="tok-ident">mathUtils</span>
 
 <span class="tok-builtin">print</span>(<span class="tok-ident">double</span>(<span class="tok-number">21</span>))</code></pre>
+<p><em>Needs the companion <code>.pys</code> file from the same section; then prints the call result.</em></p>
 <hr />
 <p><a href="basics_spoilers_input.html">Previous: Spoiler — input</a> · <a href="basics_spoilers_files.html">Next: Spoiler — files</a></p>
     </main>

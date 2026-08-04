@@ -15,7 +15,7 @@ class Counter {
     }
 
     public void bump() {
-        this.value = this.value + DEFAULT_STEP
+        this.value = this.value + Counter.DEFAULT_STEP
     }
 
     public int getValue() {
@@ -27,6 +27,13 @@ Counter c = Counter("demo")
 c.bump()
 print(c.getValue())
 ```
+
+Output:
+
+```text
+1
+```
+
 
 ## Why member order is enforced
 

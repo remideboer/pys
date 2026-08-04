@@ -118,6 +118,10 @@ not by itself make updates race-free.</p>
     }
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">hits</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+</code></pre>
+<p><em>(Concurrent task print order may vary.)</em></p>
 <p>Use <code>shared</code> when two tasks must update the same outer name and you accept
 responsibility for the interaction — or prefer returning values with
 <code>await</code> instead of sharing.</p>

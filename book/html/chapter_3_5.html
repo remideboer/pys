@@ -112,11 +112,24 @@
     <span class="tok-typename">WEDNESDAY</span>
     <span class="tok-typename">FRIDAY</span>
     <span class="tok-typename">SUNDAY</span>
-}</code></pre>
+}
+
+<span class="tok-typename">Day</span> <span class="tok-ident">today</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">FRIDAY</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">today</span> <span class="tok-op">==</span> <span class="tok-typename">Day</span>.<span class="tok-typename">FRIDAY</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">True
+</code></pre>
 <h2>Switch statement</h2>
 <p>No implicit fall-through. Use bare <code>continue</code> to fall into the next case
 when you mean it:</p>
-<pre><code class="language-pys"><span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">FRIDAY</span>
+<pre><code class="language-pys"><span class="tok-kw">enum</span> <span class="tok-typename">Day</span> {
+    <span class="tok-typename">MONDAY</span>
+    <span class="tok-typename">WEDNESDAY</span>
+    <span class="tok-typename">FRIDAY</span>
+    <span class="tok-typename">SUNDAY</span>
+}
+
+<span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">FRIDAY</span>
 <span class="tok-type">int</span> <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 <span class="tok-kw">switch</span> (<span class="tok-ident">day</span>) {
     <span class="tok-kw">case</span> <span class="tok-typename">MONDAY</span>:
@@ -131,6 +144,9 @@ when you mean it:</p>
         <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">numLetters</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">6
+</code></pre>
 <blockquote>
 <p><strong>Sidebar — loop <code>continue</code> vs switch <code>continue</code></strong></p>
 <p>In a <strong>loop</strong>, <code>continue</code> means “skip to the next iteration”
@@ -139,13 +155,23 @@ means “fall through into the next <code>case</code>.” Same word, different j
 read the surrounding keyword (<code>loop</code> vs <code>switch</code>) to know which.</p>
 </blockquote>
 <h2>Switch expression</h2>
-<pre><code class="language-pys"><span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">WEDNESDAY</span>
+<pre><code class="language-pys"><span class="tok-kw">enum</span> <span class="tok-typename">Day</span> {
+    <span class="tok-typename">MONDAY</span>
+    <span class="tok-typename">WEDNESDAY</span>
+    <span class="tok-typename">FRIDAY</span>
+    <span class="tok-typename">SUNDAY</span>
+}
+
+<span class="tok-typename">Day</span> <span class="tok-ident">day</span> <span class="tok-op">=</span> <span class="tok-typename">Day</span>.<span class="tok-typename">WEDNESDAY</span>
 <span class="tok-type">int</span> <span class="tok-ident">numLetters</span> <span class="tok-op">=</span> <span class="tok-kw">switch</span> (<span class="tok-ident">day</span>) {
     <span class="tok-kw">case</span> <span class="tok-typename">MONDAY</span>, <span class="tok-typename">SUNDAY</span>, <span class="tok-typename">FRIDAY</span> <span class="tok-op">=&gt;</span> <span class="tok-number">6</span>
     <span class="tok-kw">case</span> <span class="tok-typename">WEDNESDAY</span> <span class="tok-op">=&gt;</span> <span class="tok-number">9</span>
     <span class="tok-kw">default</span> <span class="tok-op">=&gt;</span> <span class="tok-number">0</span>
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">numLetters</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">9
+</code></pre>
 <p>Do not mix <code>:</code> arms and <code>=&gt;</code> arms in one switch.</p>
 <h3>Exercise</h3>
 <blockquote>

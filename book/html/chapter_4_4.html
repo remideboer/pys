@@ -126,6 +126,9 @@
 
 <span class="tok-typename">Product</span> <span class="tok-ident">p</span> <span class="tok-op">=</span> <span class="tok-typename">Product</span>(<span class="tok-string">&quot;</span><span class="tok-string">Mug</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">p</span>.<span class="tok-ident">label</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Item: Mug
+</code></pre>
 <h2>When two traits collide</h2>
 <p>If two traits define the same method name, the host class <strong>must</strong> override
 it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:</p>
@@ -152,6 +155,9 @@ it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:
 
 <span class="tok-typename">Greeter</span> <span class="tok-ident">g</span> <span class="tok-op">=</span> <span class="tok-typename">Greeter</span>()
 <span class="tok-builtin">print</span>(<span class="tok-ident">g</span>.<span class="tok-ident">greet</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">HEY/hi
+</code></pre>
 <p>Without the override, the transpile fails: two traits both want to own
 <code>greet</code>. The override is where <em>you</em> decide the story.</p>
 <h3>Exercise</h3>

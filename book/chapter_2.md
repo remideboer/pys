@@ -25,6 +25,13 @@ function void main() {
 main()
 ```
 
+Output:
+
+```text
+started
+```
+
+
 Nothing magic about the name `main` — the call is what runs it.
 
 ---

@@ -143,10 +143,12 @@ Prefer <code>package</code> when only same-folder teammates should see the name.
 <pre><code class="language-pys"><span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
 }</code></pre>
+<p><em>Compiles; no output.</em></p>
 <p><code>app.pys</code> in the <strong>same folder</strong>:</p>
 <pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">greet</span> <span class="tok-kw">from</span> <span class="tok-ident">greetings</span>
 
 <span class="tok-ident">greet</span>(<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)</code></pre>
+<p><em>Needs the companion <code>.pys</code> file from the same section; then prints the call result.</em></p>
 <p>Rules that bite beginners:</p>
 <ol>
 <li>Imports must be at the <strong>top</strong> of the file.</li>

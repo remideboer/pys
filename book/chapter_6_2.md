@@ -18,6 +18,16 @@ tasks {
 print(hits)
 ```
 
+Output:
+
+```text
+2
+```
+
+*(Concurrent task print order may vary.)*
+
+
+
 Use `shared` when two tasks must update the same outer name and you accept
 responsibility for the interaction — or prefer returning values with
 `await` instead of sharing.

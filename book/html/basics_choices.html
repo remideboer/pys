@@ -113,6 +113,9 @@
 } <span class="tok-kw">else</span> {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">A sweater is enough</span><span class="tok-string">&quot;</span>)
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">A sweater is enough
+</code></pre>
 <ul>
 <li>The condition sits in parentheses: <code>(temperature &lt; 15)</code>.</li>
 <li>If it is true, the first <code>{ ... }</code> block runs.</li>
@@ -128,12 +131,18 @@
 } <span class="tok-kw">else</span> {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Try again</span><span class="tok-string">&quot;</span>)
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Pass
+</code></pre>
 <h2><code>unless</code> — when you think in negatives</h2>
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">lives</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
 
 <span class="tok-kw">unless</span> (<span class="tok-ident">lives</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Keep playing</span><span class="tok-string">&quot;</span>)
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Keep playing
+</code></pre>
 <p><code>unless (condition)</code> means “if the condition is <strong>not</strong> true”. The same
 idea with different words:</p>
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">lives</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
@@ -141,6 +150,9 @@ idea with different words:</p>
 <span class="tok-kw">if</span> <span class="tok-kw">not</span> (<span class="tok-ident">lives</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Keep playing</span><span class="tok-string">&quot;</span>)
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Keep playing
+</code></pre>
 <blockquote>
 <p><strong>Sidebar — modulo <code>%</code></strong></p>
 <p><code>n % 2</code> is the remainder after dividing <code>n</code> by 2. If the remainder is

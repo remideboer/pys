@@ -16,6 +16,15 @@ print(adders[1](10))
 print(adders[2](10))
 ```
 
+Output:
+
+```text
+10
+11
+12
+```
+
+
 Together with `tasks`, this keeps concurrent and higher-order code
 predictable: say when mutation crosses a boundary (`shared` / `atomic`),
 otherwise treat captures as snapshots.

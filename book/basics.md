@@ -21,6 +21,13 @@ Complete [Getting ready](chapter_1_1.md) first. Then create `main.pys`:
 print("Hello, world!")
 ```
 
+Output:
+
+```text
+Hello, world!
+```
+
+
 Run it:
 
 ```shell
@@ -49,6 +56,13 @@ var firstName = "Ada"
 print("Hello, " + firstName + "!")
 ```
 
+Output:
+
+```text
+Hello, Ada!
+```
+
+
 Think of the computer’s memory as a cabinet full of drawers. A variable
 is one drawer. Its name — `firstName` — is the label on the drawer so you
 can find it again.
@@ -76,6 +90,14 @@ firstName = "Tom"
 print("Greetings, " + firstName + "!")
 ```
 
+Output:
+
+```text
+Hello, Ada!
+Greetings, Tom!
+```
+
+
 After the first print, we open the `firstName` drawer, remove `"Ada"`, and
 put `"Tom"` in. We do **not** write `var` again — the drawer already
 exists; we only change its contents. The second print shows
@@ -92,6 +114,10 @@ print("Born in " + birthYear)
 
 # birthYear = "1991"   # does not compile — the drawer is locked
 ```
+
+*Compile error if the commented line is uncommented.*
+
+
 
 `fix` locks the drawer after the first value is placed. Trying to reopen
 it is a **compile error**, not a silent bug later. Prefer `fix` when the

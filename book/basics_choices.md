@@ -14,6 +14,13 @@ if (temperature < 15) {
 }
 ```
 
+Output:
+
+```text
+A sweater is enough
+```
+
+
 - The condition sits in parentheses: `(temperature < 15)`.
 - If it is true, the first `{ ... }` block runs.
 - If not, the `else` block runs.
@@ -32,6 +39,13 @@ if (score >= 90) {
 }
 ```
 
+Output:
+
+```text
+Pass
+```
+
+
 ## `unless` — when you think in negatives
 
 ```pys
@@ -41,6 +55,13 @@ unless (lives == 0) {
     print("Keep playing")
 }
 ```
+
+Output:
+
+```text
+Keep playing
+```
+
 
 `unless (condition)` means “if the condition is **not** true”. The same
 idea with different words:
@@ -52,6 +73,13 @@ if not (lives == 0) {
     print("Keep playing")
 }
 ```
+
+Output:
+
+```text
+Keep playing
+```
+
 
 > **Sidebar — modulo `%`**
 >

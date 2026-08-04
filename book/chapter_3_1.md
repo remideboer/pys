@@ -17,6 +17,13 @@ if (x < y) {
 }
 ```
 
+Output:
+
+```text
+x is less than y
+```
+
+
 Logical operators combine conditions. Prefer the word forms while learning:
 
 ```pys
@@ -37,6 +44,14 @@ if (not (hour == 12)) {
 }
 ```
 
+Output:
+
+```text
+night
+not noon
+```
+
+
 Symbols `&&` / `||` / `!` mean the same as `and` / `or` / `not`.
 
 ## `unless` / `if not`
@@ -51,6 +66,14 @@ if not (x > 100) {
     print("same idea with if not")
 }
 ```
+
+Output:
+
+```text
+not greater than 100
+same idea with if not
+```
+
 
 ### Exercise
 

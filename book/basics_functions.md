@@ -15,6 +15,14 @@ greet("Ada")
 greet("Tom")
 ```
 
+Output:
+
+```text
+Hello, Ada!
+Hello, Tom!
+```
+
+
 Breakdown:
 
 - `function` — we are declaring a function.
@@ -41,6 +49,13 @@ function int add(int a, int b) {
 int sum = add(2, 3)
 print(sum)
 ```
+
+Output:
+
+```text
+5
+```
+
 
 `return a + b` finishes the function and sends `5` back to the caller.
 That value is stored in `sum`.

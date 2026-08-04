@@ -40,6 +40,13 @@ personal scratch folder) with:
 print("Hello, world!")
 ```
 
+Output:
+
+```text
+Hello, world!
+```
+
+
 Run it:
 
 ```shell

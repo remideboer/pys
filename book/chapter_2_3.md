@@ -22,6 +22,13 @@ int whole = (int) speed
 print(whole)
 ```
 
+Output:
+
+```text
+12
+```
+
+
 Casts are explicit on purpose — silent narrowing is a common bug in less
 strict languages.
 
@@ -39,6 +46,10 @@ print(n)
 print(port)
 # byte tooBig = 300   # does not compile — outside 0..255
 ```
+
+*Compile error if the commented line is uncommented.*
+
+
 
 ### Exercise
 

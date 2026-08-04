@@ -26,6 +26,13 @@ switch (result) {
 }
 ```
 
+Output:
+
+```text
+age looks fine
+```
+
+
 - `enum ParseResult` — a closed set of named outcomes.
 - Members use `SCREAMING_SNAKE_CASE` by convention.
 - The function returns which case happened; the caller switches on it.

@@ -109,6 +109,9 @@ PYS can <strong>interpolate</strong> expressions inside a string:</p>
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">a</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
 <span class="tok-type">float</span> <span class="tok-ident">f</span> <span class="tok-op">=</span> <span class="tok-number">1.5</span>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">a is </span><span class="tok-interp">{a}</span><span class="tok-string">, f is </span><span class="tok-interp">{f}</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">a is 3, f is 1.5
+</code></pre>
 <p>The <code>{a}</code> slot is replaced by the value of <code>a</code>.</p>
 <h2>Typed interpolation</h2>
 <p>Typed slots are a <strong>guard</strong>, not a cast. The expression must already have
@@ -157,6 +160,13 @@ the matching type or the transpile fails:</p>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#f{ratio}</span><span class="tok-string"> is a float</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#b{ok}</span><span class="tok-string"> is a bool</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#c{grade}</span><span class="tok-string"> is a char</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">7 is an int
+hi is a string
+0.5 is a float
+True is a bool
+B is a char
+</code></pre>
 <p>If you write <code>#i{greeting}</code>, the compiler rejects it — that is the point.</p>
 <blockquote>
 <p><strong>Sidebar — <code>#o{…}</code> for objects</strong></p>

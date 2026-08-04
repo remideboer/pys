@@ -17,6 +17,13 @@ Damage d2 = Damage(amount=20, type="physical")
 print(d1 == d2)
 ```
 
+Output:
+
+```text
+True
+```
+
+
 > **Sidebar — named constructor arguments**
 >
 > `Damage(20, "physical")` fills fields in declaration order.
@@ -38,6 +45,13 @@ Money m2 = Money(10000, "USD")
 print(m1 == m2)
 ```
 
+Output:
+
+```text
+True
+```
+
+
 ## `entity` — identity key
 
 Equality uses only `identity(...)` fields (must be `fix`).
@@ -57,6 +71,13 @@ Customer a = Customer(7, "Ana")
 Customer b = Customer(7, "Ana B.")
 print(a == b)
 ```
+
+Output:
+
+```text
+True
+```
+
 
 Body order for entities: identity fields → other `fix` → mutable →
 constructors → methods.

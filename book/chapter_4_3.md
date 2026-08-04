@@ -52,6 +52,13 @@ list.add("x")
 print(list.isEmpty())
 ```
 
+Output:
+
+```text
+False
+```
+
+
 **vs interface:** abstract classes can carry fields and partial code.  
 **vs trait:** abstract classes **are** types; traits are not.
 

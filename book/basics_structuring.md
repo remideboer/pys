@@ -32,6 +32,10 @@ package function void greet(string name) {
 }
 ```
 
+*Compiles; no output.*
+
+
+
 `app.pys` in the **same folder**:
 
 ```pys
@@ -39,6 +43,10 @@ import greet from greetings
 
 greet("Ada")
 ```
+
+*Needs the companion `.pys` file from the same section; then prints the call result.*
+
+
 
 Rules that bite beginners:
 

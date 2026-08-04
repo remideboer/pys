@@ -15,6 +15,18 @@ tasks {
 print("both finished")
 ```
 
+Output:
+
+```text
+A
+B
+both finished
+```
+
+*(Task print order may vary; both lines appear before `both finished`.)*
+
+
+
 Named tasks can return values; `await` waits for them (**only inside a
 `task`**):
 
@@ -29,6 +41,13 @@ tasks {
     }
 }
 ```
+
+Output:
+
+```text
+42
+```
+
 
 ## Await edges form a DAG
 
@@ -53,6 +72,13 @@ tasks {
     }
 }
 ```
+
+Output:
+
+```text
+5
+```
+
 
 Illegal (a cycle) — rejected at transpile time (`pys.await-cycle`):
 

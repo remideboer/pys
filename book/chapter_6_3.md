@@ -23,6 +23,16 @@ tasks {
 print(counter)
 ```
 
+Output:
+
+```text
+2
+```
+
+*(Concurrent task print order may vary.)*
+
+
+
 Reach for `atomic` when many tasks bump the same counter; reach for
 `await` pipelines when you can avoid shared mutation entirely.
 

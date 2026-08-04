@@ -14,6 +14,13 @@ function void logSum(int a, int b) {
 logSum(6, 7)
 ```
 
+Output:
+
+```text
+42
+```
+
+
 Visibility (`package` / `global`) controls imports — see the basics
 structuring chapter.
 

@@ -9,6 +9,13 @@ float f = 1.5
 print("a is {a}, f is {f}")
 ```
 
+Output:
+
+```text
+a is 3, f is 1.5
+```
+
+
 The `{a}` slot is replaced by the value of `a`.
 
 ## Typed interpolation
@@ -37,6 +44,17 @@ print("#f{ratio} is a float")
 print("#b{ok} is a bool")
 print("#c{grade} is a char")
 ```
+
+Output:
+
+```text
+7 is an int
+hi is a string
+0.5 is a float
+True is a bool
+B is a char
+```
+
 
 If you write `#i{greeting}`, the compiler rejects it — that is the point.
 

@@ -18,6 +18,13 @@ string text = path.read_text(encoding="utf-8")
 print(text)
 ```
 
+Output:
+
+```text
+Hello from PYS
+```
+
+
 - `Path("note.txt")` — a path relative to where you run the command.
 - `write_text` — create or overwrite the file with a string.
 - `read_text` — read the whole file back as a `string`.

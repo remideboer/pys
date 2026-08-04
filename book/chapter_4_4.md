@@ -27,6 +27,13 @@ Product p = Product("Mug")
 print(p.label())
 ```
 
+Output:
+
+```text
+Item: Mug
+```
+
+
 ## When two traits collide
 
 If two traits define the same method name, the host class **must** override
@@ -57,6 +64,13 @@ class Greeter uses Loud, Soft {
 Greeter g = Greeter()
 print(g.greet())
 ```
+
+Output:
+
+```text
+HEY/hi
+```
+
 
 Without the override, the transpile fails: two traits both want to own
 `greet`. The override is where *you* decide the story.

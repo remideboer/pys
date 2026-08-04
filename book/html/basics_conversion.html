@@ -112,6 +112,9 @@ another — for example text from the keyboard into an <code>int</code>.</p>
 <span class="tok-type">float</span> <span class="tok-ident">f</span> <span class="tok-op">=</span> <span class="tok-type">float</span>(<span class="tok-string">&quot;</span><span class="tok-string">3.14</span><span class="tok-string">&quot;</span>)
 <span class="tok-type">string</span> <span class="tok-ident">label</span> <span class="tok-op">=</span> <span class="tok-type">str</span>(<span class="tok-ident">n</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">label</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">42
+</code></pre>
 <ul>
 <li><code>int(...)</code> — parse an integer (or convert from another numeric form).</li>
 <li><code>float(...)</code> — parse a floating-point number.</li>
@@ -123,6 +126,9 @@ a cast:</p>
 <pre><code class="language-pys"><span class="tok-type">float</span> <span class="tok-ident">temperature</span> <span class="tok-op">=</span> <span class="tok-number">18.7</span>
 <span class="tok-type">int</span> <span class="tok-ident">whole</span> <span class="tok-op">=</span> (<span class="tok-type">int</span>) <span class="tok-ident">temperature</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">whole</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">18
+</code></pre>
 <p><code>(int) temperature</code> truncates toward zero for this kind of cast — you get
 <code>18</code>, not a rounded <code>19</code>.</p>
 <h3>Exercise</h3>

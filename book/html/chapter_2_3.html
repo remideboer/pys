@@ -142,6 +142,9 @@ obvious.</p>
 <pre><code class="language-pys"><span class="tok-type">float</span> <span class="tok-ident">speed</span> <span class="tok-op">=</span> <span class="tok-number">12.9</span>
 <span class="tok-type">int</span> <span class="tok-ident">whole</span> <span class="tok-op">=</span> (<span class="tok-type">int</span>) <span class="tok-ident">speed</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">whole</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">12
+</code></pre>
 <p>Casts are explicit on purpose — silent narrowing is a common bug in less
 strict languages.</p>
 <h2>Width aliases</h2>
@@ -154,6 +157,7 @@ still emit as Python <code>int</code>, but <strong>out-of-range literals are rej
 <span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">port</span>)
 <span class="tok-comment"># byte tooBig = 300   # does not compile — outside 0..255</span></code></pre>
+<p><em>Compile error if the commented line is uncommented.</em></p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Store <code>9.81</code> as a <code>float</code>, cast to <code>int</code>, and print both with typed

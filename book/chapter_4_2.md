@@ -20,6 +20,13 @@ Greeter g = ConsoleGreeter()
 g.greet("Ada")
 ```
 
+Output:
+
+```text
+Hello, Ada
+```
+
+
 `Greeter` is a **type**: you can declare variables of that type and store
 any implementing object.
 

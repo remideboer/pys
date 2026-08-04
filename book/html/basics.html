@@ -120,6 +120,9 @@ language, and examples you can run yourself.</p>
 </ol>
 <p>Complete <a href="chapter_1_1.html">Getting ready</a> first. Then create <code>main.pys</code>:</p>
 <pre><code class="language-pys"><span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, world!</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Hello, world!
+</code></pre>
 <p>Run it:</p>
 <pre><code class="language-shell">python -m transpiler run main.pys
 </code></pre>
@@ -138,6 +141,9 @@ language, and examples you can run yourself.</p>
 program runs:</p>
 <pre><code class="language-pys"><span class="tok-mod">var</span> <span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Hello, Ada!
+</code></pre>
 <p>Think of the computer’s memory as a cabinet full of drawers. A variable
 is one drawer. Its name — <code>firstName</code> — is the label on the drawer so you
 can find it again.</p>
@@ -160,6 +166,10 @@ Run the program; you should see <code>Hello, Ada!</code>.</p>
 
 <span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Greetings, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Hello, Ada!
+Greetings, Tom!
+</code></pre>
 <p>After the first print, we open the <code>firstName</code> drawer, remove <code>"Ada"</code>, and
 put <code>"Tom"</code> in. We do <strong>not</strong> write <code>var</code> again — the drawer already
 exists; we only change its contents. The second print shows
@@ -171,6 +181,7 @@ that:</p>
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Born in </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">birthYear</span>)
 
 <span class="tok-comment"># birthYear = &quot;1991&quot;   # does not compile — the drawer is locked</span></code></pre>
+<p><em>Compile error if the commented line is uncommented.</em></p>
 <p><code>fix</code> locks the drawer after the first value is placed. Trying to reopen
 it is a <strong>compile error</strong>, not a silent bug later. Prefer <code>fix</code> when the
 value should stay put; use <code>var</code> when you already know it must change.</p>

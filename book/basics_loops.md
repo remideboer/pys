@@ -11,6 +11,15 @@ loop (int i = 0, i < 3, i++) {
 }
 ```
 
+Output:
+
+```text
+0
+1
+2
+```
+
+
 Reads as: start `i` at 0; while `i < 3`; after each body, do `i++`
 (add one). Prints `0`, then `1`, then `2`.
 
@@ -28,6 +37,15 @@ loop (counter < 3) {
 }
 ```
 
+Output:
+
+```text
+0
+1
+2
+```
+
+
 Same three prints; the condition is checked before each pass.
 
 ## Foreach — walk a collection
@@ -38,6 +56,15 @@ loop (string name in names) {
     print("Hello, " + name)
 }
 ```
+
+Output:
+
+```text
+Hello, Ada
+Hello, Tom
+Hello, Lin
+```
+
 
 Each pass binds `name` to the next element.
 

@@ -9,6 +9,10 @@ fix int locked = count    # assign once, then locked
 const int MAX = 100        # compile-time constant
 ```
 
+*Compiles; no output.*
+
+
+
 | Form | Meaning |
 |------|---------|
 | `type name = …` | Explicit type; can reassign unless also `fix`/`const` |
@@ -27,6 +31,13 @@ var attempt = 0
 attempt = attempt + 1
 print("mode=#s{mode} attempt=#i{attempt} max=#i{MAX_RETRIES}")
 ```
+
+Output:
+
+```text
+mode=demo attempt=1 max=3
+```
+
 
 ### Exercise
 

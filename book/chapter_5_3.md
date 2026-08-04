@@ -11,6 +11,13 @@ int doubled = apply(5, n => n * 2)
 print(doubled)
 ```
 
+Output:
+
+```text
+10
+```
+
+
 Prefer named functions when the logic is non-trivial or reused; prefer
 lambdas for short adapters at the call site.
 
@@ -25,6 +32,15 @@ lambdas for short adapters at the call site.
 int[] numbers = [1, 2, 3]
 numbers.loop(print)
 ```
+
+Output:
+
+```text
+1
+2
+3
+```
+
 
 ### Exercise
 

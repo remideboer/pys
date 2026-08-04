@@ -104,24 +104,35 @@
     </nav>
     <main>
 <h1>4.4. Dicts, tuples, and sets</h1>
-<pre><code class="language-pys"><span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
+<p>Construct with Python builtins (see also <a href="basics_data.html">Data structures</a>);
+typed <code>dict</code> / <code>tuple</code> / <code>set</code> names still matter on library APIs.</p>
+<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">dict</span>
+<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">tuple</span>
+<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">set</span>
+
+<span class="tok-mod">var</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> <span class="tok-type">dict</span>()
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])
 
-<span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">row</span> <span class="tok-op">=</span> (<span class="tok-number">1</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)
+<span class="tok-mod">var</span> <span class="tok-ident">row</span> <span class="tok-op">=</span> <span class="tok-type">tuple</span>([<span class="tok-number">1</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])
 <span class="tok-builtin">print</span>(<span class="tok-ident">row</span>[<span class="tok-number">1</span>])
 
-<span class="tok-type">set</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">tags</span> <span class="tok-op">=</span> {<span class="tok-string">&quot;</span><span class="tok-string">work</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">home</span><span class="tok-string">&quot;</span>}
+<span class="tok-mod">var</span> <span class="tok-ident">tags</span> <span class="tok-op">=</span> <span class="tok-type">set</span>([<span class="tok-string">&quot;</span><span class="tok-string">work</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">home</span><span class="tok-string">&quot;</span>])
 <span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">tags</span>))</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">36
+Ada
+2
+</code></pre>
 <ul>
 <li><strong>dict</strong> — key → value lookup.</li>
-<li><strong>tuple</strong> — fixed-length, mixed types allowed in the type arguments.</li>
+<li><strong>tuple</strong> — fixed-length sequence (often mixed types from libraries).</li>
 <li><strong>set</strong> — unique elements; order is not the point.</li>
 </ul>
 <h3>Exercise</h3>
 <blockquote>
-<p>Make a <code>dict&lt;string, string&gt;</code> from country code to country name with two
-entries. Print one value by key.</p>
+<p>Make a dict from country code to country name with two entries. Print one
+value by key.</p>
 </blockquote>
 <hr />
 <p><a href="chapter_3_3.html">Previous: Arrays and lists</a> · <a href="chapter_3_5.html">Next: Enums and switch</a></p>

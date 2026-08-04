@@ -115,6 +115,12 @@ finish before the code after the block runs.</p>
     }
 }
 <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">both finished</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">A
+B
+both finished
+</code></pre>
+<p><em>(Task print order may vary; both lines appear before <code>both finished</code>.)</em></p>
 <p>Named tasks can return values; <code>await</code> waits for them (<strong>only inside a
 <code>task</code></strong>):</p>
 <pre><code class="language-pys"><span class="tok-kw">tasks</span> {
@@ -126,6 +132,9 @@ finish before the code after the block runs.</p>
         <span class="tok-builtin">print</span>(<span class="tok-ident">s</span>)
     }
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">42
+</code></pre>
 <h2>Await edges form a DAG</h2>
 <p><code>await</code> draws an arrow: “this task needs that task’s result first.” Those
 arrows must form a <strong>DAG</strong> (directed acyclic graph) — a one-way pipeline,
@@ -144,6 +153,9 @@ never a loop.</p>
         <span class="tok-builtin">print</span>(<span class="tok-ident">y</span>)
     }
 }</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">5
+</code></pre>
 <p>Illegal (a cycle) — rejected at transpile time (<code>pys.await-cycle</code>):</p>
 <pre><code class="language-text">task a awaits b
 task b awaits a

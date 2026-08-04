@@ -261,7 +261,9 @@ def convert() -> None:
     summary_text = (SRC / "SUMMARY.md").read_text(encoding="utf-8")
     nav = parse_summary_nav(summary_text)
 
-    md_files = sorted(SRC.glob("*.md"))
+    md_files = sorted(
+        p for p in SRC.glob("*.md") if not p.name.startswith("_")
+    )
     for md_path in md_files:
         text = md_path.read_text(encoding="utf-8")
         MD.reset()

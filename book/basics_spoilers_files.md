@@ -11,6 +11,13 @@ string text = path.read_text(encoding="utf-8")
 print(text)
 ```
 
+Output:
+
+```text
+Ada
+```
+
+
 ---
 
 [Previous: Spoiler — structuring](basics_spoilers_structuring.md) · [Next: Session 1](chapter_2.md)

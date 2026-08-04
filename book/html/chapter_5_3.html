@@ -111,6 +111,9 @@
 
 <span class="tok-type">int</span> <span class="tok-ident">doubled</span> <span class="tok-op">=</span> <span class="tok-ident">apply</span>(<span class="tok-number">5</span>, <span class="tok-ident">n</span> <span class="tok-op">=&gt;</span> <span class="tok-ident">n</span> <span class="tok-op">*</span> <span class="tok-number">2</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">doubled</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">10
+</code></pre>
 <p>Prefer named functions when the logic is non-trivial or reused; prefer
 lambdas for short adapters at the call site.</p>
 <blockquote>
@@ -122,6 +125,11 @@ an <code>if</code>, <code>break</code>, or more than one statement per item — 
 </blockquote>
 <pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">numbers</span> <span class="tok-op">=</span> [<span class="tok-number">1</span>, <span class="tok-number">2</span>, <span class="tok-number">3</span>]
 <span class="tok-ident">numbers</span>.<span class="tok-kw">loop</span>(<span class="tok-builtin">print</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">1
+2
+3
+</code></pre>
 <h3>Exercise</h3>
 <blockquote>
 <p>Write <code>function int applyTwice(int value, lambda&lt;int, int&gt; fn)</code> that

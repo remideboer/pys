@@ -14,6 +14,15 @@ string name = input("What is your name? ")
 print("Hello, " + name + "!")
 ```
 
+*Sample session (your answers may differ):*
+
+```text
+What is your name? Ada
+Hello, Ada!
+```
+
+
+
 What happens:
 
 1. `import input from builtins` — make Python’s `input` available.
@@ -35,6 +44,10 @@ string raw = input("How old are you? ")
 int age = int(raw)
 print("Next year you will be " + str(age + 1))
 ```
+
+*Interactive — type answers at the prompts; output depends on your input.*
+
+
 
 > **Sidebar — typed declarations**
 >

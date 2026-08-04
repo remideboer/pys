@@ -115,6 +115,9 @@
 <span class="tok-typename">Damage</span> <span class="tok-ident">d1</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-number">20</span>, <span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
 <span class="tok-typename">Damage</span> <span class="tok-ident">d2</span> <span class="tok-op">=</span> <span class="tok-typename">Damage</span>(<span class="tok-ident">amount</span><span class="tok-op">=</span><span class="tok-number">20</span>, <span class="tok-ident">type</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">physical</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">d1</span> <span class="tok-op">==</span> <span class="tok-ident">d2</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">True
+</code></pre>
 <blockquote>
 <p><strong>Sidebar — named constructor arguments</strong></p>
 <p><code>Damage(20, "physical")</code> fills fields in declaration order.
@@ -131,6 +134,9 @@ optional trailing fields appear later.</p>
 <span class="tok-typename">Money</span> <span class="tok-ident">m1</span> <span class="tok-op">=</span> <span class="tok-typename">Money</span>(<span class="tok-number">10000</span>, <span class="tok-string">&quot;</span><span class="tok-string">USD</span><span class="tok-string">&quot;</span>)
 <span class="tok-typename">Money</span> <span class="tok-ident">m2</span> <span class="tok-op">=</span> <span class="tok-typename">Money</span>(<span class="tok-number">10000</span>, <span class="tok-string">&quot;</span><span class="tok-string">USD</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">m1</span> <span class="tok-op">==</span> <span class="tok-ident">m2</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">True
+</code></pre>
 <h2><code>entity</code> — identity key</h2>
 <p>Equality uses only <code>identity(...)</code> fields (must be <code>fix</code>).</p>
 <pre><code class="language-pys"><span class="tok-kw">entity</span> <span class="tok-typename">Customer</span> <span class="tok-kw">identity</span>(<span class="tok-ident">customerId</span>) {
@@ -146,6 +152,9 @@ optional trailing fields appear later.</p>
 <span class="tok-typename">Customer</span> <span class="tok-ident">a</span> <span class="tok-op">=</span> <span class="tok-typename">Customer</span>(<span class="tok-number">7</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ana</span><span class="tok-string">&quot;</span>)
 <span class="tok-typename">Customer</span> <span class="tok-ident">b</span> <span class="tok-op">=</span> <span class="tok-typename">Customer</span>(<span class="tok-number">7</span>, <span class="tok-string">&quot;</span><span class="tok-string">Ana B.</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-ident">a</span> <span class="tok-op">==</span> <span class="tok-ident">b</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">True
+</code></pre>
 <p>Body order for entities: identity fields → other <code>fix</code> → mutable →
 constructors → methods.</p>
 <h3>Exercise</h3>

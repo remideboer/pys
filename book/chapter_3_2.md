@@ -22,6 +22,20 @@ loop (string x in xs) {
 }
 ```
 
+Output:
+
+```text
+0
+1
+2
+0
+1
+2
+a
+b
+```
+
+
 ## Leaving early: `break`
 
 `break` stops the loop **immediately**. Use it when you have found what you
@@ -46,6 +60,13 @@ if (found) {
 }
 ```
 
+Output:
+
+```text
+found Lin
+```
+
+
 Without `break`, the loop would keep walking `"Sam"` after `"Lin"` was
 already found. With `break`, control jumps to the first statement **after**
 the loop’s closing `}`.
@@ -64,6 +85,15 @@ loop (int i = 1, i <= 6, i++) {
     print(i)
 }
 ```
+
+Output:
+
+```text
+1
+3
+5
+```
+
 
 Even numbers hit `continue` and never reach `print`. Odd numbers print:
 `1`, `3`, `5`.
@@ -91,6 +121,10 @@ loop (int i = 0, i < 1, i++) {
 }
 # print(scratch)  # does not compile — scratch lived only inside the loop
 ```
+
+*Compile error if the commented line is uncommented.*
+
+
 
 ### Exercise
 

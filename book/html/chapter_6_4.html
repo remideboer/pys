@@ -115,6 +115,11 @@ loop gets that iteration’s value (no Python late-binding surprise).</p>
 <span class="tok-builtin">print</span>(<span class="tok-ident">adders</span>[<span class="tok-number">0</span>](<span class="tok-number">10</span>))
 <span class="tok-builtin">print</span>(<span class="tok-ident">adders</span>[<span class="tok-number">1</span>](<span class="tok-number">10</span>))
 <span class="tok-builtin">print</span>(<span class="tok-ident">adders</span>[<span class="tok-number">2</span>](<span class="tok-number">10</span>))</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">10
+11
+12
+</code></pre>
 <p>Together with <code>tasks</code>, this keeps concurrent and higher-order code
 predictable: say when mutation crosses a boundary (<code>shared</code> / <code>atomic</code>),
 otherwise treat captures as snapshots.</p>

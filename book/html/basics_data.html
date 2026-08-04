@@ -110,6 +110,10 @@
 <pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>]
 <span class="tok-builtin">print</span>(<span class="tok-ident">names</span>[<span class="tok-number">0</span>])
 <span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">names</span>))</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Ada
+3
+</code></pre>
 <ul>
 <li><code>list&lt;string&gt;</code> — a list whose elements are strings.</li>
 <li><code>names[0]</code> — the first element (indexing starts at <strong>0</strong>).</li>
@@ -119,23 +123,45 @@
 <pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>]
 <span class="tok-ident">names</span>.<span class="tok-ident">append</span>(<span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>)
 <span class="tok-builtin">print</span>(<span class="tok-builtin">len</span>(<span class="tok-ident">names</span>))</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+</code></pre>
 <h2>Arrays</h2>
 <p>For teaching fixed-element sequences of primitives, PYS also has arrays:</p>
 <pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">scores</span> <span class="tok-op">=</span> [<span class="tok-number">10</span>, <span class="tok-number">20</span>, <span class="tok-number">30</span>]
 <span class="tok-builtin">print</span>(<span class="tok-ident">scores</span>[<span class="tok-number">1</span>])</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">20
+</code></pre>
 <p>Prefer <code>list&lt;T&gt;</code> when working with growing collections; prefer <code>T[]</code> when
 you want array-shaped teaching examples. Session 2 goes deeper.</p>
-<h2>Tuples</h2>
-<p>A <code>tuple</code> groups a fixed number of values that may have different types:</p>
-<pre><code class="language-pys"><span class="tok-type">tuple</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">person</span> <span class="tok-op">=</span> (<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-number">36</span>)
+<h2>Tuples and dicts (construction)</h2>
+<p>Typed <code>tuple&lt;…&gt;</code> / <code>dict&lt;…&gt;</code> names show up often on <strong>library return values</strong>.
+To <em>build</em> them in beginner programs, use the Python constructors (imported
+once at the top of the file):</p>
+<pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">dict</span>
+<span class="tok-kw">from</span> <span class="tok-ident">builtins</span> <span class="tok-kw">import</span> <span class="tok-type">tuple</span>
+
+<span class="tok-mod">var</span> <span class="tok-ident">person</span> <span class="tok-op">=</span> <span class="tok-type">tuple</span>([<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-number">36</span>])
 <span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">0</span>])
-<span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">1</span>])</code></pre>
-<h2>Dicts</h2>
-<p>A <code>dict</code> maps keys to values:</p>
-<pre><code class="language-pys"><span class="tok-type">dict</span><span class="tok-op">&lt;</span><span class="tok-type">string</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> {}
+<span class="tok-builtin">print</span>(<span class="tok-ident">person</span>[<span class="tok-number">1</span>])
+
+<span class="tok-mod">var</span> <span class="tok-ident">ages</span> <span class="tok-op">=</span> <span class="tok-type">dict</span>()
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">36</span>
 <span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>] <span class="tok-op">=</span> <span class="tok-number">41</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">ages</span>[<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>])</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Ada
+36
+36
+</code></pre>
+<blockquote>
+<p><strong>Sidebar — typed empty <code>{}</code></strong></p>
+<p>Writing <code>dict&lt;string, int&gt; ages = {}</code> is the long-term typed form in the
+language docs, but empty <code>{}</code> is not a reliable dict constructor in the
+current toolchain (it can emit as a list). Prefer <code>dict()</code> here until you
+take dicts from libraries.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Create a <code>list&lt;string&gt;</code> of three foods you like. Print the second item
