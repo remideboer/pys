@@ -1,5 +1,5 @@
 # examples/webserver/conn_handler.pys
-# Dispatch one accepted connection to HTTP/1.1 or HTTP/2 (ALPN).
+# Dispatch one accepted connection to HTTP/1.1 (keep-alive) or HTTP/2 (ALPN).
 
 import Http11, HttpRequest from http11
 import Http2Server from http2
@@ -8,11 +8,13 @@ package class ConnHandler {
     private Http11 http
     private Http2Server http2
     private var router
+    private float idleTimeoutSec
 
-    public ConnHandler(Http11 http, Http2Server http2, var router) {
+    public ConnHandler(Http11 http, Http2Server http2, var router, float idleTimeoutSec) {
         this.http = http
         this.http2 = http2
         this.router = router
+        this.idleTimeoutSec = idleTimeoutSec
     }
 
     public void serveOne(var conn) {
@@ -26,11 +28,25 @@ package class ConnHandler {
         if (alpn == "h2") {
             this.http2.serve(conn, this.router)
         } else {
-            string raw = this.http.readRaw(conn)
-            HttpRequest req = this.http.parse(raw)
-            var resp = this.router.handle(req)
-            this.http.write(conn, resp)
+            this.serveHttp11(conn)
         }
         conn.close()
+    }
+
+    public void serveHttp11(var conn) {
+        bool open = true
+        loop (open) {
+            string raw = this.http.readRaw(conn, this.idleTimeoutSec)
+            if (raw == "") {
+                open = false
+            } else {
+                HttpRequest req = this.http.parse(raw)
+                var resp = this.router.handle(req)
+                this.http.write(conn, resp, req.keepAlive)
+                if (!req.keepAlive) {
+                    open = false
+                }
+            }
+        }
     }
 }

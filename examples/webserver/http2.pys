@@ -65,7 +65,7 @@ package class Http2Server {
             if (qi >= 0) {
                 path = path[0:qi]
             }
-            HttpRequest req = HttpRequest(method, path, body, correlationId)
+            HttpRequest req = HttpRequest(method, path, body, correlationId, true)
             var resp = router.handle(req)
             string payload = resp.body
             var bodyBytes = payload.encode("utf-8")

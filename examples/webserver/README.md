@@ -16,6 +16,7 @@ Project root for the I/O-bound concurrent HTTP server (see
 python -m transpiler run examples/webserver/test_core.pys
 python -m transpiler run examples/webserver/test_integration.pys
 python -m transpiler run examples/webserver/test_http_e2e.pys
+python -m transpiler run examples/webserver/test_http_keepalive_e2e.pys
 python -m transpiler run examples/webserver/test_https_e2e.pys
 python -m transpiler run examples/webserver/test_http2_e2e.pys
 python examples/webserver/scripts/check_idempotency.py
@@ -105,3 +106,16 @@ for FR9/FR12 demos, not a 1k-VU production tune.
 3. k6 + idempotency lint — done  
 4a. TLS termination (FR5) — done  
 4b. HTTP/2 multiplex over TLS ALPN (FR2) — done  
+5. HTTP/1.1 keep-alive (FR2) — done  
+
+## Pending refactor (PYS-level)
+
+`test_*.pys` live in this folder only so they share `package` visibility with
+production types (today: same-folder rule). That is a language/tooling gap, not
+the desired project shape.
+
+**After** [F-006](../../docs/TODO-FUTURE.md#f-006-source-roots-and-same-package-tests) /
+[ADR-017](../../docs/adr/ADR-017-source-roots-same-package-tests.md) (`pys.toml`
+source roots: same package iff post-root relative paths match), refactor this
+example into e.g. `src/` + `tests/` with mirrored paths — **without** widening
+`package` members to `public`.

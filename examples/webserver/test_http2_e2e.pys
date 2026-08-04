@@ -31,7 +31,7 @@ AppContext ctx = AppContext(cfg)
 Router router = Router(ctx)
 Http11 http = Http11()
 Http2Server http2 = Http2Server()
-ConnHandler handler = ConnHandler(http, http2, router)
+ConnHandler handler = ConnHandler(http, http2, router, 0.5)
 TlsTerminator tls = TlsTerminator(cfg.tlsEnabled, cfg.tlsCertFile, cfg.tlsKeyFile)
 
 shared ConnQueue work = ConnQueue()

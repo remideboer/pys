@@ -7,7 +7,9 @@ import time
 
 import ServerConfig from config
 import ConnQueue from conn_queue
-import Http11, HttpRequest from http11
+import Http11 from http11
+import Http2Server from http2
+import ConnHandler from conn_handler
 import AppContext, Router from router
 
 ServerConfig cfg = ServerConfig()
@@ -15,12 +17,13 @@ cfg.poolSize = 4
 AppContext ctx = AppContext(cfg)
 Router router = Router(ctx)
 Http11 http = Http11()
+Http2Server http2 = Http2Server()
+ConnHandler handler = ConnHandler(http, http2, router, 0.5)
 
 shared ConnQueue work = ConnQueue()
 shared bool running = true
 shared int listenPort = 0
-shared Router sharedRouter = router
-shared Http11 sharedHttp = http
+shared ConnHandler sharedHandler = handler
 atomic int served = 0
 
 tasks {
@@ -57,11 +60,7 @@ tasks {
             if (conn == null) {
                 done = true
             } else {
-                string raw = sharedHttp.readRaw(conn)
-                HttpRequest req = sharedHttp.parse(raw)
-                var resp = sharedRouter.handle(req)
-                sharedHttp.write(conn, resp)
-                conn.close()
+                sharedHandler.serveOne(conn)
                 served += 1
             }
         }
