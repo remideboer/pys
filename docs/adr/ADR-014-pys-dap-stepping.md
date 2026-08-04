@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity); 2026-08-03 (halt at BP only; clear-all UX); 2026-08-03 (deps PYTHONPATH); 2026-08-03 (inline values); 2026-08-03 (logpoints) |
+| Amended | 2026-08-03 (UX maturity; deps; inline values; logpoints); 2026-08-04 (PYS-only default + explicit Python depth) |
 | Code detail | [CER-014](../evolution/CER-014-pys-dap-stepping.md) |
 | Source | [TODO-FUTURE F-004](../TODO-FUTURE.md); [pipeline-migration C2](../pipeline-migration.md) |
 
@@ -47,10 +47,18 @@ There was also no `.pys` ↔ generated-Python line map.
    locals. **PYS: Add Logpoint** on gutter/context (diamond glyph); also VS Code
    **Add Logpoint**. See [IntelliJ logpoints](https://www.jetbrains.com/help/idea/logpoints.html).
 10. ADR-001 unchanged: Debug remains trusted-workspace / Run-class only.
+11. **Stay in PYS by default:** `PYS: Debug File` launches debugpy with
+    `justMyCode: true`; generated frames are remapped and stepping does not
+    enter Python libraries/dependencies.
+12. **Explicit depth escape hatch:** `PYS Advanced: Debug Transpiled Python`
+    opens the generated `.py`, launches with `justMyCode: false`, disables
+    source/name remapping, and stops on generated entry. This is a separate
+    session mode so beginner debugging never falls through into Python by
+    accident.
 
 ## Consequences
 
-- Extension ≥ 0.0.54; JIT `J-debug`; example `examples/debug_step.pys`.
+- Extension ≥ 0.0.68; JIT `J-debug`; example `examples/debug_step.pys`.
 - Requires the Microsoft Python extension at debug time.
 - Concurrency preamble / `_Pys*` frames may appear unmapped; task/thread
   debugging remains deferred.
@@ -59,5 +67,6 @@ There was also no `.pys` ↔ generated-Python line map.
 
 - Full custom DAP server wrapping debugpy (unnecessary protocol surface).
 - Keeping `module: transpiler` + `run` and only adding maps (child process gap).
-- Default `stopOnEntry: true` (halts at top-level before any breakpoint — not how common IDE Debug File behaves).
+- Default `stopOnEntry: true` (the normal PYS mode runs to a PYS breakpoint;
+  the explicitly selected transpiled-Python mode is the deliberate exception).
 - Faking scalar display for `_PysShared` / `_PysAtomic` in Variables (v1).

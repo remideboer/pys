@@ -22,6 +22,12 @@ globals / builtins / other functions’ identifiers).
 Use **PYS: Clear All Breakpoints** from the editor context menu, line-number/gutter
 menu, or the editor tab menu/icon.
 
+Normal debugging is intentionally **PYS-only**: Step Into follows your `.pys`
+functions, but skips Python library/dependency internals. To inspect what the
+transpiler generated, run **PYS Advanced: Debug Transpiled Python** from the
+editor context menu or Command Palette. That mode opens the temporary `.py`,
+stops on its first line, and allows stepping into Python internals.
+
 ## What happens
 
 1. Extension runs `prepare_debug` → temp `.py` + `.pysmap.json` line maps (+ name table).
@@ -47,10 +53,14 @@ print(total)
 | Stops on `.pys` | no | yes, at breakpoints |
 | Needs Python ext. | no | yes |
 
+`PYS Advanced: Debug Transpiled Python` is a separate advanced session: it
+shows generated names/frames instead of mapping them back to PYS.
+
 ## Limits
 
 - Shared/atomic cells still appear as wrapper objects in Variables (not fake scalars).
-- Concurrency helpers / thread pools may show unmapped frames.
+- Concurrency helpers / thread pools are not specialized; use transpiled-Python
+  mode when you intentionally need those implementation frames.
 - Untrusted workspaces cannot Debug (same gate as Run).
 
 Full sample: [`examples/debug_step.pys`](../../examples/debug_step.pys).

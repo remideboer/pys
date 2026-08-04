@@ -20,9 +20,13 @@ const {
   filterInlineValueSitesByScope,
 } = require('./debug-map');
 const { createPysProjectScaffold } = require('./create-project');
+const {
+  PYS_DEBUG_SESSION_NAME,
+  debugModeOptions,
+  isPysDebugSession,
+} = require('./debug-mode');
 
-const PYS_DEBUG_SESSION_NAME = 'Debug PYS';
-/** @type {Map<string, { dir: string, registry: object }>} */
+/** @type {Map<string, { dir: string, registry: object, remapSource: boolean }>} */
 const pysDebugSessions = new Map();
 /** @type {{ dir: string, registry: object } | null} */
 let pendingPysDebug = null;
@@ -1111,7 +1115,8 @@ function activate(context) {
     );
   }
 
-  async function debugPysFile(filePath) {
+  async function debugPysFile(filePath, mode = 'pys') {
+    const debugMode = debugModeOptions(mode);
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to debug. Set pys.mainFile or open a .pys file.');
       return;
@@ -1206,9 +1211,19 @@ function activate(context) {
         : prepend;
     }
 
-    pendingPysDebug = { dir: outDir, registry, bpReqPysBySeq: new Map() };
+    pendingPysDebug = {
+      dir: outDir,
+      registry,
+      bpReqPysBySeq: new Map(),
+      remapSource: debugMode.remapSource,
+    };
+    if (debugMode.revealGenerated) {
+      await vscode.window.showTextDocument(vscode.Uri.file(prepared.main), {
+        preview: false,
+      });
+    }
     const launchConfig = {
-      name: PYS_DEBUG_SESSION_NAME,
+      name: debugMode.sessionName,
       type: 'python',
       request: 'launch',
       program: prepared.main,
@@ -1216,9 +1231,9 @@ function activate(context) {
       env: runEnv,
       console: 'integratedTerminal',
       // Student program is the launch target (not `transpiler run` subprocess).
-      // Halt only at user breakpoints — do not stop on the first top-level line.
-      justMyCode: false,
-      stopOnEntry: false,
+      // PYS mode runs to PYS breakpoints; explicit Python mode stops on entry.
+      justMyCode: debugMode.justMyCode,
+      stopOnEntry: debugMode.stopOnEntry,
     };
     // Prefer deps-resolved interpreter (same as Run) when prepare_debug returns it.
     if (prepared.python) {
@@ -1342,7 +1357,7 @@ function activate(context) {
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterTrackerFactory('python', {
       createDebugAdapterTracker(session) {
-        if (session.name !== PYS_DEBUG_SESSION_NAME) {
+        if (!isPysDebugSession(session.name)) {
           return {};
         }
         if (pendingPysDebug) {
@@ -1368,7 +1383,11 @@ function activate(context) {
                 message.arguments,
               );
             }
-            if (message.command === 'evaluate' && message.arguments) {
+            if (
+              entry.remapSource &&
+              message.command === 'evaluate' &&
+              message.arguments
+            ) {
               const expr = message.arguments.expression;
               const rewritten = rewriteEvaluateExpression(entry.registry, expr);
               if (rewritten !== expr) {
@@ -1385,6 +1404,7 @@ function activate(context) {
               return;
             }
             if (
+              entry.remapSource &&
               message.type === 'response' &&
               message.command === 'stackTrace' &&
               message.body &&
@@ -1409,6 +1429,7 @@ function activate(context) {
               );
             }
             if (
+              entry.remapSource &&
               message.type === 'event' &&
               message.event === 'breakpoint' &&
               message.body &&
@@ -1420,6 +1441,7 @@ function activate(context) {
               );
             }
             if (
+              entry.remapSource &&
               message.type === 'response' &&
               message.command === 'variables' &&
               message.body &&
@@ -1539,6 +1561,10 @@ function activate(context) {
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
     await debugPysFile(resolveTargetPysFile(file));
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.debugTranspiledFile', async (file) => {
+    await debugPysFile(resolveTargetPysFile(file), 'python');
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.clearAllBreakpoints', async () => {

@@ -208,6 +208,8 @@ editor Run controls — no workspace `.vscode/run_pys.py` required. The activity
 - Set `pys.mainFile` (e.g. `examples/main.pys`) for Run Main.
 - Debug prepares generated Python + line maps, launches debugpy on the program,
   and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
+  Normal Step Into stays in PYS/user code. **PYS Advanced: Debug Transpiled
+  Python** opens the generated `.py` and permits stepping into Python internals.
   Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
   context / gutter / tab. Requires the Microsoft Python extension.
   Sample: [`examples/debug_step.pys`](examples/debug_step.pys).

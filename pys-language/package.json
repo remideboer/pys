@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.67",
+  "version": "0.0.68",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -164,6 +164,12 @@
         "icon": "$(debug-alt)"
       },
       {
+        "command": "pys.debugTranspiledFile",
+        "title": "Debug Transpiled Python",
+        "category": "PYS Advanced",
+        "icon": "$(symbol-file)"
+      },
+      {
         "command": "pys.runMain",
         "title": "Run Main File",
         "category": "PYS",
@@ -319,6 +325,11 @@
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys",
           "group": "debug@2"
+        },
+        {
+          "command": "pys.debugTranspiledFile",
+          "when": "resourceExtname == .pys",
+          "group": "debug@3"
         }
       ],
       "editor/context": [
@@ -361,6 +372,11 @@
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys",
           "group": "navigation@2"
+        },
+        {
+          "command": "pys.debugTranspiledFile",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@2.5"
         },
         {
           "command": "pys.addLogpoint",
@@ -439,6 +455,10 @@
           "when": "resourceFilename == 'pys.deps'"
         },
         {
+          "command": "pys.debugTranspiledFile",
+          "when": "resourceExtname == .pys || editorLangId == pys"
+        },
+        {
           "command": "pys.runMain",
           "when": "pys.hasMainFile"
         },
@@ -485,6 +505,7 @@
     "onLanguage:markdown",
     "onCommand:pys.runFile",
     "onCommand:pys.debugFile",
+    "onCommand:pys.debugTranspiledFile",
     "onCommand:pys.runMain",
     "onCommand:pys.debugMain",
     "onCommand:pys.setAsMainFile",

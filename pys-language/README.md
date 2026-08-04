@@ -13,7 +13,9 @@ bundled** in the VSIX — students do not `pip install` this repo.
 - Language / file icons for `.pys`
 - Markdown ` ```pys ` fences: editor + preview highlighting
 - **Run** and **Debug** using the bundled transpiler
-  - Debug: breakpoints / step / inline values / Variables on `.pys` (halts at BPs; Clear All Breakpoints in context/gutter/tab; needs Microsoft Python extension)
+  - Debug: breakpoints / step / inline values / Variables on `.pys`; normal Step Into stays in PYS/user code
+  - **PYS Advanced: Debug Transpiled Python** opens generated `.py` and permits stepping into Python internals
+  - Halts at BPs; Clear All Breakpoints in context/gutter/tab; needs Microsoft Python extension
   - `Ctrl+Shift+R` / `Ctrl+Shift+D` — run/debug current `.pys` file
   - `Ctrl+Alt+R` / `Ctrl+Alt+D` — run/debug configured main file
   - Setting `pys.mainFile` (or right-click **Set as Main File**)

@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity); 2026-08-03 (deps PYTHONPATH parity) |
+| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode) |
 | Commits | (F-004 increment; debug UX maturity; deps on Debug) |
 | Scope | `emit/python.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; docs |
 | ADRs | [ADR-014](../adr/ADR-014-pys-dap-stepping.md) |
@@ -68,10 +68,23 @@ Follow-up maturity: verified gutter glyphs, stop-on-entry, Variables/Watch names
   without suspending (IntelliJ-style logpoints).
 - Extension **0.0.52**.
 
+### Post-behavior (PYS-first stepping)
+
+- `PYS: Debug File` now uses `justMyCode: true`: normal Step Into stays in
+  mapped PYS/user code instead of entering Python dependencies.
+- `PYS Advanced: Debug Transpiled Python` is the explicit escape hatch:
+  opens the generated `.py`, stops on entry, uses `justMyCode: false`, and
+  leaves stack/Variables/evaluate in Python names.
+- Both session modes still translate pre-existing `.pys` breakpoints to the
+  generated program. Only the normal mode remaps source views back to PYS.
+- `debug-mode.js` keeps the launch contract pure and unit-tested.
+- Extension **0.0.68**.
+
 ### Evidence
 
 `tests/test_line_map.py`; `tests/test_prepare_debug.py`;
-`pys-language/test/debug-map.test.js`.
+`pys-language/test/debug-map.test.js`;
+`pys-language/test/debug-mode.test.js`.
 
 ## Trade-offs / deferred
 
