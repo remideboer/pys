@@ -257,6 +257,7 @@ def convert() -> None:
     OUT.mkdir(parents=True)
 
     (OUT / "style.css").write_text(CSS, encoding="utf-8")
+    (OUT / ".nojekyll").write_text("", encoding="utf-8")
 
     summary_text = (SRC / "SUMMARY.md").read_text(encoding="utf-8")
     nav = parse_summary_nav(summary_text)

@@ -15,6 +15,14 @@
 
 - Editor extension: `pys-language/` (install via `python -m transpiler install extension`)
 - Run a file: `python -m transpiler run path/to/file.pys`
+- Rebuild this HTML locally: `python book/build_html.py` (from `book/`)
+
+## Online copy (GitHub Pages)
+
+After Pages is set to **GitHub Actions** in the repo settings, the beginner
+book is published from `book/html` by `.github/workflows/pages-book.yml`:
+
+- https://remideboer.github.io/pys/
 
 ## Pedagogical model (credit)
 
