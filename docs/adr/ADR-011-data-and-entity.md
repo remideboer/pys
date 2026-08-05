@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-011](../evolution/CER-011-data-and-entity.md) |
-| Source | [`requirements/data_entity.md`](../../requirements/data_entity.md) |
+| Permanent | [`docs/DATA_ENTITY.md`](../DATA_ENTITY.md) (full rationale + references) |
+| Draft origin | `requirements/data_entity.md` (temporary; do not treat as canonical) |
 
 ## Context
 
@@ -19,9 +20,8 @@ recur precisely because the *language* offers no compile-time guarantee.
 
 `struct` remains an identity-free bag without a generated VO/Entity contract
 ([ADR-005](ADR-005-structs-as-value-types.md)). Full rationale, Java/C#
-anti-examples, and citations live in
-[`docs/DATA_ENTITY.md`](../DATA_ENTITY.md) (mirrors
-[`requirements/data_entity.md`](../../requirements/data_entity.md)).
+anti-examples, production cases, and bibliographic references live in
+[`docs/DATA_ENTITY.md`](../DATA_ENTITY.md).
 
 ## Decision
 

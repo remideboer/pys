@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-017](../evolution/CER-017-enforced-ordering.md) |
-| Source | [`requirements/enforced_ordering.md`](../../requirements/enforced_ordering.md) |
+| Permanent | This ADR (incl. Sweller / habit rationale); LANGUAGE § Enforced member ordering |
+| Draft origin | `requirements/enforced_ordering.md` (temporary; do not treat as canonical) |
 
 ## Context
 

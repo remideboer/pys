@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-009](../evolution/CER-009-abstract-classes.md) |
-| Source | [`requirements/abstract_class.md`](../../requirements/abstract_class.md) |
+| Permanent | This ADR (incl. litmus / construct table); LANGUAGE §Abstract; book `chapter_4_3` |
+| Draft origin | `requirements/abstract_class.md` (temporary; do not treat as canonical) |
 
 ## Context
 

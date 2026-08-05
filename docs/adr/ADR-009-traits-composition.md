@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-008](../evolution/CER-008-traits.md) |
-| Source | [`requirements/traits.md`](../../requirements/traits.md) |
+| Permanent | This ADR (incl. Schärli reference); LANGUAGE §Traits; book `chapter_4_4` |
+| Draft origin | `requirements/traits.md` (temporary; do not treat as canonical) |
 
 ## Context
 

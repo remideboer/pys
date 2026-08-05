@@ -200,7 +200,7 @@ class_body       = "{" ,
                    "}" ;
 
 (* Kind order is grammar-level (parse FatalParseError). Visibility is
-   unordered within a section. See requirements/enforced_ordering.md. *)
+   unordered within a section. See ADR-015 / LANGUAGE § Enforced member ordering. *)
 
 const_field_decl = member_access , "const" , primitive_type , identifier ,
                    "=" , expression ;

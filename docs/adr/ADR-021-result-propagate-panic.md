@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-04 |
 | Code detail | [CER-025](../evolution/CER-025-result-propagate-panic.md) |
-| Requirement | [Propagate and panic](../../requirements/propagate_panic.md) |
+| Permanent | This ADR (decisions + full references [1]–[9]); LANGUAGE § `result` / `propagate` |
+| Draft origin | `requirements/propagate_panic.md` (temporary; do not treat as canonical) |
 
 ## Context
 
@@ -112,20 +113,20 @@ debug sessions execute different programs.
 
 ## References
 
-[1] Bugfender, “iOS Crash Debugging: How to Find and Fix App Crashes,” Bugfender Blog. https://bugfender.com/blog/ios-crash-debugging/
+[1] Bugfender, "iOS Crash Debugging: How to Find and Fix App Crashes," Bugfender Blog. [Online]. Available: https://bugfender.com/blog/ios-crash-debugging/. [Accessed: Aug. 4, 2026].
 
-[2] G. Miller, “When should you force unwrap optionals in Swift?,” *Hacking with Swift*. https://www.hackingwithswift.com/quick-start/understanding-swift/when-should-you-force-unwrap-optionals-in-swift
+[2] G. Miller, "When should you force unwrap optionals in Swift?," *Understanding Swift* (Hacking with Swift). [Online]. Available: https://www.hackingwithswift.com/quick-start/understanding-swift/when-should-you-force-unwrap-optionals-in-swift. [Accessed: Aug. 4, 2026].
 
-[3] Apple Developer Forums, thread 652630 (stable code beginning to crash). https://developer.apple.com/forums/thread/652630
+[3] "Code that has been consistently stable for a long time now has begun crashing for unknown reasons," Apple Developer Forums, thread 652630. [Online]. Available: https://developer.apple.com/forums/thread/652630. [Accessed: Aug. 4, 2026].
 
-[4] W. McNally, “Force-Unwrapping in Swift is NOT a Bad Thing,” Feb. 19, 2018. https://wolfmcnally.com/82/force-unwrapping-swift-not-bad-thing/
+[4] W. McNally, "Force-Unwrapping in Swift is NOT a Bad Thing," wolfmcnally.com, Feb. 19, 2018. [Online]. Available: https://wolfmcnally.com/82/force-unwrapping-swift-not-bad-thing/. [Accessed: Aug. 4, 2026].
 
-[5] P. Hudson, “Force unwrapping,” *Hacking with Swift*. https://www.hackingwithswift.com/sixty/10/4/force-unwrapping
+[5] P. Hudson, "Force unwrapping," *Hacking with Swift*. [Online]. Available: https://www.hackingwithswift.com/sixty/10/4/force-unwrapping. [Accessed: Aug. 4, 2026].
 
-[6] D. Sena et al., “Understanding the Exception Handling Strategies of Java Libraries: An Empirical Study,” MSR 2016, doi: 10.1145/2901739.2901757
+[6] D. Sena, R. Coelho, U. Kulesza, and R. Bonifácio, "Understanding the Exception Handling Strategies of Java Libraries: An Empirical Study," in *Proc. IEEE/ACM 13th Working Conf. Mining Software Repositories (MSR)*, 2016, pp. 212–222, doi: 10.1145/2901739.2901757.
 
-[7] A. Nakshatri et al., “Analysis of Exception Handling Patterns in Java Projects: An Empirical Study,” MSR 2016, doi: 10.1109/MSR.2016.062
+[7] A. Nakshatri, M. Hegde, and S. Thandra, "Analysis of Exception Handling Patterns in Java Projects: An Empirical Study," in *Proc. IEEE/ACM 13th Working Conf. Mining Software Repositories (MSR)*, 2016, pp. 500–503, doi: 10.1109/MSR.2016.062.
 
-[8] T. Nguyen et al., “Studying the Prevalence of Exception Handling Anti-Patterns,” ICPC 2017, doi: 10.1109/ICPC.2017.36
+[8] T. Nguyen, H. Shang, and (et al.), "Studying the Prevalence of Exception Handling Anti-Patterns," in *Proc. IEEE 25th Int. Conf. Program Comprehension (ICPC)*, 2017, doi: 10.1109/ICPC.2017.36.
 
-[9] J. Bloch, *Effective Java*, 3rd ed. Addison-Wesley, 2018.
+[9] J. Bloch, *Effective Java*, 3rd ed. Boston, MA, USA: Addison-Wesley, 2018. (Referenced as the best-practices baseline against which checked-exception usage was empirically compared in [7].)

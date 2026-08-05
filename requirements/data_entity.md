@@ -1,5 +1,9 @@
 ## PYS Language Specification — `data` Types and `entity` Types
 
+> **Absorbed into permanent docs.** Canonical copy (including references [1]–[8]):
+> [`docs/DATA_ENTITY.md`](../docs/DATA_ENTITY.md) · decision: [ADR-011](../docs/adr/ADR-011-data-and-entity.md).
+> This file is a historical draft only.
+
 ### 1. Overview
 
 Two constructs express "bundled data" with opposite equality semantics, deliberately kept separate from `struct`:

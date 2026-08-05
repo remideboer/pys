@@ -5,7 +5,8 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-012](../evolution/CER-012-lambdas.md) |
-| Source | [`requirements/lambda.md`](../../requirements/lambda.md) |
+| Permanent | This ADR (incl. cross-language capture table); LANGUAGE §Lambdas; book `chapter_6_4` |
+| Draft origin | `requirements/lambda.md` (temporary; do not treat as canonical) |
 
 ## Context
 

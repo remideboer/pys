@@ -3,8 +3,7 @@
 Teaching reference for Value Objects (`data`) and identity-keyed types (`entity`).
 Runnable samples: [`examples/data.pys`](../examples/data.pys),
 [`examples/entities.pys`](../examples/entities.pys). Short README blurb links here.
-
-Source requirements: [`requirements/data_entity.md`](../requirements/data_entity.md).
+Decision record: [ADR-011](adr/ADR-011-data-and-entity.md).
 
 ### 1. Overview
 
@@ -300,4 +299,22 @@ These four cases share exactly the same underlying pattern that PYS's `entity` c
 | Proxy vs. non-proxy inconsistency (jpa-buddy) | Equality logic depends on *how* the object was loaded, not solely on its key | No proxy concept needed — `identity(...)` is the sole source of equality, regardless of how/when the object was created |
 | Lombok `@Data` on entities (Medium) | One generic "generate over all fields" mechanism gets misapplied to both Value Objects and Entities, with no linguistic distinction | `data` and `entity` are *separate* constructs with *separate* generation rules — the mistake is impossible to make by construction, since you cannot accidentally apply "all-fields" equality to an entity |
 
-**Key point for requirements/teacher docs**: these are not edge cases or theoretical concerns — they are production incidents actively documented and discussed by the Hibernate community to this day (source 2 dates from 2026). This underscores that the problem has not been solved by decades of framework maturity, but keeps recurring structurally as long as the language itself provides no guarantee. PYS's `entity`/`data` separation demonstrates to students that a language-level solution eliminates this entire problem space by design, rather than managing it through documentation and discipline.
+**Key point for teacher docs**: these are not edge cases or theoretical concerns — they are production incidents actively documented and discussed by the Hibernate community to this day (source 2 dates from 2026). This underscores that the problem has not been solved by decades of framework maturity, but keeps recurring structurally as long as the language itself provides no guarantee. PYS's `entity`/`data` separation demonstrates to students that a language-level solution eliminates this entire problem space by design, rather than managing it through documentation and discipline.
+
+## References
+
+[1] V. Mihalcea, "How to implement equals and hashCode using the JPA entity identifier (Primary Key)," vladmihalcea.com. [Online]. Available: https://vladmihalcea.com/how-to-implement-equals-and-hashcode-using-the-jpa-entity-identifier/. [Accessed: Aug. 3, 2026].
+
+[2] V. Mihalcea, "The best way to implement equals, hashCode, and toString with JPA and Hibernate," vladmihalcea.com, Nov. 19, 2020. [Online]. Available: https://vladmihalcea.com/the-best-way-to-implement-equals-hashcode-and-tostring-with-jpa-and-hibernate/. [Accessed: Aug. 3, 2026].
+
+[3] "Stop Breaking HashSet: equals() and hashCode() for JPA in Quarkus," the-main-thread.com, Mar. 6, 2026. [Online]. Available: https://www.the-main-thread.com/p/equals-hashcode-jpa-quarkus-panache-equalsverifier. [Accessed: Aug. 3, 2026].
+
+[4] "(Hopefully) the final article about equals and hashCode for JPA entities with DB-generated IDs," jpa-buddy.com. [Online]. Available: https://jpa-buddy.com/blog/hopefully-the-final-article-about-equals-and-hashcode-for-jpa-entities-with-db-generated-ids/. [Accessed: Aug. 3, 2026].
+
+[5] J. B. Friedli, "Lombok @Data and JPA Entities: Deep Dive," Medium, Apr. 20, 2025. [Online]. Available: https://medium.com/@jonas.friedli/lombok-data-and-jpa-entities-deep-dive-d955de9647e3. [Accessed: Aug. 3, 2026].
+
+[6] "Understanding and Resolving Lombok @Data Pitfalls in JPA/Hibernate Entities," Medium, Dec. 15, 2023. [Online]. Available: https://medium.com/@devchaghtai/understanding-and-resolving-lombok-data-pitfalls-in-jpa-hibernate-entities-ebc76000da18. [Accessed: Aug. 3, 2026].
+
+[7] E. Evans, Domain-Driven Design: Tackling Complexity in the Heart of Software. Boston, MA, USA: Addison-Wesley, 2003.
+
+[8] G. Booch, Object-Oriented Analysis and Design with Applications, 2nd ed. Redwood City, CA, USA: Benjamin/Cummings, 1994.

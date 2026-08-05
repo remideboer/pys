@@ -1,5 +1,9 @@
 ## PYS Language Specification — `result<T, E>` and the `propagate` Operator
 
+> **Absorbed into permanent docs.** Canonical decisions + references [1]–[9]:
+> [ADR-021](../docs/adr/ADR-021-result-propagate-panic.md). This file is a
+> historical draft only.
+
 > Status: resolved by [ADR-021](../docs/adr/ADR-021-result-propagate-panic.md).
 > The exact-error, result-pattern, and runtime-panic choices below are the
 > accepted contract.
