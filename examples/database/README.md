@@ -8,6 +8,8 @@ and exercises identity equality while doing CRUD. Teaching companion to
 
 | File | Responsibility |
 |------|----------------|
+| [`shop.sql`](shop.sql) | MySQL schema (`product`, `order`, `order_line`) |
+| [`seed_boardgames.sql`](seed_boardgames.sql) | Reproducible Dutch board-game catalog + sample orders |
 | [`models.pys`](models.pys) | Domain entities (`Product`, `Order`, `OrderLine`) |
 | [`db.pys`](db.pys) | MySQL session + cell conversion (**S**) |
 | [`mappers.pys`](mappers.pys) | [Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html) contracts + MySQL mapping: SQL and tuple/entity translation |
@@ -50,6 +52,26 @@ database=shop
 ```
 
 Requires `mysql-connector-python` (repo root [`pys.deps`](../../pys.deps)).
+
+## Schema + seed data
+
+1. Create tables (once):
+
+```text
+mysql -u pys -p < examples/database/shop.sql
+```
+
+2. Load a Dutch **board-game shop** demo catalog (products, orders, lines):
+
+```text
+mysql -u pys -p shop < examples/database/seed_boardgames.sql
+```
+
+[`seed_boardgames.sql`](seed_boardgames.sql) clears existing `shop` rows, then
+inserts ~18 products (basisspellen, uitbreidingen, sleeves, dobbelaccessoires)
+and a few sample orders with Dutch `customer_ref` values. Unit prices are
+illustrative EUR snapshots inspired by common NL listings (bol.com,
+Spellenhuis.nl, Lobbes, 999games.nl) — not live prices. Safe to re-run.
 
 ## Run
 
