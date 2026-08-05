@@ -112,6 +112,15 @@ function mapPyStackFrame(registry, pyPath, pyLine) {
   return null;
 }
 
+/** Map only a generated line that has its own PYS statement origin. */
+function mapExactPyStackFrame(registry, pyPath, pyLine) {
+  const record = registry.byPy.get(normalizePathKey(pyPath));
+  if (!record || !record.pyToPys.has(pyLine)) {
+    return null;
+  }
+  return { pysPath: record.pys, pysLine: record.pyToPys.get(pyLine) };
+}
+
 function remapSetBreakpointsArgs(registry, args) {
   if (!args || !args.source || !args.source.path) {
     return args;
@@ -231,6 +240,11 @@ function shouldHideVariableName(name, hidePrefixes) {
   return prefixes.some((p) => name.startsWith(p));
 }
 
+/** Translate exact backend absence spelling to the PYS source spelling. */
+function formatPysDebugValue(value) {
+  return value === 'None' ? 'null' : value;
+}
+
 /** Remap Locals/Variables display names; drop runtime helper clutter. */
 function remapVariables(registry, variables) {
   if (!Array.isArray(variables)) {
@@ -244,17 +258,18 @@ function remapVariables(registry, variables) {
       out.push(v);
       continue;
     }
+    const formatted = { ...v, value: formatPysDebugValue(v.value) };
     // Prefer pysmap `names` before hidePrefixes — brace-scoped locals are
     // emitted as `_pys_bN_*` (CER-015) but must still display as the PYS name.
     const display = names[v.name];
     if (display) {
-      out.push({ ...v, name: display });
+      out.push({ ...formatted, name: display });
       continue;
     }
     if (shouldHideVariableName(v.name, hidePrefixes)) {
       continue;
     }
-    out.push(v);
+    out.push(formatted);
   }
   return out;
 }
@@ -375,11 +390,13 @@ module.exports = {
   loadMapRegistry,
   mapPysBreakpoint,
   mapPyStackFrame,
+  mapExactPyStackFrame,
   remapSetBreakpointsArgs,
   remapSetBreakpointsResponse,
   remapBreakpoint,
   remapStackFrames,
   shouldHideVariableName,
+  formatPysDebugValue,
   remapVariables,
   rewriteEvaluateExpression,
   rewriteExpressionIdentifiers,

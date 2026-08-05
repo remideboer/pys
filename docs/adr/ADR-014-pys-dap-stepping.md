@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity; deps; inline values; logpoints); 2026-08-04 (PYS-only default + explicit Python depth; manifest entrypoint parity) |
+| Amended | 2026-08-03 (UX maturity; deps; inline values; logpoints); 2026-08-04 (PYS-only default + explicit Python depth; manifest entrypoint parity); 2026-08-05 (generated-line step filtering + toolbar toggle) |
 | Code detail | [CER-014](../evolution/CER-014-pys-dap-stepping.md) |
 | Source | [TODO-FUTURE F-004](../TODO-FUTURE.md); [pipeline-migration C2](../pipeline-migration.md) |
 
@@ -35,13 +35,14 @@ There was also no `.pys` ↔ generated-Python line map.
    context, line-number/gutter context, tab title icon, and tab context menu.
 7. **Variables / Watch:** pysmap `names` maps emitted locals (`_c_hits` →
    `hits`); hide `_pys_` / `__pys_` / `_Pys` helper clutter; bare Watch
-   identifiers rewrite to emitted names. Shared/atomic cells still show as
-   wrapper objects (no scalar unwrap).
+   identifiers rewrite to emitted names. Exact Python `None` values display as
+   PYS `null`. Shared/atomic cells still show as wrapper objects (no scalar
+   unwrap).
 8. **Inline values:** `InlineValuesProvider` for language `pys` shows current
    **in-scope** Locals/Args at end-of-line while paused (IntelliJ-style), by
    reading the stopped frame’s scopes and filtering editor identifiers.
-   Toggle with `pys.debug.inlineValues` (default on). Ensure VS Code/Cursor
-   `debug.inlineValues` is `on` or `auto`.
+   Exact `None` formats as `null`. Toggle with `pys.debug.inlineValues`
+   (default on). Ensure VS Code/Cursor `debug.inlineValues` is `on` or `auto`.
 9. **Logpoints:** non-suspending breakpoints with DAP `logMessage` (debugpy).
    `{expr}` uses PYS names in the UI; remapper rewrites identifiers to emitted
    locals. **PYS: Add Logpoint** on gutter/context (diamond glyph); also VS Code
@@ -59,13 +60,28 @@ There was also no `.pys` ↔ generated-Python line map.
     `[project].main` through the same contained path contract as Run. Selecting
     another file is rejected or explicitly reconciled through Set as
     entrypoint; imported files never receive top-level panic semantics.
+14. **PYS statement stepping:** normal PYS sessions filter debugpy `next`,
+   `stepIn`, and `stepOut` stops. A stop is visible only when the top frame has
+   an **exact** line-map origin at a different `.pys` path/line, or when the
+   same exact generated line executes again (for example, a loop iteration).
+   Unmapped generated helpers and additional Python lines emitted for the same
+   PYS statement are stepped again automatically.
+15. **Session-local toolbar choice:** PYS-only stepping starts enabled and can
+   be toggled from the native debug toolbar. The existing Step buttons remain
+   authoritative. Disabling the filter restores debugpy stepping immediately;
+   the Advanced transpiled-Python session remains separate and unfiltered.
+16. **Fail safe:** only `reason: step` stops may auto-resume. Breakpoints,
+   exceptions, pauses, and data breakpoints always remain stopped. Automatic
+   filtering is capped at 100 repeats so an unmapped runtime loop cannot run
+   forever under debugger control.
 
 ## Consequences
 
-- Extension ≥ 0.0.69; JIT `J-debug`; example `examples/debug_step.pys`.
+- Extension ≥ 0.0.72; JIT `J-debug`; example `examples/debug_step.pys`.
 - Requires the Microsoft Python extension at debug time.
 - Concurrency preamble / `_Pys*` frames may appear unmapped; task/thread
-  debugging remains deferred.
+  debugging remains deferred. PYS-only stepping skips these frames when they
+  are reached by a normal step; use Advanced mode to inspect them deliberately.
 
 ## Rejected alternatives
 

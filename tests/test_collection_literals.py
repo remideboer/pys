@@ -11,7 +11,7 @@ def test_tuple_literal_multi_emits_python_tuple() -> None:
     """Given tuple row = (1, \"Ada\"), when transpile, then Python tuple RHS."""
     py = transpile('tuple<int, string> row = (1, "Ada")\nprint(row[0])\n')
     assert 'row = (1, "Ada")' in py
-    assert "print(row[0])" in py
+    assert "print(_pys_format(row[0]))" in py
 
 
 def test_tuple_literal_singleton_needs_trailing_comma() -> None:

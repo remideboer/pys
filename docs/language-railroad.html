@@ -349,14 +349,15 @@
     {
       id: 'type_expr',
       title: 'type_expr',
-      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type | lambda_type | result_type ;',
+      ebnf: 'type_expr = primitive_type | collection_type [ type_args ] | named_type [ type_args ] | array_type | lambda_type | result_type | nullable_type ;',
       node: Choice(
         N('primitive_type'),
         Seq(N('collection_type'), Opt(N('type_args'))),
         Seq(N('named_type'), Opt(N('type_args'))),
         N('array_type'),
         N('lambda_type'),
-        N('result_type')
+        N('result_type'),
+        N('nullable_type')
       )
     },
     {
@@ -373,6 +374,12 @@
         T('result'), T('<'), Choice(N('type_expr'), T('void')),
         T(','), N('type_expr'), T('>')
       )
+    },
+    {
+      id: 'nullable_type',
+      title: 'nullable_type',
+      ebnf: 'nullable_type = "nullable" "<" type_expr ">" ;',
+      node: Seq(T('nullable'), T('<'), N('type_expr'), T('>'))
     },
     {
       id: 'array_type',

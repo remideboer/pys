@@ -109,6 +109,8 @@ class _PysTaskGroup:
                 for fut in done:
                     fut.result()
 
+def _pys_format(value):
+    return "null" if value is None else str(value)
 counter = _PysShared(0)
 if True:
     _pys_tg_0 = _PysTaskGroup()
@@ -119,4 +121,4 @@ if True:
         counter.set(counter.value + 1)
     _pys_tg_0.add_auto('_anon_2', __pys_task__anon_2)
     _pys_tg_0.run()
-print(counter.value)
+print(_pys_format(counter.value))

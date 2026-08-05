@@ -70,6 +70,9 @@ _STRUCT_COPY_HELPER = '''def _pys_struct_copy(value):
     copy = getattr(value, "_pys_copy", None)
     return copy() if callable(copy) else value
 '''
+_FORMAT_HELPER = '''def _pys_format(value):
+    return "null" if value is None else str(value)
+'''
 _RESULT_PREAMBLE = '''class _PysResult:
     __slots__ = ("_pys_result_kind", "value", "sites")
 
@@ -259,6 +262,7 @@ class _Emitter:
         self.needs_struct_copy = False
         self.needs_enum = False
         self.needs_result = False
+        self.needs_format = False
         self.shared_vars: set[str] = set()
         self.atomic_vars: set[str] = set()
         self.tg_name: str | None = None
@@ -383,6 +387,8 @@ class _Emitter:
             preamble.extend(_STRUCT_COPY_HELPER.splitlines())
         if self.needs_result:
             preamble.extend(_RESULT_PREAMBLE.splitlines())
+        if self.needs_format:
+            preamble.extend(_FORMAT_HELPER.splitlines())
         out = preamble + self.lines
         origins: list[int | None] = [None] * len(preamble) + list(self.line_origins)
         return "\n".join(out) + ("\n" if out else ""), origins
@@ -414,7 +420,8 @@ class _Emitter:
             # Comments are always column-0 in legacy output (stripped lines).
             self._append_raw(stmt.text)
         elif isinstance(stmt, PrintStmt):
-            self._emit(indent, f"print({self._expr(stmt.value)})")
+            self.needs_format = True
+            self._emit(indent, f"print(_pys_format({self._expr(stmt.value)}))")
         elif isinstance(stmt, AssignStmt):
             self._assign(stmt, indent)
         elif isinstance(stmt, ArrayDecl):
@@ -1402,6 +1409,12 @@ class _Emitter:
                     self._lambda_rename.items(), key=lambda kv: -len(kv[0])
                 ):
                     text = re.sub(rf"\b{re.escape(pys_name)}\b", emitted, text)
+            self.needs_format = True
+            text = re.sub(
+                r"(?<!\{)\{([^{}]+)\}(?!\})",
+                lambda match: "{_pys_format(" + match.group(1) + ")}",
+                text,
+            )
             return text
         if isinstance(expr, Identifier):
             name = self._lambda_rename.get(expr.name, expr.name)
@@ -1445,6 +1458,10 @@ class _Emitter:
                 f"{line}, {self._current_function!r})"
             )
         if isinstance(expr, Call):
+            if isinstance(expr.callee, Identifier) and expr.callee.name == "str":
+                self.needs_format = True
+                args = ", ".join(self._call_arg(a) for a in expr.args)
+                return f"_pys_format({args})"
             # Atomic synthesized accessors: avoid Identifier → .get() on the receiver.
             if (
                 isinstance(expr.callee, Member)

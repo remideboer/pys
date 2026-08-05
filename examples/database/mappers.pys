@@ -1,12 +1,13 @@
 # Data Mapper layer (Fowler): SQL + tuple/entity translation.
 # Domain entities and repositories do not know the relational schema.
 
+import sys
 import Product, Order, OrderLine from models
 import ShopDatabase from db
 
 package abstract class ProductMapper {
     public abstract list<Product> findAll()
-    public abstract Product findById(int id)
+    public abstract nullable<Product> findById(int id)
     public abstract Product insert(string sku, string name, float unitPrice)
     public abstract void update(Product product)
     public abstract void delete(Product product)
@@ -14,8 +15,8 @@ package abstract class ProductMapper {
 
 package abstract class OrderMapper {
     public abstract list<Order> findAll()
-    public abstract Order findById(int id)
-    public abstract Order insert(string status, string customerRef)
+    public abstract nullable<Order> findById(int id)
+    public abstract Order insert(string status, nullable<string> customerRef)
     public abstract void update(Order order)
     public abstract void delete(Order order)
 }
@@ -23,7 +24,7 @@ package abstract class OrderMapper {
 package abstract class OrderLineMapper {
     public abstract list<OrderLine> findAll()
     public abstract list<OrderLine> findByOrder(int orderId)
-    public abstract OrderLine findById(int orderId, int lineNumber)
+    public abstract nullable<OrderLine> findById(int orderId, int lineNumber)
     public abstract void insert(OrderLine line)
     public abstract void update(OrderLine line)
     public abstract void delete(OrderLine line)
@@ -62,14 +63,14 @@ package class MysqlProductMapper inherits ProductMapper {
         return products
     }
 
-    public Product findById(int id) {
+    public nullable<Product> findById(int id) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT product_id, sku, name, unit_price, active, created_at "
             + "FROM product WHERE product_id=%s",
             (id,)
         )
-        tuple row = cur.fetchone()
+        nullable<tuple> row = cur.fetchone()
         cur.close()
         if (row == null) {
             return null
@@ -86,7 +87,12 @@ package class MysqlProductMapper inherits ProductMapper {
         this.db.commit()
         int id = this.db.cellInt(cur.lastrowid)
         cur.close()
-        return this.findById(id)
+        nullable<Product> inserted = this.findById(id)
+        if (inserted == null) {
+            sys.exit("Inserted product could not be reloaded.")
+        } else {
+            return inserted
+        }
     }
 
     public void update(Product product) {
@@ -120,7 +126,7 @@ package class MysqlOrderMapper inherits OrderMapper {
             this.db.cellInt(row[0]),
             this.db.cellStr(row[1]),
             this.db.cellStr(row[2]),
-            this.db.cellStr(row[3])
+            this.db.cellNullableStr(row[3])
         )
     }
 
@@ -139,14 +145,14 @@ package class MysqlOrderMapper inherits OrderMapper {
         return orders
     }
 
-    public Order findById(int id) {
+    public nullable<Order> findById(int id) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT order_id, placed_at, status, customer_ref "
             + "FROM `order` WHERE order_id=%s",
             (id,)
         )
-        tuple row = cur.fetchone()
+        nullable<tuple> row = cur.fetchone()
         cur.close()
         if (row == null) {
             return null
@@ -154,23 +160,28 @@ package class MysqlOrderMapper inherits OrderMapper {
         return this.fromRow(row)
     }
 
-    public Order insert(string status, string customerRef) {
+    public Order insert(string status, nullable<string> customerRef) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "INSERT INTO `order` (placed_at, status, customer_ref) "
-            + "VALUES (NOW(3), %s, NULLIF(%s, ''))",
+            + "VALUES (NOW(3), %s, %s)",
             (status, customerRef)
         )
         this.db.commit()
         int id = this.db.cellInt(cur.lastrowid)
         cur.close()
-        return this.findById(id)
+        nullable<Order> inserted = this.findById(id)
+        if (inserted == null) {
+            sys.exit("Inserted order could not be reloaded.")
+        } else {
+            return inserted
+        }
     }
 
     public void update(Order order) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
-            "UPDATE `order` SET status=%s, customer_ref=NULLIF(%s, '') "
+            "UPDATE `order` SET status=%s, customer_ref=%s "
             + "WHERE order_id=%s",
             (order.status, order.customerRef, order.id())
         )
@@ -198,7 +209,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
             this.db.cellInt(row[0]),
             this.db.cellStr(row[1]),
             this.db.cellStr(row[2]),
-            this.db.cellStr(row[3]),
+            this.db.cellNullableStr(row[3]),
             this.db.cellInt(row[4]),
             this.db.cellInt(row[5]),
             this.db.cellStr(row[6]),
@@ -241,7 +252,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         )
     }
 
-    public OrderLine findById(int orderId, int lineNumber) {
+    public nullable<OrderLine> findById(int orderId, int lineNumber) {
         list<OrderLine> rows = this.query(
             "SELECT o.order_id, o.placed_at, o.status, o.customer_ref, "
             + "ol.line_number, ol.product_id, ol.sku_snapshot, ol.unit_price, ol.quantity "

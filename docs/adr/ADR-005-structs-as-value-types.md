@@ -19,7 +19,9 @@ identity) and from `dict` (open keys, reference sharing). Requirements live in
 2. **Fields always public;** import access is `top_visibility` on the struct
    (`global` / `package` / `module`), not per-field modifiers.
 3. **No identity features:** no methods, no `inherits` / `super` / `sealed` /
-   `implements`; no `shared <Struct>`; no `null` for struct-typed fields/bindings.
+   `implements`; no `shared <Struct>`. A plain struct-typed field/binding cannot
+   be `null`; ADR-023 permits explicit `nullable<Struct>` around a complete
+   present value and nullable fields whose own types say so.
 4. **Construction:** existing `Type(...)` call form only (positional + named);
    reject `new`; no brace field literals.
 5. **Pass-by-value:** emit copies on assign / call / return (`_pys_struct_copy` /
@@ -35,6 +37,8 @@ identity) and from `dict` (open keys, reference sharing). Requirements live in
 - IDE maturity: declaration grammar, go-to on types and fields, semantic
   tokens, hover/snippets (extension ≥ 0.0.37) — required before calling the
   feature “implemented” (feature-maturity DoD).
+- Nullable does not weaken value semantics: copy/equality/hash apply to a
+  present struct; `null` remains the absence state of the outer wrapper.
 - Security boundaries (ADR-001) unchanged.
 
 ## Rejected alternatives

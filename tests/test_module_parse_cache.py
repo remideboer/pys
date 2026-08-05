@@ -78,5 +78,5 @@ def test_same_name_in_separate_directories_stays_distinct(tmp_path: Path) -> Non
         )
         outputs[folder] = transpile_with_modules(_write_main(pkg))["funcs"]
 
-    assert "print(0)" in outputs["a"]
-    assert "print(1)" in outputs["b"]
+    assert "print(_pys_format(0))" in outputs["a"]
+    assert "print(_pys_format(1))" in outputs["b"]

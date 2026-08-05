@@ -22,6 +22,7 @@ deleted tomorrow, the permanent docs must still stand alone.
 | [`package_resolution_testing_philosophy.md`](package_resolution_testing_philosophy.md) | [ADR-017](../docs/adr/ADR-017-source-roots-same-package-tests.md) (impl Active / F-006) |
 | [`propagate_panic.md`](propagate_panic.md) | [ADR-021](../docs/adr/ADR-021-result-propagate-panic.md) · LANGUAGE · book `basics_outcomes` |
 | [`enum_optional_statement_terminator.md`](enum_optional_statement_terminator.md) | [ADR-022](../docs/adr/ADR-022-optional-terminators-grammar.md) · [CER-026](../docs/evolution/CER-026-optional-terminators-grammar.md) |
+| [`nullable.md`](nullable.md) | [ADR-023](../docs/adr/ADR-023-explicit-nullability.md) · [CER-028](../docs/evolution/CER-028-nullable.md) · LANGUAGE § Explicit absence · book `basics_null` |
 | [`concept_entrypoint.md`](concept_entrypoint.md) | Book [`under_the_hood_entrypoint.md`](../book/under_the_hood_entrypoint.md) |
 | [`concept_memory_model.md`](concept_memory_model.md) | Book [`under_the_hood_memory.md`](../book/under_the_hood_memory.md) · CONCURRENCY |
 | `*.pys` hybrids | Matching ADR-005 / ADR-006 / ADR-007 / ADR-008 + `examples/` |

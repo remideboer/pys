@@ -35,6 +35,10 @@ print(hits)  # 3
 # Notes for teaching:
 # - Verified breakpoint glyphs stay on these .pys lines (not the temp .py).
 # - Logpoints: gutter → PYS: Add Logpoint → e.g. total={total} (Debug Console, no pause).
-# - Step Over / Into / Out / Continue keep the editor on .pys when mapped.
+# - PYS-only Stepping is on by default (filter icon in the debug toolbar).
+# - Native Step Over / Into / Out skip extra generated lines and stop on the
+#   next mapped .pys statement. Toggle the filter off to use raw debugpy steps.
+# - Breakpoints, exceptions, and Pause are never skipped by the filter.
+# - Advanced: Debug Transpiled Python opens and steps through generated .py.
 # - Shared/atomic values appear as wrapper objects (open `.value` / use .get()).
 # - Run (Ctrl+Shift+R) still executes without the debugger.

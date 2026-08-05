@@ -71,13 +71,17 @@ def test_translate_const_decl() -> None:
         == "PI = 3.14159265358979323846"
     )
     assert LANGUAGE.translate_line("const int MAX = 100") == "MAX = 100"
-    assert transpile("const int MAX = 10 + 5\nprint(MAX)\n") == "MAX = 10 + 5\nprint(MAX)\n"
+    out = transpile("const int MAX = 10 + 5\nprint(MAX)\n")
+    assert "MAX = 10 + 5" in out
+    assert "print(_pys_format(MAX))" in out
 
 
 def test_translate_fix_decl() -> None:
     assert LANGUAGE.translate_line("fix int x = sum(4, 5)") == "x = sum(4, 5)"
     assert LANGUAGE.translate_line("global fix int n = 1 + 2") == "n = 1 + 2"
-    assert transpile("fix int x = 4 + 5\nprint(x)\n") == "x = 4 + 5\nprint(x)\n"
+    out = transpile("fix int x = 4 + 5\nprint(x)\n")
+    assert "x = 4 + 5" in out
+    assert "print(_pys_format(x))" in out
 
 
 def test_translate_array_loop() -> None:
@@ -100,14 +104,14 @@ if not (x > 100) {
 """
     )
     assert "if not (x > 100):" in out
-    assert 'print("ok")' in out
+    assert 'print(_pys_format("ok"))' in out
 
 
 def test_multiline_comment_stripped() -> None:
     source = "int x = 10\n## this is\na multiline\ncomment /#\nprint(x)\n"
     result = transpile(source)
     assert "x = 10" in result
-    assert "print(x)" in result
+    assert "print(_pys_format(x))" in result
     assert "multiline" not in result
 
 
@@ -210,9 +214,11 @@ def test_typed_interpolation_object_rejects_primitive() -> None:
 
 def test_typed_interpolation_tuple_index_rejects_wrong_spec() -> None:
     source = (
-        "list<tuple<int, string, string>> rows = null\n"
-        "loop (tuple<int, string, string> x in rows) {\n"
-        '    print("#s{x[0]} wrong")\n'
+        "nullable<list<tuple<int, string, string>>> rows = null\n"
+        "if (rows != null) {\n"
+        "    loop (tuple<int, string, string> x in rows) {\n"
+        '        print("#s{x[0]} wrong")\n'
+        "    }\n"
         "}\n"
     )
     with pytest.raises(TranspileError, match=r"requires string.*'x\[0\]' is int"):
@@ -221,9 +227,11 @@ def test_typed_interpolation_tuple_index_rejects_wrong_spec() -> None:
 
 def test_typed_interpolation_tuple_index_accepts_correct_spec() -> None:
     source = (
-        "list<tuple<int, string, string>> rows = null\n"
-        "loop (tuple<int, string, string> x in rows) {\n"
-        '    print("#i{x[0]} #s{x[1]} #s{x[2]}")\n'
+        "nullable<list<tuple<int, string, string>>> rows = null\n"
+        "if (rows != null) {\n"
+        "    loop (tuple<int, string, string> x in rows) {\n"
+        '        print("#i{x[0]} #s{x[1]} #s{x[2]}")\n'
+        "    }\n"
         "}\n"
     )
     transpile(source)
@@ -247,7 +255,10 @@ def test_print_plus_switches_to_string_concat() -> None:
 def test_typed_decl_translates_cast() -> None:
     assert LANGUAGE.translate_line("int a = (int) f") == "a = int(f)"
     assert LANGUAGE.translate_line("int a = (int)f") == "a = int(f)"
-    assert transpile("float f = 3.14\nint a = (int) f\nprint(a)\n") == "f = 3.14\na = int(f)\nprint(a)\n"
+    out = transpile("float f = 3.14\nint a = (int) f\nprint(a)\n")
+    assert "f = 3.14" in out
+    assert "a = int(f)" in out
+    assert "print(_pys_format(a))" in out
 
 
 def test_print_plus_concat_runtime() -> None:

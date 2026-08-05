@@ -11,7 +11,7 @@ def test_transpile_loop_with_braces() -> None:
     py = transpile(source)
     assert "for i in range(0, 3):" not in py
     assert "for _pys_b" in py and " in range(0, 3):" in py
-    assert "print(_pys_b" in py
+    assert "print(_pys_format(_pys_b" in py
 
 
 def test_transpile_while_style_loop() -> None:
@@ -21,9 +21,11 @@ loop (y < 30) {
     y++
 }
 """
-    expected = """y = 20
+    expected = """def _pys_format(value):
+    return "null" if value is None else str(value)
+y = 20
 while y < 30:
-    print(y)
+    print(_pys_format(y))
     y += 1
 """
     assert transpile(source) == expected
@@ -207,13 +209,25 @@ def test_interface_access_modifier_is_rejected() -> None:
 
 def test_transpile_nested_brace_blocks() -> None:
     source = """if (x < 0) {\nprint "negative"\n} else {\nprint "non-negative"\n}\n"""
-    expected = """if x < 0:\n    print("negative")\nelse:\n    print("non-negative")\n"""
+    expected = (
+        'def _pys_format(value):\n'
+        '    return "null" if value is None else str(value)\n'
+        'if x < 0:\n'
+        '    print(_pys_format("negative"))\n'
+        'else:\n'
+        '    print(_pys_format("non-negative"))\n'
+    )
     assert transpile(source) == expected
 
 
 def test_transpile_import_from() -> None:
     source = """import Car from example.pys\nprint Car\n"""
-    expected = """from example import Car\nprint(Car)\n"""
+    expected = (
+        'def _pys_format(value):\n'
+        '    return "null" if value is None else str(value)\n'
+        'from example import Car\n'
+        'print(_pys_format(Car))\n'
+    )
     assert transpile(source) == expected
 
 
@@ -565,9 +579,11 @@ def test_transpile_class_method() -> None:
     }
 }
 """
-    expected = """class Car:
+    expected = """def _pys_format(value):
+    return "null" if value is None else str(value)
+class Car:
     def drive(self):
-        print("driving")
+        print(_pys_format("driving"))
 
     def name(self):
         return "car"
@@ -643,7 +659,7 @@ def test_comments_do_not_break_brace_indentation() -> None:
 }
 """
     transpiled = transpile(source)
-    assert 'print("driving")' in transpiled
+    assert 'print(_pys_format("driving"))' in transpiled
 
 
 def test_private_field_access_denied_outside_class() -> None:

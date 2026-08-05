@@ -25,6 +25,8 @@ class Module(Node):
     brace_mode: bool = False
     # Filled by sem.analyze — non-fatal diagnostics (not part of parse).
     analysis_warnings: list[Any] = field(default_factory=list)
+    # ``line:column`` -> underlying type at identifiers proven non-null.
+    analysis_narrowed_types: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass

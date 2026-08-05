@@ -126,7 +126,7 @@ package class ProductPanel {
     }
 
     private void onSelect(event) {
-        Product product = this.selectedProduct()
+        nullable<Product> product = this.selectedProduct()
         if (product == null) {
             return
         }
@@ -138,7 +138,7 @@ package class ProductPanel {
         this.priceEntry.insert(0, str(product.unitPrice))
     }
 
-    private Product selectedProduct() {
+    private nullable<Product> selectedProduct() {
         string iid = this.table.selectedIid()
         if (iid == "") {
             return null
@@ -170,7 +170,7 @@ package class ProductPanel {
     }
 
     private void onUpdate() {
-        Product product = this.selectedProduct()
+        nullable<Product> product = this.selectedProduct()
         if (product == null) {
             messagebox.showinfo("Products", "Select a product first.")
             return
@@ -205,7 +205,7 @@ package class ProductPanel {
     }
 
     private void setActive(bool active) {
-        Product product = this.selectedProduct()
+        nullable<Product> product = this.selectedProduct()
         if (product == null) {
             messagebox.showinfo("Products", "Select a product first.")
             return
@@ -220,7 +220,7 @@ package class ProductPanel {
     }
 
     private void onDelete() {
-        Product product = this.selectedProduct()
+        nullable<Product> product = this.selectedProduct()
         if (product == null) {
             messagebox.showinfo("Products", "Select a product first.")
             return
@@ -281,29 +281,35 @@ package class OrderPanel {
         this.table.clearRows()
         list<Order> rows = this.orders.all()
         loop (Order o in rows) {
-            string who = o.customerRef
-            if (who == "") {
-                who = "(no customer)"
+            nullable<string> who = o.customerRef
+            string label = "(no customer)"
+            if (who != null) {
+                label = who
             }
             this.table.addRow(
                 str(o.id()),
-                [str(o.id()), o.placedAt, o.status, who]
+                [str(o.id()), o.placedAt, o.status, label]
             )
         }
     }
 
     private void onSelect(event) {
-        Order order = this.selectedOrder()
+        nullable<Order> order = this.selectedOrder()
         if (order == null) {
             return
         }
         this.customerEntry.delete(0, "end")
-        this.customerEntry.insert(0, order.customerRef)
+        nullable<string> customer = order.customerRef
+        if (customer == null) {
+            this.customerEntry.insert(0, "(no customer)")
+        } else {
+            this.customerEntry.insert(0, customer)
+        }
         this.statusEntry.delete(0, "end")
         this.statusEntry.insert(0, order.status)
     }
 
-    private Order selectedOrder() {
+    private nullable<Order> selectedOrder() {
         string iid = this.table.selectedIid()
         if (iid == "") {
             return null
@@ -313,7 +319,11 @@ package class OrderPanel {
     }
 
     private void onCreate() {
-        string customer = this.customerEntry.get().strip()
+        string customerText = this.customerEntry.get().strip()
+        nullable<string> customer = null
+        if (customerText != "") {
+            customer = customerText
+        }
         string status = this.statusEntry.get().strip()
         if (status == "") {
             status = "placed"
@@ -324,7 +334,7 @@ package class OrderPanel {
     }
 
     private void onUpdateStatus() {
-        Order order = this.selectedOrder()
+        nullable<Order> order = this.selectedOrder()
         if (order == null) {
             messagebox.showinfo("Orders", "Select an order first.")
             return
@@ -344,7 +354,7 @@ package class OrderPanel {
     }
 
     private void onDelete() {
-        Order order = this.selectedOrder()
+        nullable<Order> order = this.selectedOrder()
         if (order == null) {
             messagebox.showinfo("Orders", "Select an order first.")
             return
@@ -456,7 +466,7 @@ package class OrderLinePanel {
     }
 
     private void onSelect(event) {
-        OrderLine line = this.selectedLine()
+        nullable<OrderLine> line = this.selectedLine()
         if (line == null) {
             return
         }
@@ -470,7 +480,7 @@ package class OrderLinePanel {
         this.qtyEntry.insert(0, str(line.quantity))
     }
 
-    private OrderLine selectedLine() {
+    private nullable<OrderLine> selectedLine() {
         string key = this.table.selectedIid()
         if (key == "") {
             return null
@@ -506,12 +516,12 @@ package class OrderLinePanel {
         int lineNumber = int(lineText)
         int productId = int(productText)
         int qty = int(qtyText)
-        Order order = this.orders.get(orderId)
+        nullable<Order> order = this.orders.get(orderId)
         if (order == null) {
             messagebox.showerror("Order lines", "Order not found")
             return
         }
-        Product product = this.products.get(productId)
+        nullable<Product> product = this.products.get(productId)
         if (product == null) {
             messagebox.showerror("Order lines", "Product not found")
             return
@@ -536,7 +546,7 @@ package class OrderLinePanel {
     }
 
     private void onUpdateQty() {
-        OrderLine line = this.selectedLine()
+        nullable<OrderLine> line = this.selectedLine()
         if (line == null) {
             messagebox.showinfo("Order lines", "Select a line first.")
             return
@@ -554,7 +564,7 @@ package class OrderLinePanel {
     }
 
     private void onDelete() {
-        OrderLine line = this.selectedLine()
+        nullable<OrderLine> line = this.selectedLine()
         if (line == null) {
             messagebox.showinfo("Order lines", "Select a line first.")
             return
@@ -644,9 +654,13 @@ package class IdentityDemoPanel {
             return
         }
         int id = int(idText)
-        Product first = this.products.get(id)
-        Product second = this.products.get(id)
+        nullable<Product> first = this.products.get(id)
+        nullable<Product> second = this.products.get(id)
         if (first == null) {
+            this.writeLine("Not found")
+            return
+        }
+        if (second == null) {
             this.writeLine("Not found")
             return
         }

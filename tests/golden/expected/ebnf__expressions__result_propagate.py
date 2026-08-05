@@ -41,6 +41,8 @@ def _pys_panic(result):
     for file, line, function in result.sites:
         print(f"  at {file}:{line} in {function}", file=_pys_sys.stderr)
     raise SystemExit(1)
+def _pys_format(value):
+    return "null" if value is None else str(value)
 def readNumber(valid):
     try:
         if valid == False:
@@ -60,7 +62,7 @@ outcome = addOne(True)
 _pys_result_0 = outcome
 if _pys_result_0._pys_result_kind == 'ok':
     _pys_b1_value = _pys_result_0.value
-    print(_pys_b1_value)
+    print(_pys_format(_pys_b1_value))
 elif _pys_result_0._pys_result_kind == 'err':
     _pys_b2_error = _pys_result_0.value
-    print(_pys_b2_error)
+    print(_pys_format(_pys_b2_error))

@@ -42,7 +42,9 @@ class Unit {
 
 - **Copy:** struct args/assigns are copies; mutating a parameter does not change the caller. Dict and class instances are shared by reference in the usual Python sense after emit.  
 - **Schema:** struct fields are declared; dict keys are open.  
-- **Null:** struct fields reject `null`; dict values may be `None`.  
+- **Null:** a plain struct field/binding rejects `null`; use `nullable<Struct>`
+  (or a nullable field type) when absence is intentional. Dict values may be
+  Python `None` after emit.  
 - **Hash:** only all-`fix` / `fix struct` types are hashable.  
 - **Access:** struct **fields** are always public; control who can import the type with `global` / `package` / `module` on the struct. Dict keys have no access control; class fields use per-member modifiers.
 

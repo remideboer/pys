@@ -8,7 +8,7 @@
 | `const int MAX = 3` | `const int Max = 3;` | `static final int MAX = 3;` |
 | `string` | `string` | `String` |
 | `bool` | `bool` | `boolean` |
-| `null` | `null` | `null` |
+| `nullable<T>` / `null` | `T?` / `null` | `Optional` / `null` |
 | Statements end at newline | Statements end with `;` | Statements end with `;` |
 | Top-level statements run | Need `Main` entry | Need `main` entry |
 

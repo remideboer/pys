@@ -157,7 +157,7 @@ package class PokemonQtApp inherits QMainWindow {
         this.collectionList.clear()
         this.collectionIds = []
         loop (OwnedEntry e in this.appStore.getCollection().getOwned()) {
-            Card c = this.appStore.getCatalog().get(e.getCardId())
+            nullable<Card> c = this.appStore.getCatalog().get(e.getCardId())
             int q = e.getQuantity()
             string label = e.getCardId() + " x" + str(q)
             if (c != null) {
@@ -200,7 +200,7 @@ package class PokemonQtApp inherits QMainWindow {
             return
         }
         string cid = this.catalogIds[row]
-        Card c = this.appStore.getCatalog().get(cid)
+        nullable<Card> c = this.appStore.getCatalog().get(cid)
         if (c != null) {
             this.catalogDetail.setPlainText(c.detailText())
         }
@@ -232,7 +232,7 @@ package class PokemonQtApp inherits QMainWindow {
             return
         }
         string cid = this.collectionIds[row]
-        Card c = this.appStore.getCatalog().get(cid)
+        nullable<Card> c = this.appStore.getCatalog().get(cid)
         int qty = this.appStore.getCollection().quantityOf(cid)
         string header = "Owned quantity: " + str(qty) + "\n\n"
         if (c != null) {
@@ -298,7 +298,7 @@ package class PokemonQtApp inherits QMainWindow {
             return
         }
         string name = this.deckNames[row]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         if (d == null) {
             return
         }
@@ -306,7 +306,7 @@ package class PokemonQtApp inherits QMainWindow {
         string text = "Deck: " + name + "\nTotal cards: " + str(total) + "\n"
         this.deckDetail.setPlainText(text)
         loop (OwnedEntry e in d.getEntries()) {
-            Card c = this.appStore.getCatalog().get(e.getCardId())
+            nullable<Card> c = this.appStore.getCatalog().get(e.getCardId())
             int q = e.getQuantity()
             string label = e.getCardId() + " x" + str(q)
             if (c != null) {
@@ -374,7 +374,7 @@ package class PokemonQtApp inherits QMainWindow {
             return
         }
         string name = this.deckNames[drow]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         int current = 0
         if (d != null) {
             current = d.quantityOf(cardId)
@@ -401,7 +401,7 @@ package class PokemonQtApp inherits QMainWindow {
             return
         }
         string name = this.deckNames[drow]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         if (d == null) {
             return
         }

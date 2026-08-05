@@ -113,6 +113,7 @@ KEYWORDS = frozenset(
         "shared",
         "atomic",
         "result",
+        "nullable",
         "ok",
         "err",
         "propagate",

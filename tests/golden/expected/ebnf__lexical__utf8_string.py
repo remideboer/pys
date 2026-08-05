@@ -1,2 +1,4 @@
+def _pys_format(value):
+    return "null" if value is None else str(value)
 msg = "café"
-print(msg)
+print(_pys_format(msg))

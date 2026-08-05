@@ -109,6 +109,8 @@ class _PysTaskGroup:
                 for fut in done:
                     fut.result()
 
+def _pys_format(value):
+    return "null" if value is None else str(value)
 if True:
     _pys_tg_0 = _PysTaskGroup()
     def __pys_task_add(a, b):
@@ -116,6 +118,6 @@ if True:
     _pys_tg_0.add_template('add', __pys_task_add)
     def __pys_task__anon_1():
         s = _pys_await(_pys_tg_0.call('add', 10, 32))
-        print(s)
+        print(_pys_format(s))
     _pys_tg_0.add_auto('_anon_1', __pys_task__anon_1)
     _pys_tg_0.run()

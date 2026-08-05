@@ -50,6 +50,7 @@ _PRIMITIVES = {
     "dict",
     "tuple",
     "set",
+    "nullable",
 }
 
 
@@ -136,6 +137,36 @@ def _seed_resolver(
     return resolver
 
 
+def _type_arg_strings(type_name: str) -> list[str]:
+    """Return top-level generic arguments of a canonical type string."""
+    text = (type_name or "").strip()
+    start = text.find("<")
+    if start < 0 or not text.endswith(">"):
+        return []
+    inner = text[start + 1 : -1]
+    args: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for ch in inner:
+        if ch == "<":
+            depth += 1
+            current.append(ch)
+        elif ch == ">":
+            depth -= 1
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            piece = "".join(current).strip()
+            if piece:
+                args.append(piece)
+            current = []
+        else:
+            current.append(ch)
+    piece = "".join(current).strip()
+    if piece:
+        args.append(piece)
+    return args
+
+
 def _register_type(
     type_name: str,
     *,
@@ -147,6 +178,14 @@ def _register_type(
     base = _base_type(type_name)
     if not base:
         return False
+    for arg in _type_arg_strings(type_name):
+        _register_type(
+            arg,
+            resolver=resolver,
+            site_paths=site_paths,
+            validated_types=validated_types,
+            type_definitions=type_definitions,
+        )
     if base in _PRIMITIVES:
         validated_types.add(base)
         return True
@@ -224,10 +263,9 @@ def _collect_hints_and_types(
         if isinstance(stmt, AssignStmt):
             line = stmt.span.line if stmt.span else 1
             if stmt.declare_type and stmt.declare_type != "var":
-                base = _base_type(stmt.declare_type)
                 variable_types[stmt.name] = stmt.declare_type
                 _register_type(
-                    base,
+                    stmt.declare_type,
                     resolver=resolver,
                     site_paths=site_paths,
                     validated_types=validated_types,
@@ -354,6 +392,7 @@ def analyze_file(
             "hints": [],
             "symbols": {},
             "variable_types": {},
+            "narrowed_types": {},
             "type_modules": {},
             "imported_modules": {},
             "collection_element_types": {},
@@ -456,6 +495,9 @@ def analyze_file(
         "hints": hints,
         "symbols": symbols,
         "variable_types": variable_types,
+        "narrowed_types": dict(
+            getattr(tree, "analysis_narrowed_types", {}) or {}
+        ),
         "type_modules": dict(resolver.type_modules),
         "imported_modules": dict(resolver.imported_modules),
         "collection_element_types": collection_element_types,

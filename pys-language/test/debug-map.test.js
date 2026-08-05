@@ -5,10 +5,12 @@ const {
   loadMapRegistry,
   mapPysBreakpoint,
   mapPyStackFrame,
+  mapExactPyStackFrame,
   remapSetBreakpointsArgs,
   remapSetBreakpointsResponse,
   remapBreakpoint,
   remapStackFrames,
+  formatPysDebugValue,
   remapVariables,
   rewriteEvaluateExpression,
   rewriteLogMessageExpressions,
@@ -66,6 +68,23 @@ test('mapPyStackFrame exact and backward nearest', () => {
   });
   assert.deepEqual(mapPyStackFrame(reg, PY, 12), { pysPath: PYS, pysLine: 3 });
   assert.deepEqual(mapPyStackFrame(reg, PY, 11), { pysPath: PYS, pysLine: 1 });
+});
+
+test('mapExactPyStackFrame rejects generated lines without their own PYS origin', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    py: PY,
+    lines: [
+      { py: 10, pys: 1 },
+      { py: 12, pys: 3 },
+    ],
+  });
+  assert.deepEqual(mapExactPyStackFrame(reg, PY, 12), {
+    pysPath: PYS,
+    pysLine: 3,
+  });
+  assert.equal(mapExactPyStackFrame(reg, PY, 11), null);
 });
 
 test('remapSetBreakpointsArgs rewrites .pys source to .py', () => {
@@ -153,6 +172,16 @@ test('remapVariables renames _c_ captures and hides runtime helpers', () => {
     vars.map((v) => v.name),
     ['hits', 'n'],
   );
+});
+
+test('PYS debug values display exact Python None as null', () => {
+  assert.equal(formatPysDebugValue('None'), 'null');
+  assert.equal(formatPysDebugValue('"None"'), '"None"');
+  const vars = remapVariables(
+    registryFromSidecar({ version: 1, pys: PYS, py: PY, lines: [] }),
+    [{ name: 'nickname', value: 'None', variablesReference: 0 }],
+  );
+  assert.equal(vars[0].value, 'null');
 });
 
 test('remapVariables renames brace-scoped _pys_b locals before hidePrefixes', () => {

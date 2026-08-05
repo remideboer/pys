@@ -42,13 +42,11 @@ cubes[1][0][1] = 42
 print(cubes[0][1][0])  # 3
 print(cubes[1][0][1])  # 42
 
-# foreach over a filled plane (skip null slots)
+# foreach over filled planes (both outer slots were assigned above)
 loop (int[][] plane in cubes) {
-    if (plane != null) {
-        loop (int[] row in plane) {
-            loop (int cell in row) {
-                print(cell)
-            }
+    loop (int[] row in plane) {
+        loop (int cell in row) {
+            print(cell)
         }
     }
 }

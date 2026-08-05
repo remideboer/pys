@@ -133,7 +133,7 @@ print(counter)
 """
     out = transpile(source)
     assert '"counter stays literal"' in out
-    assert "print(counter.value)" in out
+    assert "print(_pys_format(counter.value))" in out
 
 
 def test_await_cycle_rejected() -> None:

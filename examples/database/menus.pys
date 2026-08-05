@@ -87,7 +87,7 @@ package class ProductMenu implements Menu {
 
     private void updateDetails() {
         int id = this.io.readInt("Product id: ")
-        Product product = this.products.get(id)
+        nullable<Product> product = this.products.get(id)
         if (product == null) {
             this.io.writeLine("Product not found")
             return
@@ -102,7 +102,7 @@ package class ProductMenu implements Menu {
 
     private void setActive(bool active) {
         int id = this.io.readInt("Product id: ")
-        Product product = this.products.get(id)
+        nullable<Product> product = this.products.get(id)
         if (product == null) {
             this.io.writeLine("Product not found")
             return
@@ -114,7 +114,7 @@ package class ProductMenu implements Menu {
 
     private void deleteOne() {
         int id = this.io.readInt("Product id to delete: ")
-        Product product = this.products.get(id)
+        nullable<Product> product = this.products.get(id)
         if (product == null) {
             this.io.writeLine("Product not found")
             return
@@ -186,7 +186,11 @@ package class OrderMenu implements Menu {
     }
 
     private void create() {
-        string customer = this.io.readLine("Customer ref (or blank): ")
+        string customerText = this.io.readLine("Customer ref (or blank): ")
+        nullable<string> customer = null
+        if (customerText != "") {
+            customer = customerText
+        }
         string status = this.io.readLine("Status [placed]: ")
         if (status == "") {
             status = "placed"
@@ -197,7 +201,7 @@ package class OrderMenu implements Menu {
 
     private void updateStatus() {
         int id = this.io.readInt("Order id: ")
-        Order order = this.orders.get(id)
+        nullable<Order> order = this.orders.get(id)
         if (order == null) {
             this.io.writeLine("Order not found")
             return
@@ -210,7 +214,7 @@ package class OrderMenu implements Menu {
 
     private void deleteOne() {
         int id = this.io.readInt("Order id to delete: ")
-        Order order = this.orders.get(id)
+        nullable<Order> order = this.orders.get(id)
         if (order == null) {
             this.io.writeLine("Order not found")
             return
@@ -299,12 +303,12 @@ package class OrderLineMenu implements Menu {
         int lineNumber = this.io.readInt("Line number: ")
         int productId = this.io.readInt("Product id: ")
         int qty = this.io.readInt("Quantity: ")
-        Order order = this.orders.get(orderId)
+        nullable<Order> order = this.orders.get(orderId)
         if (order == null) {
             this.io.writeLine("Order not found")
             return
         }
-        Product product = this.products.get(productId)
+        nullable<Product> product = this.products.get(productId)
         if (product == null) {
             this.io.writeLine("Product not found")
             return
@@ -327,7 +331,7 @@ package class OrderLineMenu implements Menu {
     private void updateQty() {
         int orderId = this.io.readInt("Order id: ")
         int lineNumber = this.io.readInt("Line number: ")
-        OrderLine line = this.lines.get(orderId, lineNumber)
+        nullable<OrderLine> line = this.lines.get(orderId, lineNumber)
         if (line == null) {
             this.io.writeLine("Order line not found")
             return
@@ -341,7 +345,7 @@ package class OrderLineMenu implements Menu {
     private void deleteOne() {
         int orderId = this.io.readInt("Order id: ")
         int lineNumber = this.io.readInt("Line number: ")
-        OrderLine line = this.lines.get(orderId, lineNumber)
+        nullable<OrderLine> line = this.lines.get(orderId, lineNumber)
         if (line == null) {
             this.io.writeLine("Order line not found")
             return
@@ -419,8 +423,8 @@ package class IdentityDemoMenu implements Menu {
     private void demoFromDb() {
         this.io.writeLine("--- Load product twice, mutate one name, compare ---")
         int id = this.io.readInt("Existing product id: ")
-        Product first = this.products.get(id)
-        Product second = this.products.get(id)
+        nullable<Product> first = this.products.get(id)
+        nullable<Product> second = this.products.get(id)
         if (first == null) {
             this.io.writeLine("Not found")
             return

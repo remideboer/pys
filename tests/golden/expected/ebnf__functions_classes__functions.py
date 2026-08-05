@@ -1,10 +1,12 @@
+def _pys_format(value):
+    return "null" if value is None else str(value)
 def add(a, b):
     return a + b
 def greet(name):
-    print(name)
+    print(_pys_format(name))
 def secret():
-    print("priv")
+    print(_pys_format("priv"))
 s = add(1, 2)
-print(s)
+print(_pys_format(s))
 greet("hi")
 secret()

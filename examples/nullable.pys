@@ -1,0 +1,71 @@
+# Explicit nullable<T> — absence is visible in the type (ADR-023 / CER-028).
+# Expected output is printed after each section.
+
+# --- Non-null by default ---
+# string broken = null   # compile error: Type 'string' does not allow null.
+
+nullable<string> nickname = null
+print(nickname == null)                 # True
+
+nickname = "Ada"
+print(nickname == null)                 # False
+
+# --- Check before use (narrowing) ---
+function string display(nullable<string> name) {
+    if (name == null) {
+        return "(geen naam)"
+    }
+    return name.upper()
+}
+
+print(display(null))                    # (geen naam)
+print(display("Sanne"))                 # SANNE
+
+# --- Zero / empty are present values ---
+nullable<int> score = null
+score = 0
+nullable<string> label = null
+label = ""
+print(score == null)                    # False
+print(label == null)                    # False
+print(label == "")                      # True
+
+# --- Nested position matters ---
+nullable<list<string>> missingList = null
+list<nullable<string>> aliases = ["Ada", null, "A."]
+print(missingList == null)              # True
+print(aliases[1] == null)               # True
+
+# --- Absence versus failure ---
+function result<nullable<string>, string> lookup(bool found, bool offline) {
+    if (offline) {
+        return err("database unavailable")
+    }
+    if (!found) {
+        return ok(null)
+    }
+    return ok("found-row")
+}
+
+result<nullable<string>, string> missing = lookup(false, false)
+switch (missing) {
+    case ok(value):
+        if (value == null) {
+            print("query ok, no row")    # query ok, no row
+        } else {
+            print(value)
+        }
+    case err(message):
+        print(message)
+}
+
+# --- Struct wrapper: complete value or absent ---
+struct Profile {
+    nullable<string> nickname = null
+}
+nullable<Profile> profile = null
+print(profile == null)                  # True
+profile = Profile("Remi")
+if (profile != null) {
+    print(profile.nickname)             # Remi
+}

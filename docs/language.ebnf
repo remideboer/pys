@@ -106,7 +106,8 @@ type_expr        = primitive_type
                  | named_type , [ type_args ]
                  | array_type
                  | lambda_type
-                 | result_type ;
+                 | result_type
+                 | nullable_type ;
 
 collection_type  = "list" | "dict" | "tuple" | "set" ;
 
@@ -117,6 +118,9 @@ lambda_type      = "lambda" , "<" , type_expr , { "," , type_expr } , ">" ;
 result_type      = "result" , "<" , result_value_type , "," , type_expr , ">" ;
 result_value_type = type_expr | "void" ;
 (* Exactly two arguments: success type T and error type E. *)
+
+nullable_type    = "nullable" , "<" , type_expr , ">" ;
+(* Exactly one underlying type T. T cannot be void or already nullable. *)
 
 type_name        = type_expr ;
 
@@ -581,4 +585,5 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   list dict tuple set
   true false null
   tasks task await shared atomic
+  result nullable ok err propagate
 *)

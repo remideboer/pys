@@ -16,6 +16,7 @@ from .ast_nodes import (
     BinaryOp,
     Block,
     BraceLiteral,
+    BreakStmt,
     Call,
     Cast,
     ClassDef,
@@ -33,6 +34,7 @@ from .ast_nodes import (
     ImportStmt,
     InterfaceDef,
     InterpolatedString,
+    Index,
     KeywordArg,
     LambdaExpr,
     Literal,
@@ -44,6 +46,7 @@ from .ast_nodes import (
     ResultCtor,
     ResultPattern,
     ReturnStmt,
+    ContinueStmt,
     SharedDecl,
     StructDef,
     SwitchCase,
@@ -208,6 +211,16 @@ def analyze(
         class_implements=class_implements,
         interfaces=interfaces,
         is_entrypoint=is_entrypoint,
+    )
+    _check_nullability(
+        module,
+        types=types,
+        function_returns=function_returns,
+        function_params=function_params,
+        class_parents=class_parents,
+        class_implements=class_implements,
+        interfaces=interfaces,
+        warnings=warnings,
     )
     _check_width_ranges(module.body, types=types)
     _check_int_ops(module.body, types=types, class_names=class_names)
@@ -374,7 +387,7 @@ def _check_width_ranges(body: list[Any], *, types: dict[str, str]) -> None:
                 check_assign(stmt.declare_type, stmt.value, line, col)
             elif isinstance(stmt, FunctionDef) and stmt.body:
                 walk(stmt.body.statements)
-            elif isinstance(stmt, ClassDef):
+            elif isinstance(stmt, (ClassDef, EntityDef)):
                 for m in stmt.methods:
                     if m.body:
                         walk(m.body.statements)
@@ -484,7 +497,7 @@ def _check_int_ops(
                     if i < len(stmt.param_types) and stmt.param_types[i]:
                         local[p] = stmt.param_types[i]
                 _check_int_ops(stmt.body.statements, types=local, class_names=class_names)
-            elif isinstance(stmt, ClassDef):
+            elif isinstance(stmt, (ClassDef, EntityDef)):
                 for m in stmt.methods:
                     if m.body:
                         _check_int_ops(m.body.statements, types=dict(types), class_names=class_names)
@@ -607,6 +620,7 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         "set",
         "lambda",
         "result",
+        "nullable",
         "var",
     }
     if not base or base in primitives:
@@ -745,8 +759,29 @@ def _is_assignable_type(
 ) -> bool:
     if actual == declared:
         return True
-    if actual == "null":
+    # `var` is the dynamic escape hatch for foreign/driver values (e.g. SQL cells).
+    if declared == "var":
         return True
+    declared_inner = _nullable_inner(declared)
+    actual_inner = _nullable_inner(actual)
+    if declared_inner is not None:
+        if actual == "null":
+            return True
+        if actual_inner is not None:
+            # Nullable generics are invariant; only the canonical exact type
+            # was accepted above.
+            return False
+        return _is_assignable_type(
+            actual,
+            declared_inner,
+            class_parents,
+            class_implements=class_implements,
+            interfaces=interfaces,
+        )
+    if actual == "null":
+        return False
+    if actual_inner is not None:
+        return False
     a_base = _base_type_name(actual)
     d_base = _base_type_name(declared)
     if "result" in {a_base, d_base}:
@@ -1030,6 +1065,469 @@ def _result_type_parts(type_name: str | None) -> tuple[str, str] | None:
     if len(args) != 2:
         return None
     return args[0], args[1]
+
+
+def _nullable_inner(type_name: str | None) -> str | None:
+    """Return T for canonical ``nullable<T>`` strings."""
+    if not type_name or _base_type_name(type_name) != "nullable":
+        return None
+    args = _extract_type_args(type_name)
+    if len(args) != 1:
+        return None
+    return args[0]
+
+
+def _check_nullability(
+    module: Module,
+    *,
+    types: dict[str, str],
+    function_returns: dict[str, str],
+    function_params: dict[str, list[str]],
+    class_parents: dict[str, str | None],
+    class_implements: dict[str, list[str]],
+    interfaces: set[str],
+    warnings: list,
+) -> None:
+    """Enforce nullable use and maintain conservative lexical flow facts."""
+
+    module.analysis_narrowed_types = {}
+    shared_names = {
+        stmt.name for stmt in module.body if isinstance(stmt, SharedDecl)
+    }
+
+    def storage_path(expr: Expr | None) -> str | None:
+        if isinstance(expr, Identifier):
+            return expr.name
+        if isinstance(expr, Member):
+            parent = storage_path(expr.object)
+            if parent:
+                return f"{parent}.{expr.name}"
+        return None
+
+    def declared_type(expr: Expr | None, env: dict[str, str]) -> str | None:
+        path = storage_path(expr)
+        if path and path in env:
+            return env[path]
+        if isinstance(expr, Literal):
+            return expr.kind
+        if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+            return function_returns.get(expr.callee.name)
+        return _infer_type(expr)
+
+    def expr_type(
+        expr: Expr | None,
+        env: dict[str, str],
+        present: set[str],
+    ) -> str | None:
+        path = storage_path(expr)
+        dtype = declared_type(expr, env)
+        inner = _nullable_inner(dtype)
+        if path and inner is not None and path in present:
+            if expr and expr.span:
+                module.analysis_narrowed_types[
+                    f"{expr.span.line}:{expr.span.column}"
+                ] = inner
+            return inner
+        return dtype
+
+    def nullable_use_error(
+        expr: Expr,
+        dtype: str,
+        operation: str,
+    ) -> None:
+        path = storage_path(expr) or "value"
+        line = expr.span.line if expr.span else 1
+        col = expr.span.column if expr.span else 1
+        _transpile_error(
+            f"'{path}' has type {dtype} and may be null before {operation}.",
+            line,
+            col,
+            path,
+            code="pys.nullable-use-before-check",
+            suggested_fix=(
+                f"if ({path} != null) {{\n    # use {path} here\n}}"
+                if isinstance(expr, Identifier) and path not in shared_names
+                else None
+            ),
+            tips=[f"Check `{path} != null` and handle both paths."],
+        )
+
+    def require_present(
+        expr: Expr | None,
+        env: dict[str, str],
+        present: set[str],
+        operation: str,
+    ) -> None:
+        if not isinstance(expr, Expr):
+            return
+        dtype = declared_type(expr, env)
+        path = storage_path(expr)
+        if _nullable_inner(dtype) is not None and (not path or path not in present):
+            nullable_use_error(expr, dtype or "nullable<?>", operation)
+            return
+        # Record successful proofs for IDE hover (declared → narrowed).
+        expr_type(expr, env, present)
+
+    def null_comparison(
+        expr: Expr | None,
+        env: dict[str, str],
+    ) -> tuple[str, bool] | None:
+        if not isinstance(expr, BinaryOp) or expr.op not in {"==", "!=", "<>"}:
+            return None
+        left_null = isinstance(expr.left, Literal) and expr.left.kind == "null"
+        right_null = isinstance(expr.right, Literal) and expr.right.kind == "null"
+        target = expr.right if left_null else expr.left if right_null else None
+        path = storage_path(target)
+        if not path:
+            return None
+        dtype = declared_type(target, env)
+        if dtype and _nullable_inner(dtype) is None and dtype not in {"var", "null"}:
+            line = target.span.line if target and target.span else 1
+            col = target.span.column if target and target.span else 1
+            _transpile_warning(
+                warnings,
+                f"'{path}' has non-null type {dtype}, so this null check is redundant.",
+                line,
+                col,
+                path,
+                code="pys.null-redundant-check",
+                tips=[
+                    "Remove the check, or make the declaration nullable if absence is intentional."
+                ],
+            )
+        if _nullable_inner(dtype) is None:
+            return None
+        # True means the target is present when the comparison is true.
+        return path, expr.op in {"!=", "<>"}
+
+    def condition_facts(
+        expr: Expr | None,
+        env: dict[str, str],
+    ) -> tuple[set[str], set[str]]:
+        comparison = null_comparison(expr, env)
+        if comparison:
+            path, true_is_present = comparison
+            if path in shared_names:
+                return set(), set()
+            if true_is_present:
+                return {path}, set()
+            return set(), {path}
+        if isinstance(expr, UnaryOp) and expr.op == "not":
+            when_true, when_false = condition_facts(expr.operand, env)
+            return when_false, when_true
+        return set(), set()
+
+    def walk_expr(
+        expr: Expr | None,
+        env: dict[str, str],
+        present: set[str],
+    ) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, BinaryOp):
+            if expr.op in {"and", "or"}:
+                walk_expr(expr.left, env, present)
+                when_true, when_false = condition_facts(expr.left, env)
+                right_present = set(present)
+                right_present |= when_true if expr.op == "and" else when_false
+                walk_expr(expr.right, env, right_present)
+                return
+            if null_comparison(expr, env):
+                # The compared storage is legal; its receiver still must be safe.
+                if isinstance(expr.left, Member):
+                    walk_expr(expr.left.object, env, present)
+                if isinstance(expr.right, Member):
+                    walk_expr(expr.right.object, env, present)
+                return
+            if expr.op not in {"==", "!=", "<>"}:
+                require_present(expr.left, env, present, f"operator '{expr.op}'")
+                require_present(expr.right, env, present, f"operator '{expr.op}'")
+            walk_expr(expr.left, env, present)
+            walk_expr(expr.right, env, present)
+            return
+        if isinstance(expr, Member):
+            require_present(expr.object, env, present, f"member access '.{expr.name}'")
+            walk_expr(expr.object, env, present)
+            return
+        if isinstance(expr, Index):
+            require_present(expr.object, env, present, "indexing")
+            walk_expr(expr.object, env, present)
+            walk_expr(expr.index, env, present)
+            return
+        if isinstance(expr, Call):
+            walk_expr(expr.callee, env, present)
+            expected: list[str] = []
+            if isinstance(expr.callee, Identifier):
+                expected = function_params.get(expr.callee.name, [])
+            for idx, arg in enumerate(expr.args):
+                value = arg.value if isinstance(arg, KeywordArg) else arg
+                if idx < len(expected) and expected[idx] and expected[idx] != "var":
+                    actual = expr_type(value, env, present)
+                    if actual and not _is_assignable_type(
+                        actual,
+                        expected[idx],
+                        class_parents,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    ):
+                        if _nullable_inner(actual) is not None:
+                            require_present(
+                                value,
+                                env,
+                                present,
+                                f"passing to non-null parameter {idx + 1}",
+                            )
+                        else:
+                            _transpile_error(
+                                f"Argument {idx + 1} has type {actual}; "
+                                f"expected {expected[idx]}.",
+                                value.span.line if value.span else 1,
+                                value.span.column if value.span else 1,
+                                "argument",
+                                code="pys.argument-type",
+                            )
+                walk_expr(value, env, present)
+            # A call on a receiver may mutate its fields. Retain local facts but
+            # conservatively invalidate member-path facts.
+            present.difference_update({path for path in present if "." in path})
+            return
+        for attr in ("operand", "value", "expr", "cond", "object", "index"):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child, env, present)
+        for attr in ("args", "elements"):
+            children = getattr(expr, attr, None)
+            if isinstance(children, list):
+                for child in children:
+                    value = child.value if isinstance(child, KeywordArg) else child
+                    if isinstance(value, Expr):
+                        walk_expr(value, env, present)
+        entries = getattr(expr, "entries", None)
+        if isinstance(entries, list):
+            for key, value in entries:
+                walk_expr(key, env, present)
+                walk_expr(value, env, present)
+
+    def block_exits(stmts: list[Any]) -> bool:
+        if not stmts:
+            return False
+        last = stmts[-1]
+        if isinstance(last, (ReturnStmt, BreakStmt, ContinueStmt)):
+            return True
+        if (
+            isinstance(last, ExprStmt)
+            and isinstance(last.expr, Call)
+            and isinstance(last.expr.callee, Identifier)
+            and last.expr.callee.name == "panic"
+        ):
+            return True
+        if isinstance(last, IfStmt) and last.then_body and last.else_body:
+            else_stmts = (
+                last.else_body.statements
+                if isinstance(last.else_body, Block)
+                else [last.else_body]
+            )
+            return block_exits(last.then_body.statements) and block_exits(else_stmts)
+        return False
+
+    def walk_block(
+        stmts: list[Any],
+        env: dict[str, str],
+        present: set[str],
+        *,
+        return_type: str = "",
+    ) -> tuple[dict[str, str], set[str], bool]:
+        local_env = dict(env)
+        facts = set(present)
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                walk_expr(stmt.value, local_env, facts)
+                target_type = stmt.declare_type or local_env.get(stmt.name)
+                if stmt.declare_type:
+                    local_env[stmt.name] = stmt.declare_type
+                facts.discard(stmt.name)
+                if _nullable_inner(target_type) is not None:
+                    actual = expr_type(stmt.value, local_env, facts)
+                    if actual not in {None, "null"} and _nullable_inner(actual) is None:
+                        facts.add(stmt.name)
+                elif target_type and stmt.value is not None:
+                    actual = expr_type(stmt.value, local_env, facts)
+                    if actual and not _is_assignable_type(
+                        actual,
+                        target_type,
+                        class_parents,
+                        class_implements=class_implements,
+                        interfaces=interfaces,
+                    ):
+                        if _nullable_inner(actual) is not None:
+                            require_present(
+                                stmt.value, local_env, facts, "assignment to a non-null target"
+                            )
+                continue
+            if isinstance(stmt, PrintStmt):
+                walk_expr(stmt.value, local_env, facts)
+                continue
+            if isinstance(stmt, ExprStmt):
+                walk_expr(stmt.expr, local_env, facts)
+                if (
+                    isinstance(stmt.expr, Call)
+                    and isinstance(stmt.expr.callee, Identifier)
+                    and stmt.expr.callee.name == "panic"
+                ):
+                    return local_env, facts, True
+                continue
+            if isinstance(stmt, ReturnStmt):
+                walk_expr(stmt.value, local_env, facts)
+                actual = expr_type(stmt.value, local_env, facts)
+                if return_type and return_type != "void" and actual and not _is_assignable_type(
+                    actual,
+                    return_type,
+                    class_parents,
+                    class_implements=class_implements,
+                    interfaces=interfaces,
+                ):
+                    if _nullable_inner(actual) is not None:
+                        require_present(
+                            stmt.value, local_env, facts, "return from a non-null function"
+                        )
+                    _raise_assignment_mismatch(
+                        actual=actual,
+                        declared_type=return_type,
+                        name="return value",
+                        line=stmt.span.line if stmt.span else 1,
+                        col=stmt.span.column if stmt.span else 1,
+                        declaration=False,
+                    )
+                return local_env, facts, True
+            if isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond, local_env, facts)
+                direct_type = expr_type(stmt.cond, local_env, facts)
+                if _nullable_inner(direct_type) is not None:
+                    require_present(stmt.cond, local_env, facts, "use as a boolean condition")
+                true_add, false_add = condition_facts(stmt.cond, local_env)
+                if stmt.negated:
+                    true_add, false_add = false_add, true_add
+                then_facts = set(facts) | true_add
+                then_env, then_out, then_exits = walk_block(
+                    stmt.then_body.statements if stmt.then_body else [],
+                    local_env,
+                    then_facts,
+                    return_type=return_type,
+                )
+                if stmt.else_body:
+                    else_stmts = (
+                        stmt.else_body.statements
+                        if isinstance(stmt.else_body, Block)
+                        else [stmt.else_body]
+                    )
+                    else_env, else_out, else_exits = walk_block(
+                        else_stmts,
+                        local_env,
+                        set(facts) | false_add,
+                        return_type=return_type,
+                    )
+                else:
+                    else_env, else_out, else_exits = dict(local_env), set(facts) | false_add, False
+                if then_exits and else_exits:
+                    return local_env, facts, True
+                if then_exits:
+                    local_env, facts = else_env, else_out
+                elif else_exits:
+                    local_env, facts = then_env, then_out
+                else:
+                    facts = then_out & else_out
+                    local_env.update(
+                        {
+                            name: dtype
+                            for name, dtype in then_env.items()
+                            if else_env.get(name) == dtype
+                        }
+                    )
+                continue
+            if isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject, local_env, facts)
+                subject_path = storage_path(stmt.subject)
+                subject_type = declared_type(stmt.subject, local_env)
+                nullable_subject = _nullable_inner(subject_type) is not None
+                has_null_case = any(
+                    isinstance(label, Literal) and label.kind == "null"
+                    for case in stmt.cases
+                    for label in case.labels
+                )
+                surviving: list[set[str]] = []
+                for case in stmt.cases:
+                    case_facts = set(facts)
+                    is_null_case = any(
+                        isinstance(label, Literal) and label.kind == "null"
+                        for label in case.labels
+                    )
+                    if subject_path and nullable_subject:
+                        if is_null_case:
+                            case_facts.discard(subject_path)
+                        elif not case.is_default or has_null_case:
+                            case_facts.add(subject_path)
+                    _, case_out, case_exits = walk_block(
+                        case.body.statements if case.body else [],
+                        local_env,
+                        case_facts,
+                        return_type=return_type,
+                    )
+                    if not case_exits:
+                        surviving.append(case_out)
+                if surviving:
+                    facts = set.intersection(*surviving)
+                continue
+            if isinstance(stmt, (WhileStmt, RepeatStmt, ForRangeStmt, ForEachStmt)):
+                cond = getattr(stmt, "cond", None)
+                walk_expr(cond, local_env, facts)
+                loop_env = dict(local_env)
+                if isinstance(stmt, ForEachStmt) and stmt.var_type:
+                    loop_env[stmt.var] = stmt.var_type
+                if stmt.body:
+                    walk_block(
+                        stmt.body.statements,
+                        loop_env,
+                        set(facts),
+                        return_type=return_type,
+                    )
+                # A loop can execute zero or many times; no inner proof survives.
+                continue
+            if isinstance(stmt, Block):
+                walk_block(stmt.statements, local_env, set(facts), return_type=return_type)
+        return local_env, facts, block_exits(stmts)
+
+    global_env = dict(types)
+    for stmt in module.body:
+        if isinstance(stmt, FunctionDef) and stmt.body:
+            env = dict(global_env)
+            env.update(zip(stmt.params, stmt.param_types))
+            walk_block(stmt.body.statements, env, set(), return_type=stmt.return_type)
+        elif isinstance(stmt, (ClassDef, EntityDef)):
+            fields = {
+                f.name: f.type_name for f in getattr(stmt, "fields", [])
+            }
+            for method in stmt.methods:
+                if not method.body:
+                    continue
+                env = dict(global_env)
+                env.update(zip(method.params, method.param_types))
+                env["self"] = stmt.name
+                env["this"] = stmt.name
+                for name, dtype in fields.items():
+                    env[f"self.{name}"] = dtype
+                    env[f"this.{name}"] = dtype
+                walk_block(
+                    method.body.statements,
+                    env,
+                    set(),
+                    return_type=method.return_type,
+                )
+    top_level = [
+        stmt
+        for stmt in module.body
+        if not isinstance(stmt, (FunctionDef, ClassDef, EntityDef, StructDef, DataDef))
+    ]
+    walk_block(top_level, global_env, set())
 
 
 def _check_results(
@@ -1719,6 +2217,41 @@ def _check_typed_interpolation(
                 _check_typed_interpolation(a, types, line=line, column=column, code_line=code_line)
 
 
+def _raise_assignment_mismatch(
+    *,
+    actual: str,
+    declared_type: str,
+    name: str,
+    line: int,
+    col: int,
+    declaration: bool,
+) -> None:
+    if actual == "null" and _nullable_inner(declared_type) is None:
+        suggested = (
+            f"nullable<{declared_type}> {name} = null"
+            if declaration and _is_simple_name(name)
+            else None
+        )
+        _transpile_error(
+            f"Type '{declared_type}' does not allow null.",
+            line,
+            col,
+            f"{declared_type} {name} = null",
+            code="pys.null-non-nullable",
+            suggested_fix=suggested,
+            tips=[
+                f"Change the declaration to `nullable<{declared_type}>` if absence is intentional, "
+                f"or provide a {declared_type} value."
+            ],
+        )
+    _transpile_error(
+        f"Type mismatch: cannot assign {actual} to '{name}' of type {declared_type}.",
+        line,
+        col,
+        f"{declared_type} {name} = ...",
+    )
+
+
 def _check_bindings(
     body: list[Any],
     *,
@@ -1789,7 +2322,19 @@ def _check_bindings(
                 if stmt.is_fix:
                     fixed.add(stmt.name)
                 if stmt.declare_type == "var":
-                    types[stmt.name] = _infer_type(stmt.value, class_names) or "int"
+                    inferred = _infer_type(stmt.value, class_names)
+                    if inferred == "null":
+                        _transpile_error(
+                            "Cannot infer an underlying type from null.",
+                            line,
+                            col,
+                            f"var {stmt.name} = null",
+                            code="pys.null-infer",
+                            tips=[
+                                f"Write `nullable<T> {stmt.name} = null` with the intended type."
+                            ],
+                        )
+                    types[stmt.name] = inferred or "int"
                 elif stmt.declare_type:
                     types[stmt.name] = stmt.declare_type
                     inferred = _infer_type(stmt.value, class_names)
@@ -1800,11 +2345,13 @@ def _check_bindings(
                         class_implements=class_implements,
                         interfaces=interfaces,
                     ):
-                        _transpile_error(
-                            f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {stmt.declare_type}.",
-                            line,
-                            col,
-                            f"{stmt.declare_type} {stmt.name} = ...",
+                        _raise_assignment_mismatch(
+                            actual=inferred,
+                            declared_type=stmt.declare_type,
+                            name=stmt.name,
+                            line=line,
+                            col=col,
+                            declaration=True,
                         )
                 declared.add(stmt.name)
             else:
@@ -1846,11 +2393,13 @@ def _check_bindings(
                         class_implements=class_implements,
                         interfaces=interfaces,
                     ):
-                        _transpile_error(
-                            f"Type mismatch: cannot assign {inferred} to '{stmt.name}' of type {declared_t}.",
-                            line,
-                            col,
-                            f"{stmt.name} = ...",
+                        _raise_assignment_mismatch(
+                            actual=inferred,
+                            declared_type=declared_t,
+                            name=stmt.name,
+                            line=line,
+                            col=col,
+                            declaration=False,
                         )
         elif isinstance(stmt, AugAssignStmt):
             line = stmt.span.line if stmt.span else 1
@@ -1920,10 +2469,14 @@ def _check_bindings(
             types[stmt.name] = stmt.name
             for m in stmt.methods:
                 local_decl = set(declared) | set(m.params) | {"self", "this"}
+                local_types = dict(types)
+                local_types.update(zip(m.params, m.param_types))
+                local_types["self"] = stmt.name
+                local_types["this"] = stmt.name
                 if m.body:
                     _check_bindings(
                         m.body.statements,
-                        types=dict(types),
+                        types=local_types,
                         declared=local_decl,
                         constants=set(constants),
                         fixed=set(fixed),
@@ -1946,8 +2499,7 @@ def _check_bindings(
             declared.add(stmt.name)
             local_decl = set(declared) | set(stmt.params)
             local_types = dict(types)
-            for p in stmt.params:
-                local_types.setdefault(p, "int")
+            local_types.update(zip(stmt.params, stmt.param_types))
             if stmt.body:
                 _check_bindings(
                     stmt.body.statements,
@@ -1965,10 +2517,13 @@ def _check_bindings(
             declared.add(stmt.name)
             for m in stmt.methods:
                 local_decl = set(declared) | set(m.params) | {"self"}
+                local_types = dict(types)
+                local_types.update(zip(m.params, m.param_types))
+                local_types["self"] = stmt.name
                 if m.body:
                     _check_bindings(
                         m.body.statements,
-                        types=dict(types),
+                        types=local_types,
                         declared=local_decl,
                         constants=set(constants),
                         fixed=set(fixed),
@@ -3356,7 +3911,8 @@ def _check_struct_field_assign(
                     lvalue,
                 )
         if is_last:
-            if _is_null_lit(value):
+            field_type = meta["types"].get(member, "")
+            if _is_null_lit(value) and _nullable_inner(field_type) is None:
                 _transpile_error(
                     f"Struct field '{member}' cannot be null.",
                     line,
@@ -3445,6 +4001,17 @@ def _check_data_and_entities(body: list[Any], *, types: dict[str, str]) -> None:
                     code="pys.entity-fix",
                     tips=[
                         f"Write `private fix <type> {key}` — mutable keys corrupt hash-based collections."
+                    ],
+                )
+            elif _nullable_inner(fld.type_name) is not None:
+                _transpile_error(
+                    f"Entity '{stmt.name}': identity field '{key}' must have a non-null type.",
+                    fld.span.line if fld.span else line,
+                    fld.span.column if fld.span else 1,
+                    key,
+                    code="pys.nullable-identity",
+                    tips=[
+                        "Use a non-null identity type and supply the key before constructing the entity."
                     ],
                 )
         has_ctor = any(m.is_constructor for m in stmt.methods)
@@ -3575,6 +4142,7 @@ def _check_structs(
         kind = meta.get("kind", "struct")
         label = "data" if kind == "data" else "struct"
         fields: list[str] = meta["fields"]
+        field_types: dict[str, str] = meta["types"]
         defaults: set[str] = meta["defaults"]
         line = call.span.line if call.span else 1
         col = call.span.column if call.span else 1
@@ -3615,7 +4183,10 @@ def _check_structs(
                 struct_name,
             )
         for i, arg in enumerate(positional):
-            if _is_null_lit(arg):
+            if (
+                _is_null_lit(arg)
+                and _nullable_inner(field_types.get(fields[i], "")) is None
+            ):
                 _transpile_error(
                     f"{label.capitalize()} field '{fields[i]}' of type {struct_name} cannot be null.",
                     arg.span.line if arg.span else line,
@@ -3623,7 +4194,7 @@ def _check_structs(
                     "null",
                 )
         for fname, val in named.items():
-            if _is_null_lit(val):
+            if _is_null_lit(val) and _nullable_inner(field_types.get(fname, "")) is None:
                 _transpile_error(
                     f"{label.capitalize()} field '{fname}' of type {struct_name} cannot be null.",
                     val.span.line if val.span else line,
@@ -3734,7 +4305,11 @@ def _check_structs(
                             f.span.column if f.span else 1,
                             f.name,
                         )
-                    if f.default is not None and _is_null_lit(f.default):
+                    if (
+                        f.default is not None
+                        and _is_null_lit(f.default)
+                        and _nullable_inner(f.type_name) is None
+                    ):
                         _transpile_error(
                             f"Struct field '{f.name}' cannot default to null.",
                             f.span.line if f.span else 1,
@@ -3897,7 +4472,7 @@ def _switch_subject_type(
         return None
     if isinstance(expr, Identifier):
         declared = types.get(expr.name, "") or ""
-        if _result_type_parts(declared):
+        if _result_type_parts(declared) or _nullable_inner(declared):
             return declared
         t = _base_type_name(declared)
         if t:
@@ -3953,10 +4528,13 @@ def _validate_switch_label(
     *,
     subject_type: str,
     enum_info: dict[str, dict[str, Any]],
+    allow_null: bool = False,
 ) -> None:
     line = label.span.line if label.span else 1
     col = label.span.column if label.span else 1
     if isinstance(label, Literal) and label.kind == "null":
+        if allow_null:
+            return
         _transpile_error(
             "Switch case labels cannot be null.",
             line,
@@ -4187,6 +4765,9 @@ def _check_one_switch(
                     code="pys.switch-type",
                 )
         return
+    nullable_subject = _nullable_inner(subject_type)
+    if nullable_subject is not None:
+        subject_type = nullable_subject
     if subject_type not in enum_info and subject_type not in _SWITCH_PRIMITIVES:
         _transpile_error(
             f"Switch subject type '{subject_type}' is not supported "
@@ -4234,7 +4815,10 @@ def _check_one_switch(
         resolved: list[Expr] = []
         for label in case.labels:
             _validate_switch_label(
-                label, subject_type=subject_type, enum_info=enum_info
+                label,
+                subject_type=subject_type,
+                enum_info=enum_info,
+                allow_null=nullable_subject is not None,
             )
             key = _switch_label_key(
                 label, subject_type=subject_type, enum_info=enum_info
@@ -4446,8 +5030,7 @@ def _check_switch(
                     walk(stmt.body.statements)
             elif isinstance(stmt, FunctionDef) and stmt.body:
                 local_types = dict(types)
-                for p in stmt.params:
-                    local_types.setdefault(p, "int")
+                local_types.update(zip(stmt.params, stmt.param_types))
                 _check_switch(
                     stmt.body.statements,
                     types=local_types,
@@ -4455,12 +5038,14 @@ def _check_switch(
                     warnings=warnings,
                     class_names=class_names,
                 )
-            elif isinstance(stmt, ClassDef):
+            elif isinstance(stmt, (ClassDef, EntityDef)):
                 for m in stmt.methods:
                     if m.body:
+                        local_types = dict(types)
+                        local_types.update(zip(m.params, m.param_types))
                         _check_switch(
                             m.body.statements,
-                            types=dict(types),
+                            types=local_types,
                             enum_info=enum_info,
                             warnings=warnings,
                             class_names=class_names,

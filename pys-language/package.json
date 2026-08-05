@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.71",
+  "version": "0.0.73",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -212,6 +212,20 @@
         "icon": "$(debug-breakpoint-log)"
       },
       {
+        "command": "pys.enablePysOnlyStepping",
+        "title": "PYS-only Stepping: Off (Click to Enable)",
+        "category": "PYS",
+        "icon": "$(filter)",
+        "enablement": "pys.debugSessionActive"
+      },
+      {
+        "command": "pys.disablePysOnlyStepping",
+        "title": "PYS-only Stepping: On (Click to Disable)",
+        "category": "PYS",
+        "icon": "$(filter-filled)",
+        "enablement": "pys.debugSessionActive"
+      },
+      {
         "command": "pys.findUsages",
         "title": "Find Usages",
         "category": "PYS",
@@ -265,6 +279,18 @@
       }
     ],
     "menus": {
+      "debug/toolBar": [
+        {
+          "command": "pys.enablePysOnlyStepping",
+          "when": "pys.debugSessionActive && !pys.debug.pysOnlyStepping",
+          "group": "navigation@100"
+        },
+        {
+          "command": "pys.disablePysOnlyStepping",
+          "when": "pys.debugSessionActive && pys.debug.pysOnlyStepping",
+          "group": "navigation@100"
+        }
+      ],
       "view/title": [
         {
           "command": "pys.createProject",
@@ -515,6 +541,8 @@
     "onCommand:pys.lockDeps",
     "onCommand:pys.clearAllBreakpoints",
     "onCommand:pys.addLogpoint",
+    "onCommand:pys.enablePysOnlyStepping",
+    "onCommand:pys.disablePysOnlyStepping",
     "onView:pys.sidebar",
     "onStartupFinished"
   ],

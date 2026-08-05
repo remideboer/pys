@@ -54,6 +54,33 @@
     ],
     "description": "PYS function returning a recoverable result"
   },
+  "Nullable variable": {
+    "prefix": "nullablevar",
+    "body": [
+      "nullable<${1:string}> ${2:name} = ${3:null}"
+    ],
+    "description": "Nullable value that may be absent (null)"
+  },
+  "Nullable function": {
+    "prefix": "nullablefn",
+    "body": [
+      "function nullable<${1:Type}> ${2:name}(${3:args}) {",
+      "\t${0:return null}",
+      "}"
+    ],
+    "description": "Function that may return absence as null"
+  },
+  "Null check": {
+    "prefix": "nullcheck",
+    "body": [
+      "if (${1:name} == null) {",
+      "\t${2}",
+      "} else {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "Handle absent nullable value before use"
+  },
   "Handle result": {
     "prefix": "resultswitch",
     "body": [

@@ -78,6 +78,21 @@ and a few sample orders with Dutch `customer_ref` values. Unit prices are
 illustrative EUR snapshots inspired by common NL listings (bol.com,
 Spellenhuis.nl, Lobbes, 999games.nl) — not live prices. Safe to re-run.
 
+### Nullable columns (SQL `NULL` fidelity)
+
+`order.customer_ref` is `VARCHAR … NULL`. In PYS it is
+`nullable<string> customerRef` — not a plain `string`. Lookups such as
+`findById` / repository `get` return `nullable<Product>` (or Order / OrderLine)
+because “no row” is ordinary absence.
+
+The seed includes deliberate contrast rows:
+
+- order id `5` → SQL `NULL` customer_ref → PYS `null`
+- order id `6` → SQL `''` → present empty string
+
+Mappers must not convert `NULL` to `""` (or the reverse via `NULLIF`). A SQL
+`NULL` in a `NOT NULL` column is a mapping contract failure, not a default.
+
 ## Run
 
 From the repo root:

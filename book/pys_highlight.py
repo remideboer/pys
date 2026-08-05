@@ -78,6 +78,7 @@ KEYWORDS = frozenset(
         "task",
         "await",
         "propagate",
+        "nullable",
         "in",
         "as",
         "new",
@@ -104,6 +105,7 @@ TYPES = frozenset(
         "int64",
         "dword",
         "result",
+        "nullable",
     }
 )
 

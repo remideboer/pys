@@ -10,11 +10,13 @@ const {
 } = require('./ide-process');
 const {
   loadMapRegistry,
+  mapExactPyStackFrame,
   remapSetBreakpointsArgs,
   remapSetBreakpointsResponse,
   remapBreakpoint,
   remapStackFrames,
   remapVariables,
+  formatPysDebugValue,
   rewriteEvaluateExpression,
   collectInlineValueSites,
   filterInlineValueSitesByScope,
@@ -32,10 +34,22 @@ const {
   debugModeOptions,
   isPysDebugSession,
 } = require('./debug-mode');
+const {
+  DEFAULT_MAX_SKIPS,
+  PysStepFilter,
+} = require('./debug-step-filter');
 
-/** @type {Map<string, { dir: string, registry: object, remapSource: boolean }>} */
+/**
+ * @type {Map<string, {
+ *   dir: string,
+ *   registry: object,
+ *   remapSource: boolean,
+ *   bpReqPysBySeq: Map<number, string>,
+ *   stepFilter: PysStepFilter
+ * }>}
+ */
 const pysDebugSessions = new Map();
-/** @type {{ dir: string, registry: object } | null} */
+/** @type {{ dir: string, registry: object, stepFilter: PysStepFilter } | null} */
 let pendingPysDebug = null;
 
 const PYS_KEYWORDS = [
@@ -43,13 +57,13 @@ const PYS_KEYWORDS = [
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate', 'nullable',
 ];
 
 const PYS_TYPES = [
   'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
-  'result',
+  'result', 'nullable',
 ];
 
 const PYS_MD_KEYWORDS = new Set([
@@ -57,12 +71,12 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate', 'nullable',
 ]);
 const PYS_MD_TYPES = new Set([
   'int', 'float', 'char', 'string', 'bool', 'void',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
-  'list', 'dict', 'tuple', 'set', 'result',
+  'list', 'dict', 'tuple', 'set', 'result', 'nullable',
 ]);
 const PYS_MD_CONSTANTS = new Set(['true', 'false', 'null']);
 
@@ -168,6 +182,31 @@ function activate(context) {
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
 
+  function activeNormalPysEntry(session = vscode.debug.activeDebugSession) {
+    if (!session || session.name !== PYS_DEBUG_SESSION_NAME) {
+      return null;
+    }
+    return pysDebugSessions.get(session.id) || null;
+  }
+
+  async function syncPysStepContexts(session = vscode.debug.activeDebugSession) {
+    const entry = activeNormalPysEntry(session);
+    await Promise.all([
+      vscode.commands.executeCommand(
+        'setContext',
+        'pys.debugSessionActive',
+        Boolean(entry),
+      ),
+      vscode.commands.executeCommand(
+        'setContext',
+        'pys.debug.pysOnlyStepping',
+        Boolean(entry && entry.stepFilter.enabled),
+      ),
+    ]);
+  }
+
+  void syncPysStepContexts();
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider('pys.sidebar', {
       getChildren() {
@@ -190,6 +229,8 @@ function activate(context) {
   const hintMeta = new Map(); // `${uri}:${line}:${code}` -> hint
   const warningMeta = new Map(); // `${uri}:${line}:${code}` -> warning
   const errorMeta = new Map(); // `${uri}:${line}:${code}` -> error payload (suggested_fix)
+  /** @type {Map<string, { variable_types?: Record<string, string>, narrowed_types?: Record<string, string> }>} */
+  const analysisCache = new Map();
 
   const mainStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   mainStatus.command = 'pys.runMain';
@@ -272,8 +313,15 @@ function activate(context) {
     if (parsed.suggested_fix && !parsed.code) {
       diagnostic.code = diagnostic.code || 'pys.missing-type';
     }
-    if (parsed.code === 'pys.package-mismatch' && parsed.suggested_fix) {
-      const key = `${document.uri.toString()}:${line}:pys.package-mismatch`;
+    if (
+      parsed.suggested_fix
+      && (
+        parsed.code === 'pys.package-mismatch'
+        || parsed.code === 'pys.null-non-nullable'
+        || parsed.code === 'pys.nullable-use-before-check'
+      )
+    ) {
+      const key = `${document.uri.toString()}:${line}:${parsed.code}`;
       errorMeta.set(key, parsed);
     }
     if (String(parsed.message || '').includes('Class methods must not use `function`')) {
@@ -394,6 +442,10 @@ function activate(context) {
       for (const hint of parsed.hints || []) {
         diagnostics.push(createHintDiagnostic(hint, document));
       }
+      analysisCache.set(document.uri.toString(), {
+        variable_types: parsed.variable_types || {},
+        narrowed_types: parsed.narrowed_types || {},
+      });
       diagnosticCollection.set(document.uri, diagnostics);
       afterDiagnosticsUpdated(document);
     } catch (error) {
@@ -477,6 +529,22 @@ function activate(context) {
         return null;
       }
       const word = document.getText(range);
+      const analysis = analysisCache.get(document.uri.toString());
+      if (analysis) {
+        const key = `${position.line + 1}:${range.start.character + 1}`;
+        const narrowed = analysis.narrowed_types && analysis.narrowed_types[key];
+        const declared = analysis.variable_types && analysis.variable_types[word];
+        if (narrowed || declared) {
+          const lines = [`**${word}**`];
+          if (declared) {
+            lines.push(`Declared: \`${declared}\``);
+          }
+          if (narrowed) {
+            lines.push(`Narrowed here: \`${narrowed}\``);
+          }
+          return new vscode.Hover(new vscode.MarkdownString(lines.join('\n\n')));
+        }
+      }
       const hints = {
         loop: 'C-style: `loop (int i = 0, i < n, i++) { ... }`\nWhile-style: `loop (condition) { ... }`',
         function: 'Top-level function: `function name(args) { ... }`\nTyped: `function int name(args) { return 0 }`',
@@ -519,6 +587,7 @@ function activate(context) {
         shared: 'Visibility of cross-task mutation: `shared int counter = 0`. Does **not** make `+=` race-free — use `atomic` for indivisible RMW.',
         atomic: 'Indivisible RMW cell: `atomic int counter = 0`.\nImplies shared for capture. Ops: `+=`/`-=`/`++`/`--`, `get()`, `compareAndSet(expected, new)`. Rejects `*=`/`/=`/`%=`.',
         result: 'Recoverable outcome: `result<Value, Error>`. Construct with `ok(value)` or `err(error)`; handle with exhaustive `switch` or postfix `propagate`.',
+        nullable: 'Explicit absence: `nullable<string> name = null`.\nPlain `string` never holds null. Check before use (`if (name != null) { … }`). Not the same as `result` (failure) or empty string/zero.',
         ok: 'Success constructor for an expected `result<T, E>`: `ok(value)`. Use `ok()` only for `result<void, E>`.',
         err: 'Failure constructor for an expected `result<T, E>`: `err(error)`. An error payload is always required.',
         propagate: 'Postfix result handling: `load() propagate`. Success yields the value; failure immediately returns the same error. At the entrypoint, an unhandled error becomes a panic.',
@@ -879,6 +948,65 @@ function activate(context) {
           fix.edit = new vscode.WorkspaceEdit();
           const line = document.lineAt(missingType.range.start.line);
           fix.edit.replace(document.uri, line.range, suggested);
+          actions.push(fix);
+        }
+      }
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.null-non-nullable') {
+          continue;
+        }
+        const key = `${document.uri.toString()}:${diagnostic.range.start.line + 1}:${diagnostic.code}`;
+        const meta = errorMeta.get(key);
+        const suggested = meta && meta.suggested_fix;
+        if (!suggested) {
+          continue;
+        }
+        const fix = new vscode.CodeAction('Make type nullable', vscode.CodeActionKind.QuickFix);
+        fix.diagnostics = [diagnostic];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(diagnostic.range.start.line);
+        fix.edit.replace(document.uri, line.range, suggested);
+        actions.push(fix);
+      }
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.nullable-use-before-check') {
+          continue;
+        }
+        const line = document.lineAt(diagnostic.range.start.line);
+        const match = /\b([A-Za-z_]\w*)\s*\./.exec(line.text);
+        if (!match) {
+          continue;
+        }
+        const name = match[1];
+        const indent = line.text.match(/^\s*/)?.[0] || '';
+        const body = line.text.trim();
+        const fix = new vscode.CodeAction('Surround with null check', vscode.CodeActionKind.QuickFix);
+        fix.diagnostics = [diagnostic];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        fix.edit.replace(
+          document.uri,
+          line.range,
+          `${indent}if (${name} != null) {\n${indent}\t${body}\n${indent}}`,
+        );
+        actions.push(fix);
+      }
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.null-redundant-check') {
+          continue;
+        }
+        const key = `${document.uri.toString()}:${diagnostic.range.start.line + 1}:${diagnostic.code}`;
+        const warning = warningMeta.get(key);
+        const suggested = warning && warning.suggested_fix;
+        if (suggested) {
+          const fix = new vscode.CodeAction('Remove redundant null check', vscode.CodeActionKind.QuickFix);
+          fix.diagnostics = [diagnostic];
+          fix.edit = new vscode.WorkspaceEdit();
+          fix.edit.replace(document.uri, diagnostic.range, suggested);
           actions.push(fix);
         }
       }
@@ -1306,6 +1434,9 @@ function activate(context) {
       registry,
       bpReqPysBySeq: new Map(),
       remapSource: debugMode.remapSource,
+      stepFilter: new PysStepFilter({
+        enabled: debugMode.pysOnlyStepping,
+      }),
     };
     if (debugMode.revealGenerated) {
       await vscode.window.showTextDocument(vscode.Uri.file(prepared.main), {
@@ -1372,7 +1503,7 @@ function activate(context) {
           if (shouldHideInlineName(v.name)) {
             continue;
           }
-          values.set(v.name, v.value);
+          values.set(v.name, formatPysDebugValue(v.value));
         }
       }
     } catch (_err) {
@@ -1396,6 +1527,57 @@ function activate(context) {
       return s;
     }
     return `${s.slice(0, max - 1)}…`;
+  }
+
+  async function processPysStepStop(session, entry, message) {
+    try {
+      const result = await entry.stepFilter.handleStopped(
+        message,
+        async (threadId) => {
+          if (typeof threadId !== 'number') {
+            return null;
+          }
+          entry.captureStepProbe = true;
+          entry.stepProbeLocation = null;
+          try {
+            await session.customRequest('stackTrace', {
+              threadId,
+              startFrame: 0,
+              levels: 1,
+            });
+          } finally {
+            entry.captureStepProbe = false;
+          }
+          const location = entry.stepProbeLocation;
+          if (!location) {
+            return null;
+          }
+          return {
+            line: location.pysLine,
+            source: { path: location.pysPath },
+            generatedSource: {
+              path: location.pyPath,
+              line: location.pyLine,
+            },
+          };
+        },
+        async (command, args) => {
+          await session.customRequest(command, args);
+        },
+      );
+      if (result === 'limit') {
+        vscode.window.showWarningMessage(
+          `PYS-only stepping stopped after ${DEFAULT_MAX_SKIPS} generated steps. ` +
+            'Disable the PYS-only toolbar filter to inspect this code.',
+        );
+      }
+    } catch (error) {
+      entry.stepFilter.cancelOperation();
+      const detail = error && error.message ? `: ${error.message}` : '';
+      vscode.window.showWarningMessage(
+        `PYS-only stepping could not continue${detail}`,
+      );
+    }
   }
 
   context.subscriptions.push(
@@ -1454,14 +1636,28 @@ function activate(context) {
           if (!pendingPysDebug.bpReqPysBySeq) {
             pendingPysDebug.bpReqPysBySeq = new Map();
           }
+          if (!pendingPysDebug.stepFilter) {
+            pendingPysDebug.stepFilter = new PysStepFilter({
+              enabled: pendingPysDebug.remapSource,
+            });
+          }
           pysDebugSessions.set(session.id, pendingPysDebug);
           pendingPysDebug = null;
+          void syncPysStepContexts(session);
         }
         return {
           onWillReceiveMessage(message) {
             const entry = pysDebugSessions.get(session.id);
             if (!entry || !message) {
               return;
+            }
+            entry.stepFilter.observeRequest(message);
+            if (
+              message.command === 'stackTrace' &&
+              entry.captureStepProbe
+            ) {
+              entry.stepProbeRequestSeq = message.seq;
+              entry.captureStepProbe = false;
             }
             if (message.command === 'setBreakpoints' && message.arguments) {
               const src = message.arguments.source && message.arguments.source.path;
@@ -1500,6 +1696,39 @@ function activate(context) {
               message.body &&
               message.body.stackFrames
             ) {
+              const rawTop = message.body.stackFrames[0];
+              const rawPath = rawTop && rawTop.source && rawTop.source.path;
+              const exactLocation =
+                rawPath && typeof rawTop.line === 'number'
+                  ? mapExactPyStackFrame(
+                      entry.registry,
+                      rawPath,
+                      rawTop.line,
+                    )
+                  : null;
+              entry.stepFilter.recordTopFrame(
+                exactLocation
+                  ? {
+                      line: exactLocation.pysLine,
+                      source: { path: exactLocation.pysPath },
+                      generatedSource: {
+                        path: rawPath,
+                        line: rawTop.line,
+                      },
+                    }
+                  : null,
+              );
+              if (message.request_seq === entry.stepProbeRequestSeq) {
+                entry.stepProbeLocation =
+                  exactLocation && rawPath
+                    ? {
+                        ...exactLocation,
+                        pyPath: rawPath,
+                        pyLine: rawTop.line,
+                      }
+                    : null;
+                entry.stepProbeRequestSeq = null;
+              }
               message.body.stackFrames = remapStackFrames(
                 entry.registry,
                 message.body.stackFrames,
@@ -1542,9 +1771,30 @@ function activate(context) {
                 message.body.variables,
               );
             }
+            if (
+              entry.remapSource &&
+              message.type === 'response' &&
+              message.command === 'evaluate' &&
+              message.body &&
+              typeof message.body.result === 'string'
+            ) {
+              message.body.result = formatPysDebugValue(message.body.result);
+            }
+            if (
+              message.type === 'event' &&
+              message.event === 'stopped'
+            ) {
+              void processPysStepStop(session, entry, message);
+            }
           },
         };
       },
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.debug.onDidChangeActiveDebugSession((session) => {
+      void syncPysStepContexts(session);
     }),
   );
 
@@ -1554,7 +1804,12 @@ function activate(context) {
       if (!entry) {
         return;
       }
+      entry.stepFilter.cancelOperation();
       pysDebugSessions.delete(session.id);
+      const active = vscode.debug.activeDebugSession;
+      void syncPysStepContexts(
+        active && active.id !== session.id ? active : null,
+      );
       try {
         fs.rmSync(entry.dir, { recursive: true, force: true });
       } catch (_err) {
@@ -1656,6 +1911,35 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugTranspiledFile', async (file) => {
     await debugPysFile(resolveTargetPysFile(file), 'python');
   }));
+
+  async function setPysOnlyStepping(enabled) {
+    const session = vscode.debug.activeDebugSession;
+    const entry = activeNormalPysEntry(session);
+    if (!entry) {
+      vscode.window.showInformationMessage(
+        'PYS-only stepping is available during a normal Debug PYS session.',
+      );
+      return;
+    }
+    entry.stepFilter.setEnabled(enabled);
+    await syncPysStepContexts(session);
+    vscode.window.setStatusBarMessage(
+      `PYS-only stepping ${enabled ? 'enabled' : 'disabled'}`,
+      3000,
+    );
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pys.enablePysOnlyStepping', async () => {
+      await setPysOnlyStepping(true);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pys.disablePysOnlyStepping', async () => {
+      await setPysOnlyStepping(false);
+    }),
+  );
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.clearAllBreakpoints', async () => {
     const all = vscode.debug.breakpoints;

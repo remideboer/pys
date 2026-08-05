@@ -18,7 +18,7 @@ def test_2d_brace_initializer_emits_nested_array_array() -> None:
     assert "array('i', [3, 6, 8])" in py
     assert "myNumbers = [" in py
     assert "list<" not in py
-    assert "print(myNumbers[0][1])" in py
+    assert "print(_pys_format(myNumbers[0][1]))" in py
 
 
 def test_2d_bracket_initializer_also_works() -> None:

@@ -290,7 +290,7 @@ package class CardCatalog {
         return this.cards
     }
 
-    public Card get(string cardId) {
+    public nullable<Card> get(string cardId) {
         if (cardId in this.byId) {
             return this.byId[cardId]
         }
@@ -367,7 +367,7 @@ package class CollectionBook {
     public list<TypeStat> statsByType(CardCatalog catalog) {
         dict<string, TypeStat> stats = dict()
         loop (OwnedEntry e in this.owned) {
-            Card c = catalog.get(e.getCardId())
+            nullable<Card> c = catalog.get(e.getCardId())
             if (c != null) {
                 list<string> types = c.getTypes()
                 if (len(types) == 0) {
@@ -414,7 +414,7 @@ package class DeckBook {
         return this.decks
     }
 
-    public Deck getByName(string name) {
+    public nullable<Deck> getByName(string name) {
         loop (Deck d in this.decks) {
             if (d.getName() == name) {
                 return d
@@ -442,7 +442,7 @@ package class DeckBook {
     }
 
     public bool setDeckCard(string deckName, string cardId, int quantity, CollectionBook collection) {
-        Deck d = this.getByName(deckName)
+        nullable<Deck> d = this.getByName(deckName)
         if (d == null) {
             return false
         }

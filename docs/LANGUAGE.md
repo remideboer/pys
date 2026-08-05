@@ -80,7 +80,8 @@ only when the initializer makes the type obvious.
 | `char` | `'A'` (single character) |
 | `string` | `"hello"` or `'hello'` |
 | `bool` | `true` / `false` |
-| `null` | null reference (`None` in Python) |
+| `nullable<T>` | may hold a `T` value or the literal `null` (absence) |
+| `null` | absence literal for `nullable<T>` only (Python `None` at runtime) |
 
 Width aliases emit as Python `int`. Out-of-range literal assigns are rejected.
 
@@ -441,6 +442,43 @@ Rules:
 Inside a **class**, do not write `function` / `func` — methods use member access
 modifiers instead (`public name(…) { … }` or `public void name(…) { … }`).
 
+### Explicit absence: `nullable<T>`
+
+Ordinary types are **non-null by default**. Only `nullable<T>` may hold either a
+present `T` or the literal `null`. Absence is not zero, not `""`, and not an
+empty collection — those are present values. SQL `NULL` maps to PYS `null` and
+back; Data Mappers must not invent defaults.
+
+```pys
+string requiredName = "Sanne"
+nullable<string> preferredName = null
+preferredName = "Ada"
+
+function string display(nullable<string> name) {
+    if (name == null) {
+        return "(geen naam)"
+    }
+    return name.upper()
+}
+```
+
+Rules:
+
+1. `string name = null` is rejected; write `nullable<string> name = null`.
+2. Member access, indexing, arithmetic, and other `T` operations need a
+   dominating null check (or an exiting guard) that proves the value is present.
+3. `nullable<void>` and `nullable<nullable<T>>` are illegal.
+4. Entity `identity(...)` fields must stay non-null. A present struct/data value
+   stays complete; wrap with `nullable<Struct>` when the whole value may be absent.
+5. `atomic nullable<T>` is illegal. `shared nullable<T>` is allowed, but separate
+   shared reads do not narrow — copy a synchronized snapshot to a local first.
+6. Use `nullable<T>` for expected absence; use `result<T, E>` for failure.
+   `result<nullable<T>, E>` covers found / not-found / failed.
+7. PYS-facing print, interpolation, and debugger values show `null`, not Python
+   `None`.
+
+See [ADR-023](adr/ADR-023-explicit-nullability.md) and [CER-028](evolution/CER-028-nullable.md).
+
 ### Recoverable errors: `result<T, E>`
 
 `result<T, E>` makes recoverable failure visible in a function signature:
@@ -730,7 +768,8 @@ Rules:
 4. Pass-by-value: assignment, call arguments, and returns copy the instance
    (nested struct fields are deep-copied)
 5. `==` is field-wise (not reference identity)
-6. No `shared <Struct>`; struct fields and struct bindings reject `null`
+6. No `shared <Struct>`; plain struct fields and bindings reject `null`
+   (`nullable<Struct>` and nullable fields are allowed — ADR-023)
 7. IDE: type and field go-to, keyword highlighting, semantic type coloring,
    hover/snippets for `struct`
 8. Mutability matrix (also applies to nested paths like `o.inner.x`):
@@ -746,11 +785,12 @@ Rules:
 10. Optional type parameters: `struct Pair<T, U> { … }` (erased at emit, like classes)
 
 **Struct vs `dict`:** same idea as a schema-fixed data bag (value equality, no
-methods), but nominal typing, fixed fields, no `null` fields, and optional
+methods), but nominal typing, fixed fields, no implicit nullability, and optional
 per-field / type-level `fix`. Who may use the type is controlled by the
 struct’s top-level visibility — not per-field modifiers. Construct with
 `Damage(...)`, not brace literals. Prefer a **class** when the type has
-behavior or inheritance.
+behavior or inheritance. Use `nullable<Struct>` when the whole value may be
+absent.
 
 ### `data` (value objects) and `entity` (identity keys)
 

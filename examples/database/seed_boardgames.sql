@@ -105,7 +105,10 @@ INSERT INTO `order` (order_id, placed_at, status, customer_ref) VALUES
   (1, '2026-07-12 14:22:05.000', 'paid',    'klant:jan.dejong@example.nl'),
   (2, '2026-07-18 09:05:41.000', 'shipped', 'Spellenclub Utrecht'),
   (3, '2026-07-29 19:40:12.000', 'placed',  'klant:sophie.visser@example.nl'),
-  (4, '2026-08-01 11:15:00.000', 'cancelled', 'walk-in:Den Haag');
+  (4, '2026-08-01 11:15:00.000', 'cancelled', 'walk-in:Den Haag'),
+  -- Deliberate contrast for nullable<T>: absent is not an empty string.
+  (5, '2026-08-02 10:00:00.000', 'placed',  NULL),
+  (6, '2026-08-02 10:05:00.000', 'placed',  '');
 
 -- Lines snapshot SKU + unit_price at order time (catalog may change later).
 INSERT INTO order_line

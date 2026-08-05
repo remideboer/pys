@@ -127,7 +127,7 @@ package class PokemonApp {
         this.collectionList.delete(0, "end")
         this.collectionIds = []
         loop (OwnedEntry e in this.appStore.getCollection().getOwned()) {
-            Card c = this.appStore.getCatalog().get(e.getCardId())
+            nullable<Card> c = this.appStore.getCatalog().get(e.getCardId())
             int q = e.getQuantity()
             string label = e.getCardId() + " x" + str(q)
             if (c != null) {
@@ -169,7 +169,7 @@ package class PokemonApp {
         }
         int idx = sel[0]
         string cid = this.catalogIds[idx]
-        Card c = this.appStore.getCatalog().get(cid)
+        nullable<Card> c = this.appStore.getCatalog().get(cid)
         this.catalogDetail.delete("1.0", "end")
         if (c != null) {
             this.catalogDetail.insert("1.0", c.detailText())
@@ -202,7 +202,7 @@ package class PokemonApp {
         }
         int idx = sel[0]
         string cid = this.collectionIds[idx]
-        Card c = this.appStore.getCatalog().get(cid)
+        nullable<Card> c = this.appStore.getCatalog().get(cid)
         int qty = this.appStore.getCollection().quantityOf(cid)
         this.collectionDetail.delete("1.0", "end")
         string header = "Owned quantity: " + str(qty) + "\n\n"
@@ -270,7 +270,7 @@ package class PokemonApp {
         }
         int idx = sel[0]
         string name = this.deckNames[idx]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         if (d == null) {
             return
         }
@@ -278,7 +278,7 @@ package class PokemonApp {
         string text = "Deck: " + name + "\nTotal cards: " + str(total) + "\n"
         this.deckDetail.insert("1.0", text)
         loop (OwnedEntry e in d.getEntries()) {
-            Card c = this.appStore.getCatalog().get(e.getCardId())
+            nullable<Card> c = this.appStore.getCatalog().get(e.getCardId())
             int q = e.getQuantity()
             string label = e.getCardId() + " x" + str(q)
             if (c != null) {
@@ -347,7 +347,7 @@ package class PokemonApp {
             return
         }
         string name = this.deckNames[dsel[0]]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         int current = 0
         if (d != null) {
             current = d.quantityOf(cardId)
@@ -374,7 +374,7 @@ package class PokemonApp {
             return
         }
         string name = this.deckNames[dsel[0]]
-        Deck d = this.appStore.getDecks().getByName(name)
+        nullable<Deck> d = this.appStore.getDecks().getByName(name)
         if (d == null) {
             return
         }

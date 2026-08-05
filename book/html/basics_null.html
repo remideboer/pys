@@ -110,8 +110,16 @@
     <main>
 <h1>2.7. Null and missing values</h1>
 <p>Sometimes a drawer exists but is <strong>empty on purpose</strong>: “we do not have a
-value yet.” In PYS that empty marker is <code>null</code>.</p>
-<pre><code class="language-pys"><span class="tok-type">string</span> <span class="tok-ident">nickname</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
+value yet.” In PYS that empty marker is <code>null</code>. Ordinary types such as
+<code>string</code> and <code>int</code> never hold <code>null</code>. Absence must be written on the type:
+<code>nullable&lt;T&gt;</code>.</p>
+<blockquote>
+<p><strong>Sidebar — Dutch <em>nul</em> versus technical <code>null</code></strong></p>
+<p><code>0</code> is een waarde: het getal nul. <code>null</code> betekent dat er geen waarde
+aanwezig is. An empty string <code>""</code> is also a present value — it is text
+with zero characters, not “no string.”</p>
+</blockquote>
+<pre><code class="language-pys"><span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">nickname</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
 
 <span class="tok-kw">if</span> (<span class="tok-ident">nickname</span> <span class="tok-op">==</span> <span class="tok-const">null</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">No nickname yet</span><span class="tok-string">&quot;</span>)
@@ -121,23 +129,56 @@ value yet.” In PYS that empty marker is <code>null</code>.</p>
 <p>Output:</p>
 <pre><code class="language-text">No nickname yet
 </code></pre>
+<p>Assign a present value, then use it only after a check (or in the <code>else</code>
+branch of a null check):</p>
+<pre><code class="language-pys"><span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">nickname</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
+<span class="tok-ident">nickname</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Sanne</span><span class="tok-string">&quot;</span>
+
+<span class="tok-kw">if</span> (<span class="tok-ident">nickname</span> <span class="tok-op">!=</span> <span class="tok-const">null</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">nickname</span>.<span class="tok-ident">upper</span>())
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">SANNE
+</code></pre>
+<p>Zero and empty stay distinct from absence:</p>
+<pre><code class="language-pys"><span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">number</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
+<span class="tok-ident">number</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">text</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
+<span class="tok-ident">text</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">number</span> <span class="tok-op">==</span> <span class="tok-const">null</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">text</span> <span class="tok-op">==</span> <span class="tok-const">null</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">text</span> <span class="tok-op">==</span> <span class="tok-string">&quot;</span><span class="tok-string">&quot;</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">false
+false
+true
+</code></pre>
+<p>Compile error — plain types reject <code>null</code>:</p>
+<pre><code class="language-pys"><span class="tok-type">string</span> <span class="tok-ident">city</span> <span class="tok-op">=</span> <span class="tok-const">null</span></code></pre>
+<pre><code class="language-text">Type 'string' does not allow null.
+</code></pre>
 <ul>
-<li><code>null</code> means “no value”.</li>
-<li>Always <strong>check</strong> before you use a value that might be null. Using a null
-  where a real object is required blows up at runtime.</li>
+<li><code>null</code> means “no value is present.”</li>
+<li>Declare <code>nullable&lt;T&gt;</code> when absence is part of the contract.</li>
+<li>Always <strong>check</strong> before you use a nullable value as <code>T</code>. The compiler
+  rejects member access without proof.</li>
+<li>Prefer <code>result&lt;T, E&gt;</code> when the interesting case is a <strong>failure</strong> with a
+  reason, not ordinary absence. Use <code>result&lt;nullable&lt;T&gt;, E&gt;</code> when found,
+  not-found, and failed are all meaningful.</li>
 </ul>
 <blockquote>
-<p><strong>Sidebar — not every type likes <code>null</code></strong></p>
-<p>Struct fields reject <code>null</code> (structs are complete values). Class-typed
-variables often may be null. Follow the compiler; details belong with
-<a href="chapter_4_5.html">Structs, data, and entity</a> and
-<a href="chapter_4_1.html">Classes</a>.</p>
+<p><strong>Sidebar — databases</strong></p>
+<p>SQL <code>NULL</code> is the same idea: missing/unknown. A <code>VARCHAR NULL</code> column maps
+to <code>nullable&lt;string&gt;</code> in PYS. Do not convert SQL <code>NULL</code> to <code>""</code> — students
+must keep absent and empty distinct. See the shop example under
+<code>examples/database/</code>.</p>
 </blockquote>
 <h3>Exercise</h3>
 <blockquote>
-<p>Declare <code>string city = null</code>. If it is null, print <code>"unknown city"</code>;
-otherwise print the city name. Then set <code>city</code> to <code>"Utrecht"</code> and run the
-<code>else</code> path mentally (or by editing the program).</p>
+<p>Declare <code>nullable&lt;string&gt; city = null</code>. If it is null, print
+<code>"unknown city"</code>; otherwise print the city name. Then set <code>city</code> to
+<code>"Utrecht"</code> and run the non-null path. Expected first output:
+<code>unknown city</code>. After the assignment and check: <code>Utrecht</code>.</p>
 </blockquote>
 <hr />
 <p><a href="basics_conversion.html">Previous: Conversion</a> · <a href="basics_outcomes.html">Next: Expressing success and failure</a></p>

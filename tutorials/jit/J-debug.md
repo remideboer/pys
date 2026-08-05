@@ -22,18 +22,33 @@ globals / builtins / other functions’ identifiers).
 Use **PYS: Clear All Breakpoints** from the editor context menu, line-number/gutter
 menu, or the editor tab menu/icon.
 
-Normal debugging is intentionally **PYS-only**: Step Into follows your `.pys`
-functions, but skips Python library/dependency internals. To inspect what the
-transpiler generated, run **PYS Advanced: Debug Transpiled Python** from the
-editor context menu or Command Palette. That mode opens the temporary `.py`,
-stops on its first line, and allows stepping into Python internals.
+Normal debugging is intentionally **PYS-only**: Step Over / Into / Out skip
+extra generated Python lines and stop only at the next mapped `.pys` statement.
+Step Into still follows your own `.pys` functions, including functions in
+another PYS file.
+
+The filter icon in the debug toolbar is the session-local
+**PYS-only Stepping** toggle:
+
+- **On** (default): native Step buttons skip generated implementation lines.
+- **Off**: native debugpy stepping is used without the PYS statement filter.
+
+The filter never skips breakpoints, exceptions, or a manual Pause. If it cannot
+find another PYS statement within 100 generated steps, it stops and warns
+instead of looping forever.
+
+To inspect the generated source and Python dependencies deliberately, run
+**PYS Advanced: Debug Transpiled Python** from the editor context menu or
+Command Palette. That separate mode opens the temporary `.py`, stops on its
+first line, disables source remapping/filtering, and permits Python internals.
 
 ## What happens
 
 1. Extension runs `prepare_debug` → temp `.py` + `.pysmap.json` line maps (+ name table).
 2. debugpy launches the **generated program** (not `transpiler run`).
-3. Breakpoints (including verified glyphs), stack frames, and Step Over/Into/Out
-   are remapped back to `.pys` paths/lines.
+3. Breakpoints (including verified glyphs) and stack frames are remapped back
+   to `.pys`; native Step Over/Into/Out filter same-statement/unmapped Python
+   stops while PYS-only Stepping is on.
 4. Variables rename lambda captures (`_c_hits` → `hits`); runtime `_pys_*` helpers are hidden.
 
 ```pys

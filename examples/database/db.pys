@@ -1,5 +1,6 @@
 # Infrastructure: MySQL session + row cell helpers (SRP: connection only).
 
+import sys
 import mysql.connector
 
 package class ShopDatabase {
@@ -26,9 +27,18 @@ package class ShopDatabase {
         this.conn.close()
     }
 
+    public nullable<string> cellNullableStr(var value) {
+        if (value == null) {
+            return null
+        }
+        string s = str(value)
+        return s
+    }
+
     public string cellStr(var value) {
         if (value == null) {
-            return ""
+            # NOT NULL column returned SQL NULL — never invent "" / 0.
+            sys.exit("Database contract violation: expected a non-null string cell.")
         }
         string s = str(value)
         return s

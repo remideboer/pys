@@ -4,9 +4,9 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode + manifest entrypoint) |
+| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode + manifest entrypoint); 2026-08-05 (exact PYS-line step filtering + toolbar toggle) |
 | Commits | (F-004 increment; debug UX maturity; deps on Debug) |
-| Scope | `emit/python.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; docs |
+| Scope | `emit/python.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; `debug-step-filter.js`; docs |
 | ADRs | [ADR-014](../adr/ADR-014-pys-dap-stepping.md) |
 
 ## Context
@@ -90,13 +90,54 @@ Follow-up maturity: verified gutter glyphs, stop-on-entry, Variables/Watch names
   cannot gain panic handling from a debug launch.
 - Extension **0.0.69**.
 
+### Post-behavior (PYS statement step filtering)
+
+- Normal `Debug PYS` sessions observe native DAP `next`, `stepIn`, and
+  `stepOut` requests. Stops on additional generated Python lines for the same
+  PYS statement, or on lines with no **exact** PYS map origin, automatically
+  repeat the original step.
+- Re-execution of the same exact generated/PYS line remains visible, so loop
+  iterations and recursion are not silently skipped.
+- A different mapped PYS line or mapped module is visible immediately, so Step
+  Into still enters user functions across files.
+- Breakpoint / exception / pause / data-breakpoint stops never auto-resume.
+  Filtering has a 100-step cap and reports the fail-safe rather than looping.
+- The debug toolbar shows a session-local filter toggle. Normal PYS starts on;
+  Advanced transpiled-Python remains off. Native step controls and keys do not
+  change.
+- `debug-step-filter.js` owns pure, unit-tested state; the tracker only supplies
+  exact map locations and DAP requests.
+- Extension **0.0.72**.
+
 ### Evidence
 
 `tests/test_line_map.py`; `tests/test_prepare_debug.py`;
 `tests/test_entrypoint_panic.py`;
 `pys-language/test/debug-map.test.js`;
 `pys-language/test/debug-mode.test.js`;
+`pys-language/test/debug-step-filter.test.js`;
 `pys-language/test/project-main.test.js`.
+
+## Entry — PYS-facing `null` in debug values
+
+### Pre-behavior
+
+Variables, Watch/evaluate, and inline values showed Python `None` for PYS
+`null`.
+
+### Why it hurt
+
+Students learn the source-level word `null`; leaking `None` breaks that model
+(ADR-023).
+
+### Post-behavior
+
+`formatPysDebugValue` maps exact `None` to `null` in remapped Variables,
+evaluate results, and inline values (extension ≥ 0.0.73).
+
+### Evidence
+
+`pys-language/test/debug-map.test.js`.
 
 ## Trade-offs / deferred
 

@@ -33,6 +33,8 @@ anti-examples, production cases, and bibliographic references live in
    identity keys only (parent keys then local); `inherits` entity-only;
    optional local `identity` appends to parent keys; no `uses` / `implements`;
    ban hand `equals` / `hashCode` / `toString` (and Python magic aliases).
+   ADR-023 permits `nullable<T>` for non-identity fields, but every field named
+   by `identity(...)` must have a non-null type.
 3. **Emit**: `data` → `@dataclass(frozen=True)` + struct copy helper;
    `entity` → class + `__eq__` / `__hash__` / `__repr__` on keys + fix-field
    setattr guard.
@@ -44,6 +46,8 @@ anti-examples, production cases, and bibliographic references live in
 - IDE ≥ 0.0.44: keywords, hover, snippets; docs `DATA_ENTITY.md`, JIT cards.
 - Examples: `examples/data.pys`, `examples/entities.pys`,
   `examples/database/` (MySQL shop CRUD + identity demos).
+- SQL nullable columns map to explicit nullable non-identity fields; a mapper
+  may not invent empty/zero values for SQL `NULL`.
 
 ## Rejected alternatives
 

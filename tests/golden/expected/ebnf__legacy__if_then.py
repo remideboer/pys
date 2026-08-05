@@ -1,5 +1,7 @@
+def _pys_format(value):
+    return "null" if value is None else str(value)
 x = 1
 if x > 0:
-    print("pos")
+    print(_pys_format("pos"))
 else:
-    print("nonpos")
+    print(_pys_format("nonpos"))

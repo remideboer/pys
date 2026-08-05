@@ -43,9 +43,14 @@ package entity Order identity(orderId) {
     protected fix int orderId
     public string placedAt
     public string status
-    public string customerRef
+    public nullable<string> customerRef
 
-    public Order(int orderId, string placedAt, string status, string customerRef) {
+    public Order(
+        int orderId,
+        string placedAt,
+        string status,
+        nullable<string> customerRef
+    ) {
         this.orderId = orderId
         this.placedAt = placedAt
         this.status = status
@@ -57,9 +62,10 @@ package entity Order identity(orderId) {
     }
 
     public string summary() {
-        string who = this.customerRef
-        if (who == "") {
-            who = "(no customer)"
+        nullable<string> who = this.customerRef
+        if (who == null) {
+            return "#" + str(this.orderId) + " " + this.placedAt + " status="
+                + this.status + " (no customer)"
         }
         return "#" + str(this.orderId) + " " + this.placedAt + " status="
             + this.status + " " + who
@@ -79,7 +85,7 @@ package entity OrderLine inherits Order identity(lineNumber) {
         int orderId,
         string placedAt,
         string status,
-        string customerRef,
+        nullable<string> customerRef,
         int lineNumber,
         int productId,
         string skuSnapshot,

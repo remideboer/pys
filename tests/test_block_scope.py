@@ -25,7 +25,7 @@ def test_foreach_binder_does_not_leak_to_outer_declaration(tmp_path: Path) -> No
     py = transpile_with_modules(src)["loop_scope"]
     assert "for x in" not in py
     assert "x = 10" in py
-    assert "print(x)" in py
+    assert "print(_pys_format(x))" in py
 
 
 def test_foreach_binder_not_visible_after_loop(tmp_path: Path) -> None:

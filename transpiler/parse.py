@@ -696,8 +696,20 @@ def _parse_shared(p: _Tok) -> SharedDecl:
             tips=["Drop `shared` and use `atomic int counter = 0`."],
         )
     dtype = ""
-    if p.at_kw(*_TYPES) or p.at(TokenKind.IDENT):
-        dtype = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+    if (
+        p.at_kw(*_TYPES)
+        or p.at_kw(
+            "nullable",
+            "result",
+            "lambda",
+            "list",
+            "dict",
+            "tuple",
+            "set",
+        )
+        or p.at(TokenKind.IDENT)
+    ):
+        dtype = _parse_type_name(p)
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
     p.eat(TokenKind.OP, text="=")
     value = _parse_expression(p)
@@ -715,6 +727,15 @@ def _parse_atomic(p: _Tok) -> AtomicDecl:
             p.cur().column,
             code="pys.atomic-redundant",
             tips=["Drop `shared` and use `atomic int counter = 0`."],
+        )
+    if p.at_kw("nullable"):
+        raise FatalParseError(
+            "`atomic nullable<T>` is not allowed; nullable state has no "
+            "atomic operation contract.",
+            p.cur().line,
+            p.cur().column,
+            code="pys.nullable-atomic",
+            tips=["Use a shared nullable value and copy a synchronized snapshot to a local."],
         )
     if not (p.at_kw(*_TYPES) or p.at(TokenKind.IDENT)):
         raise FatalParseError(
@@ -982,6 +1003,14 @@ def _parse_type_name(p: _Tok) -> str:
     base_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
     base = base_tok.text
     if not p.at(TokenKind.LT):
+        if base == "nullable":
+            raise FatalParseError(
+                "`nullable<T>` requires exactly one underlying type.",
+                base_tok.line,
+                base_tok.column,
+                code="pys.nullable-arity",
+                tips=["Write `nullable<Type>`."],
+            )
         return base
     p.eat(TokenKind.LT)
     args = [_parse_type_name(p)]
@@ -1005,6 +1034,30 @@ def _parse_type_name(p: _Tok) -> str:
             base_tok.column,
             code="pys.result-error-type",
             tips=["Choose an error value type such as `string` or an enum."],
+        )
+    if base == "nullable" and len(args) != 1:
+        raise FatalParseError(
+            "`nullable<T>` requires exactly one underlying type.",
+            base_tok.line,
+            base_tok.column,
+            code="pys.nullable-arity",
+            tips=["Write `nullable<Type>`."],
+        )
+    if base == "nullable" and args[0] == "void":
+        raise FatalParseError(
+            "`nullable<void>` is invalid because void is not a runtime value.",
+            base_tok.line,
+            base_tok.column,
+            code="pys.nullable-void",
+            tips=["Choose the concrete value type that may be absent."],
+        )
+    if base == "nullable" and args[0].startswith("nullable<"):
+        raise FatalParseError(
+            f"`{args[0]}` is already nullable; nested nullable types add no state.",
+            base_tok.line,
+            base_tok.column,
+            code="pys.nullable-nested",
+            tips=[f"Use `{args[0]}` directly."],
         )
     return f"{base}<{', '.join(args)}>"
 

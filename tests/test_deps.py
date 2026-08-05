@@ -449,7 +449,7 @@ def test_import_resolver_does_not_install_on_validate(
     main = tmp_path / "main.pys"
     main.write_text("print(1)\n", encoding="utf-8")
     python = transpile(main.read_text(encoding="utf-8"), source_path=main)
-    assert "print(1)" in python
+    assert "print(_pys_format(1))" in python
     assert calls == []
 
 

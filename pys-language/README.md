@@ -7,13 +7,17 @@ bundled** in the VSIX — students do not `pip install` this repo.
 
 - `*.pys` language association and TextMate syntax highlighting
 - Brace-based indentation and `##` … `/#` block comments
-- Snippets for functions, classes, loops, results, `inherits`, and interpolation
+- Snippets for functions, classes, loops, results, nullable values, `inherits`, and interpolation
 - Keyword / type completions and hover hints
 - Go to Definition / **Find Usages** (editor context menu on the identifier under the cursor)
 - Language / file icons for `.pys`
 - Markdown ` ```pys ` fences: editor + preview highlighting
 - **Run** and **Debug** using the bundled transpiler
-  - Debug: breakpoints / step / inline values / Variables on `.pys`; normal Step Into stays in PYS/user code
+  - Debug: breakpoints / step / inline values / Variables on `.pys`
+  - PYS-only stepping is on by default: native Step Over/Into/Out skip extra
+    generated Python lines and stop at the next mapped PYS statement
+  - Filter icon in the debug toolbar toggles PYS-only stepping for this session;
+    breakpoints, exceptions, and Pause are never skipped
   - **PYS Advanced: Debug Transpiled Python** opens generated `.py` and permits stepping into Python internals
   - Halts at BPs; Clear All Breakpoints in context/gutter/tab; needs Microsoft Python extension
   - `Ctrl+Shift+R` / `Ctrl+Shift+D` — run/debug current `.pys` file
@@ -21,6 +25,8 @@ bundled** in the VSIX — students do not `pip install` this repo.
   - `[project].main` in `pys.toml` is authoritative; right-click
     **Set as entrypoint** updates it
   - `pys.mainFile` is a deprecated fallback only when no manifest exists
+- `nullable<T>` highlighting, hover, diagnostics, and quick fixes (make nullable /
+  surround with null check); debugger Variables show `null` not Python `None`
 - `result<T,E>`, `ok` / `err`, `propagate`, and result-pattern highlighting,
   completions, hovers, snippets, diagnostics, and entrypoint conflict fixes
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)

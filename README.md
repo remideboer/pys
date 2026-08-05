@@ -213,10 +213,15 @@ editor Run controls — no workspace `.vscode/run_pys.py` required. The activity
   switches, and postfix `propagate`. An unhandled entrypoint error becomes a
   non-zero panic; see [`examples/results.pys`](examples/results.pys) and
   [`examples/result_panic/`](examples/result_panic/).
+- Explicit absence uses `nullable<T>` (plain `T` is non-null); SQL `NULL` maps to
+  PYS `null` without collapsing to `""` / `0`.
 - Debug prepares generated Python + line maps, launches debugpy on the program,
   and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
-  Normal Step Into stays in PYS/user code. **PYS Advanced: Debug Transpiled
-  Python** opens the generated `.py` and permits stepping into Python internals.
+  PYS-only stepping is on by default: native Step Over/Into/Out skip extra
+  generated Python lines and stop at the next mapped PYS statement. Toggle it
+  with the filter icon in the debug toolbar; breakpoints/exceptions/Pause are
+  never skipped. **PYS Advanced: Debug Transpiled Python** opens the generated
+  `.py` and permits stepping into Python internals.
   Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
   context / gutter / tab. Requires the Microsoft Python extension.
   Sample: [`examples/debug_step.pys`](examples/debug_step.pys).

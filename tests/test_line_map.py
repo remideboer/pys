@@ -19,13 +19,13 @@ def test_line_map_hits_assign_and_print() -> None:
     source = "int x = 1\nprint(x)\n"
     py, line_map, _names = compile_pys_with_map(source)
     assert "x = 1" in py
-    assert "print(x)" in py
+    assert "print(_pys_format(x))" in py
     by_pys = {e["pys"]: e["py"] for e in line_map}
     assert 1 in by_pys
     assert 2 in by_pys
     lines = py.splitlines()
     assert "x = 1" in lines[by_pys[1] - 1]
-    assert "print(x)" in lines[by_pys[2] - 1]
+    assert "print(_pys_format(x))" in lines[by_pys[2] - 1]
 
 
 def test_preamble_does_not_claim_false_pys_lines() -> None:

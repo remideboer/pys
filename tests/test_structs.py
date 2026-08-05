@@ -90,7 +90,7 @@ struct AllFix {
         ),
         (
             "struct S { int x }\nS s = null\n",
-            r"cannot be null",
+            r"does not allow null",
         ),
         (
             "struct S inherits Foo { int x }\n",

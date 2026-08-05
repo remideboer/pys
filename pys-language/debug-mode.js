@@ -12,6 +12,7 @@ function debugModeOptions(mode = 'pys') {
       stopOnEntry: true,
       remapSource: false,
       revealGenerated: true,
+      pysOnlyStepping: false,
     };
   }
   return {
@@ -21,6 +22,7 @@ function debugModeOptions(mode = 'pys') {
     stopOnEntry: false,
     remapSource: true,
     revealGenerated: false,
+    pysOnlyStepping: true,
   };
 }
 
