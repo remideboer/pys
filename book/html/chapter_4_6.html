@@ -154,7 +154,10 @@
 and <strong>ceremony</strong> means the fixed contract <code>data</code> gives you: all fields
 immutable, equality over every field, no methods/inheritance. Choosing
 <code>struct</code> skips that contract — useful for a simple bag of fields; choose
-<code>data</code> when you <em>want</em> those VO rules.</p>
+<code>data</code> when you <em>want</em> those VO rules. Frameworks in other languages often
+leave entity identity to annotations (<code>@Id</code>, <code>[Key]</code>); PYS makes
+<code>identity(...)</code> a checked language fact instead — see
+<a href="https://github.com/remideboer/pys/blob/main/docs/DATA_ENTITY.md"><code>docs/DATA_ENTITY.md</code></a> when you want the longer story.</p>
 </blockquote>
 <p><strong>interface vs trait vs abstract class (again):</strong></p>
 <ul>

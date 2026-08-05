@@ -157,7 +157,16 @@ mutable; no full VO rules). Prefer <code>data</code> when the value must stay
 immutable and interchangeable — money, color, a point on a map.</p>
 </blockquote>
 <h2><code>entity</code> — identity key</h2>
-<p>Equality uses only <code>identity(...)</code> fields (must be <code>fix</code>).</p>
+<p>Equality uses only <code>identity(...)</code> fields (must be <code>fix</code>). Two customers
+with the same id are the same customer even if the name changed — that is
+<em>identity</em> equality, opposite of <code>data</code>’s all-fields value equality.</p>
+<blockquote>
+<p><strong>Sidebar — why a language keyword?</strong></p>
+<p>Other languages often leave this to frameworks (<code>@Id</code>, <code>[Key]</code>) and hand-
+written <code>equals</code>/<code>hashCode</code>, which is a common source of <code>HashSet</code> bugs.
+PYS checks <code>identity(...)</code> and immutability at compile time. Longer story
+with real-world cases: <a href="https://github.com/remideboer/pys/blob/main/docs/DATA_ENTITY.md"><code>docs/DATA_ENTITY.md</code></a>.</p>
+</blockquote>
 <pre><code class="language-pys"><span class="tok-kw">entity</span> <span class="tok-typename">Customer</span> <span class="tok-kw">identity</span>(<span class="tok-ident">customerId</span>) {
     <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">customerId</span>
     <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>

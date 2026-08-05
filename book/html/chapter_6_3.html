@@ -134,6 +134,13 @@ Those deserve their own walkthrough — see
 <p><em>(Concurrent task print order may vary.)</em></p>
 <p>Reach for <code>atomic</code> when many tasks bump the same counter; reach for
 <code>await</code> pipelines when you can avoid shared mutation entirely.</p>
+<blockquote>
+<p><strong>Sidebar — <code>shared</code> is not enough</strong></p>
+<p><code>shared</code> only makes cross-task mutation <em>visible</em>. It does not make
+<code>counter += 1</code> race-free — the same confusion as Java <code>volatile</code> (visibility)
+versus a true atomic counter. Use <code>atomic</code> when the update itself must be
+indivisible.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Start <code>atomic int total = 0</code>. In a <code>tasks</code> block, run three tasks that

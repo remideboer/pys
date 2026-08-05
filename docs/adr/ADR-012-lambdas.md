@@ -11,7 +11,21 @@
 
 Teaching needs first-class function values without Python/JS closure pitfalls
 (late binding, shared loop variables). Task bodies already use read-only outer
-captures unless `shared`; lambdas should share that model.
+captures unless `shared`; lambdas should share that model — one capture story
+for the whole language.
+
+### Cross-language capture pitfalls (why by-value + per-iteration)
+
+| Language | Capture pitfall | Consequence | PYS answer |
+| --- | --- | --- | --- |
+| JavaScript (pre-`let`) | `var` in a loop is function-scoped; all closures share one binding | `for (var i=0;i<3;i++) …` timers print `3,3,3` | Loop binders immutable per iteration; each lambda captures its own value |
+| Python | Closures are late-binding: they read the variable at *call* time | `[lambda: i for i in range(3)]` — all return `2` | Capture by value at creation — no late binding |
+| Java | Lambdas may only capture “effectively final” locals | Forces `AtomicInteger` / single-element arrays for accumulation | `shared` / `atomic` are explicit mutable-capture escape hatches |
+| C++ | `[&]` reference capture can dangle if the lambda outlives its scope | UB in async code | By-value only — no reference-capture form |
+| C# (pre-5.0) | `foreach` had one shared binding across iterations | Same symptom as the JS bug | Fixed like modern C#/JS: per-iteration scoping |
+
+Student-facing material should show the JS/Python failure *before* stating the
+PYS rule (same pedagogical pattern as `requires` and `identity(...)`).
 
 ## Decision
 

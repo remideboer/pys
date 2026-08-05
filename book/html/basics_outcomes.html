@@ -166,6 +166,12 @@ result pattern.</p>
 <blockquote>
 <p>Give me the success payload. If this is an error, stop this function and
 return the same error now.</p>
+<p><strong>Sidebar — why not a tiny <code>?</code> operator?</strong></p>
+<p>A one-character operator is easy to type without thinking (languages that
+offer cheap “just unwrap” forms see that pattern abused). PYS uses the
+word <code>propagate</code> so the early-return edge stays deliberate and readable.
+There is also no <code>try</code>/<code>catch</code> in PYS — recoverable failure stays in the
+<code>result</code> type.</p>
 </blockquote>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {

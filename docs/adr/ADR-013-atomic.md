@@ -15,6 +15,21 @@ indivisible read-modify-write. Teaching needs an explicit `atomic` qualifier so
 students see the visibility-vs-safety distinction (same class of bug as Java
 `volatile` vs `AtomicInteger`).
 
+### Cross-language placement
+
+| Language | Mechanism | Teaching pitfall PYS avoids |
+| --- | --- | --- |
+| Java | `AtomicInteger` / library classes | Plain `int++` compiles and races silently |
+| C++ | `std::atomic` + memory-order knobs | Ordering parameters are a subtle bug surface |
+| C# / Go | `Interlocked` / `sync/atomic` utilities | Same “must remember the API” opt-in pitfall |
+| Rust | `AtomicUsize` + required `Ordering` | Safest, steepest; PYS keeps type-level atomicity without exposing ordering |
+
+PYS makes atomicity a **type qualifier** (like Rust’s direction) without
+memory-order knobs. Rejecting `*=`/`/=`/`%=` on `atomic` variables teaches
+*why* those ops are not single RMW instructions, rather than silently omitting
+operators as Java’s wrappers do. Spec vs emitter boundary:
+[CONCURRENCY.md](../CONCURRENCY.md) § Language contract vs reference emitter.
+
 ## Decision
 
 1. Syntax: `atomic <primitive> name = expr` only — not `shared atomic` /

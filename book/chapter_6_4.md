@@ -4,7 +4,15 @@ Lambdas capture outer names **by value** when created. Captured names are
 read-only unless they were declared `shared` or `atomic`.
 
 Loop variables are immutable **per iteration** — each lambda created in a
-loop gets that iteration’s value (no Python late-binding surprise).
+loop gets that iteration’s value.
+
+> **Sidebar — why this rule exists**
+>
+> In Python, a list of `lambda: i` built in a loop often prints the *last*
+> `i` for every call (late binding). Older JavaScript `var` loops and early
+> C# `foreach` had the same “one shared binding” trap. PYS snapshots the
+> value at creation and keeps loop binders per-iteration so that class of
+> bug cannot compile into your program.
 
 ```pys
 list<lambda<int, int>> adders = []

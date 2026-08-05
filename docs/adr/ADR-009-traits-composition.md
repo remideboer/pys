@@ -10,7 +10,14 @@
 ## Context
 
 Teaching needs reusable method bodies with explicit host dependencies, without
-a second inheritance axis or duck-typed mixins.
+a second inheritance axis or duck-typed mixins. PYS traits follow the classical
+composition model (Schärli et al., 2003): a trait may declare members it does
+not implement (`requires` ≈ excluded / required methods) and composition
+conflicts are resolved by the programmer, not by silent precedence.
+
+`requires` is the didactic device that separates PYS traits from duck-typed
+mixins: every dependency on the host is declared next to the trait’s own
+methods, so the contract-plus-implementation nature is visible in source.
 
 ## Decision
 
@@ -28,7 +35,9 @@ a second inheritance axis or duck-typed mixins.
    See [CER-027](../evolution/CER-027-trait-requires-remapping.md).
 6. **Collisions**: same method from two used traits → host must override;
    `TraitName.method(this)` selects a side (emitted as mangled helpers).
-7. **Emit**: flatten methods into the host class (not Python MI / mixin bases);
+7. **Composition order independence:** `uses A, B` and `uses B, A` are
+   equivalent when there is no collision (commutative / associative composition).
+8. **Emit**: flatten methods into the host class (not Python MI / mixin bases);
    rewrite `self.<requires>` to the remapped host name when applicable.
 
 ## Consequences
@@ -44,3 +53,8 @@ a second inheritance axis or duck-typed mixins.
 - Implicit duck-typed mixins without `requires`.
 - Remapping trait **method** names (would make the offered surface host-dependent).
 - Trait bounds as types (deferred; open question in requirements §3.6).
+
+## References
+
+- N. Schärli, S. Ducasse, O. Nierstrasz, and A. P. Black, “Traits: Composable
+  Units of Behaviour,” in *ECOOP 2003*, LNCS 2743, Springer, 2003.

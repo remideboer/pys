@@ -496,6 +496,11 @@ must return a result with **exactly the same error type `E`**. `propagate` is
 illegal across `task` boundaries. A `result<T,E>` never implicitly converts to
 `T`; handle it with `switch` or `propagate`.
 
+**Why a keyword, not `?`:** a one-character operator is easy to type reflexively
+(Swift’s `!` / `try!` are a documented crash vector). `?=>` collides with
+lambda/switch `=>`; `try(...)` collides with exception `try`/`catch` (rejected
+in PYS). See [ADR-021](adr/ADR-021-result-propagate-panic.md).
+
 At a resolved entrypoint, top-level `propagate` may pass an `err` to the
 runtime. This outcome is a **panic**: remaining statements are skipped, stderr
 shows the error and PYS propagation sites, and the process exits non-zero.
@@ -594,6 +599,12 @@ class ArrayListPys inherits AbstractList {
 }
 ```
 
+**Litmus test:** prefer an abstract class when shared code must call back into a
+method that varies per subclass (template method — e.g. `contains` → `get`).
+If you only need horizontal reuse with no `is-a` polymorphism, use a **trait**;
+if you need only a contract with no bodies/fields, use an **interface**.
+See [ADR-010](adr/ADR-010-abstract-classes.md).
+
 Rules:
 
 1. Abstract methods only inside `abstract class`; need access + `abstract` + return type
@@ -606,7 +617,9 @@ Rules:
 A **trait** is reusable behavior composed onto a class with `uses`. It is **not**
 a nominal type (cannot appear in `implements`, as a variable type, or as
 `Trait()`). Methods are always public; host state is declared with `requires`
-and accessed via `this`.
+and accessed via `this`. `requires` makes every host dependency explicit
+(classical trait composition; Schärli et al., 2003) — not duck-typed mixins.
+`uses A, B` and `uses B, A` are equivalent when there is no collision.
 
 ```pys
 trait Printable {
@@ -743,8 +756,10 @@ behavior or inheritance.
 
 Two first-class constructs separate **structural** vs **identity** equality —
 deliberately distinct from `struct` (no generated VO/Entity contract) and
-`class` (reference equality by default). Full rationale:
-[`DATA_ENTITY.md`](DATA_ENTITY.md).
+`class` (reference equality by default). This is Evans’s Value Object vs Entity
+split (2003) as language constructs, not framework annotations. Full rationale
+and production citations (Hibernate/`HashSet`, EF Core, Lombok `@Data`):
+[`DATA_ENTITY.md`](DATA_ENTITY.md) · [ADR-011](adr/ADR-011-data-and-entity.md).
 
 ```pys
 data Money {
@@ -820,6 +835,11 @@ Rules:
 4. Foreach / C-style loop variables are immutable per iteration — each lambda
    in a loop gets its own captured value (no Python late-binding bug)
 5. `name.loop(fn)` still maps: `list(map(fn, name))`
+
+**Why these capture rules:** other languages commonly hit shared-loop-binding
+(JS `var`, pre-C#5 `foreach`) or late binding (Python closures). PYS captures
+by value at creation and keeps loop binders per-iteration; mutate only through
+`shared` / `atomic`. Cross-language table: [ADR-012](adr/ADR-012-lambdas.md).
 
 See [`examples/lambdas.pys`](../examples/lambdas.pys) and JIT
 [`J-lambda`](../tutorials/jit/J-lambda.md). For race-free `+=` across tasks,
@@ -955,7 +975,9 @@ PYS rejects out-of-order **kinds** at parse time (educational `FatalParseError`)
 not as a linter warning. The axis is **kind** only — `public` / `private` / …
 may appear in any order within a section. Framing for teaching: *PYS enforces
 this because it is good practice everywhere; most other languages only
-recommend it.* Full rationale: [`requirements/enforced_ordering.md`](../requirements/enforced_ordering.md).
+recommend it* (habit transfers; Java/C# will not reject the same layout).
+Fixed kind positions also reduce scanning cost for readers (Sweller). Decision
+record: [ADR-015](adr/ADR-015-enforced-ordering.md).
 JIT: [J-member-order](../tutorials/jit/J-member-order.md).
 
 | Body | Required kind order |

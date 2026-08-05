@@ -112,7 +112,15 @@
 <p>Lambdas capture outer names <strong>by value</strong> when created. Captured names are
 read-only unless they were declared <code>shared</code> or <code>atomic</code>.</p>
 <p>Loop variables are immutable <strong>per iteration</strong> — each lambda created in a
-loop gets that iteration’s value (no Python late-binding surprise).</p>
+loop gets that iteration’s value.</p>
+<blockquote>
+<p><strong>Sidebar — why this rule exists</strong></p>
+<p>In Python, a list of <code>lambda: i</code> built in a loop often prints the <em>last</em>
+<code>i</code> for every call (late binding). Older JavaScript <code>var</code> loops and early
+C# <code>foreach</code> had the same “one shared binding” trap. PYS snapshots the
+value at creation and keeps loop binders per-iteration so that class of
+bug cannot compile into your program.</p>
+</blockquote>
 <pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;&gt;</span> <span class="tok-ident">adders</span> <span class="tok-op">=</span> []
 <span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-ident">adders</span>.<span class="tok-ident">append</span>((<span class="tok-type">int</span> <span class="tok-ident">x</span>) <span class="tok-op">=&gt;</span> <span class="tok-ident">x</span> <span class="tok-op">+</span> <span class="tok-ident">i</span>)

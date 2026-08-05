@@ -16,6 +16,13 @@ reject out-of-order **kinds**. PYS already makes related conventions structural
 scattered imports forced readers to scan for category and taught ordering only
 as optional taste.
 
+Rationale (requirement): a fixed position for each kind reduces extraneous
+cognitive load (Sweller) — structure itself carries category information so
+working memory can focus on what the code does. Refactoring that changes a
+member’s role is expected to *physically relocate* the declaration; that is
+treated as a feature. Student material must say explicitly that Java/C#/etc.
+will *not* reject out-of-order members — only the habit transfers.
+
 ## Decision
 
 1. Enforce **kind** order in the recursive-descent parser via a section/phase

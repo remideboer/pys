@@ -160,6 +160,14 @@ but not to unrelated code. Compare: <code>private</code> = this class only;
 </code></pre>
 <p><strong>vs interface:</strong> abstract classes can carry fields and partial code.<br />
 <strong>vs trait:</strong> abstract classes <strong>are</strong> types; traits are not.</p>
+<blockquote>
+<p><strong>Sidebar — when inheritance is justified</strong></p>
+<p>Ask: does the shared method need to call back into something that <em>varies
+per subclass</em>? Here <code>isEmpty</code> only needs <code>size</code>, but a real <code>contains</code>
+would call abstract <code>get</code> — that callback is the template-method litmus.
+If you only need “also do X” on unrelated types, prefer a <strong>trait</strong>. If you
+only need a contract with no shared bodies, prefer an <strong>interface</strong>.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Add <code>public abstract int count()</code> and implement it on <code>ArrayListPys</code>

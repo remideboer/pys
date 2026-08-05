@@ -11,10 +11,17 @@
 
 Teaching (and production) needs a clear split between **Value Objects**
 (structural equality, immutable) and **Entities** (identity equality via
-immutable keys). Mainstream languages defer this to frameworks (JPA `@Id`,
-EF `[Key]`), leaving `equals`/`hashCode` footguns undocumented at the type
-level. `struct` remains an identity-free bag without a generated VO/Entity
-contract ([ADR-005](ADR-005-structs-as-value-types.md)).
+immutable keys) — Evans (2003). Mainstream languages defer this to frameworks
+(JPA `@Id`, EF `[Key]`, ActiveRecord), leaving `equals`/`hashCode` footguns
+undocumented at the type level. Documented production defects (HashSet lookup
+after `persist`, Lombok `@Data` on entities, proxy vs non-proxy inequality)
+recur precisely because the *language* offers no compile-time guarantee.
+
+`struct` remains an identity-free bag without a generated VO/Entity contract
+([ADR-005](ADR-005-structs-as-value-types.md)). Full rationale, Java/C#
+anti-examples, and citations live in
+[`docs/DATA_ENTITY.md`](../DATA_ENTITY.md) (mirrors
+[`requirements/data_entity.md`](../../requirements/data_entity.md)).
 
 ## Decision
 

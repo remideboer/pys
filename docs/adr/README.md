@@ -67,4 +67,8 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-021](ADR-021-result-propagate-panic.md) | Result, propagation, panic, and project entrypoints | Accepted |
 | [ADR-022](ADR-022-optional-terminators-grammar.md) | Optional `;`, C-for `;`, comma enums, multi-label switch | Accepted |
 
-Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
+Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md) ·
+[`../../requirements/README.md`](../../requirements/README.md) (draft specs →
+permanent doc map). Design rationale and citations from a requirement must be
+absorbed into the matching ADR / LANGUAGE / book when the feature lands — do
+not leave unique design memory only under `requirements/`.

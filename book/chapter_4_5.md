@@ -68,7 +68,16 @@ True
 
 ## `entity` — identity key
 
-Equality uses only `identity(...)` fields (must be `fix`).
+Equality uses only `identity(...)` fields (must be `fix`). Two customers
+with the same id are the same customer even if the name changed — that is
+*identity* equality, opposite of `data`’s all-fields value equality.
+
+> **Sidebar — why a language keyword?**
+>
+> Other languages often leave this to frameworks (`@Id`, `[Key]`) and hand-
+> written `equals`/`hashCode`, which is a common source of `HashSet` bugs.
+> PYS checks `identity(...)` and immutability at compile time. Longer story
+> with real-world cases: [`docs/DATA_ENTITY.md`](../docs/DATA_ENTITY.md).
 
 ```pys
 entity Customer identity(customerId) {

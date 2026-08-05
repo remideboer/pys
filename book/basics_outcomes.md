@@ -73,6 +73,14 @@ Sometimes a function cannot solve a failure but its caller can. Postfix
 > Give me the success payload. If this is an error, stop this function and
 > return the same error now.
 
+> **Sidebar — why not a tiny `?` operator?**
+>
+> A one-character operator is easy to type without thinking (languages that
+> offer cheap “just unwrap” forms see that pattern abused). PYS uses the
+> word `propagate` so the early-return edge stays deliberate and readable.
+> There is also no `try`/`catch` in PYS — recoverable failure stays in the
+> `result` type.
+
 ```pys
 function result<int, string> checkAge(int age) {
     if (age < 0) {

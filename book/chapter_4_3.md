@@ -62,6 +62,14 @@ False
 **vs interface:** abstract classes can carry fields and partial code.  
 **vs trait:** abstract classes **are** types; traits are not.
 
+> **Sidebar — when inheritance is justified**
+>
+> Ask: does the shared method need to call back into something that *varies
+> per subclass*? Here `isEmpty` only needs `size`, but a real `contains`
+> would call abstract `get` — that callback is the template-method litmus.
+> If you only need “also do X” on unrelated types, prefer a **trait**. If you
+> only need a contract with no shared bodies, prefer an **interface**.
+
 ### Exercise
 
 > Add `public abstract int count()` and implement it on `ArrayListPys`

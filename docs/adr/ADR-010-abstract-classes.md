@@ -13,6 +13,25 @@ Teaching needs shared state and template methods with deferred variation points,
 without collapsing into interfaces (signatures only) or traits (composition, not
 types).
 
+### When abstract class vs interface vs trait
+
+| Construct | Owns state | Provides bodies | Requires subtype relation | Typical use |
+| --- | --- | --- | --- | --- |
+| Interface | No | No | Yes (nominal contract) | Polymorphism via pure contract |
+| Trait | No (borrows host’s) | Yes | No | Horizontal reuse across unrelated types |
+| Abstract class | Yes | Partial (mix) | Yes (taxonomic `is-a`) | Vertical reuse + enforced variation point |
+| Concrete class | Yes | Yes (all) | — | Instantiable end product |
+
+**Litmus test (template method):** if shared logic must call back into a method
+that *varies per subclass* (e.g. `contains` calling abstract `get`), an abstract
+class is warranted. If the shared logic never needs to vary, prefer a trait or a
+plain utility function — inheritance would be over-engineering.
+
+Worked teaching shape (requirement): `AbstractList` owns `size` / shared
+`isEmpty`/`contains`; `ArrayListPys` vs `LinkedListPys` supply different `get`/
+`add` storage strategies. That is *is-a* + polymorphism, not “I also do X”
+(`uses`).
+
 ## Decision
 
 1. **`abstract class`** is a nominal type: bindings and polymorphism allowed;

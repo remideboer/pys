@@ -112,7 +112,9 @@
 <p>A <strong>trait</strong> is reusable behavior mixed into a class with <code>uses</code>. It is
 <strong>not</strong> a type — you cannot write <code>Printable p = …</code> or <code>implements Printable</code>.</p>
 <p>Host state is declared with <code>requires</code> and accessed via <code>this</code>. All
-<code>requires</code> come before methods in the trait body.</p>
+<code>requires</code> come before methods in the trait body. Listing dependencies up
+front is intentional: unlike a duck-typed mixin, every host member the
+trait needs is visible next to the methods that use it.</p>
 <pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">Printable</span> {
     <span class="tok-kw">requires</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 

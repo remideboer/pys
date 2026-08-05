@@ -63,7 +63,32 @@ behavior depend on import position.
 ### General `try` / `catch` syntax
 
 This would expose backend exceptions, blur recoverable API contracts, and add
-a substantially larger control-flow surface.
+a substantially larger control-flow surface. Empirical work on Java exception
+anti-patterns (catch-and-ignore, overly broad `catch(Exception)`) and
+checked-exception workarounds motivates keeping failure in the type rather
+than in an invisible control-flow channel ([6]–[9]).
+
+### Symbol operators `?` / `?=>` and a `try(...)` sugar
+
+| Candidate | Why rejected |
+| --- | --- |
+| Postfix `?` | Too cheap to type for a deliberate failure edge; mirrors Swift force-unwrap `!` / `try!` misuse documented as avoidable production crashes ([1]–[5]) |
+| `?=>` | Grammatical collision with `=>` already used by switch expression arms and lambdas |
+| `try(...)` | Semantic collision with exception `try`/`catch` already rejected — wrong transfer when students meet C#/Java |
+
+A full keyword (`propagate`) keeps ceremony intentional, introduces no ambiguous
+token, and does not reuse a rejected exception keyword — same “prefer explicit
+ceremony over terse footguns” pattern as `requires`, `identity(...)`, and
+`atomic`.
+
+Comparative summary:
+
+| Mechanism | Failure visible in signature? | Ceremony | Reflexive-misuse risk |
+| --- | --- | --- | --- |
+| C#/Java unchecked `try`/`catch` | No | Low at call site | High (ignore / broad catch) |
+| Java checked exceptions | `throws` | High; often routed around | High |
+| Swift `!` / `try!` | Present but bypassable | Minimal | High |
+| PYS `result` + `propagate` | Always in return type | Moderate by design | Low |
 
 ### Implicit result-to-success conversion
 
@@ -84,3 +109,23 @@ entrypoint result. A callable panic would add an unrelated escape hatch.
 
 Silently overriding `[project].main` would make editor actions, CLI runs, and
 debug sessions execute different programs.
+
+## References
+
+[1] Bugfender, “iOS Crash Debugging: How to Find and Fix App Crashes,” Bugfender Blog. https://bugfender.com/blog/ios-crash-debugging/
+
+[2] G. Miller, “When should you force unwrap optionals in Swift?,” *Hacking with Swift*. https://www.hackingwithswift.com/quick-start/understanding-swift/when-should-you-force-unwrap-optionals-in-swift
+
+[3] Apple Developer Forums, thread 652630 (stable code beginning to crash). https://developer.apple.com/forums/thread/652630
+
+[4] W. McNally, “Force-Unwrapping in Swift is NOT a Bad Thing,” Feb. 19, 2018. https://wolfmcnally.com/82/force-unwrapping-swift-not-bad-thing/
+
+[5] P. Hudson, “Force unwrapping,” *Hacking with Swift*. https://www.hackingwithswift.com/sixty/10/4/force-unwrapping
+
+[6] D. Sena et al., “Understanding the Exception Handling Strategies of Java Libraries: An Empirical Study,” MSR 2016, doi: 10.1145/2901739.2901757
+
+[7] A. Nakshatri et al., “Analysis of Exception Handling Patterns in Java Projects: An Empirical Study,” MSR 2016, doi: 10.1109/MSR.2016.062
+
+[8] T. Nguyen et al., “Studying the Prevalence of Exception Handling Anti-Patterns,” ICPC 2017, doi: 10.1109/ICPC.2017.36
+
+[9] J. Bloch, *Effective Java*, 3rd ed. Addison-Wesley, 2018.

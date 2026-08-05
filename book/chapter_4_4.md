@@ -4,7 +4,9 @@ A **trait** is reusable behavior mixed into a class with `uses`. It is
 **not** a type — you cannot write `Printable p = …` or `implements Printable`.
 
 Host state is declared with `requires` and accessed via `this`. All
-`requires` come before methods in the trait body.
+`requires` come before methods in the trait body. Listing dependencies up
+front is intentional: unlike a duck-typed mixin, every host member the
+trait needs is visible next to the methods that use it.
 
 ```pys
 trait Printable {

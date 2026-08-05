@@ -36,6 +36,13 @@ Output:
 Reach for `atomic` when many tasks bump the same counter; reach for
 `await` pipelines when you can avoid shared mutation entirely.
 
+> **Sidebar — `shared` is not enough**
+>
+> `shared` only makes cross-task mutation *visible*. It does not make
+> `counter += 1` race-free — the same confusion as Java `volatile` (visibility)
+> versus a true atomic counter. Use `atomic` when the update itself must be
+> indivisible.
+
 ### Exercise
 
 > Start `atomic int total = 0`. In a `tasks` block, run three tasks that

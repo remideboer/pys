@@ -336,7 +336,7 @@ print(counter)
 
 `shared` is visible in the source on purpose: mutation across tasks is never tribal knowledge.
 
-**Language contract:** `shared` is a *visibility* qualifier — the mutation is declared, not hidden. It does **not** make `counter = counter + 1` (or even `+=`) race-free under concurrent tasks. That is the same teaching trap as Java `volatile` vs true atomics.
+**Language contract:** `shared` is a *visibility* qualifier — the mutation is declared, not hidden. It does **not** make `counter = counter + 1` (or even `+=`) race-free under concurrent tasks. That is the same teaching trap as Java `volatile` vs true atomics. Cross-language placement of `atomic` (library APIs vs type qualifier, rejected `*=`/`/=`/`%=`): [ADR-013](adr/ADR-013-atomic.md).
 
 ### `atomic` — indivisible RMW (implies shared for capture)
 
