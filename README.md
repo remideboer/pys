@@ -368,7 +368,7 @@ print(arr[1:6:2])               # start:stop:step
 ### Control flow
 
 ```pys
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     print(i)
 }
 

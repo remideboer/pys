@@ -4,7 +4,7 @@ Three shapes:
 
 ```pys
 # C-style
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     print(i)
 }
 
@@ -150,7 +150,7 @@ the loop’s closing `}`.
 want for some items.
 
 ```pys
-loop (int i = 1, i <= 6, i++) {
+loop (int i = 1; i <= 6; i++) {
     if (i % 2 == 0) {
         continue
     }
@@ -187,7 +187,7 @@ Names declared inside a loop’s `{ … }` exist only until that closing
 brace. After the loop, they are gone — that is **block scope**.
 
 ```pys
-loop (int i = 0, i < 1, i++) {
+loop (int i = 0; i < 1; i++) {
     int scratch = 10
     print(scratch)
 }

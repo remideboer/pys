@@ -13,12 +13,12 @@ PYS rules (locked):
 /#
 
 enum Day {
-    MONDAY
-    FRIDAY
-    SUNDAY
-    TUESDAY
-    THURSDAY
-    SATURDAY
+    MONDAY,
+    FRIDAY,
+    SUNDAY,
+    TUESDAY,
+    THURSDAY,
+    SATURDAY,
     WEDNESDAY
 }
 int numLetters = 0

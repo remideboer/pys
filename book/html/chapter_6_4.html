@@ -114,7 +114,7 @@ read-only unless they were declared <code>shared</code> or <code>atomic</code>.<
 <p>Loop variables are immutable <strong>per iteration</strong> — each lambda created in a
 loop gets that iteration’s value (no Python late-binding surprise).</p>
 <pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;&gt;</span> <span class="tok-ident">adders</span> <span class="tok-op">=</span> []
-<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-ident">adders</span>.<span class="tok-ident">append</span>((<span class="tok-type">int</span> <span class="tok-ident">x</span>) <span class="tok-op">=&gt;</span> <span class="tok-ident">x</span> <span class="tok-op">+</span> <span class="tok-ident">i</span>)
 }
 <span class="tok-builtin">print</span>(<span class="tok-ident">adders</span>[<span class="tok-number">0</span>](<span class="tok-number">10</span>))

@@ -56,7 +56,8 @@ No `enum` keyword.
 
 ### Post-behavior
 
-`[top_visibility] enum Name { MEMBER [= INT|STRING]+ }` (non-empty). SA:
+`[top_visibility] enum Name { MEMBER [= INT|STRING] , … [,] }` (non-empty,
+comma-delimited; optional trailing comma — ADR-022 / CER-026). SA:
 all-or-nothing, homogeneity, uniqueness, immutability, nominal typing, same-enum
 `==`, `.value`. Emit `enum.Enum` / `IntEnum` / `StrEnum`. IDE: TextMate
 `meta.enum.declaration`, go-to member, snippets, hover. Match/exhaustiveness

@@ -4,7 +4,7 @@
 |-----|----|------|
 | `if (c) { }` | `if (c) { }` | `if (c) { }` |
 | `unless (c)` | `if (!c)` | `if (!c)` |
-| `loop (int i=0, i<n, i++)` | `for` | `for` |
+| `loop (int i=0; i<n; i++)` | `for` | `for` |
 | `loop (x in xs)` | `foreach` | enhanced `for` |
 | `switch` (no fall-through by default) | `switch` (be careful with fall-through) | `switch` / switch expressions |
 | `list<T>` | `List<T>` | `List<T>` |

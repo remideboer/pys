@@ -14,12 +14,12 @@ Lead with the race, then the fix.
 shared int shared_counter = 0
 tasks {
     task {
-        loop (int i = 0, i < 200, i++) {
+        loop (int i = 0; i < 200; i++) {
             shared_counter = shared_counter + 1
         }
     }
     task {
-        loop (int i = 0, i < 200, i++) {
+        loop (int i = 0; i < 200; i++) {
             shared_counter = shared_counter + 1
         }
     }
@@ -29,12 +29,12 @@ tasks {
 atomic int counter = 0
 tasks {
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }

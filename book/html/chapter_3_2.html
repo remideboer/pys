@@ -111,7 +111,7 @@
 <h1>4.2. Loops</h1>
 <p>Three shapes:</p>
 <pre><code class="language-pys"><span class="tok-comment"># C-style</span>
-<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
 }
 
@@ -215,7 +215,7 @@ the loop’s closing <code>}</code>.</p>
 <p><code>continue</code> ends <strong>only the current iteration</strong> and jumps to the next one
 (the next value, or the next C-style step). Use it to skip work you do not
 want for some items.</p>
-<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">1</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;=</span> <span class="tok-number">6</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">1</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;=</span> <span class="tok-number">6</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">i</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
         <span class="tok-kw">continue</span>
     }
@@ -240,7 +240,7 @@ In a <code>loop</code>, <code>continue</code> always means “next iteration.”
 <h2>Block scope</h2>
 <p>Names declared inside a loop’s <code>{ … }</code> exist only until that closing
 brace. After the loop, they are gone — that is <strong>block scope</strong>.</p>
-<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">1</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">1</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-type">int</span> <span class="tok-ident">scratch</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
     <span class="tok-builtin">print</span>(<span class="tok-ident">scratch</span>)
 }

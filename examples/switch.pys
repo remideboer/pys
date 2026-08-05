@@ -1,12 +1,12 @@
 # Switch: statement + expression, fall-through, default, primitives.
 
 enum Day {
-    MONDAY
-    FRIDAY
-    SUNDAY
-    TUESDAY
-    THURSDAY
-    SATURDAY
+    MONDAY,
+    FRIDAY,
+    SUNDAY,
+    TUESDAY,
+    THURSDAY,
+    SATURDAY,
     WEDNESDAY
 }
 
@@ -40,6 +40,21 @@ numLetters = switch (day) {
     case WEDNESDAY => 9
 }
 print(numLetters)  # 9
+
+# --- Statement: multi-label + optional block body (ADR-022) ---
+string weekendish = ""
+Day pick = Day.FRIDAY
+switch (pick) {
+    case MONDAY, SUNDAY, FRIDAY: {
+        weekendish = "edge"
+        print(weekendish)
+    }
+    case WEDNESDAY:
+        weekendish = "mid"
+    default:
+        weekendish = "other"
+}
+print(weekendish)  # edge
 
 # --- Statement with default (non-exhaustive enum is fine when default exists) ---
 string kind = ""

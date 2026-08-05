@@ -410,6 +410,37 @@ def set_brace_engine(engine: str) -> None:
     _BRACE_ENGINE = engine
 
 
+def _finish_stmt_terminator(p: _Tok) -> tuple[int, bool]:
+    """After a statement: end line of last token, and whether an optional `;` followed."""
+    end_line = p.tokens[max(p.i - 1, 0)].line
+    had_semi = False
+    if p.at(TokenKind.SEMI):
+        p.eat(TokenKind.SEMI)
+        had_semi = True
+    return end_line, had_semi
+
+
+def _check_same_line_boundary(
+    p: _Tok,
+    *,
+    prev_end_line: int | None,
+    had_semi: bool,
+) -> None:
+    """Require `;` when the next non-noise token shares the previous statement's line."""
+    if prev_end_line is None or p.done():
+        return
+    if p.cur().line == prev_end_line and not had_semi:
+        raise FatalParseError(
+            "Two statements on the same line must be separated by ';'.",
+            p.cur().line,
+            p.cur().column,
+            code="pys.same-line-statements",
+            tips=[
+                "Insert ';' between them, or put each statement on its own line.",
+            ],
+        )
+
+
 def _parse_brace_module_rd(
     tokens: list[Token],
     *,
@@ -420,6 +451,8 @@ def _parse_brace_module_rd(
     p = _Tok(tokens, packrat=packrat)
     body: list = []
     seen_non_import = False
+    prev_end_line: int | None = None
+    had_semi = False
     try:
         while not p.done():
             if p.at(TokenKind.BLANK):
@@ -430,6 +463,7 @@ def _parse_brace_module_rd(
                 t = p.eat(TokenKind.COMMENT)
                 body.append(CommentStmt(span=Span(t.line, t.column), text=t.text))
                 continue
+            _check_same_line_boundary(p, prev_end_line=prev_end_line, had_semi=had_semi)
             if p.at_kw("import", "from"):
                 if seen_non_import:
                     raise FatalParseError(
@@ -443,9 +477,11 @@ def _parse_brace_module_rd(
                         ],
                     )
                 body.append(_parse_toplevel(p))
+                prev_end_line, had_semi = _finish_stmt_terminator(p)
                 continue
             seen_non_import = True
             body.append(_parse_toplevel(p))
+            prev_end_line, had_semi = _finish_stmt_terminator(p)
     except FatalParseError as exc:
         from .transpiler import TranspileError
 
@@ -1564,7 +1600,7 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
 
 
 def _parse_enum(p: _Tok, visibility: str = "") -> EnumDef:
-    """Parse ``[top_visibility] enum Name { MEMBER [= INT|STRING]+ }``."""
+    """Parse ``[top_visibility] enum Name { MEMBER , … [,] }`` (comma-delimited)."""
     sp = p.span()
     p.eat_kw("enum")
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
@@ -1596,6 +1632,23 @@ def _parse_enum(p: _Tok, visibility: str = "") -> EnumDef:
                     lit.column,
                 )
         members.append(EnumMember(span=mem_sp, name=mname, value=value))
+        while p.at(TokenKind.BLANK) or p.at(TokenKind.COMMENT):
+            p.eat(p.cur().kind)
+        if p.at(TokenKind.COMMA):
+            p.eat(TokenKind.COMMA)
+            continue
+        if p.at(TokenKind.RBRACE):
+            break
+        raise FatalParseError(
+            "Enum members must be separated by ','.",
+            p.cur().line,
+            p.cur().column,
+            code="pys.enum-member-comma",
+            tips=[
+                "Write `enum Name { A, B, C }` (optional trailing comma allowed).",
+                "Juxtaposed members without commas are no longer valid.",
+            ],
+        )
     p.eat(TokenKind.RBRACE)
     if not members:
         raise FatalParseError(
@@ -2316,8 +2369,15 @@ def _parse_block(p: _Tok) -> Block:
     sp = p.span()
     p.eat(TokenKind.LBRACE)
     stmts = []
+    prev_end_line: int | None = None
+    had_semi = False
     while not p.at(TokenKind.RBRACE):
+        if p.at(TokenKind.BLANK) or p.at(TokenKind.COMMENT):
+            stmts.append(_parse_statement(p))
+            continue
+        _check_same_line_boundary(p, prev_end_line=prev_end_line, had_semi=had_semi)
         stmts.append(_parse_statement(p))
+        prev_end_line, had_semi = _finish_stmt_terminator(p)
     end = p.eat(TokenKind.RBRACE)
     return Block(span=p.close_span(sp, end), statements=stmts)
 
@@ -2356,6 +2416,38 @@ def _parse_unless(p: _Tok) -> IfStmt:
 def _skip_switch_noise(p: _Tok) -> None:
     while p.at(TokenKind.BLANK) or p.at(TokenKind.COMMENT):
         p.eat(p.cur().kind)
+
+
+def _parse_switch_stmt_body(p: _Tok, arm_sp: Span) -> tuple[Block, bool, bool]:
+    """Parse statement-arm body: explicit ``{ }`` block or bare statement sequence.
+
+    Returns ``(body, fallthrough, brace_scoped)``.
+    """
+    if p.at(TokenKind.LBRACE):
+        body = _parse_block(p)
+        fallthrough = False
+        stmts = list(body.statements)
+        if stmts and isinstance(stmts[-1], ContinueStmt):
+            fallthrough = True
+            stmts = stmts[:-1]
+            body = Block(span=body.span, statements=stmts)
+        return body, fallthrough, True
+
+    body_stmts: list = []
+    prev_end_line: int | None = None
+    had_semi = False
+    while not p.at(TokenKind.RBRACE) and not p.at_kw("case", "default"):
+        _skip_switch_noise(p)
+        if p.at(TokenKind.RBRACE) or p.at_kw("case", "default"):
+            break
+        _check_same_line_boundary(p, prev_end_line=prev_end_line, had_semi=had_semi)
+        body_stmts.append(_parse_statement(p))
+        prev_end_line, had_semi = _finish_stmt_terminator(p)
+    fallthrough = False
+    if body_stmts and isinstance(body_stmts[-1], ContinueStmt):
+        fallthrough = True
+        body_stmts = body_stmts[:-1]
+    return Block(span=arm_sp, statements=body_stmts), fallthrough, False
 
 
 def _parse_case_label(p: _Tok) -> Expr:
@@ -2469,22 +2561,14 @@ def _parse_switch_common(p: _Tok) -> tuple[Span, Expr, list[SwitchCase], bool]:
                         p.cur().column,
                     )
                 p.eat(TokenKind.COLON)
-                body_stmts: list = []
-                while not p.at(TokenKind.RBRACE) and not p.at_kw("case", "default"):
-                    _skip_switch_noise(p)
-                    if p.at(TokenKind.RBRACE) or p.at_kw("case", "default"):
-                        break
-                    body_stmts.append(_parse_statement(p))
-                fallthrough = False
-                if body_stmts and isinstance(body_stmts[-1], ContinueStmt):
-                    fallthrough = True
-                    body_stmts = body_stmts[:-1]
+                body, fallthrough, brace_scoped = _parse_switch_stmt_body(p, arm_sp)
                 cases.append(
                     SwitchCase(
                         span=arm_sp,
                         is_default=True,
-                        body=Block(span=arm_sp, statements=body_stmts),
+                        body=body,
                         fallthrough=fallthrough,
+                        brace_scoped=brace_scoped,
                     )
                 )
             continue
@@ -2497,14 +2581,6 @@ def _parse_switch_common(p: _Tok) -> tuple[Span, Expr, list[SwitchCase], bool]:
         p.eat_kw("case")
         labels = [_parse_case_label(p)]
         while p.at(TokenKind.COMMA):
-            if not is_expr:
-                raise FatalParseError(
-                    "Multi-label `case A, B` is only valid in switch expressions "
-                    "(use `=>`). For statements, put one label per case and use "
-                    "`continue` to fall through.",
-                    p.cur().line,
-                    p.cur().column,
-                )
             p.eat(TokenKind.COMMA)
             labels.append(_parse_case_label(p))
         if is_expr:
@@ -2525,22 +2601,14 @@ def _parse_switch_common(p: _Tok) -> tuple[Span, Expr, list[SwitchCase], bool]:
                     p.cur().column,
                 )
             p.eat(TokenKind.COLON)
-            body_stmts = []
-            while not p.at(TokenKind.RBRACE) and not p.at_kw("case", "default"):
-                _skip_switch_noise(p)
-                if p.at(TokenKind.RBRACE) or p.at_kw("case", "default"):
-                    break
-                body_stmts.append(_parse_statement(p))
-            fallthrough = False
-            if body_stmts and isinstance(body_stmts[-1], ContinueStmt):
-                fallthrough = True
-                body_stmts = body_stmts[:-1]
+            body, fallthrough, brace_scoped = _parse_switch_stmt_body(p, arm_sp)
             cases.append(
                 SwitchCase(
                     span=arm_sp,
                     labels=labels,
-                    body=Block(span=arm_sp, statements=body_stmts),
+                    body=body,
                     fallthrough=fallthrough,
+                    brace_scoped=brace_scoped,
                 )
             )
     p.eat(TokenKind.RBRACE)
@@ -2631,6 +2699,7 @@ def _parse_loop(p: _Tok):
         return ForEachStmt(span=sp, var=var, var_type=var_type, iterable=it, body=body)
 
     commas = 0
+    semis = 0
     depth = 0
     j = p.i
     while j < len(p.tokens):
@@ -2641,24 +2710,38 @@ def _parse_loop(p: _Tok):
             if depth == 0:
                 break
             depth -= 1
-        elif t.text == "," and depth == 0:
+        elif depth == 0 and t.kind == TokenKind.SEMI:
+            semis += 1
+        elif depth == 0 and t.text == ",":
             commas += 1
         j += 1
 
-    if commas >= 2:
+    if commas >= 2 and semis < 2:
+        raise FatalParseError(
+            "C-style `loop` headers use ';' between init, condition, and step "
+            "(comma separators are no longer valid).",
+            p.cur().line,
+            p.cur().column,
+            code="pys.c-for-semi",
+            tips=[
+                "Write `loop (int i = 0; i < n; i++) { … }`.",
+            ],
+        )
+
+    if semis >= 2:
         if p.at_kw("int", "float"):
             p.eat(TokenKind.KEYWORD)
         var = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat(TokenKind.OP, text="=")
         start = _parse_expression(p)
-        p.eat(TokenKind.COMMA)
+        p.eat(TokenKind.SEMI)
         p.eat(TokenKind.IDENT, TokenKind.KEYWORD)  # var in cond
         if p.at(TokenKind.LT, TokenKind.GT) or (p.at(TokenKind.OP) and p.cur().text in {"<=", ">=", "<", ">"}):
             p.eat(p.cur().kind)
         else:
             p.eat(TokenKind.OP)
         stop_expr = _parse_expression(p)
-        p.eat(TokenKind.COMMA)
+        p.eat(TokenKind.SEMI)
         p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
         if p.at(TokenKind.OP) and p.cur().text in {"++", "--"}:
             p.eat(TokenKind.OP)

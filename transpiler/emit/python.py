@@ -1155,27 +1155,27 @@ class _Emitter:
 
     def _switch_stmt_groups(
         self, cases: list[SwitchCase]
-    ) -> list[tuple[list[Expr] | None, Block | None]]:
-        """Collapse fall-through chains into (labels|None for default, body) groups."""
-        groups: list[tuple[list[Expr] | None, Block | None]] = []
+    ) -> list[tuple[list[Expr] | None, Block | None, bool]]:
+        """Collapse fall-through chains into (labels|None for default, body, brace_scoped)."""
+        groups: list[tuple[list[Expr] | None, Block | None, bool]] = []
         pending: list[Expr] = []
         for case in cases:
             if case.is_default:
                 if pending:
                     # Fall-through into default: treat pending labels with default body.
-                    groups.append((pending, case.body))
+                    groups.append((pending, case.body, case.brace_scoped))
                     pending = []
                 else:
-                    groups.append((None, case.body))
+                    groups.append((None, case.body, case.brace_scoped))
                 continue
             pending.extend(case.labels)
             if case.fallthrough:
                 continue
-            groups.append((pending, case.body))
+            groups.append((pending, case.body, case.brace_scoped))
             pending = []
         if pending:
             # Sem rejects trailing fall-through; keep defensive emit.
-            groups.append((pending, Block(statements=[])))
+            groups.append((pending, Block(statements=[]), False))
         return groups
 
     def _switch_stmt(self, stmt: SwitchStmt, indent: int) -> None:
@@ -1189,16 +1189,16 @@ class _Emitter:
         subject = self._expr(stmt.subject)
         groups = self._switch_stmt_groups(stmt.cases)
         first = True
-        for labels, body in groups:
+        for labels, body, brace_scoped in groups:
             if labels is None:
                 self._emit(indent, "else:")
-                self._block(body, indent + 1, brace_scope=True)
+                self._block(body, indent + 1, brace_scope=brace_scoped)
                 first = False
                 continue
             cond = self._switch_labels_cond(subject, labels)
             head = f"if {cond}:" if first else f"elif {cond}:"
             self._emit(indent, head)
-            self._block(body, indent + 1, brace_scope=True)
+            self._block(body, indent + 1, brace_scope=brace_scoped)
             first = False
 
     def _result_switch_case_body(

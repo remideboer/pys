@@ -20,13 +20,18 @@ No `switch` / `case` / `default` / `=>`; F-002 deferred a separate `match`.
 ### Post-behavior
 
 - Lex: keywords `switch`/`case`/`default`; op `=>`.
-- AST: `SwitchStmt` / `SwitchExpr` / `SwitchCase` (`fallthrough` from trailing continue).
-- Parse: statement vs expression by first arm (`:` vs `=>`); reject mixes/empty.
+- AST: `SwitchStmt` / `SwitchExpr` / `SwitchCase` (`fallthrough` from trailing
+  continue; `brace_scoped` when the arm body is an explicit `{ }` — ADR-022 /
+  CER-026).
+- Parse: statement vs expression by first arm (`:` vs `=>`); reject mixes/empty;
+  statement arms allow multi-label commas and optional block bodies.
 - Sem: bare enum label resolve; duplicate/unknown labels; expression type unify;
-  exhaustiveness error (expr) / warning (stmt); `_infer_type(SwitchExpr)`.
-- Emit: fall-through groups → `if`/`elif`; expression → nested conditionals.
-- IDE: TextMate + snippets + hover; extension ≥ 0.0.40.
-- Docs: LANGUAGE, EBNF, railroad, JIT `J-switch`, ADR-008; F-002 superseded.
+  exhaustiveness error (expr) / warning (stmt); `_infer_type(SwitchExpr)`;
+  brace-scoped arms nest bindings.
+- Emit: fall-through groups → `if`/`elif`; expression → nested conditionals;
+  brace-scoped arms use CER-015 mangling.
+- IDE: TextMate + snippets + hover; extension ≥ 0.0.70.
+- Docs: LANGUAGE, EBNF, railroad, JIT `J-switch`, ADR-008 / ADR-022; F-002 superseded.
 
 ### Evidence
 

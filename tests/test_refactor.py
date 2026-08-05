@@ -64,7 +64,7 @@ def test_find_usages_shadowed_brace_scope(tmp_path: Path) -> None:
 def test_find_usages_dotted_enum_member(tmp_path: Path) -> None:
     src = tmp_path / "e.pys"
     src.write_text(
-        "enum Color {\n    RED = 1\n    BLUE = 2\n}\nColor c = Color.RED\nprint(Color.RED)\n",
+        "enum Color {\n    RED = 1,\n    BLUE = 2\n}\nColor c = Color.RED\nprint(Color.RED)\n",
         encoding="utf-8",
     )
     hits = find_usages(src, "Color.RED")

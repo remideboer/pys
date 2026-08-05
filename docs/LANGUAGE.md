@@ -8,8 +8,11 @@ PYS is a typed teaching language that transpiles to Python. Prefer **brace style
 (`{` … `}`), as in `examples/main.pys`. Indentation style and legacy `then:` / `do:`
 forms remain for compatibility (see Appendix A in the EBNF).
 
-Statements end at newline — there is no `;`. Identifiers are case-sensitive.
-Use **4 spaces** for indentation when not using braces; tabs are illegal.
+Statements end at newline by default. An optional `;` terminator is allowed
+after any statement; it is **required** only when two statements share one
+physical line (`int x = 10; int y = 20`). A trailing `;` alone on a line is
+fine. Identifiers are case-sensitive. Use **4 spaces** for indentation when
+not using braces; tabs are illegal.
 
 ---
 
@@ -294,22 +297,25 @@ if not (x > 100) {
 Multi-way branch on an enum or equality-comparable primitive (`int` / width
 aliases, `string`, `char`, `bool`, `float`). **No implicit fall-through.**
 
-**Statement** — `case LABEL:` then statements. A trailing bare `continue` falls
-through to the next case (nested-loop `continue` keeps loop meaning). `break`
-is not required. Bare enum labels (`MONDAY`) resolve from the subject type
-(also `Day.MONDAY`). Non-exhaustive enum/primitive switches without `default`
-emit a **warning**.
+**Statement** — `case LABEL:` then either a bare statement sequence or an
+explicit `{ … }` block. Multiple labels may share one arm with commas
+(`case MONDAY, FRIDAY:`). A trailing bare `continue` falls through to the next
+case (nested-loop `continue` keeps loop meaning). `break` is not required.
+Bare enum labels (`MONDAY`) resolve from the subject type (also `Day.MONDAY`).
+An explicit block body introduces nested lexical scope (locals do not leak to
+sibling arms); a bare sequence shares the enclosing switch scope. Non-exhaustive
+enum/primitive switches without `default` emit a **warning**.
 
 ```pys
 switch (day) {
-    case MONDAY:
-        continue
-    case FRIDAY:
+    case MONDAY, FRIDAY:
         continue
     case SUNDAY:
         numLetters = 6
-    case WEDNESDAY:
+    case WEDNESDAY: {
         numLetters = 9
+        print("wed")
+    }
     default:
         numLetters = 0
 }
@@ -335,7 +341,7 @@ Do not mix `:` and `=>` in one switch. See example `examples/switch.pys`.
 is immutable inside the body):
 
 ```pys
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     print(i)
 }
 ```
@@ -813,18 +819,18 @@ Optional `global` / `package` / `module` on the declaration (same as structs).
 
 ```pys
 enum Priority {
-    LOW
-    MEDIUM
+    LOW,
+    MEDIUM,
     HIGH
 }
 
 enum HttpStatus {
-    OK = 200
+    OK = 200,
     CREATED = 201
 }
 
 enum Method {
-    GET = "GET"
+    GET = "GET",
     POST = "POST"
 }
 
@@ -835,7 +841,8 @@ print(s.value)
 
 Rules:
 
-1. Body must be non-empty
+1. Body must be non-empty; members are **comma-delimited** (optional trailing
+   comma). Layout — one line, wrapped, or one-per-line — has no semantic meaning
 2. All-or-nothing values: every member has `=` or none do (implicit →
    `enum.auto()`)
 3. Explicit values are homogeneous (all `int` or all `string`) and unique

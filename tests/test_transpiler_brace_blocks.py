@@ -7,7 +7,7 @@ from transpiler.transpiler import TranspileError, transpile, transpile_with_modu
 
 
 def test_transpile_loop_with_braces() -> None:
-    source = """loop(int i=0, i<3, i++) {\nprint i\n}\n"""
+    source = """loop(int i=0; i<3; i++) {\nprint i\n}\n"""
     py = transpile(source)
     assert "for i in range(0, 3):" not in py
     assert "for _pys_b" in py and " in range(0, 3):" in py

@@ -345,12 +345,12 @@ atomic int counter = 0
 
 tasks {
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }

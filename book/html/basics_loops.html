@@ -112,7 +112,7 @@
 <p>A <strong>loop</strong> repeats a block until a condition says stop — or until every
 item in a collection has been visited.</p>
 <h2>Count with a C-style loop</h2>
-<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>, <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>, <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
 }</code></pre>
 <p>Output:</p>
@@ -126,6 +126,10 @@ item in a collection has been visited.</p>
 <p>Inside this loop shape, the loop variable is treated as fixed for that
 iteration — you advance it in the step clause (<code>i++</code>), not by random
 assignments in the middle of the body.</p>
+<p><strong>Sidebar — why <code>;</code> in the header?</strong></p>
+<p>The three parts of a C-style loop are separated by <code>;</code>, just like in
+C#/Java <code>for (…; …; …)</code>. That matches PYS’s optional statement <code>;</code>
+(required only when two statements share one line).</p>
 </blockquote>
 <h2>While-style loop</h2>
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">counter</span> <span class="tok-op">=</span> <span class="tok-number">0</span>

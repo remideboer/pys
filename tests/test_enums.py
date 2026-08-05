@@ -42,11 +42,11 @@ def test_example_enums_emit_is_valid_python() -> None:
 def test_enum_equality_and_value(capsys: pytest.CaptureFixture[str]) -> None:
     source = """
 enum Priority {
-    LOW
+    LOW,
     HIGH
 }
 enum HttpStatus {
-    OK = 200
+    OK = 200,
     CREATED = 201
 }
 HttpStatus s = HttpStatus.OK
@@ -69,15 +69,15 @@ print(Priority.LOW == Priority.HIGH)
     [
         ("enum Foo {}\n", r"cannot be empty"),
         (
-            "enum Foo {\n  A = 1\n  B\n}\n",
+            "enum Foo {\n  A = 1,\n  B\n}\n",
             r"fully implicit or fully explicit",
         ),
         (
-            "enum Foo {\n  A = 1\n  B = 1\n}\n",
+            "enum Foo {\n  A = 1,\n  B = 1\n}\n",
             r"Duplicate enum value",
         ),
         (
-            'enum Foo {\n  A = 1\n  B = "x"\n}\n',
+            'enum Foo {\n  A = 1,\n  B = "x"\n}\n',
             r"homogeneous",
         ),
         (
@@ -100,6 +100,10 @@ print(Priority.LOW == Priority.HIGH)
             "enum A { X = 1 }\nprint(A.X == 1)\n",
             r"Cannot compare enum",
         ),
+        (
+            "enum Foo {\n  A\n  B\n}\n",
+            r"separated by ','",
+        ),
     ],
 )
 def test_enum_sa_rejections(source: str, match: str) -> None:
@@ -108,7 +112,7 @@ def test_enum_sa_rejections(source: str, match: str) -> None:
 
 
 def test_enum_naming_warning_still_compiles() -> None:
-    source = "enum Foo {\n  low\n  HIGH\n}\n"
+    source = "enum Foo {\n  low,\n  HIGH\n}\n"
     tree = analyze(parse_program(source))
     assert any(w.code == "pys.enum-naming" for w in tree.analysis_warnings)
     warn = next(w for w in tree.analysis_warnings if w.code == "pys.enum-naming")
@@ -131,7 +135,7 @@ def test_ide_goto_enum_member(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(tmp_path))
     path = tmp_path / "e.pys"
     path.write_text(
-        "enum HttpStatus {\n  OK = 200\n  CREATED = 201\n}\n",
+        "enum HttpStatus {\n  OK = 200,\n  CREATED = 201\n}\n",
         encoding="utf-8",
     )
     result = analyze_file(path)

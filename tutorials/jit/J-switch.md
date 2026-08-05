@@ -4,18 +4,23 @@
 
 ```pys
 switch (day) {
-    case MONDAY:
-        continue
-    case FRIDAY:
+    case MONDAY, FRIDAY:
         continue
     case SUNDAY:
         numLetters = 6
+    case WEDNESDAY: {
+        numLetters = 9
+        print("wed")
+    }
     default:
         numLetters = 0
 }
 ```
 
 - No implicit fall-through
+- Multi-label with commas (same as expression arms)
+- Body may be a bare statement sequence or an explicit `{ }` block
+  (block locals are brace-scoped)
 - Trailing `continue` in a case body = fall through to the next case
 - Nested-loop `continue` / `break` keep loop meaning
 - Bare enum labels resolve from the subject type (`MONDAY` → `Day.MONDAY`)

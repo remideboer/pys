@@ -141,7 +141,7 @@ global function main() {
     if (total > MAX_CARDS) {
         total = MAX_CARDS
     }
-    loop (int i = 0, i < total, i++) {
+    loop (int i = 0; i < total; i++) {
         dict brief = briefs[i]
         string cid = brief["id"]
         print("  #i{i} {cid}")

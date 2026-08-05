@@ -34,8 +34,8 @@ Fully implicit enum:
 
 ```pys
 enum Priority {
-    LOW
-    MEDIUM
+    LOW,
+    MEDIUM,
     HIGH
 }
 ```
@@ -51,7 +51,7 @@ Fully explicit enum:
 
 ```pys
 enum HttpStatus {
-    OK = 200
+    OK = 200,
     CREATED = 201
 }
 ```
@@ -68,20 +68,20 @@ class HttpStatus(enum.IntEnum):
 /#
 
 enum HttpCategory {
-    INFORMATIONAL
-    SUCCESS
-    REDIRECTION
-    CLIENT_ERROR
+    INFORMATIONAL,
+    SUCCESS,
+    REDIRECTION,
+    CLIENT_ERROR,
     SERVER_ERROR
 }
 
 enum HttpStatus {
-    OK = 200
-    CREATED = 201
-    ACCEPTED = 202
-    NO_CONTENT = 204
-    MOVED_PERMANENTLY = 301
-    FOUND = 302
-    SEE_OTHER = 303
+    OK = 200,
+    CREATED = 201,
+    ACCEPTED = 202,
+    NO_CONTENT = 204,
+    MOVED_PERMANENTLY = 301,
+    FOUND = 302,
+    SEE_OTHER = 303,
     NOT_MODIFIED = 304
 }

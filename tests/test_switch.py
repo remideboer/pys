@@ -22,12 +22,12 @@ os.environ.setdefault("PYS_SUPPRESS_WARNINGS", "1")
 
 _DAY_ENUM = """
 enum Day {
-    MONDAY
-    FRIDAY
-    SUNDAY
-    TUESDAY
-    THURSDAY
-    SATURDAY
+    MONDAY,
+    FRIDAY,
+    SUNDAY,
+    TUESDAY,
+    THURSDAY,
+    SATURDAY,
     WEDNESDAY
 }
 """
@@ -130,7 +130,7 @@ int total = 0
 int n = 1
 switch (n) {
     case 1:
-        loop (int i = 0, i < 3, i++) {
+        loop (int i = 0; i < 3; i++) {
             if (i == 1) {
                 continue
             }
@@ -204,8 +204,8 @@ switch (d) {
 def test_switch_stmt_nonexhaustive_warns() -> None:
     source = """
 enum Color {
-    RED
-    GREEN
+    RED,
+    GREEN,
     BLUE
 }
 Color c = Color.RED

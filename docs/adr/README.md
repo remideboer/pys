@@ -65,5 +65,6 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-019](ADR-019-single-counter-loops.md) | C-style loops have one immutable counter | Accepted |
 | [ADR-020](ADR-020-one-name-per-declaration.md) | One name per declaration | Accepted |
 | [ADR-021](ADR-021-result-propagate-panic.md) | Result, propagation, panic, and project entrypoints | Accepted |
+| [ADR-022](ADR-022-optional-terminators-grammar.md) | Optional `;`, C-for `;`, comma enums, multi-label switch | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).

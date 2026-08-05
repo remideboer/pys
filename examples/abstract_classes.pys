@@ -136,7 +136,7 @@ abstract class AbstractList {
     }
 
     public bool contains(string item) {
-        loop (int i = 0, i < this.size, i++) {
+        loop (int i = 0; i < this.size; i++) {
             if (this.get(i) == item) {
                 return true
             }
@@ -246,7 +246,7 @@ class LinkedListPys inherits AbstractCountedList {
 
     public string get(int index) {
         Link cur = this.head
-        loop (int i = 0, i < index, i++) {
+        loop (int i = 0; i < index; i++) {
             cur = cur.getNext()
         }
         return cur.getValue()

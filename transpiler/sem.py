@@ -2028,9 +2028,20 @@ def _check_bindings(
             result_parts = _result_type_parts(subject_type)
             for case in stmt.cases:
                 if case.body:
-                    case_types = dict(types)
-                    case_declared = set(declared)
+                    if case.brace_scoped:
+                        case_types = dict(types)
+                        case_declared = set(declared)
+                    else:
+                        case_types = types
+                        case_declared = declared
                     if result_parts:
+                        needs_bind = any(
+                            isinstance(label, ResultPattern) and label.binding
+                            for label in case.labels
+                        )
+                        if needs_bind:
+                            case_types = dict(case_types)
+                            case_declared = set(case_declared)
                         for label in case.labels:
                             if isinstance(label, ResultPattern) and label.binding:
                                 payload_type = (

@@ -106,7 +106,7 @@
       "\t\t${0}",
       "}"
     ],
-    "description": "PYS switch statement (continue = fall-through)"
+    "description": "PYS switch statement (multi-label / block body; continue = fall-through)"
   },
   "Switch expression": {
     "prefix": "switchexpr",
@@ -121,7 +121,7 @@
   "C-style loop": {
     "prefix": "loop",
     "body": [
-      "loop (int ${1:i} = 0, ${1:i} < ${2:count}, ${1:i}++) {",
+      "loop (int ${1:i} = 0; ${1:i} < ${2:count}; ${1:i}++) {",
       "\t${0}",
       "}"
     ],
@@ -247,11 +247,11 @@
     "prefix": "enum",
     "body": [
       "${1|package,global,module|} enum ${2:Name} {",
-      "\t${3:MEMBER}",
-      "\t${0}",
+      "\t${3:MEMBER},",
+      "\t${0:OTHER}",
       "}"
     ],
-    "description": "PYS enum (implicit auto values)"
+    "description": "PYS enum (comma-delimited; implicit auto values)"
   },
   "Trait": {
     "prefix": "trait",
@@ -284,11 +284,11 @@
     "prefix": "enumx",
     "body": [
       "enum ${1:Name} {",
-      "\t${2:MEMBER} = ${3:0}",
-      "\t${0}",
+      "\t${2:MEMBER} = ${3:0},",
+      "\t${0:OTHER} = ${4:1}",
       "}"
     ],
-    "description": "PYS enum with explicit int/string values"
+    "description": "PYS enum with explicit int/string values (comma-delimited)"
   },
   "Subclass": {
     "prefix": "inherits",

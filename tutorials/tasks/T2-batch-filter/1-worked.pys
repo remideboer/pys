@@ -6,7 +6,7 @@ string[] labels = ["bolts", "ribbons", "plates"]
 int[] weights = [12, 3, 25]
 const int THRESHOLD = 10
 
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     if (weights[i] >= THRESHOLD) {
         print("HEAVY #i{ids[i]} #s{labels[i]} w=#i{weights[i]}")
     }

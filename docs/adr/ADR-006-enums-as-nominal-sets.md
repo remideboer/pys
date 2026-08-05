@@ -15,7 +15,8 @@ strings, and classes. Requirements live in `requirements/enums.pys`.
 ## Decision
 
 1. **`enum`** is a first-class declaration (sibling to `struct` / `class`) with
-   optional `top_visibility`.
+   optional `top_visibility`. Members are **comma-delimited** with an optional
+   trailing comma ([ADR-022](ADR-022-optional-terminators-grammar.md)).
 2. **All-or-nothing values:** fully implicit (`enum.auto`) or fully explicit;
    mixed forms are errors.
 3. **Homogeneous unique explicit values** (all int or all string); duplicates

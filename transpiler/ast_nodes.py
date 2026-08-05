@@ -272,6 +272,7 @@ class SwitchCase(Node):
     body: Block | None = None  # statement form
     value: Expr | None = None  # expression form (`=> expr`)
     fallthrough: bool = False  # statement arm ends with switch-continue
+    brace_scoped: bool = False  # statement arm body was an explicit `{ }` block
 
 
 @dataclass

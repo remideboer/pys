@@ -70,7 +70,7 @@ shared int counter = 0
 
 tasks {
     task incrementMany() {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1   # NOT safe: read-modify-write can interleave
                            # between two concurrent tasks, losing updates
         }
@@ -89,7 +89,7 @@ atomic int counter = 0
 
 tasks {
     task incrementMany() {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1   # guaranteed indivisible — no lost updates
         }
     }
@@ -105,7 +105,7 @@ tasks {
 atomic int highScore = 0
 
 function void reportScore(int candidate) {
-    loop (bool done = false, !done, ) {
+    loop (bool done = false; !done; ) {
         int current = highScore.get()
         if (candidate <= current) {
             done = true   # not a new high score, nothing to do

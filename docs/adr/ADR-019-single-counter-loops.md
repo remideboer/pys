@@ -31,7 +31,9 @@ Keep `c_for_loop` deliberately narrow:
 
 1. initializer, condition, and step name the same variable;
 2. that variable is immutable in the body;
-3. the header cannot declare or step additional variables.
+3. the header cannot declare or step additional variables;
+4. header separators are `;` (aligned with statement terminators and C#/Java) —
+   see [ADR-022](ADR-022-optional-terminators-grammar.md).
 
 When several values change together, declare them separately and use
 while-style `loop (condition)`. Initialization, the controlling condition, and

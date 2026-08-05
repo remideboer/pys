@@ -112,7 +112,7 @@ print(cubes[0][1][0])
 
 # ── Control flow ─────────────────────────────────────────
 # for loop (loop counter is immutable inside the body)
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     print(i)
 }
 

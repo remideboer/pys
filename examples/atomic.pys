@@ -9,12 +9,12 @@
 shared int shared_counter = 0
 tasks {
     task {
-        loop (int i = 0, i < 200, i++) {
+        loop (int i = 0; i < 200; i++) {
             shared_counter = shared_counter + 1
         }
     }
     task {
-        loop (int i = 0, i < 200, i++) {
+        loop (int i = 0; i < 200; i++) {
             shared_counter = shared_counter + 1
         }
     }
@@ -25,12 +25,12 @@ print(shared_counter)  # often < 400 under real interleaving; not guaranteed
 atomic int counter = 0
 tasks {
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }
     task {
-        loop (int i = 0, i < 1000, i++) {
+        loop (int i = 0; i < 1000; i++) {
             counter += 1
         }
     }

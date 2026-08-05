@@ -28,8 +28,8 @@ int[][] grid = [[9, 8, 7], [6, 5, 4]]
 print(grid[1][0])  # 6
 
 # indexed nested loops over ranks
-loop (int i = 0, i < 2, i++) {
-    loop (int j = 0, j < 3, j++) {
+loop (int i = 0; i < 2; i++) {
+    loop (int j = 0; j < 3; j++) {
         print(grid[i][j])
     }
 }

@@ -8,7 +8,7 @@ loop gets that iteration’s value (no Python late-binding surprise).
 
 ```pys
 list<lambda<int, int>> adders = []
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     adders.append((int x) => x + i)
 }
 print(adders[0](10))

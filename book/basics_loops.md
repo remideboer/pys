@@ -6,7 +6,7 @@ item in a collection has been visited.
 ## Count with a C-style loop
 
 ```pys
-loop (int i = 0, i < 3, i++) {
+loop (int i = 0; i < 3; i++) {
     print(i)
 }
 ```
@@ -26,6 +26,12 @@ Reads as: start `i` at 0; while `i < 3`; after each body, do `i++`
 > Inside this loop shape, the loop variable is treated as fixed for that
 > iteration — you advance it in the step clause (`i++`), not by random
 > assignments in the middle of the body.
+
+> **Sidebar — why `;` in the header?**
+>
+> The three parts of a C-style loop are separated by `;`, just like in
+> C#/Java `for (…; …; …)`. That matches PYS’s optional statement `;`
+> (required only when two statements share one line).
 
 ## While-style loop
 

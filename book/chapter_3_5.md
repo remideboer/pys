@@ -7,9 +7,9 @@ Closed sets of named constants — member names should be
 
 ```pys
 enum Day {
-    MONDAY
-    WEDNESDAY
-    FRIDAY
+    MONDAY,
+    WEDNESDAY,
+    FRIDAY,
     SUNDAY
 }
 
@@ -27,27 +27,28 @@ True
 ## Switch statement
 
 No implicit fall-through. Use bare `continue` to fall into the next case
-when you mean it:
+when you mean it. Several labels may share one arm with commas, and an arm
+body may be an explicit `{ … }` block (locals inside the block stay there):
 
 ```pys
 enum Day {
-    MONDAY
-    WEDNESDAY
-    FRIDAY
+    MONDAY,
+    WEDNESDAY,
+    FRIDAY,
     SUNDAY
 }
 
 Day day = Day.FRIDAY
 int numLetters = 0
 switch (day) {
-    case MONDAY:
-        continue
-    case FRIDAY:
+    case MONDAY, FRIDAY:
         continue
     case SUNDAY:
         numLetters = 6
-    case WEDNESDAY:
+    case WEDNESDAY: {
         numLetters = 9
+        print("wed")
+    }
     default:
         numLetters = 0
 }
@@ -68,13 +69,19 @@ Output:
 > means “fall through into the next `case`.” Same word, different jobs —
 > read the surrounding keyword (`loop` vs `switch`) to know which.
 
+> **Sidebar — optional `;`**
+>
+> A statement alone on its line needs no semicolon. Two statements on the
+> **same** line must use `;` between them (`int x = 1; int y = 2`). That is
+> the only time `;` is required.
+
 ## Switch expression
 
 ```pys
 enum Day {
-    MONDAY
-    WEDNESDAY
-    FRIDAY
+    MONDAY,
+    WEDNESDAY,
+    FRIDAY,
     SUNDAY
 }
 

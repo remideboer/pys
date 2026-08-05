@@ -53,7 +53,7 @@ abstract class AbstractList<T> {
     # Concrete: expressed in terms of the abstract get(), so it works
     # correctly for ANY subclass without being rewritten per subclass.
     public bool contains(T item) {
-        loop (int i = 0, i < this.size, i++) {
+        loop (int i = 0; i < this.size; i++) {
             if (this.get(i) == item) {
                 return true
             }
@@ -103,7 +103,7 @@ class LinkedListPys<T> inherits AbstractList<T> {
 
     public T get(int index) {
         Node<T> cur = this.head
-        loop (int i = 0, i < index, i++) {
+        loop (int i = 0; i < index; i++) {
             cur = cur.next
         }
         return cur.value

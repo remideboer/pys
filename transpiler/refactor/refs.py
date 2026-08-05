@@ -491,7 +491,13 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
     if isinstance(stmt, SwitchStmt):
         _walk_expr(index, scopes, file, stmt.subject)
         for case in stmt.cases or []:
-            scopes.append(_Scope())
+            has_pat = any(
+                isinstance(label, ResultPattern) and label.binding
+                for label in case.labels
+            )
+            nest_arm = bool(case.brace_scoped) or has_pat
+            if nest_arm:
+                scopes.append(_Scope())
             for label in case.labels:
                 if isinstance(label, ResultPattern) and label.binding:
                     _declare(
@@ -504,7 +510,8 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
                     )
             _walk_expr(index, scopes, file, case.value)
             _walk_block(index, scopes, file, case.body, nest=False)
-            scopes.pop()
+            if nest_arm:
+                scopes.pop()
         return
     if isinstance(stmt, Block):
         _walk_block(index, scopes, file, stmt, nest=True)

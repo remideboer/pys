@@ -14,8 +14,10 @@ statement and expression forms.
 
 ## Decision
 
-1. **Both forms:** statement (`case L: …`) and expression (`case L, M => expr`),
-   usable as an assignment RHS.
+1. **Both forms:** statement (`case L:` / `case L, M:`) and expression
+   (`case L, M => expr`), usable as an assignment RHS. Statement arms may use a
+   bare statement sequence or an explicit `{ }` block (nested scope when blocked;
+   see [ADR-022](ADR-022-optional-terminators-grammar.md)).
 2. **Fall-through:** none by default; trailing bare `continue` falls through.
    Nested-loop `continue`/`break` keep loop meaning. `break` is not required.
 3. **Subjects:** enums and equality-comparable primitives; bare enum labels

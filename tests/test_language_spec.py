@@ -5,7 +5,7 @@ from transpiler.transpiler import TranspileError, transpile
 
 
 def test_translate_loop_general() -> None:
-    line = "loop(int i=0, i<3, i++)"
+    line = "loop (int i=0; i<3; i++)"
     assert LANGUAGE.translate_line(line) == "for i in range(0, 3):"
 
 
@@ -15,7 +15,7 @@ def test_translate_loop_condition_is_while() -> None:
 
 
 def test_translate_loop_general_with_trailing_space() -> None:
-    line = "loop (int i = 0, i < 5, i++) "
+    line = "loop (int i = 0; i < 5; i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
 
 
@@ -129,19 +129,19 @@ def test_generic_class_transpiles() -> None:
 
 
 def test_loop_counter_immutability_rejects_assignment() -> None:
-    source = "loop(int i=0, i<5, i++) {\n    i = 3\n}\n"
+    source = "loop (int i=0; i<5; i++) {\n    i = 3\n}\n"
     with pytest.raises(TranspileError, match="Loop counter 'i' is immutable"):
         transpile(source)
 
 
 def test_loop_counter_immutability_rejects_increment() -> None:
-    source = "loop(int i=0, i<5, i++) {\n    i++\n}\n"
+    source = "loop (int i=0; i<5; i++) {\n    i++\n}\n"
     with pytest.raises(TranspileError, match="Loop counter 'i' is immutable"):
         transpile(source)
 
 
 def test_loop_counter_allowed_outside_loop() -> None:
-    source = "int i = 0\nloop(int i=0, i<5, i++) {\n    print(i)\n}\ni = 10\n"
+    source = "int i = 0\nloop(int i=0; i<5; i++) {\n    print(i)\n}\ni = 10\n"
     transpile(source)
 
 
@@ -152,7 +152,7 @@ def test_unterminated_multiline_comment() -> None:
 
 
 def test_translate_loop_with_trailing_spaces() -> None:
-    line = "loop (int i = 0, i < 5, i++) "
+    line = "loop (int i = 0; i < 5; i++) "
     assert LANGUAGE.translate_line(line) == "for i in range(0, 5):"
 
 

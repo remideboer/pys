@@ -692,7 +692,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "loop_general",
-    r"loop\s*\(\s*(?P<init>[^,]+?)\s*,\s*(?P<cond>[^,]+?)\s*,\s*(?P<step>[^)]+?)\s*\)",
+    r"loop\s*\(\s*(?P<init>[^;]+?)\s*;\s*(?P<cond>[^;]+?)\s*;\s*(?P<step>[^)]+?)\s*\)",
     lambda match: _translate_loop(match.group("init"), match.group("cond"), match.group("step")),
 )
 LANGUAGE.add_regex(

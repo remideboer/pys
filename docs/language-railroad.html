@@ -550,15 +550,24 @@
     {
       id: 'enum_decl',
       title: 'enum_decl',
-      ebnf: '[ top_visibility ] "enum" identifier "{" enum_member { enum_member } "}" ;',
+      ebnf: '[ top_visibility ] "enum" identifier "{" enum_member_list "}" ;',
       node: Seq(
         Opt(N('top_visibility')),
         T('enum'),
         N('identifier'),
         T('{'),
-        N('enum_member'),
-        Star(N('enum_member')),
+        N('enum_member_list'),
         T('}')
+      )
+    },
+    {
+      id: 'enum_member_list',
+      title: 'enum_member_list',
+      ebnf: 'enum_member { "," enum_member } [ "," ] ;',
+      node: Seq(
+        N('enum_member'),
+        Star(Seq(T(','), N('enum_member'))),
+        Opt(T(','))
       )
     },
     {
@@ -687,11 +696,17 @@
     {
       id: 'switch_stmt_arm',
       title: 'switch_stmt_arm',
-      ebnf: '"case" case_label ":" { statement } | "default" ":" { statement } ;',
+      ebnf: '"case" case_label { "," case_label } ":" switch_stmt_body | "default" ":" switch_stmt_body ;',
       node: Choice(
-        Seq(T('case'), N('case_label'), T(':'), Star(N('statement'))),
-        Seq(T('default'), T(':'), Star(N('statement')))
+        Seq(T('case'), N('case_label'), Star(Seq(T(','), N('case_label'))), T(':'), N('switch_stmt_body')),
+        Seq(T('default'), T(':'), N('switch_stmt_body'))
       )
+    },
+    {
+      id: 'switch_stmt_body',
+      title: 'switch_stmt_body',
+      ebnf: 'block | { statement } ;',
+      node: Choice(N('block'), Star(N('statement')))
     },
     {
       id: 'switch_expr',
@@ -744,10 +759,10 @@
     {
       id: 'c_for_loop',
       title: 'c_for_loop',
-      ebnf: '"loop" "(" for_init "," for_cond "," for_step ")" block ;',
+      ebnf: '"loop" "(" for_init ";" for_cond ";" for_step ")" block ;',
       node: Seq(
         T('loop'), T('('),
-        N('for_init'), T(','), N('for_cond'), T(','), N('for_step'),
+        N('for_init'), T(';'), N('for_cond'), T(';'), N('for_step'),
         T(')'), N('block')
       )
     },
