@@ -61,5 +61,6 @@ Each record then uses:
 | [CER-024](CER-024-book-link-rewrite.md) | Published book link rewriting | Docs |
 | [CER-025](CER-025-result-propagate-panic.md) | Result, propagation, panic, and entrypoint resolution | Language / IDE |
 | [CER-026](CER-026-optional-terminators-grammar.md) | Optional `;`, C-for `;`, comma enums, multi-label switch | Language |
+| [CER-027](CER-027-trait-requires-remapping.md) | Trait `requires` remapping via `uses Trait(a: b)` | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

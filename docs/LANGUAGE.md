@@ -624,6 +624,15 @@ class Product uses Printable {
         this.name = name
     }
 }
+
+# Host field names may differ — remap requires only (not trait methods):
+class CatalogItem uses Printable(name: title) {
+    private string title
+
+    public CatalogItem(string title) {
+        this.title = title
+    }
+}
 ```
 
 Rules:
@@ -632,9 +641,14 @@ Rules:
    (or be another method of the same trait)
 2. **Body order** (parse-enforced): all `requires` before any method
 3. The host class (or an ancestor) must supply each `requires` field/method
-4. If two used traits define the same method name, the class must override it;
+4. **Requires remapping (opt-in):** `uses Trait(reqName: hostMember, …)` maps
+   a trait `requires` name onto a differently named host member. Unmapped
+   requirements still match by exact name. Trait **methods** keep their names
+   on every host and cannot appear as remap left-hand sides (dependency
+   surface vs offered contract)
+5. If two used traits define the same method name, the class must override it;
    call `TraitName.method(this)` from the override to pick a side
-5. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)
+6. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)
 
 ### Polymorphism
 

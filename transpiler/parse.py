@@ -61,6 +61,7 @@ from .ast_nodes import (
     TasksBlock,
     TraitDef,
     TraitRequire,
+    TraitUse,
     TupleLiteral,
     UnaryOp,
     WhileStmt,
@@ -1659,6 +1660,49 @@ def _parse_enum(p: _Tok, visibility: str = "") -> EnumDef:
     return EnumDef(span=sp, name=name, members=members, visibility=visibility)
 
 
+def _parse_trait_use(p: _Tok) -> TraitUse:
+    """Parse ``TraitName`` or ``TraitName(req: host, …)`` in a ``uses`` clause."""
+    sp = p.span()
+    name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    remaps: list[tuple[str, str]] = []
+    if p.at(TokenKind.LPAREN):
+        p.eat(TokenKind.LPAREN)
+        if p.at(TokenKind.RPAREN):
+            raise FatalParseError(
+                f"Empty remapping list on `uses {name}()` — omit the parentheses "
+                f"or write `uses {name}(requirement: hostMember)`.",
+                p.cur().line,
+                p.cur().column,
+                code="pys.trait-remap",
+                tips=[
+                    f"Write `uses {name}` with no parentheses when names match, "
+                    f"or map each requirement: `uses {name}(reqName: hostName)`.",
+                ],
+            )
+        while True:
+            left = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            if not p.at(TokenKind.COLON):
+                raise FatalParseError(
+                    "Trait remapping entries use `requirement: hostMember` "
+                    f"(found `{left}` without `:`).",
+                    p.cur().line,
+                    p.cur().column,
+                    code="pys.trait-remap",
+                    tips=[f"Write `{left}: hostFieldOrMethod`."],
+                )
+            p.eat(TokenKind.COLON)
+            right = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+            remaps.append((left, right))
+            if p.at(TokenKind.COMMA):
+                p.eat(TokenKind.COMMA)
+                if p.at(TokenKind.RPAREN):
+                    break
+                continue
+            break
+        p.eat(TokenKind.RPAREN)
+    return TraitUse(span=sp, name=name, remaps=remaps)
+
+
 def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
     sp = p.span()
     sealed = False
@@ -1693,17 +1737,17 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         p.eat_gt()
     bases: list[str] = []
     parent = ""
-    uses: list[str] = []
+    uses: list[TraitUse] = []
     if p.at_kw("inherits", "super"):
         p.eat(TokenKind.KEYWORD)
         parent = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         bases.append(parent)
     if p.at_kw("uses"):
         p.eat_kw("uses")
-        uses.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+        uses.append(_parse_trait_use(p))
         while p.at(TokenKind.COMMA):
             p.eat(TokenKind.COMMA)
-            uses.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
+            uses.append(_parse_trait_use(p))
     if p.at_kw("implements"):
         p.eat_kw("implements")
         bases.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)

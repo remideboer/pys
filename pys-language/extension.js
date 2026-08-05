@@ -491,7 +491,7 @@ function activate(context) {
         lambda: 'Function type / keyword: `lambda<int, bool> isEven = n => n % 2 == 0`.\nCapture by value; captured names read-only unless `shared` or `atomic`. Body: `=> expr` or `=> { … }`.',
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
-        uses: 'Compose traits onto a class: `class Product uses Printable, Comparable { … }`\nPlaced after `inherits` and before `implements`.',
+        uses: 'Compose traits onto a class: `class Product uses Printable { … }` or remap requires: `uses Printable(name: title)`.\nPlaced after `inherits` and before `implements`. Remapping applies only to `requires`, not trait method names.',
         requires: 'Trait host obligation: `requires string name` or `requires int compareTo(Product other)`.\nThe using class (or ancestor) must supply it.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',

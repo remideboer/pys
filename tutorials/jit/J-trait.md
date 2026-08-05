@@ -18,13 +18,24 @@ class Product uses Printable {
         this.name = name
     }
 }
+
+# Remap a requires name onto a differently named host field:
+class CatalogItem uses Printable(name: title) {
+    private string title
+
+    public CatalogItem(string title) {
+        this.title = title
+    }
+}
 ```
 
 ## Rules
 
 1. Traits are **composition**, not types — use `uses`, never `implements Trait`
 2. `requires` lists host fields/methods the trait needs; `this` reads them
-3. Multiple traits: `uses A, B` (order does not matter when names do not collide)
-4. Name collision → class must override; call `A.method(this)` / `B.method(this)` to choose
-5. Header order on classes: `inherits` → `uses` → `implements`
-6. **`requires` before methods** — [J-member-order](J-member-order.md)
+3. Optional remap: `uses Trait(req: hostMember)` — only for `requires`, never
+   for the trait’s own method names
+4. Multiple traits: `uses A, B` (each may carry its own remap list)
+5. Name collision → class must override; call `A.method(this)` / `B.method(this)` to choose
+6. Header order on classes: `inherits` → `uses` → `implements`
+7. **`requires` before methods** — [J-member-order](J-member-order.md)

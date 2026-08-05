@@ -434,7 +434,7 @@
     {
       id: 'class_decl',
       title: 'class_decl',
-      ebnf: '[ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses Id {"," Id} ] [ implements Id {"," Id} ] class_body ;',
+      ebnf: '[ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses trait_use {"," trait_use} ] [ implements Id {"," Id} ] class_body ;',
       node: Seq(
         Opt(N('top_visibility')),
         Opt(Choice(T('sealed'), T('abstract'))),
@@ -442,10 +442,28 @@
         N('identifier'),
         Opt(N('type_params')),
         Opt(Seq(Choice(T('inherits'), T('super')), N('identifier'))),
-        Opt(Seq(T('uses'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
+        Opt(Seq(T('uses'), N('trait_use'), Star(Seq(T(','), N('trait_use'))))),
         Opt(Seq(T('implements'), N('identifier'), Star(Seq(T(','), N('identifier'))))),
         N('class_body')
       )
+    },
+    {
+      id: 'trait_use',
+      title: 'trait_use',
+      ebnf: 'identifier [ trait_remap ] ;',
+      node: Seq(N('identifier'), Opt(N('trait_remap')))
+    },
+    {
+      id: 'trait_remap',
+      title: 'trait_remap',
+      ebnf: '"(" remap_entry { "," remap_entry } ")" ;',
+      node: Seq(T('('), N('remap_entry'), Star(Seq(T(','), N('remap_entry'))), T(')'))
+    },
+    {
+      id: 'remap_entry',
+      title: 'remap_entry',
+      ebnf: 'identifier ":" identifier ;',
+      node: Seq(N('identifier'), T(':'), N('identifier'))
     },
     {
       id: 'abstract_method_decl',

@@ -277,6 +277,7 @@ class _Emitter:
         self._expr_indent = 0
         self._lambda_rename: dict[str, str] = {}
         self._brace_depth = 0
+        self._trait_requires_remap: dict[str, str] = {}
         self._scope_serial = 0
         self._current_pys_line: int | None = None
         self.line_origins: list[int | None] = []
@@ -1008,18 +1009,21 @@ class _Emitter:
         # Trait methods to flatten: public name if host does not override;
         # always emit mangled `_Trait_method` when host overrides that name
         # so `Trait.method(this)` can disambiguate.
-        flat_methods: list = []
-        mangled_methods: list[tuple[str, object]] = []
-        for tname in stmt.uses:
+        # Each entry carries requires remaps for that trait use.
+        flat_methods: list[tuple[dict[str, str], object]] = []
+        mangled_methods: list[tuple[dict[str, str], str, object]] = []
+        for use in stmt.uses:
+            tname = use.name
+            remaps = dict(use.remaps)
             trait = self.trait_defs.get(tname)
             if trait is None:
                 continue
             for m in trait.methods:
                 mangled = f"_{tname}_{m.name}"
                 if m.name in host_names:
-                    mangled_methods.append((mangled, m))
+                    mangled_methods.append((remaps, mangled, m))
                 else:
-                    flat_methods.append(m)
+                    flat_methods.append((remaps, m))
                     # Still emit mangled twin when multiple traits could share
                     # the name after an override path; keep one public body.
         if not stmt.fields and not stmt.methods and not flat_methods and not mangled_methods:
@@ -1050,23 +1054,47 @@ class _Emitter:
         # calls super(...) or this(...). Interface-only classes are unchanged.
         inject_super = bool(stmt.parent)
         first_method = True
-        for mangled, m in mangled_methods:
+        for remaps, mangled, m in mangled_methods:
             if not first_method and self.lines and self.lines[-1] != "":
                 self._append_raw("", pys_line=None)
             first_method = False
-            self._method(m, indent + 1, inject_super=False, emit_name=mangled)
+            self._method(
+                m,
+                indent + 1,
+                inject_super=False,
+                emit_name=mangled,
+                requires_remap=remaps,
+            )
         for i, m in enumerate(stmt.methods):
             if (not first_method or i > 0) and self.lines and self.lines[-1] != "":
                 self._append_raw("", pys_line=None)
             first_method = False
             self._method(m, indent + 1, inject_super=inject_super and m.is_constructor)
-        for m in flat_methods:
+        for remaps, m in flat_methods:
             if not first_method and self.lines and self.lines[-1] != "":
                 self._append_raw("", pys_line=None)
             first_method = False
-            self._method(m, indent + 1, inject_super=False)
+            self._method(m, indent + 1, inject_super=False, requires_remap=remaps)
 
     def _method(
+        self,
+        m: MethodDef,
+        indent: int,
+        *,
+        inject_super: bool = False,
+        emit_name: str | None = None,
+        requires_remap: dict[str, str] | None = None,
+    ) -> None:
+        prev_remap = self._trait_requires_remap
+        self._trait_requires_remap = dict(requires_remap or {})
+        try:
+            self._method_body(
+                m, indent, inject_super=inject_super, emit_name=emit_name
+            )
+        finally:
+            self._trait_requires_remap = prev_remap
+
+    def _method_body(
         self,
         m: MethodDef,
         indent: int,
@@ -1458,7 +1486,15 @@ class _Emitter:
         if isinstance(expr, KeywordArg):
             return f"{expr.name}={self._expr(expr.value)}"
         if isinstance(expr, Member):
-            return f"{self._expr(expr.object)}.{expr.name}"
+            attr = expr.name
+            if (
+                self._trait_requires_remap
+                and isinstance(expr.object, Identifier)
+                and expr.object.name == "self"
+                and attr in self._trait_requires_remap
+            ):
+                attr = self._trait_requires_remap[attr]
+            return f"{self._expr(expr.object)}.{attr}"
         if isinstance(expr, Index):
             return f"{self._expr(expr.object)}[{self._expr(expr.index)}]"
         if isinstance(expr, Slice):

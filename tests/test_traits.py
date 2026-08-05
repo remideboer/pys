@@ -56,6 +56,7 @@ def test_traits_product_behavior() -> None:
         "within limit",
         "overflow",
         "HEY/hi",
+        "Item: widget",
     ]
 
 
@@ -137,3 +138,115 @@ class Item uses Printable {
     assert "Printable" in (analysis.get("symbols") or {})
     hit = lookup_symbol(analysis, "Printable")
     assert hit is not None
+
+
+def test_requires_remap_runs_and_rewrites_emit() -> None:
+    """Given uses Printable(name: naam), When label(), Then host field is used."""
+    source = """
+trait Printable {
+    requires string name
+    string label() { return "Item: " + this.name }
+}
+class Klant uses Printable(name: naam) {
+    private string naam
+    public Klant(string naam) { this.naam = naam }
+}
+print(Klant("Ada").label())
+"""
+    py = transpile(source)
+    ast.parse(py)
+    assert "self.naam" in py
+    assert 'return "Item: " + self.name' not in py or "self.naam" in py
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(path)], capture_output=True, text=True, check=True
+        )
+    assert proc.stdout.strip() == "Item: Ada"
+
+
+def test_partial_and_multi_trait_remap() -> None:
+    source = """
+trait Auditable {
+    requires string owner
+    requires string createdAt
+    string auditLine() { return this.owner + " @ " + this.createdAt }
+}
+trait Discountable {
+    requires float price
+    float discounted(float pct) { return this.price * (1.0 - pct) }
+}
+class Invoice uses Auditable(owner: billedTo), Discountable(price: unitPrice) {
+    private string billedTo
+    private string createdAt
+    private float unitPrice
+    public Invoice(string billedTo, string createdAt, float unitPrice) {
+        this.billedTo = billedTo
+        this.createdAt = createdAt
+        this.unitPrice = unitPrice
+    }
+}
+Invoice inv = Invoice("Acme", "2026-01-01", 100.0)
+print(inv.auditLine())
+print(inv.discounted(0.1))
+"""
+    py = transpile(source)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(path)], capture_output=True, text=True, check=True
+        )
+    lines = proc.stdout.strip().splitlines()
+    assert lines[0] == "Acme @ 2026-01-01"
+    assert float(lines[1]) == pytest.approx(90.0)
+
+
+@pytest.mark.parametrize(
+    "source, match",
+    [
+        (
+            """
+trait Printable {
+    requires string name
+    string label() { return this.name }
+}
+class C uses Printable(label: naam) {
+    private string naam
+    public C(string naam) { this.naam = naam }
+}
+""",
+            r"method offered by the trait|cannot be remapped",
+        ),
+        (
+            """
+trait Printable {
+    requires string name
+    string label() { return this.name }
+}
+class C uses Printable(title: naam) {
+    private string naam
+    public C(string naam) { this.naam = naam }
+}
+""",
+            r"no requirement named 'title'|did you mean",
+        ),
+        (
+            """
+trait Printable {
+    requires string name
+    string label() { return this.name }
+}
+class C uses Printable(name: titel) {
+    private string naam
+    public C(string naam) { this.naam = naam }
+}
+""",
+            r"does not provide 'titel'.*mapped from Printable's 'name'",
+        ),
+    ],
+)
+def test_trait_remap_errors(source: str, match: str) -> None:
+    with pytest.raises(TranspileError, match=match):
+        transpile(source)

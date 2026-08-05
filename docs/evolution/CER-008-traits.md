@@ -26,6 +26,7 @@ No `trait` / `uses` / `requires`; only `interface` + single `inherits`.
   `Trait.method(this)`.
 - IDE: TextMate, hover, snippets, go-to; extension ≥ 0.0.41.
 - Docs: LANGUAGE, EBNF, railroad, JIT `J-trait`, ADR-009.
+- Requires remapping (`uses Trait(req: host)`) — [CER-027](CER-027-trait-requires-remapping.md).
 
 ### Evidence
 

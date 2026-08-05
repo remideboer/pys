@@ -21,9 +21,15 @@ a second inheritance axis or duck-typed mixins.
    and as `Trait()`.
 4. **`this.x`** in a trait method must match `requires` (or another method of
    the same trait).
-5. **Collisions**: same method from two used traits → host must override;
+5. **Requires remapping (opt-in):** `uses Trait(req: hostMember, …)` maps a
+   trait `requires` name onto a host member for satisfaction and emit rewrite.
+   Unmapped requirements keep exact-name matching. Remapping never applies to
+   the trait’s own method names (offered contract stays fixed per host).
+   See [CER-027](../evolution/CER-027-trait-requires-remapping.md).
+6. **Collisions**: same method from two used traits → host must override;
    `TraitName.method(this)` selects a side (emitted as mangled helpers).
-6. **Emit**: flatten methods into the host class (not Python MI / mixin bases).
+7. **Emit**: flatten methods into the host class (not Python MI / mixin bases);
+   rewrite `self.<requires>` to the remapped host name when applicable.
 
 ## Consequences
 
@@ -36,4 +42,5 @@ a second inheritance axis or duck-typed mixins.
 
 - Python mixin bases (puts traits in the type/MRO hierarchy).
 - Implicit duck-typed mixins without `requires`.
+- Remapping trait **method** names (would make the offered surface host-dependent).
 - Trait bounds as types (deferred; open question in requirements §3.6).

@@ -52,6 +52,8 @@ from .ast_nodes import (
     TasksBlock,
     TraitDef,
     TraitRequire,
+    TraitUse,
+    TraitRequire,
     TupleLiteral,
     UnaryOp,
     WhileStmt,
@@ -2333,7 +2335,8 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 if not m.is_constructor:
                     members[m.name] = m.access or "public"
             # Flatten trait methods into the host's member map (public).
-            for tname in stmt.uses:
+            for use in stmt.uses:
+                tname = use.name
                 trait = traits.get(tname)
                 if trait is None:
                     continue
@@ -2931,7 +2934,8 @@ def _check_traits(body: list[Any], *, types: dict[str, str]) -> None:
         host_fields, host_methods = _host_fields_and_methods(stmt, classes)
         method_owners: dict[str, list[str]] = {}
 
-        for tname in stmt.uses:
+        for use in stmt.uses:
+            tname = use.name
             trait = traits.get(tname)
             if trait is None:
                 _transpile_error(
@@ -2941,60 +2945,122 @@ def _check_traits(body: list[Any], *, types: dict[str, str]) -> None:
                     tname,
                     code="pys.trait-unknown",
                 )
+            req_by_name = {r.name: r for r in trait.requires}
+            method_names = {m.name for m in trait.methods}
+            remap_map: dict[str, str] = {}
+            for left, right in use.remaps:
+                if left in remap_map:
+                    _transpile_error(
+                        f"Duplicate remapping for requirement '{left}' on "
+                        f"`uses {tname}` — each requirement may be mapped at most once.",
+                        line,
+                        1,
+                        left,
+                        code="pys.trait-remap",
+                    )
+                if left not in req_by_name:
+                    if left in method_names:
+                        _transpile_error(
+                            f"Trait '{tname}' declares no requirement named '{left}' — "
+                            f"'{left}' is a method offered by the trait, not a "
+                            f"dependency it requires. Trait method names cannot be remapped.",
+                            line,
+                            1,
+                            left,
+                            code="pys.trait-remap",
+                            tips=[
+                                "Remap only `requires` names: "
+                                f"`uses {tname}(requirement: hostMember)`.",
+                            ],
+                        )
+                    hint = ""
+                    if req_by_name:
+                        # Simple tip: list first requires name as "did you mean"
+                        sample = sorted(req_by_name)[0]
+                        hint = f" — did you mean '{sample}'?"
+                    _transpile_error(
+                        f"Trait '{tname}' declares no requirement named '{left}'{hint}",
+                        line,
+                        1,
+                        left,
+                        code="pys.trait-remap",
+                        tips=[
+                            f"Remap entries must name a `requires` item of {tname}."
+                        ],
+                    )
+                remap_map[left] = right
+
             for req in trait.requires:
                 rline = req.span.line if req.span else line
                 rcol = req.span.column if req.span else 1
+                host_name = remap_map.get(req.name, req.name)
+                mapped = host_name != req.name
+                if mapped:
+                    type_part = (
+                        f"{req.type_name}, mapped from {tname}'s '{req.name}'"
+                        if req.type_name
+                        else f"mapped from {tname}'s '{req.name}'"
+                    )
+                else:
+                    type_part = req.type_name or ""
                 if req.kind == "field":
-                    if req.name not in host_fields:
+                    if host_name not in host_fields:
+                        detail = f"'{host_name}' ({type_part})" if type_part else f"'{host_name}'"
                         _transpile_error(
                             f"{stmt.name} uses {tname} but does not provide "
-                            f"'{req.name}' ({req.type_name}), required by trait {tname}.",
+                            f"{detail}, required by trait {tname}.",
                             rline,
                             rcol,
-                            req.name,
+                            host_name,
                             code="pys.trait-requires",
                         )
-                    got = _base_type_name(host_fields[req.name] or "")
+                    got = _base_type_name(host_fields[host_name] or "")
                     want = _base_type_name(req.type_name or "")
                     if want and got and got != want:
                         _transpile_error(
-                            f"{stmt.name} uses {tname} but '{req.name}' has type "
+                            f"{stmt.name} uses {tname} but '{host_name}' has type "
                             f"{got}, required {want} by trait {tname}.",
                             rline,
                             rcol,
-                            req.name,
+                            host_name,
                             code="pys.trait-requires",
                         )
                 else:
-                    if req.name not in host_methods:
+                    if host_name not in host_methods:
+                        if mapped:
+                            detail = (
+                                f"'{host_name}' (..., mapped from {tname}'s '{req.name}')"
+                            )
+                        else:
+                            detail = f"'{host_name}' (...)"
                         _transpile_error(
                             f"{stmt.name} uses {tname} but does not provide "
-                            f"'{req.name}' (...), required by trait {tname}.",
+                            f"{detail}, required by trait {tname}.",
                             rline,
                             rcol,
-                            req.name,
+                            host_name,
                             code="pys.trait-requires",
                         )
-                    ret, arity, _ptypes = host_methods[req.name]
+                    ret, arity, _ptypes = host_methods[host_name]
                     if arity != len(req.params):
                         _transpile_error(
-                            f"{stmt.name} method '{req.name}' does not match "
+                            f"{stmt.name} method '{host_name}' does not match "
                             f"trait {tname} requires (expected {len(req.params)} "
                             f"parameter(s), found {arity}).",
                             rline,
                             rcol,
-                            req.name,
+                            host_name,
                             code="pys.trait-requires",
                         )
                     want_ret = _base_type_name(req.type_name or "")
                     got_ret = _base_type_name(ret or "")
                     if want_ret and got_ret and want_ret != got_ret:
                         _transpile_error(
-                            f"{stmt.name} method '{req.name}' return type {got_ret} "
+                            f"{stmt.name} method '{host_name}' return type {got_ret} "
                             f"does not match trait {tname} requires {want_ret}.",
                             rline,
                             rcol,
-                            req.name,
+                            host_name,
                             code="pys.trait-requires",
                         )
             for m in trait.methods:
@@ -3125,8 +3191,8 @@ def _check_interfaces(body: list[Any]) -> None:
                 continue
             available[m.name] = len(m.params)
         # Trait-composed methods count toward interface satisfaction.
-        for tname in stmt.uses:
-            trait = traits.get(tname)
+        for use in stmt.uses:
+            trait = traits.get(use.name)
             if trait is None:
                 continue
             for m in trait.methods:
@@ -3146,8 +3212,8 @@ def _check_interfaces(body: list[Any]) -> None:
             for m in parent_cls.methods:
                 if not m.is_constructor:
                     available.setdefault(m.name, len(m.params))
-            for tname in parent_cls.uses:
-                trait = traits.get(tname)
+            for use in parent_cls.uses:
+                trait = traits.get(use.name)
                 if trait is None:
                     continue
                 for m in trait.methods:

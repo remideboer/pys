@@ -134,6 +134,35 @@
 <p>Output:</p>
 <pre><code class="language-text">Item: Mug
 </code></pre>
+<h2>Remapping host names</h2>
+<p>Traits stay reusable when the host uses different field names. Remap only
+<code>requires</code> entries — the trait’s <strong>methods</strong> keep the same name on every host:</p>
+<pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">Printable</span> {
+    <span class="tok-kw">requires</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
+
+    <span class="tok-type">string</span> <span class="tok-ident">label</span>() {
+        <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">Item: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-kw">this</span>.<span class="tok-ident">name</span>
+    }
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">CatalogItem</span> <span class="tok-kw">uses</span> <span class="tok-typename">Printable</span>(<span class="tok-ident">name</span>: <span class="tok-ident">title</span>) {
+    <span class="tok-mod">private</span> <span class="tok-type">string</span> <span class="tok-ident">title</span>
+
+    <span class="tok-mod">public</span> <span class="tok-typename">CatalogItem</span>(<span class="tok-type">string</span> <span class="tok-ident">title</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">title</span> <span class="tok-op">=</span> <span class="tok-ident">title</span>
+    }
+}
+
+<span class="tok-typename">CatalogItem</span> <span class="tok-ident">item</span> <span class="tok-op">=</span> <span class="tok-typename">CatalogItem</span>(<span class="tok-string">&quot;</span><span class="tok-string">widget</span><span class="tok-string">&quot;</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">item</span>.<span class="tok-ident">label</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Item: widget
+</code></pre>
+<blockquote>
+<p><strong>Sidebar — dependency vs offered surface</strong></p>
+<p><code>requires</code> is what the trait <em>needs</em> from the host (remappable). The
+trait’s own methods are what it <em>offers</em> (fixed names, not remappable).</p>
+</blockquote>
 <h2>When two traits collide</h2>
 <p>If two traits define the same method name, the host class <strong>must</strong> override
 it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:</p>

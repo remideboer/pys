@@ -269,16 +269,16 @@
   "Class uses traits": {
     "prefix": "uses",
     "body": [
-      "class ${1:Name} uses ${2:Trait} {",
-      "\tprivate ${3|string,int|} ${4:field}",
+      "class ${1:Name} uses ${2:Trait}(${3:req}: ${4:hostMember}) {",
+      "\tprivate ${5|string,int|} ${4:hostMember}",
       "",
-      "\tpublic ${1:Name}(${3} ${4}) {",
+      "\tpublic ${1:Name}(${5} ${4}) {",
       "\t\tthis.${4} = ${4}",
       "\t}",
       "\t${0}",
       "}"
     ],
-    "description": "PYS class composing a trait via uses"
+    "description": "PYS class composing a trait via uses (optional requires remap)"
   },
   "Enum explicit": {
     "prefix": "enumx",

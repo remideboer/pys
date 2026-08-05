@@ -473,11 +473,20 @@ class MethodDef(Node):
 
 
 @dataclass
+class TraitUse(Node):
+    """One entry in a class ``uses`` clause, with optional requires remaps."""
+
+    name: str = ""
+    # (trait_requires_name, host_member_name) — empty means exact-name matching
+    remaps: list[tuple[str, str]] = field(default_factory=list)
+
+
+@dataclass
 class ClassDef(Node):
     name: str = ""
     bases: list[str] = field(default_factory=list)
     parent: str = ""  # superclass from `inherits` / header `super` (not interfaces)
-    uses: list[str] = field(default_factory=list)  # trait names (composition, not bases)
+    uses: list[TraitUse] = field(default_factory=list)  # composition, not bases
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""

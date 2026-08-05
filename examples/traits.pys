@@ -146,3 +146,18 @@ class Greeter uses Loud, Soft {
 
 Greeter g = Greeter()
 print(g.greet())  # HEY/hi
+
+# --- requires remapping: host names differ from trait requires (ADR-009 / CER-027) ---
+# label() still called label(); this.name in the trait reads host field `title`.
+class CatalogItem uses Printable(name: title) {
+    private string title
+    private float unitPrice
+
+    public CatalogItem(string title, float unitPrice) {
+        this.title = title
+        this.unitPrice = unitPrice
+    }
+}
+
+CatalogItem item = CatalogItem("widget", 9.5)
+print(item.label())  # Item: widget

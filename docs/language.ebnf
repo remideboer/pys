@@ -176,11 +176,18 @@ parameter        = [ type_name ] , identifier ;
 class_decl       = [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , identifier ,
                    [ type_params ] ,
                    [ ( "inherits" | "super" ) , identifier ] ,
-                   [ "uses" , identifier , { "," , identifier } ] ,
+                   [ "uses" , trait_use , { "," , trait_use } ] ,
                    [ "implements" , identifier , { "," , identifier } ] ,
                    class_body ;
 (* sealed and abstract are mutually exclusive.
-   Resolution order: base class, then trait composition, then interface check. *)
+   Resolution order: base class, then trait composition, then interface check.
+   Each trait_use may remap requires names onto host members (opt-in). *)
+
+trait_use         = identifier , [ trait_remap ] ;
+trait_remap       = "(" , remap_entry , { "," , remap_entry } , ")" ;
+remap_entry       = identifier , ":" , identifier ;
+(* Left: name as declared in the trait's requires. Right: host member.
+   Remapping applies only to requires — never to the trait's own methods. *)
 
 type_params      = "<" , identifier , { "," , identifier } , ">" ;
 

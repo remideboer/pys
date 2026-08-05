@@ -34,6 +34,44 @@ Item: Mug
 ```
 
 
+## Remapping host names
+
+Traits stay reusable when the host uses different field names. Remap only
+`requires` entries — the trait’s **methods** keep the same name on every host:
+
+```pys
+trait Printable {
+    requires string name
+
+    string label() {
+        return "Item: " + this.name
+    }
+}
+
+class CatalogItem uses Printable(name: title) {
+    private string title
+
+    public CatalogItem(string title) {
+        this.title = title
+    }
+}
+
+CatalogItem item = CatalogItem("widget")
+print(item.label())
+```
+
+Output:
+
+```text
+Item: widget
+```
+
+
+> **Sidebar — dependency vs offered surface**
+>
+> `requires` is what the trait *needs* from the host (remappable). The
+> trait’s own methods are what it *offers* (fixed names, not remappable).
+
 ## When two traits collide
 
 If two traits define the same method name, the host class **must** override
