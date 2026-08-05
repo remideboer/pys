@@ -1,8 +1,9 @@
 # Shop example — `entity` identity + MySQL CRUD (OO / SOLID layout)
 
-Console app that maps [`shop.sql`](shop.sql) tables to PYS **`entity`** types
-and exercises identity equality while doing CRUD. Teaching companion to
-[`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).
+App that maps [`shop.sql`](shop.sql) tables to PYS **`entity`** types and
+exercises identity equality while doing CRUD. At startup you choose **console
+menus** or a **Tkinter GUI**; both share the same repositories. Teaching
+companion to [`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).
 
 ## Layers (SOLID)
 
@@ -15,17 +16,21 @@ and exercises identity equality while doing CRUD. Teaching companion to
 | [`mappers.pys`](mappers.pys) | [Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html) contracts + MySQL mapping: SQL and tuple/entity translation |
 | [`repositories.pys`](repositories.pys) | Typed abstract [Repository](https://martinfowler.com/eaaCatalog/repository.html) contracts + mapper-backed implementations |
 | [`console.pys`](console.pys) | `Console` port + `StdConsole` adapter (**S**, **D**) |
-| [`menus.pys`](menus.pys) | One class per screen (**S**); depends on repository **ports** |
-| [`shop_app.pys`](shop_app.pys) | Composition root — wiring only |
+| [`menus.pys`](menus.pys) | Console screens (**S**); depends on repository **ports** |
+| [`gui.pys`](gui.pys) | Tkinter notebook panels (**S**); same repository **ports**, no SQL |
+| [`shop_app.pys`](shop_app.pys) | Composition root — wiring + console-vs-GUI choice |
 | [`pys.toml`](pys.toml) | `[project].main = shop_app.pys` |
 
 - **S**ingle responsibility: SQL/row translation stays in mappers; entity
-  collection operations stay in repositories; prompts stay in menus/console.
-- **O**pen/closed: add a new `Menu` implementor and one `MainMenu` case.
+  collection operations stay in repositories; prompts stay in menus/console;
+  widgets stay in `gui.pys`.
+- **O**pen/closed: add a new `Menu` implementor and one `MainMenu` case; GUI
+  panels are independent classes on the same ports.
 - **L**iskov: `OrderLine` is a substitutable `Order` for identity inheritance.
 - **I**nterface segregation: separate product / order / line repository contracts.
-- **D**ependency inversion: menus take abstract `ProductRepository` etc.; default
-  repositories take abstract mappers; only MySQL mappers know `ShopDatabase`.
+- **D**ependency inversion: menus and GUI take abstract `ProductRepository`
+  etc.; default repositories take abstract mappers; only MySQL mappers know
+  `ShopDatabase`.
 
 ## Repository vs Data Mapper
 
@@ -86,6 +91,17 @@ Or (uses `pys.toml` main):
 ```text
 python -m transpiler run examples/database
 ```
+
+At startup the process asks on stdin:
+
+```text
+1) Console menus
+2) Tkinter GUI
+```
+
+Choose `1` for the text menus, or `2` for the notebook UI (Products / Orders /
+Order lines / Identity). Tkinter is stdlib; option `2` needs a display (local
+Windows desktop is fine — not for headless CI).
 
 ## What to try
 

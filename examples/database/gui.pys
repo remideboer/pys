@@ -1,0 +1,649 @@
+# Tkinter presentation (SRP per panel). Depends on repository ports only (DIP).
+# Twin of menus.pys — same CRUD + identity demos, different I/O.
+
+import tkinter as tk
+import tkinter.ttk as ttk
+import tkinter.messagebox as messagebox
+import Product, Order, OrderLine from models
+import ProductRepository, OrderRepository, OrderLineRepository from repositories
+
+package class ProductPanel {
+    private ProductRepository products
+    private Listbox listBox
+    private list<int> productIds
+    private Entry skuEntry
+    private Entry nameEntry
+    private Entry priceEntry
+
+    public ProductPanel(Frame parent, ProductRepository products) {
+        this.products = products
+        this.productIds = []
+
+        Frame left = ttk.Frame(parent)
+        left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        Frame right = ttk.Frame(parent)
+        right.pack(side="right", fill="y", padx=4, pady=4)
+
+        ttk.Label(left, text="Products — select a row to edit").pack(anchor="w")
+        this.listBox = tk.Listbox(left, width=56, height=22)
+        this.listBox.pack(fill="both", expand=True)
+        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+
+        ttk.Label(right, text="SKU").pack(anchor="w")
+        this.skuEntry = ttk.Entry(right, width=28)
+        this.skuEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Name").pack(anchor="w")
+        this.nameEntry = ttk.Entry(right, width=28)
+        this.nameEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Unit price").pack(anchor="w")
+        this.priceEntry = ttk.Entry(right, width=28)
+        this.priceEntry.pack(fill="x", pady=2)
+
+        ttk.Button(right, text="Refresh", command=this.refresh).pack(fill="x", pady=2)
+        ttk.Button(right, text="Create", command=this.onCreate).pack(fill="x", pady=2)
+        ttk.Button(right, text="Update name/price", command=this.onUpdate).pack(fill="x", pady=2)
+        ttk.Button(right, text="Activate", command=this.onActivate).pack(fill="x", pady=2)
+        ttk.Button(right, text="Deactivate", command=this.onDeactivate).pack(fill="x", pady=2)
+        ttk.Button(right, text="Delete", command=this.onDelete).pack(fill="x", pady=2)
+
+        this.refresh()
+    }
+
+    public void refresh() {
+        this.listBox.delete(0, "end")
+        this.productIds = []
+        list<Product> rows = this.products.all()
+        loop (Product p in rows) {
+            this.listBox.insert("end", p.summary())
+            this.productIds.append(p.id())
+        }
+    }
+
+    private void onSelect(event) {
+        Product product = this.selectedProduct()
+        if (product == null) {
+            return
+        }
+        this.skuEntry.delete(0, "end")
+        this.skuEntry.insert(0, product.sku)
+        this.nameEntry.delete(0, "end")
+        this.nameEntry.insert(0, product.name)
+        this.priceEntry.delete(0, "end")
+        this.priceEntry.insert(0, str(product.unitPrice))
+    }
+
+    private Product selectedProduct() {
+        list sel = this.listBox.curselection()
+        if (len(sel) == 0) {
+            return null
+        }
+        int idx = sel[0]
+        if (idx < 0) {
+            return null
+        }
+        if (idx >= len(this.productIds)) {
+            return null
+        }
+        int id = this.productIds[idx]
+        return this.products.get(id)
+    }
+
+    private void onCreate() {
+        string sku = this.skuEntry.get().strip()
+        string name = this.nameEntry.get().strip()
+        string priceText = this.priceEntry.get().strip()
+        if (sku == "") {
+            messagebox.showinfo("Products", "Enter a SKU.")
+            return
+        }
+        if (name == "") {
+            messagebox.showinfo("Products", "Enter a name.")
+            return
+        }
+        if (priceText == "") {
+            messagebox.showinfo("Products", "Enter a unit price.")
+            return
+        }
+        float price = float(priceText)
+        Product product = this.products.add(sku, name, price)
+        this.refresh()
+        messagebox.showinfo("Products", "Created product id=" + str(product.id()))
+    }
+
+    private void onUpdate() {
+        Product product = this.selectedProduct()
+        if (product == null) {
+            messagebox.showinfo("Products", "Select a product first.")
+            return
+        }
+        string name = this.nameEntry.get().strip()
+        string priceText = this.priceEntry.get().strip()
+        if (name == "") {
+            messagebox.showinfo("Products", "Enter a name.")
+            return
+        }
+        if (priceText == "") {
+            messagebox.showinfo("Products", "Enter a unit price.")
+            return
+        }
+        float price = float(priceText)
+        product.name = name
+        product.unitPrice = price
+        this.products.save(product)
+        this.refresh()
+        messagebox.showinfo(
+            "Products",
+            "Updated product #" + str(product.id()) + " (identity unchanged)"
+        )
+    }
+
+    private void onActivate() {
+        this.setActive(true)
+    }
+
+    private void onDeactivate() {
+        this.setActive(false)
+    }
+
+    private void setActive(bool active) {
+        Product product = this.selectedProduct()
+        if (product == null) {
+            messagebox.showinfo("Products", "Select a product first.")
+            return
+        }
+        product.active = active
+        this.products.save(product)
+        this.refresh()
+        messagebox.showinfo(
+            "Products",
+            "Product #" + str(product.id()) + " active=" + str(active)
+        )
+    }
+
+    private void onDelete() {
+        Product product = this.selectedProduct()
+        if (product == null) {
+            messagebox.showinfo("Products", "Select a product first.")
+            return
+        }
+        int id = product.id()
+        this.products.remove(product)
+        this.refresh()
+        messagebox.showinfo(
+            "Products",
+            "Deleted product #" + str(id) + " (fails if order_line still references it)"
+        )
+    }
+}
+
+package class OrderPanel {
+    private OrderRepository orders
+    private Listbox listBox
+    private list<int> orderIds
+    private Entry customerEntry
+    private Entry statusEntry
+
+    public OrderPanel(Frame parent, OrderRepository orders) {
+        this.orders = orders
+        this.orderIds = []
+
+        Frame left = ttk.Frame(parent)
+        left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        Frame right = ttk.Frame(parent)
+        right.pack(side="right", fill="y", padx=4, pady=4)
+
+        ttk.Label(left, text="Orders — select a row to edit").pack(anchor="w")
+        this.listBox = tk.Listbox(left, width=56, height=22)
+        this.listBox.pack(fill="both", expand=True)
+        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+
+        ttk.Label(right, text="Customer ref").pack(anchor="w")
+        this.customerEntry = ttk.Entry(right, width=28)
+        this.customerEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Status").pack(anchor="w")
+        this.statusEntry = ttk.Entry(right, width=28)
+        this.statusEntry.pack(fill="x", pady=2)
+        this.statusEntry.insert(0, "placed")
+
+        ttk.Button(right, text="Refresh", command=this.refresh).pack(fill="x", pady=2)
+        ttk.Button(right, text="Create", command=this.onCreate).pack(fill="x", pady=2)
+        ttk.Button(right, text="Update status", command=this.onUpdateStatus).pack(fill="x", pady=2)
+        ttk.Button(right, text="Delete (cascades lines)", command=this.onDelete).pack(
+            fill="x", pady=2
+        )
+
+        this.refresh()
+    }
+
+    public void refresh() {
+        this.listBox.delete(0, "end")
+        this.orderIds = []
+        list<Order> rows = this.orders.all()
+        loop (Order o in rows) {
+            this.listBox.insert("end", o.summary())
+            this.orderIds.append(o.id())
+        }
+    }
+
+    private void onSelect(event) {
+        Order order = this.selectedOrder()
+        if (order == null) {
+            return
+        }
+        this.customerEntry.delete(0, "end")
+        this.customerEntry.insert(0, order.customerRef)
+        this.statusEntry.delete(0, "end")
+        this.statusEntry.insert(0, order.status)
+    }
+
+    private Order selectedOrder() {
+        list sel = this.listBox.curselection()
+        if (len(sel) == 0) {
+            return null
+        }
+        int idx = sel[0]
+        if (idx < 0) {
+            return null
+        }
+        if (idx >= len(this.orderIds)) {
+            return null
+        }
+        int id = this.orderIds[idx]
+        return this.orders.get(id)
+    }
+
+    private void onCreate() {
+        string customer = this.customerEntry.get().strip()
+        string status = this.statusEntry.get().strip()
+        if (status == "") {
+            status = "placed"
+        }
+        Order order = this.orders.add(status, customer)
+        this.refresh()
+        messagebox.showinfo("Orders", "Created order id=" + str(order.id()))
+    }
+
+    private void onUpdateStatus() {
+        Order order = this.selectedOrder()
+        if (order == null) {
+            messagebox.showinfo("Orders", "Select an order first.")
+            return
+        }
+        string status = this.statusEntry.get().strip()
+        if (status == "") {
+            messagebox.showinfo("Orders", "Enter a status.")
+            return
+        }
+        order.status = status
+        this.orders.save(order)
+        this.refresh()
+        messagebox.showinfo(
+            "Orders",
+            "Updated order #" + str(order.id()) + " status (identity unchanged)"
+        )
+    }
+
+    private void onDelete() {
+        Order order = this.selectedOrder()
+        if (order == null) {
+            messagebox.showinfo("Orders", "Select an order first.")
+            return
+        }
+        int id = order.id()
+        this.orders.remove(order)
+        this.refresh()
+        messagebox.showinfo(
+            "Orders",
+            "Deleted order #" + str(id) + " (order_line rows cascade)"
+        )
+    }
+}
+
+package class OrderLinePanel {
+    private OrderLineRepository lines
+    private ProductRepository products
+    private OrderRepository orders
+    private Listbox listBox
+    private list<string> lineKeys
+    private Entry filterOrderEntry
+    private Entry orderIdEntry
+    private Entry lineNumberEntry
+    private Entry productIdEntry
+    private Entry qtyEntry
+
+    public OrderLinePanel(
+        Frame parent,
+        OrderLineRepository lines,
+        ProductRepository products,
+        OrderRepository orders
+    ) {
+        this.lines = lines
+        this.products = products
+        this.orders = orders
+        this.lineKeys = []
+
+        Frame left = ttk.Frame(parent)
+        left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
+        Frame right = ttk.Frame(parent)
+        right.pack(side="right", fill="y", padx=4, pady=4)
+
+        Frame filterRow = ttk.Frame(left)
+        filterRow.pack(fill="x")
+        ttk.Label(filterRow, text="Order id filter (0 = all)").pack(side="left")
+        this.filterOrderEntry = ttk.Entry(filterRow, width=8)
+        this.filterOrderEntry.pack(side="left", padx=4)
+        this.filterOrderEntry.insert(0, "0")
+        ttk.Button(filterRow, text="Refresh", command=this.refresh).pack(side="left")
+
+        this.listBox = tk.Listbox(left, width=56, height=20)
+        this.listBox.pack(fill="both", expand=True)
+        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+
+        ttk.Label(right, text="Order id").pack(anchor="w")
+        this.orderIdEntry = ttk.Entry(right, width=28)
+        this.orderIdEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Line number").pack(anchor="w")
+        this.lineNumberEntry = ttk.Entry(right, width=28)
+        this.lineNumberEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Product id").pack(anchor="w")
+        this.productIdEntry = ttk.Entry(right, width=28)
+        this.productIdEntry.pack(fill="x", pady=2)
+        ttk.Label(right, text="Quantity").pack(anchor="w")
+        this.qtyEntry = ttk.Entry(right, width=28)
+        this.qtyEntry.pack(fill="x", pady=2)
+        this.qtyEntry.insert(0, "1")
+
+        ttk.Button(right, text="Add line", command=this.onAdd).pack(fill="x", pady=2)
+        ttk.Button(right, text="Update quantity", command=this.onUpdateQty).pack(
+            fill="x", pady=2
+        )
+        ttk.Button(right, text="Delete line", command=this.onDelete).pack(fill="x", pady=2)
+
+        this.refresh()
+    }
+
+    public void refresh() {
+        this.listBox.delete(0, "end")
+        this.lineKeys = []
+        string filterText = this.filterOrderEntry.get().strip()
+        if (filterText == "") {
+            filterText = "0"
+        }
+        int orderId = int(filterText)
+        list<OrderLine> rows = []
+        if (orderId > 0) {
+            rows = this.lines.forOrder(orderId)
+        } else {
+            rows = this.lines.all()
+        }
+        loop (OrderLine line in rows) {
+            string label = line.summary() + " total=" + str(line.lineTotal())
+            this.listBox.insert("end", label)
+            string key = str(line.id()) + ":" + str(line.lineKey())
+            this.lineKeys.append(key)
+        }
+    }
+
+    private void onSelect(event) {
+        OrderLine line = this.selectedLine()
+        if (line == null) {
+            return
+        }
+        this.orderIdEntry.delete(0, "end")
+        this.orderIdEntry.insert(0, str(line.id()))
+        this.lineNumberEntry.delete(0, "end")
+        this.lineNumberEntry.insert(0, str(line.lineKey()))
+        this.productIdEntry.delete(0, "end")
+        this.productIdEntry.insert(0, str(line.productId))
+        this.qtyEntry.delete(0, "end")
+        this.qtyEntry.insert(0, str(line.quantity))
+    }
+
+    private OrderLine selectedLine() {
+        list sel = this.listBox.curselection()
+        if (len(sel) == 0) {
+            return null
+        }
+        int idx = sel[0]
+        if (idx < 0) {
+            return null
+        }
+        if (idx >= len(this.lineKeys)) {
+            return null
+        }
+        string key = this.lineKeys[idx]
+        list parts = key.split(":")
+        int orderId = int(parts[0])
+        int lineNumber = int(parts[1])
+        return this.lines.get(orderId, lineNumber)
+    }
+
+    private void onAdd() {
+        string orderText = this.orderIdEntry.get().strip()
+        string lineText = this.lineNumberEntry.get().strip()
+        string productText = this.productIdEntry.get().strip()
+        string qtyText = this.qtyEntry.get().strip()
+        if (orderText == "") {
+            messagebox.showinfo("Order lines", "Enter an order id.")
+            return
+        }
+        if (lineText == "") {
+            messagebox.showinfo("Order lines", "Enter a line number.")
+            return
+        }
+        if (productText == "") {
+            messagebox.showinfo("Order lines", "Enter a product id.")
+            return
+        }
+        if (qtyText == "") {
+            messagebox.showinfo("Order lines", "Enter a quantity.")
+            return
+        }
+        int orderId = int(orderText)
+        int lineNumber = int(lineText)
+        int productId = int(productText)
+        int qty = int(qtyText)
+        Order order = this.orders.get(orderId)
+        if (order == null) {
+            messagebox.showerror("Order lines", "Order not found")
+            return
+        }
+        Product product = this.products.get(productId)
+        if (product == null) {
+            messagebox.showerror("Order lines", "Product not found")
+            return
+        }
+        OrderLine line = OrderLine(
+            order.id(),
+            order.placedAt,
+            order.status,
+            order.customerRef,
+            lineNumber,
+            product.id(),
+            product.sku,
+            product.unitPrice,
+            qty
+        )
+        this.lines.add(line)
+        this.refresh()
+        messagebox.showinfo(
+            "Order lines",
+            "Added line (composite identity orderId+lineNumber)"
+        )
+    }
+
+    private void onUpdateQty() {
+        OrderLine line = this.selectedLine()
+        if (line == null) {
+            messagebox.showinfo("Order lines", "Select a line first.")
+            return
+        }
+        string qtyText = this.qtyEntry.get().strip()
+        if (qtyText == "") {
+            messagebox.showinfo("Order lines", "Enter a quantity.")
+            return
+        }
+        int qty = int(qtyText)
+        line.quantity = qty
+        this.lines.save(line)
+        this.refresh()
+        messagebox.showinfo("Order lines", "Updated quantity; composite key unchanged")
+    }
+
+    private void onDelete() {
+        OrderLine line = this.selectedLine()
+        if (line == null) {
+            messagebox.showinfo("Order lines", "Select a line first.")
+            return
+        }
+        int orderId = line.id()
+        int lineNumber = line.lineKey()
+        this.lines.remove(line)
+        this.refresh()
+        messagebox.showinfo(
+            "Order lines",
+            "Deleted line (" + str(orderId) + ", " + str(lineNumber) + ")"
+        )
+    }
+}
+
+package class IdentityDemoPanel {
+    private ProductRepository products
+    private Text output
+    private Entry productIdEntry
+
+    public IdentityDemoPanel(Frame parent, ProductRepository products) {
+        this.products = products
+
+        Frame top = ttk.Frame(parent)
+        top.pack(fill="x", padx=4, pady=4)
+        ttk.Button(
+            top, text="In-memory Product / OrderLine equality", command=this.demoInMemory
+        ).pack(side="left", padx=2)
+        ttk.Label(top, text="Product id:").pack(side="left", padx=4)
+        this.productIdEntry = ttk.Entry(top, width=8)
+        this.productIdEntry.pack(side="left")
+        ttk.Button(
+            top, text="Load from DB, mutate, compare", command=this.demoFromDb
+        ).pack(side="left", padx=2)
+
+        this.output = tk.Text(parent, width=90, height=24)
+        this.output.pack(fill="both", expand=True, padx=4, pady=4)
+        this.output.insert(
+            "1.0",
+            "Identity demos: same as the console Identity menu.\n"
+                + "Keys are fix; non-key fields may change without changing ==.\n"
+        )
+    }
+
+    private void clearOutput() {
+        this.output.delete("1.0", "end")
+    }
+
+    private void writeLine(string text) {
+        this.output.insert("end", text + "\n")
+    }
+
+    private void demoInMemory() {
+        this.clearOutput()
+        this.writeLine("--- Product: same productId, different name → equal ---")
+        Product a = Product(7, "SKU-A", "Ana", 9.99, true, "2024-01-01")
+        Product b = Product(7, "SKU-A", "Ana B.", 14.50, false, "2024-01-02")
+        this.writeLine(a.summary())
+        this.writeLine(b.summary())
+        this.writeLine("a == b → " + str(a == b) + "  (identity is productId only)")
+
+        this.writeLine(
+            "--- OrderLine: same (orderId, lineNumber), different qty → equal ---"
+        )
+        OrderLine l1 = OrderLine(
+            100, "2024-06-01", "placed", "remi", 1, 10, "SKU-A", 9.99, 2
+        )
+        OrderLine l2 = OrderLine(
+            100, "2024-06-02", "shipped", "remi", 1, 11, "SKU-B", 1.00, 99
+        )
+        this.writeLine(l1.summary())
+        this.writeLine(l2.summary())
+        this.writeLine("l1 == l2 → " + str(l1 == l2) + "  (composite key)")
+
+        OrderLine l3 = OrderLine(
+            100, "2024-06-01", "placed", "remi", 2, 10, "SKU-A", 9.99, 2
+        )
+        this.writeLine("l1 == l3 → " + str(l1 == l3) + "  (lineNumber differs)")
+    }
+
+    private void demoFromDb() {
+        this.clearOutput()
+        this.writeLine("--- Load product twice, mutate one name, compare ---")
+        string idText = this.productIdEntry.get().strip()
+        if (idText == "") {
+            messagebox.showinfo("Identity", "Enter an existing product id.")
+            return
+        }
+        int id = int(idText)
+        Product first = this.products.get(id)
+        Product second = this.products.get(id)
+        if (first == null) {
+            this.writeLine("Not found")
+            return
+        }
+        this.writeLine("loaded: " + first.summary())
+        first.name = first.name + " (edited in memory)"
+        this.writeLine("after mutate first.name: " + first.summary())
+        this.writeLine("first == second → " + str(first == second))
+        this.writeLine(
+            "HashSet-style takeaway: identity fields are fix; name changes do not"
+        )
+        this.writeLine("change which row the entity *is*.")
+    }
+}
+
+package class ShopGuiApp {
+    private ProductRepository products
+    private OrderRepository orders
+    private OrderLineRepository lines
+    private Tk root
+    private ProductPanel productPanel
+    private OrderPanel orderPanel
+    private OrderLinePanel linePanel
+    private IdentityDemoPanel identityPanel
+
+    public ShopGuiApp(
+        ProductRepository products,
+        OrderRepository orders,
+        OrderLineRepository lines
+    ) {
+        this.products = products
+        this.orders = orders
+        this.lines = lines
+
+        this.root = tk.Tk()
+        this.root.title("PYS Shop — entity + MySQL")
+        this.root.geometry("960x580")
+
+        Notebook notebook = ttk.Notebook(this.root)
+        notebook.pack(fill="both", expand=True, padx=8, pady=8)
+
+        Frame productTab = ttk.Frame(notebook)
+        notebook.add(productTab, text="Products")
+        this.productPanel = ProductPanel(productTab, this.products)
+
+        Frame orderTab = ttk.Frame(notebook)
+        notebook.add(orderTab, text="Orders")
+        this.orderPanel = OrderPanel(orderTab, this.orders)
+
+        Frame lineTab = ttk.Frame(notebook)
+        notebook.add(lineTab, text="Order lines")
+        this.linePanel = OrderLinePanel(
+            lineTab, this.lines, this.products, this.orders
+        )
+
+        Frame identityTab = ttk.Frame(notebook)
+        notebook.add(identityTab, text="Identity")
+        this.identityPanel = IdentityDemoPanel(identityTab, this.products)
+    }
+
+    public void run() {
+        this.root.mainloop()
+    }
+}

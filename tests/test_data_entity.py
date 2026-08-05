@@ -44,6 +44,7 @@ def test_example_database_shop_transpiles() -> None:
         "repositories",
         "console",
         "menus",
+        "gui",
     }
     assert "class Product" in modules["models"]
     assert "class OrderLine" in modules["models"]
@@ -56,6 +57,8 @@ def test_example_database_shop_transpiles() -> None:
     assert "ShopDatabase" not in modules["repositories"]
     assert "SELECT " not in modules["repositories"]
     assert "MainMenu" in modules["menus"]
+    assert "ShopGuiApp" in modules["gui"]
+    assert "SELECT " not in modules["gui"]
     assert "mysql.connector" in modules["db"]
     for text in modules.values():
         ast.parse(text)
