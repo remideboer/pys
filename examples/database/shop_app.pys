@@ -1,0 +1,40 @@
+import ShopDatabase from db
+import ProductMapper, OrderMapper, OrderLineMapper from mappers
+import MysqlProductMapper, MysqlOrderMapper, MysqlOrderLineMapper from mappers
+import ProductRepository, OrderRepository, OrderLineRepository from repositories
+import DefaultProductRepository, DefaultOrderRepository, DefaultOrderLineRepository from repositories
+import StdConsole from console
+import Menu, ProductMenu, OrderMenu, OrderLineMenu, IdentityDemoMenu, MainMenu from menus
+
+# Composition root — wires adapters to ports (DIP). No business logic here.
+#
+# Credentials (local teaching DB):
+#   host=localhost  user=pys  password=123456789  database=shop
+#
+# Run: python -m transpiler run examples/database/shop_app.pys
+
+print("Shop console — PYS entity + MySQL (database=shop)")
+print("Schema: examples/database/shop.sql")
+print("Layers: models | db | mappers | repositories | console | menus")
+
+ShopDatabase database = ShopDatabase("localhost", "pys", "123456789", "shop")
+StdConsole io = StdConsole()
+
+ProductMapper productMapper = MysqlProductMapper(database)
+OrderMapper orderMapper = MysqlOrderMapper(database)
+OrderLineMapper lineMapper = MysqlOrderLineMapper(database)
+
+ProductRepository products = DefaultProductRepository(productMapper)
+OrderRepository orders = DefaultOrderRepository(orderMapper)
+OrderLineRepository lines = DefaultOrderLineRepository(lineMapper)
+
+Menu productMenu = ProductMenu(products, io)
+Menu orderMenu = OrderMenu(orders, io)
+Menu lineMenu = OrderLineMenu(lines, products, orders, io)
+Menu demoMenu = IdentityDemoMenu(products, io)
+MainMenu main = MainMenu(productMenu, orderMenu, lineMenu, demoMenu, io)
+
+main.run()
+
+database.close()
+print("Bye.")

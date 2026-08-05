@@ -15,6 +15,7 @@ from transpiler.workspace import WORKSPACE_ROOT_ENV
 ROOT = Path(__file__).resolve().parents[1]
 DATA_EXAMPLE = ROOT / "examples" / "data.pys"
 ENTITIES_EXAMPLE = ROOT / "examples" / "entities.pys"
+SHOP_APP = ROOT / "examples" / "database" / "shop_app.pys"
 
 
 def test_example_data_runs(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -27,6 +28,37 @@ def test_example_entities_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ENTITIES_EXAMPLE.is_file()
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(ENTITIES_EXAMPLE.parent))
     assert run_source(ENTITIES_EXAMPLE) == 0
+
+
+def test_example_database_shop_transpiles() -> None:
+    """MySQL shop console must compile (run needs a live `shop` database)."""
+    from transpiler.transpiler import transpile_with_modules
+
+    assert SHOP_APP.is_file()
+    modules = transpile_with_modules(SHOP_APP)
+    assert set(modules) >= {
+        "shop_app",
+        "models",
+        "db",
+        "mappers",
+        "repositories",
+        "console",
+        "menus",
+    }
+    assert "class Product" in modules["models"]
+    assert "class OrderLine" in modules["models"]
+    assert "__eq__" in modules["models"]
+    assert "_pys_fix_fields" in modules["models"]
+    assert "ProductMapper" in modules["mappers"]
+    assert "MysqlProductMapper" in modules["mappers"]
+    assert "ProductRepository" in modules["repositories"]
+    assert "DefaultProductRepository" in modules["repositories"]
+    assert "ShopDatabase" not in modules["repositories"]
+    assert "SELECT " not in modules["repositories"]
+    assert "MainMenu" in modules["menus"]
+    assert "mysql.connector" in modules["db"]
+    for text in modules.values():
+        ast.parse(text)
 
 
 def test_example_data_emit_is_frozen_dataclass() -> None:

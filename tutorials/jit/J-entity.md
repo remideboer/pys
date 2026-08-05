@@ -50,4 +50,7 @@ entity OrderLine inherits Order identity(lineNumber) {
 Lifecycle / row identity → **`entity`**. Immutable value → [`data`](J-data.md).
 General OOP → [`J-class`](J-class.md).
 
+MySQL CRUD walkthrough (menus + identity demos):
+[`examples/database/`](../../examples/database/).
+
 Full rationale: [`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).

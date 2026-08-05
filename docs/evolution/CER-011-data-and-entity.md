@@ -28,12 +28,18 @@ or immutable VO surface separate from `fix struct`.
   `__repr__` + fix setattr for `entity`.
 - Docs/IDE 0.0.44; examples `data.pys` / `entities.pys` (DoD: `data.pys`
   contrasts `struct` mutable bags vs VO immutability).
+- Database teaching example `examples/database/`: entity-centric abstract
+  Repository contracts (`all/get/add/save/remove`) are separate from Data
+  Mappers that own MySQL SQL and row/entity translation. Menus mutate non-key
+  entity state then `save`; `identity(...)` keys remain `fix`.
 
 ### Evidence
 
 `tests/test_data_entity.py` (examples + SA rejects + composite keys);
 workspace-isolated `run_source` (CER-001 §4).
 `examples/data.pys` teaches `data` vs `struct` use cases in-file.
+The shop acceptance check compiles all modules and asserts SQL/MySQL stay out
+of `repositories`, while abstract repositories and concrete mappers emit.
 
 ## Trade-offs
 

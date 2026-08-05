@@ -2,7 +2,10 @@
 
 Teaching reference for Value Objects (`data`) and identity-keyed types (`entity`).
 Runnable samples: [`examples/data.pys`](../examples/data.pys),
-[`examples/entities.pys`](../examples/entities.pys). Short README blurb links here.
+[`examples/entities.pys`](../examples/entities.pys),
+MySQL CRUD console: [`examples/database/`](../examples/database/)
+([`shop_app.pys`](../examples/database/shop_app.pys) + [`shop.sql`](../examples/database/shop.sql)).
+Short README blurb links here.
 Decision record: [ADR-011](adr/ADR-011-data-and-entity.md).
 
 ### 1. Overview
@@ -146,6 +149,15 @@ User u1 = User(accountId=42, createdAt=t1, username="remi", passwordHash="a")
 User u2 = User(accountId=42, createdAt=t1, username="remi", passwordHash="b")  # password changed
 # u1 == u2 → true — same row, identity is accountId alone
 ```
+
+**Persistence architecture:** an `entity` does not contain SQL. The
+[`examples/database/`](../examples/database/) shop app keeps Fowler's
+[Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html) (SQL and
+row/object translation) separate from
+[Repository](https://martinfowler.com/eaaCatalog/repository.html)
+(collection-like `all/get/add/save/remove` access to entities). Menus change
+mutable non-key fields and save the entity through an abstract Repository;
+only MySQL Data Mappers know table and column names.
 
 ### 5. Comparison table — full construct family
 

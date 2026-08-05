@@ -42,7 +42,8 @@ anti-examples, production cases, and bibliographic references live in
 
 - Students see VO vs Entity as distinct keywords, not annotation conventions.
 - IDE ≥ 0.0.44: keywords, hover, snippets; docs `DATA_ENTITY.md`, JIT cards.
-- Examples: `examples/data.pys`, `examples/entities.pys`.
+- Examples: `examples/data.pys`, `examples/entities.pys`,
+  `examples/database/` (MySQL shop CRUD + identity demos).
 
 ## Rejected alternatives
 

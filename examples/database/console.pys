@@ -1,0 +1,34 @@
+# Console I/O port + stdin adapter (SRP: prompting only).
+
+import input from builtins
+
+package interface Console {
+    string readLine(string prompt)
+    void writeLine(string text)
+    int readInt(string prompt)
+    float readFloat(string prompt)
+}
+
+package class StdConsole implements Console {
+    public StdConsole() {
+    }
+
+    public string readLine(string prompt) {
+        string text = input(prompt).strip()
+        return text
+    }
+
+    public void writeLine(string text) {
+        print(text)
+    }
+
+    public int readInt(string prompt) {
+        int n = int(this.readLine(prompt))
+        return n
+    }
+
+    public float readFloat(string prompt) {
+        float n = float(this.readLine(prompt))
+        return n
+    }
+}

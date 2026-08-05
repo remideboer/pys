@@ -1,0 +1,492 @@
+# Presentation: each menu has one job (SRP). Depends on repository ports (DIP).
+
+import Product, Order, OrderLine from models
+import ProductRepository, OrderRepository, OrderLineRepository from repositories
+import StdConsole from console
+
+package interface Menu {
+    run()
+}
+
+package class ProductMenu implements Menu {
+    private ProductRepository products
+    private StdConsole io
+
+    public ProductMenu(ProductRepository products, StdConsole io) {
+        this.products = products
+        this.io = io
+    }
+
+    public void run() {
+        bool again = true
+        loop (again) {
+            this.io.writeLine("")
+            this.io.writeLine("--- Products ---")
+            this.io.writeLine("1) List")
+            this.io.writeLine("2) Create")
+            this.io.writeLine("3) Update name/price")
+            this.io.writeLine("4) Activate")
+            this.io.writeLine("5) Deactivate")
+            this.io.writeLine("6) Delete")
+            this.io.writeLine("0) Back")
+            string choice = this.io.readLine("Choice: ")
+            again = this.dispatch(choice)
+        }
+    }
+
+    private bool dispatch(string choice) {
+        if (choice == "1") {
+            this.listAll()
+            return true
+        }
+        if (choice == "2") {
+            this.create()
+            return true
+        }
+        if (choice == "3") {
+            this.updateDetails()
+            return true
+        }
+        if (choice == "4") {
+            this.setActive(true)
+            return true
+        }
+        if (choice == "5") {
+            this.setActive(false)
+            return true
+        }
+        if (choice == "6") {
+            this.deleteOne()
+            return true
+        }
+        if (choice == "0") {
+            return false
+        }
+        this.io.writeLine("Unknown choice")
+        return true
+    }
+
+    private void listAll() {
+        list<Product> rows = this.products.all()
+        if (len(rows) == 0) {
+            this.io.writeLine("(no products)")
+            return
+        }
+        loop (Product p in rows) {
+            this.io.writeLine(p.summary())
+        }
+    }
+
+    private void create() {
+        string sku = this.io.readLine("SKU: ")
+        string name = this.io.readLine("Name: ")
+        float price = this.io.readFloat("Unit price: ")
+        Product product = this.products.add(sku, name, price)
+        this.io.writeLine("Created product id=" + str(product.id()))
+    }
+
+    private void updateDetails() {
+        int id = this.io.readInt("Product id: ")
+        Product product = this.products.get(id)
+        if (product == null) {
+            this.io.writeLine("Product not found")
+            return
+        }
+        string name = this.io.readLine("New name: ")
+        float price = this.io.readFloat("New unit price: ")
+        product.name = name
+        product.unitPrice = price
+        this.products.save(product)
+        this.io.writeLine("Updated product #" + str(id) + " (identity unchanged)")
+    }
+
+    private void setActive(bool active) {
+        int id = this.io.readInt("Product id: ")
+        Product product = this.products.get(id)
+        if (product == null) {
+            this.io.writeLine("Product not found")
+            return
+        }
+        product.active = active
+        this.products.save(product)
+        this.io.writeLine("Product #" + str(id) + " active=" + str(active))
+    }
+
+    private void deleteOne() {
+        int id = this.io.readInt("Product id to delete: ")
+        Product product = this.products.get(id)
+        if (product == null) {
+            this.io.writeLine("Product not found")
+            return
+        }
+        this.products.remove(product)
+        this.io.writeLine(
+            "Deleted product #" + str(id) + " (fails if order_line still references it)"
+        )
+    }
+}
+
+package class OrderMenu implements Menu {
+    private OrderRepository orders
+    private StdConsole io
+
+    public OrderMenu(OrderRepository orders, StdConsole io) {
+        this.orders = orders
+        this.io = io
+    }
+
+    public void run() {
+        bool again = true
+        loop (again) {
+            this.io.writeLine("")
+            this.io.writeLine("--- Orders ---")
+            this.io.writeLine("1) List")
+            this.io.writeLine("2) Create")
+            this.io.writeLine("3) Update status")
+            this.io.writeLine("4) Delete (cascades lines)")
+            this.io.writeLine("0) Back")
+            string choice = this.io.readLine("Choice: ")
+            again = this.dispatch(choice)
+        }
+    }
+
+    private bool dispatch(string choice) {
+        if (choice == "1") {
+            this.listAll()
+            return true
+        }
+        if (choice == "2") {
+            this.create()
+            return true
+        }
+        if (choice == "3") {
+            this.updateStatus()
+            return true
+        }
+        if (choice == "4") {
+            this.deleteOne()
+            return true
+        }
+        if (choice == "0") {
+            return false
+        }
+        this.io.writeLine("Unknown choice")
+        return true
+    }
+
+    private void listAll() {
+        list<Order> rows = this.orders.all()
+        if (len(rows) == 0) {
+            this.io.writeLine("(no orders)")
+            return
+        }
+        loop (Order o in rows) {
+            this.io.writeLine(o.summary())
+        }
+    }
+
+    private void create() {
+        string customer = this.io.readLine("Customer ref (or blank): ")
+        string status = this.io.readLine("Status [placed]: ")
+        if (status == "") {
+            status = "placed"
+        }
+        Order order = this.orders.add(status, customer)
+        this.io.writeLine("Created order id=" + str(order.id()))
+    }
+
+    private void updateStatus() {
+        int id = this.io.readInt("Order id: ")
+        Order order = this.orders.get(id)
+        if (order == null) {
+            this.io.writeLine("Order not found")
+            return
+        }
+        string status = this.io.readLine("New status: ")
+        order.status = status
+        this.orders.save(order)
+        this.io.writeLine("Updated order #" + str(id) + " status (identity unchanged)")
+    }
+
+    private void deleteOne() {
+        int id = this.io.readInt("Order id to delete: ")
+        Order order = this.orders.get(id)
+        if (order == null) {
+            this.io.writeLine("Order not found")
+            return
+        }
+        this.orders.remove(order)
+        this.io.writeLine("Deleted order #" + str(id) + " (order_line rows cascade)")
+    }
+}
+
+package class OrderLineMenu implements Menu {
+    private OrderLineRepository lines
+    private ProductRepository products
+    private OrderRepository orders
+    private StdConsole io
+
+    public OrderLineMenu(
+        OrderLineRepository lines,
+        ProductRepository products,
+        OrderRepository orders,
+        StdConsole io
+    ) {
+        this.lines = lines
+        this.products = products
+        this.orders = orders
+        this.io = io
+    }
+
+    public void run() {
+        bool again = true
+        loop (again) {
+            this.io.writeLine("")
+            this.io.writeLine("--- Order lines ---")
+            this.io.writeLine("1) List")
+            this.io.writeLine("2) Add line")
+            this.io.writeLine("3) Update quantity")
+            this.io.writeLine("4) Delete line")
+            this.io.writeLine("0) Back")
+            string choice = this.io.readLine("Choice: ")
+            again = this.dispatch(choice)
+        }
+    }
+
+    private bool dispatch(string choice) {
+        if (choice == "1") {
+            this.listLines()
+            return true
+        }
+        if (choice == "2") {
+            this.addLine()
+            return true
+        }
+        if (choice == "3") {
+            this.updateQty()
+            return true
+        }
+        if (choice == "4") {
+            this.deleteOne()
+            return true
+        }
+        if (choice == "0") {
+            return false
+        }
+        this.io.writeLine("Unknown choice")
+        return true
+    }
+
+    private void listLines() {
+        int orderId = this.io.readInt("Order id (0 = all): ")
+        list<OrderLine> rows = []
+        if (orderId > 0) {
+            rows = this.lines.forOrder(orderId)
+        } else {
+            rows = this.lines.all()
+        }
+        if (len(rows) == 0) {
+            this.io.writeLine("(no lines)")
+            return
+        }
+        loop (OrderLine line in rows) {
+            this.io.writeLine(line.summary() + " total=" + str(line.lineTotal()))
+        }
+    }
+
+    private void addLine() {
+        int orderId = this.io.readInt("Order id: ")
+        int lineNumber = this.io.readInt("Line number: ")
+        int productId = this.io.readInt("Product id: ")
+        int qty = this.io.readInt("Quantity: ")
+        Order order = this.orders.get(orderId)
+        if (order == null) {
+            this.io.writeLine("Order not found")
+            return
+        }
+        Product product = this.products.get(productId)
+        if (product == null) {
+            this.io.writeLine("Product not found")
+            return
+        }
+        OrderLine line = OrderLine(
+            order.id(),
+            order.placedAt,
+            order.status,
+            order.customerRef,
+            lineNumber,
+            product.id(),
+            product.sku,
+            product.unitPrice,
+            qty
+        )
+        this.lines.add(line)
+        this.io.writeLine("Added line (composite identity orderId+lineNumber)")
+    }
+
+    private void updateQty() {
+        int orderId = this.io.readInt("Order id: ")
+        int lineNumber = this.io.readInt("Line number: ")
+        OrderLine line = this.lines.get(orderId, lineNumber)
+        if (line == null) {
+            this.io.writeLine("Order line not found")
+            return
+        }
+        int qty = this.io.readInt("New quantity: ")
+        line.quantity = qty
+        this.lines.save(line)
+        this.io.writeLine("Updated quantity; composite key unchanged")
+    }
+
+    private void deleteOne() {
+        int orderId = this.io.readInt("Order id: ")
+        int lineNumber = this.io.readInt("Line number: ")
+        OrderLine line = this.lines.get(orderId, lineNumber)
+        if (line == null) {
+            this.io.writeLine("Order line not found")
+            return
+        }
+        this.lines.remove(line)
+        this.io.writeLine("Deleted line (" + str(orderId) + ", " + str(lineNumber) + ")")
+    }
+}
+
+package class IdentityDemoMenu implements Menu {
+    private ProductRepository products
+    private StdConsole io
+
+    public IdentityDemoMenu(ProductRepository products, StdConsole io) {
+        this.products = products
+        this.io = io
+    }
+
+    public void run() {
+        bool again = true
+        loop (again) {
+            this.io.writeLine("")
+            this.io.writeLine("--- Identity demos ---")
+            this.io.writeLine("1) In-memory Product / OrderLine equality")
+            this.io.writeLine("2) Load from DB, mutate non-key field, compare")
+            this.io.writeLine("0) Back")
+            string choice = this.io.readLine("Choice: ")
+            again = this.dispatch(choice)
+        }
+    }
+
+    private bool dispatch(string choice) {
+        if (choice == "1") {
+            this.demoInMemory()
+            return true
+        }
+        if (choice == "2") {
+            this.demoFromDb()
+            return true
+        }
+        if (choice == "0") {
+            return false
+        }
+        this.io.writeLine("Unknown choice")
+        return true
+    }
+
+    private void demoInMemory() {
+        this.io.writeLine("--- Product: same productId, different name → equal ---")
+        Product a = Product(7, "SKU-A", "Ana", 9.99, true, "2024-01-01")
+        Product b = Product(7, "SKU-A", "Ana B.", 14.50, false, "2024-01-02")
+        this.io.writeLine(a.summary())
+        this.io.writeLine(b.summary())
+        this.io.writeLine("a == b → " + str(a == b) + "  (identity is productId only)")
+
+        this.io.writeLine(
+            "--- OrderLine: same (orderId, lineNumber), different qty → equal ---"
+        )
+        OrderLine l1 = OrderLine(
+            100, "2024-06-01", "placed", "remi", 1, 10, "SKU-A", 9.99, 2
+        )
+        OrderLine l2 = OrderLine(
+            100, "2024-06-02", "shipped", "remi", 1, 11, "SKU-B", 1.00, 99
+        )
+        this.io.writeLine(l1.summary())
+        this.io.writeLine(l2.summary())
+        this.io.writeLine("l1 == l2 → " + str(l1 == l2) + "  (composite key)")
+
+        OrderLine l3 = OrderLine(
+            100, "2024-06-01", "placed", "remi", 2, 10, "SKU-A", 9.99, 2
+        )
+        this.io.writeLine("l1 == l3 → " + str(l1 == l3) + "  (lineNumber differs)")
+    }
+
+    private void demoFromDb() {
+        this.io.writeLine("--- Load product twice, mutate one name, compare ---")
+        int id = this.io.readInt("Existing product id: ")
+        Product first = this.products.get(id)
+        Product second = this.products.get(id)
+        if (first == null) {
+            this.io.writeLine("Not found")
+            return
+        }
+        this.io.writeLine("loaded: " + first.summary())
+        first.name = first.name + " (edited in memory)"
+        this.io.writeLine("after mutate first.name: " + first.summary())
+        this.io.writeLine("first == second → " + str(first == second))
+        this.io.writeLine(
+            "HashSet-style takeaway: identity fields are fix; name changes do not"
+        )
+        this.io.writeLine("change which row the entity *is*.")
+    }
+}
+
+package class MainMenu implements Menu {
+    private Menu products
+    private Menu orders
+    private Menu lines
+    private Menu demos
+    private StdConsole io
+
+    public MainMenu(Menu products, Menu orders, Menu lines, Menu demos, StdConsole io) {
+        this.products = products
+        this.orders = orders
+        this.lines = lines
+        this.demos = demos
+        this.io = io
+    }
+
+    public void run() {
+        bool running = true
+        loop (running) {
+            this.io.writeLine("")
+            this.io.writeLine("=== Main menu ===")
+            this.io.writeLine("1) Products")
+            this.io.writeLine("2) Orders")
+            this.io.writeLine("3) Order lines")
+            this.io.writeLine("4) Identity demos")
+            this.io.writeLine("0) Quit")
+            string choice = this.io.readLine("Choice: ")
+            running = this.dispatch(choice)
+        }
+    }
+
+    private bool dispatch(string choice) {
+        if (choice == "1") {
+            this.products.run()
+            return true
+        }
+        if (choice == "2") {
+            this.orders.run()
+            return true
+        }
+        if (choice == "3") {
+            this.lines.run()
+            return true
+        }
+        if (choice == "4") {
+            this.demos.run()
+            return true
+        }
+        if (choice == "0") {
+            return false
+        }
+        this.io.writeLine("Unknown choice")
+        return true
+    }
+}

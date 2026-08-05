@@ -1,0 +1,118 @@
+# Repository layer (Fowler): collection-like access to domain entities.
+# Repositories know entities and mapper contracts, but no SQL or MySQL types.
+
+import Product, Order, OrderLine from models
+import ProductMapper, OrderMapper, OrderLineMapper from mappers
+
+package abstract class ProductRepository {
+    public abstract list<Product> all()
+    public abstract Product get(int id)
+    public abstract Product add(string sku, string name, float unitPrice)
+    public abstract void save(Product product)
+    public abstract void remove(Product product)
+}
+
+package abstract class OrderRepository {
+    public abstract list<Order> all()
+    public abstract Order get(int id)
+    public abstract Order add(string status, string customerRef)
+    public abstract void save(Order order)
+    public abstract void remove(Order order)
+}
+
+package abstract class OrderLineRepository {
+    public abstract list<OrderLine> all()
+    public abstract list<OrderLine> forOrder(int orderId)
+    public abstract OrderLine get(int orderId, int lineNumber)
+    public abstract void add(OrderLine line)
+    public abstract void save(OrderLine line)
+    public abstract void remove(OrderLine line)
+}
+
+package class DefaultProductRepository inherits ProductRepository {
+    private ProductMapper mapper
+
+    public DefaultProductRepository(ProductMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public list<Product> all() {
+        return this.mapper.findAll()
+    }
+
+    public Product get(int id) {
+        return this.mapper.findById(id)
+    }
+
+    public Product add(string sku, string name, float unitPrice) {
+        return this.mapper.insert(sku, name, unitPrice)
+    }
+
+    public void save(Product product) {
+        this.mapper.update(product)
+    }
+
+    public void remove(Product product) {
+        this.mapper.delete(product)
+    }
+}
+
+package class DefaultOrderRepository inherits OrderRepository {
+    private OrderMapper mapper
+
+    public DefaultOrderRepository(OrderMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public list<Order> all() {
+        return this.mapper.findAll()
+    }
+
+    public Order get(int id) {
+        return this.mapper.findById(id)
+    }
+
+    public Order add(string status, string customerRef) {
+        return this.mapper.insert(status, customerRef)
+    }
+
+    public void save(Order order) {
+        this.mapper.update(order)
+    }
+
+    public void remove(Order order) {
+        this.mapper.delete(order)
+    }
+}
+
+package class DefaultOrderLineRepository inherits OrderLineRepository {
+    private OrderLineMapper mapper
+
+    public DefaultOrderLineRepository(OrderLineMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public list<OrderLine> all() {
+        return this.mapper.findAll()
+    }
+
+    public list<OrderLine> forOrder(int orderId) {
+        return this.mapper.findByOrder(orderId)
+    }
+
+    public OrderLine get(int orderId, int lineNumber) {
+        return this.mapper.findById(orderId, lineNumber)
+    }
+
+    public void add(OrderLine line) {
+        this.mapper.insert(line)
+    }
+
+    public void save(OrderLine line) {
+        this.mapper.update(line)
+    }
+
+    public void remove(OrderLine line) {
+        this.mapper.delete(line)
+    }
+}

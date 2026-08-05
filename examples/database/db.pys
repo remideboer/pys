@@ -1,0 +1,51 @@
+# Infrastructure: MySQL session + row cell helpers (SRP: connection only).
+
+import mysql.connector
+
+package class ShopDatabase {
+    private MySQLConnection conn
+
+    public ShopDatabase(string host, string user, string password, string database) {
+        this.conn = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+    }
+
+    public MySQLCursor cursor() {
+        return this.conn.cursor()
+    }
+
+    public void commit() {
+        this.conn.commit()
+    }
+
+    public void close() {
+        this.conn.close()
+    }
+
+    public string cellStr(var value) {
+        if (value == null) {
+            return ""
+        }
+        string s = str(value)
+        return s
+    }
+
+    public bool cellBool(var value) {
+        bool flag = int(this.cellStr(value)) == 1
+        return flag
+    }
+
+    public float cellFloat(var value) {
+        float n = float(this.cellStr(value))
+        return n
+    }
+
+    public int cellInt(var value) {
+        int n = int(this.cellStr(value))
+        return n
+    }
+}
