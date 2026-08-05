@@ -28,6 +28,9 @@ the `/pys/` site and returned 404. `SUMMARY.md` was also rewritten as
 - Sequential Previous/Next links skip session overview pages and proceed
   directly between lesson chapters.
 - The rebuilt HTML has zero broken local links/anchors.
+- `import markdown` is **lazy** (only when converting pages). Loading
+  `build_html` for `md_href_to_html` tests does not require the package, so
+  the extension CI `pytest` job stays free of a book-build-only dependency.
 
 ### Evidence
 

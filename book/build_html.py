@@ -5,8 +5,7 @@ from __future__ import annotations
 import re
 import shutil
 from pathlib import Path
-
-import markdown
+from typing import Any
 
 from pys_highlight import highlight_html_document
 
@@ -195,15 +194,26 @@ main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 }
 """
 
-MD = markdown.Markdown(
-    extensions=[
-        "fenced_code",
-        "tables",
-        "sane_lists",
-        "smarty",
-        "attr_list",
-    ]
-)
+
+_MD: Any | None = None
+
+
+def _markdown_converter() -> Any:
+    """Lazy: link-rewrite helpers must load without the ``markdown`` package (CI)."""
+    global _MD
+    if _MD is None:
+        import markdown
+
+        _MD = markdown.Markdown(
+            extensions=[
+                "fenced_code",
+                "tables",
+                "sane_lists",
+                "smarty",
+                "attr_list",
+            ]
+        )
+    return _MD
 
 
 def md_href_to_html(match: re.Match[str]) -> str:
@@ -333,6 +343,7 @@ def convert() -> None:
     )
     for md_path in md_files:
         text = md_path.read_text(encoding="utf-8")
+        MD = _markdown_converter()
         MD.reset()
         body = rewrite_links(MD.convert(text))
         title = title_from_md(text, md_path.stem)
