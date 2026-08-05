@@ -1,6 +1,5 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
 const {
   loadMapRegistry,
   mapPysBreakpoint,
@@ -19,14 +18,25 @@ const {
   normalizePathKey,
 } = require('../debug-map');
 
-const PY = path.join('C:', 'tmp', 'dbg', 'demo.py');
-const PYS = path.join('C:', 'ws', 'demo.pys');
+const PY = 'C:\\tmp\\dbg\\demo.py';
+const PYS = 'C:\\ws\\demo.pys';
 
 function registryFromSidecar(sidecar) {
   const mapFiles = { demo: 'demo.pysmap.json' };
   const read = () => JSON.stringify(sidecar);
   return loadMapRegistry(mapFiles, read);
 }
+
+test('normalizePathKey keeps Windows absolute paths stable on any host', () => {
+  assert.equal(
+    normalizePathKey('C:\\workspace\\main.pys'),
+    'c:\\workspace\\main.pys',
+  );
+  assert.equal(
+    normalizePathKey('C:/workspace/main.pys'),
+    'c:\\workspace\\main.pys',
+  );
+});
 
 test('loadMapRegistry indexes py and pys paths', () => {
   const reg = registryFromSidecar({

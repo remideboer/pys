@@ -7,9 +7,18 @@ const path = require('path');
 
 const DEFAULT_HIDE_PREFIXES = ['_pys_', '__pys_', '_Pys'];
 
+function isWindowsAbsolutePath(filePath) {
+  return /^[A-Za-z]:[\\/]/.test(filePath) || filePath.startsWith('\\\\');
+}
+
 function normalizePathKey(filePath) {
   if (!filePath) {
     return '';
+  }
+  // POSIX path.resolve() treats `C:\...` as relative and prefixes cwd. Keep
+  // Windows absolute DAP/test paths stable when the host is Linux/macOS CI.
+  if (process.platform !== 'win32' && isWindowsAbsolutePath(filePath)) {
+    return filePath.replace(/\//g, '\\').toLowerCase();
   }
   let resolved = filePath;
   try {
@@ -386,6 +395,7 @@ function filterInlineValueSitesByScope(sites, scopeNames) {
 
 module.exports = {
   DEFAULT_HIDE_PREFIXES,
+  isWindowsAbsolutePath,
   normalizePathKey,
   loadMapRegistry,
   mapPysBreakpoint,
