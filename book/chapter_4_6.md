@@ -8,9 +8,17 @@ Use this as a pocket card:
 | “Can do these methods” as a type | `interface` |
 | Shared base code + holes to fill | `abstract class` |
 | Mix in reusable methods (not a type) | `trait` (`uses`) |
-| Small value bag, no VO ceremony | `struct` |
+| Small field bag without VO rules | `struct` |
 | Immutable interchangeable value (money, color) | `data` |
 | Row with a stable key (customer id) | `entity` |
+
+> **Sidebar — what “VO ceremony” meant**
+>
+> In [Structs, data, and entity](chapter_4_5.md), **VO** means *value object*
+> and **ceremony** means the fixed contract `data` gives you: all fields
+> immutable, equality over every field, no methods/inheritance. Choosing
+> `struct` skips that contract — useful for a simple bag of fields; choose
+> `data` when you *want* those VO rules.
 
 **interface vs trait vs abstract class (again):**
 

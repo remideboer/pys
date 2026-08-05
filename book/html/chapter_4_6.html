@@ -135,7 +135,7 @@
 <td><code>trait</code> (<code>uses</code>)</td>
 </tr>
 <tr>
-<td>Small value bag, no VO ceremony</td>
+<td>Small field bag without VO rules</td>
 <td><code>struct</code></td>
 </tr>
 <tr>
@@ -148,6 +148,14 @@
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Sidebar — what “VO ceremony” meant</strong></p>
+<p>In <a href="chapter_4_5.html">Structs, data, and entity</a>, <strong>VO</strong> means <em>value object</em>
+and <strong>ceremony</strong> means the fixed contract <code>data</code> gives you: all fields
+immutable, equality over every field, no methods/inheritance. Choosing
+<code>struct</code> skips that contract — useful for a simple bag of fields; choose
+<code>data</code> when you <em>want</em> those VO rules.</p>
+</blockquote>
 <p><strong>interface vs trait vs abstract class (again):</strong></p>
 <ul>
 <li><strong>interface</strong> — contract only; is a type.</li>

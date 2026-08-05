@@ -129,8 +129,16 @@
 <code>Damage(amount=20, type="physical")</code> names each field — handy when
 optional trailing fields appear later.</p>
 </blockquote>
-<h2><code>data</code> — value object</h2>
-<p>All fields immutable; equality over <strong>all</strong> fields; generated contract.</p>
+<h2><code>data</code> — value object (VO)</h2>
+<p>A <strong>value object</strong> (VO) is a bundle you treat as a <em>value</em>: two instances with
+the same fields are interchangeable. In PYS, <code>data</code> is that construct.</p>
+<p>What <code>data</code> locks in for you (sometimes called the <strong>VO ceremony</strong> — the
+fixed rules you accept by choosing <code>data</code> instead of a plain <code>struct</code>):</p>
+<ol>
+<li>every field is immutable (<code>fix</code>)</li>
+<li><code>==</code> / hashing compare <strong>all</strong> fields</li>
+<li>no methods, no inheritance — only the value</li>
+</ol>
 <pre><code class="language-pys"><span class="tok-kw">data</span> <span class="tok-typename">Money</span> {
     <span class="tok-type">int</span> <span class="tok-ident">amountCents</span>
     <span class="tok-type">string</span> <span class="tok-ident">currency</span>
@@ -142,6 +150,12 @@ optional trailing fields appear later.</p>
 <p>Output:</p>
 <pre><code class="language-text">True
 </code></pre>
+<blockquote>
+<p><strong>Sidebar — <code>struct</code> vs <code>data</code></strong></p>
+<p>Prefer <code>struct</code> when you only need a small field bag (fields may stay
+mutable; no full VO rules). Prefer <code>data</code> when the value must stay
+immutable and interchangeable — money, color, a point on a map.</p>
+</blockquote>
 <h2><code>entity</code> — identity key</h2>
 <p>Equality uses only <code>identity(...)</code> fields (must be <code>fix</code>).</p>
 <pre><code class="language-pys"><span class="tok-kw">entity</span> <span class="tok-typename">Customer</span> <span class="tok-kw">identity</span>(<span class="tok-ident">customerId</span>) {

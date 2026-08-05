@@ -30,9 +30,17 @@ True
 > `Damage(amount=20, type="physical")` names each field — handy when
 > optional trailing fields appear later.
 
-## `data` — value object
+## `data` — value object (VO)
 
-All fields immutable; equality over **all** fields; generated contract.
+A **value object** (VO) is a bundle you treat as a *value*: two instances with
+the same fields are interchangeable. In PYS, `data` is that construct.
+
+What `data` locks in for you (sometimes called the **VO ceremony** — the
+fixed rules you accept by choosing `data` instead of a plain `struct`):
+
+1. every field is immutable (`fix`)
+2. `==` / hashing compare **all** fields
+3. no methods, no inheritance — only the value
 
 ```pys
 data Money {
@@ -51,6 +59,12 @@ Output:
 True
 ```
 
+
+> **Sidebar — `struct` vs `data`**
+>
+> Prefer `struct` when you only need a small field bag (fields may stay
+> mutable; no full VO rules). Prefer `data` when the value must stay
+> immutable and interchangeable — money, color, a point on a map.
 
 ## `entity` — identity key
 
