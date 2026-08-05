@@ -1,5 +1,6 @@
 # Tkinter presentation (SRP per panel). Depends on repository ports only (DIP).
 # Twin of menus.pys — same CRUD + identity demos, different I/O.
+# Lists use ttk.Treeview tables (columns + headings), not plain Listbox lines.
 
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -7,17 +8,72 @@ import tkinter.messagebox as messagebox
 import Product, Order, OrderLine from models
 import ProductRepository, OrderRepository, OrderLineRepository from repositories
 
+# Shared tabular list: headings, scrollable Treeview, row iid = domain key.
+package class ColumnTable {
+    private Treeview tree
+
+    public ColumnTable(
+        Frame parent,
+        list columns,
+        list headings,
+        list widths,
+        int height
+    ) {
+        Frame wrap = ttk.Frame(parent)
+        wrap.pack(fill="both", expand=True)
+        this.tree = ttk.Treeview(wrap, columns=columns, show="headings", height=height)
+        int i = 0
+        loop (i < len(columns)) {
+            string col = columns[i]
+            this.tree.heading(col, text=headings[i])
+            this.tree.column(col, width=widths[i], anchor="w")
+            i = i + 1
+        }
+        Scrollbar yscroll = ttk.Scrollbar(
+            wrap, orient="vertical", command=this.tree.yview
+        )
+        this.tree.configure(yscrollcommand=yscroll.set)
+        this.tree.pack(side="left", fill="both", expand=True)
+        yscroll.pack(side="right", fill="y")
+    }
+
+    public Treeview widget() {
+        return this.tree
+    }
+
+    public void clearRows() {
+        loop (string item in this.tree.get_children()) {
+            this.tree.delete(item)
+        }
+    }
+
+    public void addRow(string iid, list values) {
+        this.tree.insert("", "end", iid=iid, values=values)
+    }
+
+    public string selectedIid() {
+        list sel = this.tree.selection()
+        if (len(sel) == 0) {
+            return ""
+        }
+        string iid = sel[0]
+        return iid
+    }
+
+    public void onSelect(handler) {
+        this.tree.bind("<<TreeviewSelect>>", handler)
+    }
+}
+
 package class ProductPanel {
     private ProductRepository products
-    private Listbox listBox
-    private list<int> productIds
+    private ColumnTable table
     private Entry skuEntry
     private Entry nameEntry
     private Entry priceEntry
 
     public ProductPanel(Frame parent, ProductRepository products) {
         this.products = products
-        this.productIds = []
 
         Frame left = ttk.Frame(parent)
         left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
@@ -25,9 +81,14 @@ package class ProductPanel {
         right.pack(side="right", fill="y", padx=4, pady=4)
 
         ttk.Label(left, text="Products — select a row to edit").pack(anchor="w")
-        this.listBox = tk.Listbox(left, width=56, height=22)
-        this.listBox.pack(fill="both", expand=True)
-        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+        this.table = ColumnTable(
+            left,
+            ["id", "sku", "name", "price", "active", "created"],
+            ["Id", "SKU", "Name", "Price", "Active", "Created"],
+            [48, 150, 220, 70, 70, 140],
+            18
+        )
+        this.table.onSelect(this.onSelect)
 
         ttk.Label(right, text="SKU").pack(anchor="w")
         this.skuEntry = ttk.Entry(right, width=28)
@@ -50,12 +111,17 @@ package class ProductPanel {
     }
 
     public void refresh() {
-        this.listBox.delete(0, "end")
-        this.productIds = []
+        this.table.clearRows()
         list<Product> rows = this.products.all()
         loop (Product p in rows) {
-            this.listBox.insert("end", p.summary())
-            this.productIds.append(p.id())
+            string flag = "yes"
+            if (p.active == false) {
+                flag = "no"
+            }
+            this.table.addRow(
+                str(p.id()),
+                [str(p.id()), p.sku, p.name, str(p.unitPrice), flag, p.createdAt]
+            )
         }
     }
 
@@ -73,18 +139,11 @@ package class ProductPanel {
     }
 
     private Product selectedProduct() {
-        list sel = this.listBox.curselection()
-        if (len(sel) == 0) {
+        string iid = this.table.selectedIid()
+        if (iid == "") {
             return null
         }
-        int idx = sel[0]
-        if (idx < 0) {
-            return null
-        }
-        if (idx >= len(this.productIds)) {
-            return null
-        }
-        int id = this.productIds[idx]
+        int id = int(iid)
         return this.products.get(id)
     }
 
@@ -178,14 +237,12 @@ package class ProductPanel {
 
 package class OrderPanel {
     private OrderRepository orders
-    private Listbox listBox
-    private list<int> orderIds
+    private ColumnTable table
     private Entry customerEntry
     private Entry statusEntry
 
     public OrderPanel(Frame parent, OrderRepository orders) {
         this.orders = orders
-        this.orderIds = []
 
         Frame left = ttk.Frame(parent)
         left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
@@ -193,9 +250,14 @@ package class OrderPanel {
         right.pack(side="right", fill="y", padx=4, pady=4)
 
         ttk.Label(left, text="Orders — select a row to edit").pack(anchor="w")
-        this.listBox = tk.Listbox(left, width=56, height=22)
-        this.listBox.pack(fill="both", expand=True)
-        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+        this.table = ColumnTable(
+            left,
+            ["id", "placed", "status", "customer"],
+            ["Id", "Placed at", "Status", "Customer"],
+            [48, 160, 90, 220],
+            18
+        )
+        this.table.onSelect(this.onSelect)
 
         ttk.Label(right, text="Customer ref").pack(anchor="w")
         this.customerEntry = ttk.Entry(right, width=28)
@@ -216,12 +278,17 @@ package class OrderPanel {
     }
 
     public void refresh() {
-        this.listBox.delete(0, "end")
-        this.orderIds = []
+        this.table.clearRows()
         list<Order> rows = this.orders.all()
         loop (Order o in rows) {
-            this.listBox.insert("end", o.summary())
-            this.orderIds.append(o.id())
+            string who = o.customerRef
+            if (who == "") {
+                who = "(no customer)"
+            }
+            this.table.addRow(
+                str(o.id()),
+                [str(o.id()), o.placedAt, o.status, who]
+            )
         }
     }
 
@@ -237,18 +304,11 @@ package class OrderPanel {
     }
 
     private Order selectedOrder() {
-        list sel = this.listBox.curselection()
-        if (len(sel) == 0) {
+        string iid = this.table.selectedIid()
+        if (iid == "") {
             return null
         }
-        int idx = sel[0]
-        if (idx < 0) {
-            return null
-        }
-        if (idx >= len(this.orderIds)) {
-            return null
-        }
-        int id = this.orderIds[idx]
+        int id = int(iid)
         return this.orders.get(id)
     }
 
@@ -303,8 +363,7 @@ package class OrderLinePanel {
     private OrderLineRepository lines
     private ProductRepository products
     private OrderRepository orders
-    private Listbox listBox
-    private list<string> lineKeys
+    private ColumnTable table
     private Entry filterOrderEntry
     private Entry orderIdEntry
     private Entry lineNumberEntry
@@ -320,7 +379,6 @@ package class OrderLinePanel {
         this.lines = lines
         this.products = products
         this.orders = orders
-        this.lineKeys = []
 
         Frame left = ttk.Frame(parent)
         left.pack(side="left", fill="both", expand=True, padx=4, pady=4)
@@ -335,9 +393,14 @@ package class OrderLinePanel {
         this.filterOrderEntry.insert(0, "0")
         ttk.Button(filterRow, text="Refresh", command=this.refresh).pack(side="left")
 
-        this.listBox = tk.Listbox(left, width=56, height=20)
-        this.listBox.pack(fill="both", expand=True)
-        this.listBox.bind("<<ListboxSelect>>", this.onSelect)
+        this.table = ColumnTable(
+            left,
+            ["order", "line", "product", "sku", "price", "qty", "total"],
+            ["Order", "Line", "Product", "SKU snapshot", "Price", "Qty", "Total"],
+            [56, 48, 64, 160, 70, 48, 70],
+            16
+        )
+        this.table.onSelect(this.onSelect)
 
         ttk.Label(right, text="Order id").pack(anchor="w")
         this.orderIdEntry = ttk.Entry(right, width=28)
@@ -363,8 +426,7 @@ package class OrderLinePanel {
     }
 
     public void refresh() {
-        this.listBox.delete(0, "end")
-        this.lineKeys = []
+        this.table.clearRows()
         string filterText = this.filterOrderEntry.get().strip()
         if (filterText == "") {
             filterText = "0"
@@ -377,10 +439,19 @@ package class OrderLinePanel {
             rows = this.lines.all()
         }
         loop (OrderLine line in rows) {
-            string label = line.summary() + " total=" + str(line.lineTotal())
-            this.listBox.insert("end", label)
             string key = str(line.id()) + ":" + str(line.lineKey())
-            this.lineKeys.append(key)
+            this.table.addRow(
+                key,
+                [
+                    str(line.id()),
+                    str(line.lineKey()),
+                    str(line.productId),
+                    line.skuSnapshot,
+                    str(line.unitPrice),
+                    str(line.quantity),
+                    str(line.lineTotal())
+                ]
+            )
         }
     }
 
@@ -400,18 +471,10 @@ package class OrderLinePanel {
     }
 
     private OrderLine selectedLine() {
-        list sel = this.listBox.curselection()
-        if (len(sel) == 0) {
+        string key = this.table.selectedIid()
+        if (key == "") {
             return null
         }
-        int idx = sel[0]
-        if (idx < 0) {
-            return null
-        }
-        if (idx >= len(this.lineKeys)) {
-            return null
-        }
-        string key = this.lineKeys[idx]
         list parts = key.split(":")
         int orderId = int(parts[0])
         int lineNumber = int(parts[1])
@@ -619,7 +682,7 @@ package class ShopGuiApp {
 
         this.root = tk.Tk()
         this.root.title("PYS Shop — entity + MySQL")
-        this.root.geometry("960x580")
+        this.root.geometry("1100x620")
 
         Notebook notebook = ttk.Notebook(this.root)
         notebook.pack(fill="both", expand=True, padx=8, pady=8)

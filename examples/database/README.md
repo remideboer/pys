@@ -17,7 +17,7 @@ companion to [`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).
 | [`repositories.pys`](repositories.pys) | Typed abstract [Repository](https://martinfowler.com/eaaCatalog/repository.html) contracts + mapper-backed implementations |
 | [`console.pys`](console.pys) | `Console` port + `StdConsole` adapter (**S**, **D**) |
 | [`menus.pys`](menus.pys) | Console screens (**S**); depends on repository **ports** |
-| [`gui.pys`](gui.pys) | Tkinter notebook panels (**S**); same repository **ports**, no SQL |
+| [`gui.pys`](gui.pys) | Tkinter notebook + `ttk.Treeview` tables (**S**); same repository **ports**, no SQL |
 | [`shop_app.pys`](shop_app.pys) | Composition root — wiring + console-vs-GUI choice |
 | [`pys.toml`](pys.toml) | `[project].main = shop_app.pys` |
 
@@ -100,8 +100,10 @@ At startup the process asks on stdin:
 ```
 
 Choose `1` for the text menus, or `2` for the notebook UI (Products / Orders /
-Order lines / Identity). Tkinter is stdlib; option `2` needs a display (local
-Windows desktop is fine — not for headless CI).
+Order lines / Identity). Product, order, and line lists use **column tables**
+(`ttk.Treeview` with headings and a scrollbar), not plain one-line listboxes.
+Tkinter is stdlib; option `2` needs a display (local Windows desktop is fine —
+not for headless CI).
 
 ## What to try
 

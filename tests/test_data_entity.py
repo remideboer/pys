@@ -58,6 +58,7 @@ def test_example_database_shop_transpiles() -> None:
     assert "SELECT " not in modules["repositories"]
     assert "MainMenu" in modules["menus"]
     assert "ShopGuiApp" in modules["gui"]
+    assert "ColumnTable" in modules["gui"]
     assert "SELECT " not in modules["gui"]
     assert "mysql.connector" in modules["db"]
     for text in modules.values():
