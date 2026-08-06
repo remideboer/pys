@@ -63,13 +63,52 @@ Hello, Ada!
 ```
 
 
-Think of the computer’s memory as a cabinet full of drawers. A variable
-is one drawer. Its name — `firstName` — is the label on the drawer so you
-can find it again.
+Think of the computer’s memory as a cabinet full of drawers. Each drawer
+has a **number** (its address). A variable is one drawer; its name —
+`firstName` — is a label that points at that number so you can find it
+again.
+
+Here is a tiny map of memory: sixteen drawers in a 4×4 grid, numbered
+**0 through 15**. Most are empty. Drawer **5** holds `"Ada"` and wears
+the name `firstName`:
+
+<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels drawer 5 which holds Ada">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>drawer <strong>5</strong></span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <span class="addr">5</span>
+      <span class="varname">firstName</span>
+      <span class="val">"Ada"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Simplified teaching map — real machines use many more addresses.
+    The name points at a drawer number; the value lives in that drawer.
+  </figcaption>
+</figure>
 
 `var firstName = "Ada"` does two things:
 
-1. Labels a new drawer `firstName`.
+1. Labels a new drawer (here, drawer **5**) with the name `firstName`.
 2. Puts `"Ada"` inside it.
 
 > By convention PYS variables use **camelCase**: no spaces, no

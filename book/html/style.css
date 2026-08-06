@@ -169,6 +169,61 @@ main th { background: #efebe3; }
   border: 2px solid var(--accent);
   background: #e5edff;
 }
+.memory-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+  margin: 0 auto 0.85rem;
+  font-size: 0.95rem;
+}
+.memory-name-tag {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-weight: 650;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: #e5edff;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(4.5rem, 1fr));
+  gap: 0.4rem;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+.memory-cell {
+  position: relative;
+  min-height: 4.25rem;
+  padding: 0.35rem 0.4rem;
+  border: 1px solid #aaa397;
+  border-radius: 6px;
+  background: var(--bg);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.85rem;
+}
+.memory-cell .addr {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.memory-cell.named {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+}
+.memory-cell .varname {
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 650;
+  color: var(--accent);
+}
+.memory-cell .val {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--fg);
+}
 main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }
 .mermaid {

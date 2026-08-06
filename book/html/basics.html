@@ -159,12 +159,50 @@ program runs:</p>
 <p>Output:</p>
 <pre><code class="language-text">Hello, Ada!
 </code></pre>
-<p>Think of the computer’s memory as a cabinet full of drawers. A variable
-is one drawer. Its name — <code>firstName</code> — is the label on the drawer so you
-can find it again.</p>
+<p>Think of the computer’s memory as a cabinet full of drawers. Each drawer
+has a <strong>number</strong> (its address). A variable is one drawer; its name —
+<code>firstName</code> — is a label that points at that number so you can find it
+again.</p>
+<p>Here is a tiny map of memory: sixteen drawers in a 4×4 grid, numbered
+<strong>0 through 15</strong>. Most are empty. Drawer <strong>5</strong> holds <code>"Ada"</code> and wears
+the name <code>firstName</code>:</p>
+<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels drawer 5 which holds Ada">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>drawer <strong>5</strong></span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <span class="addr">5</span>
+      <span class="varname">firstName</span>
+      <span class="val">"Ada"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Simplified teaching map — real machines use many more addresses.
+    The name points at a drawer number; the value lives in that drawer.
+  </figcaption>
+</figure>
+
 <p><code>var firstName = "Ada"</code> does two things:</p>
 <ol>
-<li>Labels a new drawer <code>firstName</code>.</li>
+<li>Labels a new drawer (here, drawer <strong>5</strong>) with the name <code>firstName</code>.</li>
 <li>Puts <code>"Ada"</code> inside it.</li>
 </ol>
 <blockquote>
