@@ -504,8 +504,18 @@ python -m transpiler transpile examples/main.pys .transpiled/main.py
 ### Dependency management (`pys.deps`)
 
 PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
-packages for `.pys` programs are declared in a `pys.deps` file and resolved
-through a **Maven-style central repository** shared across projects.
+packages for `.pys` programs are declared in a `pys.deps` file. Resolved
+environments are stored once in a **shared central cache** (a flyweight:
+many projects reuse the same locked tree by digest instead of copying packages
+per project).
+
+Default cache root (`PYS_REPO` overrides):
+
+| OS | Location |
+| --- | --- |
+| Windows | `%USERPROFILE%\.pys\repository` (e.g. `C:\Users\<you>\.pys\repository`) |
+| macOS | `~/.pys/repository` (e.g. `/Users/<you>/.pys/repository`) |
+| Linux | `~/.pys/repository` (e.g. `/home/<you>/.pys/repository`) |
 
 **How it works**
 
@@ -519,18 +529,17 @@ through a **Maven-style central repository** shared across projects.
 5. The locked environment is cached once by lock digest and prepended to `PYTHONPATH` for the generated
    Python process — imports like `import matplotlib` then resolve normally.
 
-**Layout**
+**Layout** (under the cache root above)
 
 ```
-~/.pys/repository/
-  environments/
-    <lock-sha256>/
-      .pys-lock.json
-      matplotlib/
-      ...
+environments/
+  <lock-sha256>/
+    .pys-lock.json
+    matplotlib/
+    ...
 ```
 
-Override the repo root with env `PYS_REPO` if needed.
+Override the cache root with env `PYS_REPO` if needed.
 
 **Declare dependencies**
 
