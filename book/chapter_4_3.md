@@ -1,4 +1,4 @@
-# 5.3. Abstract classes
+# 5.4. Abstract classes
 
 A full **class** is a finished machine. An **interface** is only a hollow
 socket. An **abstract class** sits between them: a **partial machine** —
@@ -10,10 +10,10 @@ product on the shelf until a concrete class fills every open slot.
 
 > **Sidebar — `inherits` and `super`**
 >
-> `inherits AbstractList` means “this class is a specialized version of
-> that one.” In the subclass constructor, `super()` runs the parent
-> constructor first so inherited fields (like `size`) are set up. Pass
-> arguments inside `super(...)` when the parent needs them.
+> Same tools as [Inheritance and subclasses](chapter_4_inherits.md):
+> `inherits AbstractList` specializes that chassis, and `super()` runs the
+> parent constructor first so inherited fields (like `size`) are set up.
+> Pass arguments inside `super(...)` when the parent needs them.
 
 > **Sidebar — `protected`**
 >

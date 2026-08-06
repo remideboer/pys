@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>5.3. Abstract classes — PYS Development Classes</title>
+  <title>5.4. Abstract classes — PYS Development Classes</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -57,11 +57,12 @@
 <ul>
 <li><a href="chapter_4.html">Session 3 — Objects and composition</a></li>
 <li><a href="chapter_4_1.html">5.1. Classes and member order</a></li>
-<li><a href="chapter_4_2.html">5.2. Interfaces</a></li>
-<li><a href="chapter_4_3.html">5.3. Abstract classes</a></li>
-<li><a href="chapter_4_4.html">5.4. Traits</a></li>
-<li><a href="chapter_4_5.html">5.5. Structs, data, and entity</a></li>
-<li><a href="chapter_4_6.html">5.6. Choosing the right construct</a></li>
+<li><a href="chapter_4_inherits.html">5.2. Inheritance and subclasses</a></li>
+<li><a href="chapter_4_2.html">5.3. Interfaces</a></li>
+<li><a href="chapter_4_3.html">5.4. Abstract classes</a></li>
+<li><a href="chapter_4_4.html">5.5. Traits</a></li>
+<li><a href="chapter_4_5.html">5.6. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6.html">5.7. Choosing the right construct</a></li>
 </ul>
 <span class="section">6. Session 4 — Functions and lambdas</span>
 <ul>
@@ -118,7 +119,7 @@
 </ul>
     </nav>
     <main>
-<h1>5.3. Abstract classes</h1>
+<h1>5.4. Abstract classes</h1>
 <p>A full <strong>class</strong> is a finished machine. An <strong>interface</strong> is only a hollow
 socket. An <strong>abstract class</strong> sits between them: a <strong>partial machine</strong> —
 some state and gears are already built in, but it leaves <strong>open slots</strong>
@@ -127,10 +128,10 @@ that subclasses must <strong>wire</strong> before the apparatus can run.</p>
 product on the shelf until a concrete class fills every open slot.</p>
 <blockquote>
 <p><strong>Sidebar — <code>inherits</code> and <code>super</code></strong></p>
-<p><code>inherits AbstractList</code> means “this class is a specialized version of
-that one.” In the subclass constructor, <code>super()</code> runs the parent
-constructor first so inherited fields (like <code>size</code>) are set up. Pass
-arguments inside <code>super(...)</code> when the parent needs them.</p>
+<p>Same tools as <a href="chapter_4_inherits.html">Inheritance and subclasses</a>:
+<code>inherits AbstractList</code> specializes that chassis, and <code>super()</code> runs the
+parent constructor first so inherited fields (like <code>size</code>) are set up.
+Pass arguments inside <code>super(...)</code> when the parent needs them.</p>
 <p><strong>Sidebar — <code>protected</code></strong></p>
 <p><code>protected</code> members are visible inside this class <strong>and</strong> its subclasses,
 but not to unrelated code. Compare: <code>private</code> = this class only;

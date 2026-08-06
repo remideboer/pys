@@ -4,11 +4,12 @@ Until now values were mostly numbers, strings, and collections. **Objects**
 bundle data with behavior — and PYS gives you several shapes on purpose.
 
 1. [Classes and member order](chapter_4_1.md)
-2. [Interfaces](chapter_4_2.md)
-3. [Abstract classes](chapter_4_3.md)
-4. [Traits](chapter_4_4.md)
-5. [Structs, data, and entity](chapter_4_5.md)
-6. [Choosing the right construct](chapter_4_6.md)
+2. [Inheritance and subclasses](chapter_4_inherits.md)
+3. [Interfaces](chapter_4_2.md)
+4. [Abstract classes](chapter_4_3.md)
+5. [Traits](chapter_4_4.md)
+6. [Structs, data, and entity](chapter_4_5.md)
+7. [Choosing the right construct](chapter_4_6.md)
 
 Keep this comparison nearby (from the language docs):
 

@@ -1,4 +1,4 @@
-# 5.5. Structs, data, and entity
+# 5.6. Structs, data, and entity
 
 Three ways to bundle fields without “full” class identity semantics.
 

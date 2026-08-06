@@ -46,11 +46,12 @@
 
 - [Session 3 — Objects and composition](chapter_4.md)
   - [5.1. Classes and member order](chapter_4_1.md)
-  - [5.2. Interfaces](chapter_4_2.md)
-  - [5.3. Abstract classes](chapter_4_3.md)
-  - [5.4. Traits](chapter_4_4.md)
-  - [5.5. Structs, data, and entity](chapter_4_5.md)
-  - [5.6. Choosing the right construct](chapter_4_6.md)
+  - [5.2. Inheritance and subclasses](chapter_4_inherits.md)
+  - [5.3. Interfaces](chapter_4_2.md)
+  - [5.4. Abstract classes](chapter_4_3.md)
+  - [5.5. Traits](chapter_4_4.md)
+  - [5.6. Structs, data, and entity](chapter_4_5.md)
+  - [5.7. Choosing the right construct](chapter_4_6.md)
 
 # 6. Session 4 — Functions and lambdas
 

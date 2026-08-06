@@ -1,4 +1,4 @@
-# 5.4. Traits
+# 5.5. Traits
 
 A **trait** is reusable behavior mixed into a class with `uses`. It is
 **not** a type — you cannot write `Printable p = …` or `implements Printable`.

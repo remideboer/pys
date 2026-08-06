@@ -411,6 +411,10 @@ main th { background: #efebe3; }
 .cls-member.cls-slot-filled {
   box-shadow: inset 3px 0 0 #2a7a3a;
 }
+.cls-machine.cls-specialized {
+  border-color: #2a7a3a;
+  background: linear-gradient(180deg, #e8f6ec 0%, #d7eedd 100%);
+}
 .cls-head,
 .iface-head {
   display: flex;

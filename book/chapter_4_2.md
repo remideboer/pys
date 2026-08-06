@@ -1,4 +1,4 @@
-# 5.2. Interfaces
+# 5.3. Interfaces
 
 If a class is a machine full of state and gears, an **interface** is only
 the **socket on the front**: a faceplate that lists openings (method
@@ -143,4 +143,4 @@ the interface listed that opening; the class made it real.
 
 ---
 
-[Previous: Classes](chapter_4_1.md) · [Next: Abstract classes](chapter_4_3.md)
+[Previous: Inheritance and subclasses](chapter_4_inherits.md) · [Next: Abstract classes](chapter_4_3.md)

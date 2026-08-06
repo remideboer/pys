@@ -1,4 +1,4 @@
-# 5.6. Choosing the right construct
+# 5.7. Choosing the right construct
 
 Use this as a pocket card:
 

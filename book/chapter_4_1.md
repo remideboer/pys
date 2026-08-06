@@ -300,4 +300,4 @@ Constructor name equals the class name. Use `this.field` for members.
 
 ---
 
-[Previous: Enums and switch](chapter_3_5.md) · [Next: Interfaces](chapter_4_2.md)
+[Previous: Enums and switch](chapter_3_5.md) · [Next: Inheritance and subclasses](chapter_4_inherits.md)
