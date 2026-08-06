@@ -120,12 +120,19 @@
     </nav>
     <main>
 <h1>5.5. Traits</h1>
-<p>A <strong>trait</strong> is reusable behavior mixed into a class with <code>uses</code>. It is
-<strong>not</strong> a type — you cannot write <code>Printable p = …</code> or <code>implements Printable</code>.</p>
-<p>Host state is declared with <code>requires</code> and accessed via <code>this</code>. All
-<code>requires</code> come before methods in the trait body. Listing dependencies up
-front is intentional: unlike a duck-typed mixin, every host member the
-trait needs is visible next to the methods that use it.</p>
+<p>A <strong>trait</strong> is a <strong>bolt-on piece of gearing</strong> — a part-machine you mount
+onto a class with <code>uses</code>. It brings methods (gears) you want to reuse,
+and it may expose those methods through the host’s outside channels.</p>
+<p>But the trait is not free-standing. It often has a <strong>socket that only
+works when certain wires are connected</strong>: <code>requires</code> lists what the host
+must supply (fields or methods) before the gearing can run. Without those
+wires, the part cannot be used.</p>
+<p>A trait is <strong>not</strong> a type — you cannot write <code>Printable p = …</code> or
+<code>implements Printable</code>. It is composition of behavior, not a new kind of
+machine you plug a caller cable into.</p>
+<p>Host state named in <code>requires</code> is accessed via <code>this</code>. All <code>requires</code>
+come before methods in the trait body on purpose: every wire the trait
+needs sits next to the gears that use it.</p>
 <pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">Printable</span> {
     <span class="tok-kw">requires</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 
@@ -147,6 +154,79 @@ trait needs is visible next to the methods that use it.</p>
 <p>Output:</p>
 <pre><code class="language-text">Item: Mug
 </code></pre>
+<figure class="concept-diagram" role="img" aria-label="Trait Printable as bolt-on gearing that requires a name wire; Product supplies the wire and gains label">
+  <div class="iface-choice">
+    <div class="trait-module">
+      <div class="cls-head">
+        <span class="trait-icon" aria-hidden="true">⚙</span>
+        <code>Printable</code>
+        <span class="cls-tag">trait · bolt-on gearing</span>
+      </div>
+      <div class="cls-columns">
+        <div class="cls-section">
+          <div class="cls-section-label">needs wires</div>
+          <div class="trait-wire">
+            <span class="trait-wire-jack" aria-hidden="true"></span>
+            <code>requires string name</code>
+            <span class="cls-note">host must connect</span>
+          </div>
+        </div>
+        <div class="cls-section">
+          <div class="cls-section-label">offers gears</div>
+          <div class="cls-member is-public">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>label()</code>
+            <span class="cls-note">uses this.name</span>
+          </div>
+        </div>
+      </div>
+      <p class="iface-empty">not a type — no <code>Printable p = …</code></p>
+    </div>
+
+    <div class="iface-plug iface-plug-down" aria-hidden="true">
+      <span class="iface-plug-arrow">↓</span>
+      <span class="iface-plug-label">uses · mount + wire</span>
+    </div>
+
+    <div class="cls-machine">
+      <div class="cls-head">
+        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+        <code>Product</code>
+        <span class="cls-tag">host machine</span>
+      </div>
+      <div class="cls-columns">
+        <div class="cls-section">
+          <div class="cls-section-label">supplies the wire</div>
+          <div class="cls-member is-private">
+            <span class="cls-lock" aria-hidden="true">🔒</span>
+            <code>private string name</code>
+            <span class="cls-note">→ requires name</span>
+          </div>
+        </div>
+        <div class="cls-section">
+          <div class="cls-section-label">mounted gearing</div>
+          <div class="cls-member is-public cls-slot-filled">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>label()</code>
+            <span class="cls-note">from Printable</span>
+          </div>
+        </div>
+      </div>
+      <div class="cls-channels">
+        <span class="cls-channels-label">outside channels</span>
+        <code>Product(…)</code>
+        <code>label()</code>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    The trait is a part with its own gears and a hungry socket:
+    <code>requires</code> are the wires it needs. The host connects those
+    wires (<code>name</code>) and mounts the part (<code>uses</code>).
+    Callers talk to <code>Product</code> — never to the trait as a type.
+  </figcaption>
+</figure>
+
 <h2>Remapping host names</h2>
 <p>Traits stay reusable when the host uses different field names. Remap only
 <code>requires</code> entries — the trait’s <strong>methods</strong> keep the same name on every host:</p>
@@ -171,6 +251,32 @@ trait needs is visible next to the methods that use it.</p>
 <p>Output:</p>
 <pre><code class="language-text">Item: widget
 </code></pre>
+<p>Same bolt-on gearing, different wire label on the host: the trait still
+asks for <code>name</code> inside its methods; <code>uses Printable(name: title)</code> is the
+adapter that connects the host’s <code>title</code> drawer to that required wire.</p>
+<figure class="concept-diagram" role="img" aria-label="Requires remapping: trait wire name connected to host field title">
+  <div class="trait-remap">
+    <div class="trait-wire">
+      <span class="trait-wire-jack" aria-hidden="true"></span>
+      <code>requires name</code>
+      <span class="cls-note">inside trait</span>
+    </div>
+    <div class="iface-plug" aria-hidden="true">
+      <span class="iface-plug-arrow">↔</span>
+      <span class="iface-plug-label">name: title</span>
+    </div>
+    <div class="cls-member is-private">
+      <span class="cls-lock" aria-hidden="true">🔒</span>
+      <code>private string title</code>
+      <span class="cls-note">on CatalogItem</span>
+    </div>
+  </div>
+  <figcaption>
+    Remap the <em>wire</em>, not the offered gear. <code>label()</code>
+    keeps its name on every host.
+  </figcaption>
+</figure>
+
 <blockquote>
 <p><strong>Sidebar — dependency vs offered surface</strong></p>
 <p><code>requires</code> is what the trait <em>needs</em> from the host (remappable). The
@@ -205,8 +311,80 @@ it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:
 <p>Output:</p>
 <pre><code class="language-text">HEY/hi
 </code></pre>
+<figure class="concept-diagram" role="img" aria-label="Greeter host directs greet wires to Loud and Soft trait gears after a name collision">
+  <div class="iface-choice">
+    <div class="cls-machine">
+      <div class="cls-head">
+        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+        <code>Greeter</code>
+        <span class="cls-tag">host chooses the wiring</span>
+      </div>
+      <div class="cls-section">
+        <div class="cls-section-label">override · directs the wires</div>
+        <div class="cls-member is-public cls-slot-filled">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>public string greet()</code>
+          <span class="cls-note">you pick the path</span>
+        </div>
+      </div>
+      <div class="cls-channels">
+        <span class="cls-channels-label">outside channel</span>
+        <code>greet()</code>
+      </div>
+    </div>
+
+    <div class="trait-collide-wires" aria-hidden="true">
+      <div class="trait-collide-wire">
+        <span class="iface-plug-label">Loud.greet(this)</span>
+        <span class="cls-line-arrow">↓</span>
+        <span class="trait-wire-jack"></span>
+      </div>
+      <div class="trait-collide-wire">
+        <span class="iface-plug-label">Soft.greet(this)</span>
+        <span class="cls-line-arrow">↓</span>
+        <span class="trait-wire-jack"></span>
+      </div>
+    </div>
+
+    <div class="iface-impls">
+      <div class="trait-module">
+        <div class="cls-head">
+          <span class="trait-icon" aria-hidden="true">⚙</span>
+          <code>Loud</code>
+          <span class="cls-tag">bolt-on</span>
+        </div>
+        <div class="cls-member is-public">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>greet()</code>
+          <span class="cls-note">→ HEY</span>
+        </div>
+      </div>
+      <div class="trait-module">
+        <div class="cls-head">
+          <span class="trait-icon" aria-hidden="true">⚙</span>
+          <code>Soft</code>
+          <span class="cls-tag">bolt-on</span>
+        </div>
+        <div class="cls-member is-public">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>greet()</code>
+          <span class="cls-note">→ hi</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Both traits offer a gear named <code>greet</code> — collision. The host
+    does not get both automatically. Its override
+    <strong>directs wires</strong> to the gearing it wants
+    (<code>Loud.greet(this)</code>, <code>Soft.greet(this)</code>, or only
+    one side). Callers still use a single <code>greet()</code> on
+    <code>Greeter</code>.
+  </figcaption>
+</figure>
 <p>Without the override, the transpile fails: two traits both want to own
-<code>greet</code>. The override is where <em>you</em> decide the story.</p>
+<code>greet</code>. The override is where <em>you</em> decide the story — which wires to
+connect.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Add <code>requires int priceCents</code> and a method <code>string priceTag()</code> that
