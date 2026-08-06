@@ -574,6 +574,73 @@ main th { background: #efebe3; }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.iface-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+.iface-caller {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #8a6d3b;
+  border-radius: 8px;
+  background: #f5ecd8;
+  text-align: center;
+}
+.iface-caller-label {
+  width: 100%;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.iface-caller code {
+  font-weight: 650;
+  background: #fff;
+  border: 1px solid #8a6d3b;
+}
+.iface-cable {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.15rem;
+}
+.iface-cable-line {
+  width: 3px;
+  height: 1.1rem;
+  background: linear-gradient(#8a6d3b, var(--accent));
+  border-radius: 2px;
+}
+.iface-cable-tip {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 650;
+}
+.iface-socket-wide {
+  max-width: none;
+  width: 100%;
+}
+.iface-impls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem 0.85rem;
+  align-items: stretch;
+}
+.iface-plug-down {
+  min-width: 0;
+}
+.iface-impls .cls-machine-sm {
+  max-width: none;
+  width: 100%;
+}
 .cls-factory {
   border: 2px solid #4a5568;
   border-radius: 12px;

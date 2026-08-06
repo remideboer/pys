@@ -122,8 +122,13 @@
 <p>If a class is a machine full of state and gears, an <strong>interface</strong> is only
 the <strong>socket on the front</strong>: a faceplate that lists openings (method
 signatures) and has <strong>no mechanics inside</strong> — no fields, no method
-bodies. Any class that <code>implements</code> the interface must wire real public
-methods into those openings.</p>
+bodies.</p>
+<p>The class that <code>implements</code> the interface does the <strong>wiring</strong>: it plugs
+real public methods into those openings so current can flow. Different
+machines may wire the same socket in different ways. A <strong>caller</strong> only
+needs a <strong>fitting cable</strong> — a variable typed as the interface — and calls
+through the socket. The caller does not need to know how the insides work,
+or even which machine is plugged in.</p>
 <p>Omit access modifiers on the interface signatures — they are always
 public and abstract. Omit a return type when the method returns nothing
 (same rule as classes: <code>void</code> is allowed but not required).</p>
@@ -137,14 +142,38 @@ public and abstract. Omit a return type when the method returns nothing
     }
 }
 
+<span class="tok-kw">class</span> <span class="tok-typename">LoudGreeter</span> <span class="tok-kw">implements</span> <span class="tok-typename">Greeter</span> {
+    <span class="tok-mod">public</span> <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">HEY </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">name</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!!!</span><span class="tok-string">&quot;</span>)
+    }
+}
+
 <span class="tok-typename">Greeter</span> <span class="tok-ident">g</span> <span class="tok-op">=</span> <span class="tok-typename">ConsoleGreeter</span>()
+<span class="tok-ident">g</span>.<span class="tok-ident">greet</span>(<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-ident">g</span> <span class="tok-op">=</span> <span class="tok-typename">LoudGreeter</span>()
 <span class="tok-ident">g</span>.<span class="tok-ident">greet</span>(<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>)</code></pre>
 <p>Output:</p>
 <pre><code class="language-text">Hello, Ada
+HEY Ada!!!
 </code></pre>
-<figure class="concept-diagram" role="img" aria-label="Interface Greeter as a hollow socket; ConsoleGreeter machine plugs public greet into that opening">
-  <div class="iface-pair">
-    <div class="iface-socket">
+<p>Same cable both times: <code>g</code> is a <code>Greeter</code>, and <code>g.greet("Ada")</code> is the
+only shape the caller cares about. First the quiet machine is plugged in;
+then the loud one. The socket stayed the same — only the wiring behind it
+changed.</p>
+<figure class="concept-diagram" role="img" aria-label="Greeter socket with two implementing machines side by side; caller cable connects only to the socket">
+  <div class="iface-choice">
+    <div class="iface-caller">
+      <div class="iface-caller-label">caller · fitting cable</div>
+      <code>Greeter g</code>
+      <span class="cls-note">does not know the internals</span>
+      <div class="iface-cable" aria-hidden="true">
+        <span class="iface-cable-line"></span>
+        <span class="iface-cable-tip">g.greet("Ada")</span>
+      </div>
+    </div>
+
+    <div class="iface-socket iface-socket-wide">
       <div class="iface-head">
         <span class="iface-icon" title="socket / contract" aria-hidden="true">⬡</span>
         <code>Greeter</code>
@@ -155,36 +184,58 @@ public and abstract. Omit a return type when the method returns nothing
         <code>greet(string name)</code>
         <span class="cls-note">opening only</span>
       </div>
-      <p class="iface-empty">no state · no gears · no body</p>
+      <p class="iface-empty">no state · no gears · no body — plug any fitting machine</p>
     </div>
-    <div class="iface-plug" aria-hidden="true">
-      <span class="iface-plug-arrow">→</span>
-      <span class="iface-plug-label">implements</span>
-    </div>
-    <div class="cls-machine cls-machine-sm">
-      <div class="cls-head">
-        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
-        <code>ConsoleGreeter</code>
-        <span class="cls-tag">class machine</span>
+
+    <div class="iface-impls">
+      <div class="iface-plug iface-plug-down" aria-hidden="true">
+        <span class="iface-plug-arrow">↓</span>
+        <span class="iface-plug-label">wiring A</span>
       </div>
-      <div class="cls-section">
-        <div class="cls-section-label">wired to the socket</div>
-        <div class="cls-member is-public">
-          <span class="fn-gear" aria-hidden="true">⚙</span>
-          <code>public greet(string name)</code>
-          <span class="cls-note">real body</span>
+      <div class="iface-plug iface-plug-down" aria-hidden="true">
+        <span class="iface-plug-arrow">↓</span>
+        <span class="iface-plug-label">wiring B</span>
+      </div>
+    </div>
+
+    <div class="iface-impls">
+      <div class="cls-machine cls-machine-sm">
+        <div class="cls-head">
+          <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+          <code>ConsoleGreeter</code>
+          <span class="cls-tag">implementer</span>
+        </div>
+        <div class="cls-section">
+          <div class="cls-section-label">wires the socket</div>
+          <div class="cls-member is-public">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>public greet(...)</code>
+            <span class="cls-note">prints Hello</span>
+          </div>
         </div>
       </div>
-      <div class="cls-channels">
-        <span class="cls-channels-label">outside channel</span>
-        <code>greet(…)</code>
+      <div class="cls-machine cls-machine-sm">
+        <div class="cls-head">
+          <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+          <code>LoudGreeter</code>
+          <span class="cls-tag">implementer</span>
+        </div>
+        <div class="cls-section">
+          <div class="cls-section-label">wires the socket</div>
+          <div class="cls-member is-public">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>public greet(...)</code>
+            <span class="cls-note">prints HEY!!!</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <figcaption>
-    The socket promises <code>greet</code> exists. The class supplies the
-    working gear. Callers can depend on the socket type
-    (<code>Greeter g</code>) without caring which machine is plugged in.
+    One socket, two machines side by side. The caller’s cable fits the
+    <code>Greeter</code> opening; each implementer does its own wiring
+    behind that opening. Swap the plug — the cable and the call stay the
+    same.
   </figcaption>
 </figure>
 
@@ -194,7 +245,8 @@ the interface listed that opening; the class made it real.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Add <code>farewell(string name)</code> to the interface and implement it on
-<code>ConsoleGreeter</code>.</p>
+<strong>both</strong> <code>ConsoleGreeter</code> and <code>LoudGreeter</code>. Call each through a
+<code>Greeter</code> variable.</p>
 </blockquote>
 <hr />
 <p><a href="chapter_4_1.html">Previous: Classes</a> · <a href="chapter_4_3.html">Next: Abstract classes</a></p>
