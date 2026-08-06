@@ -39,16 +39,21 @@ jobs:
         run: python build_html.py
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: book/html
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # deploy-pages still loads Node's deprecated punycode via an old
+    # @actions/artifact (upstream: actions/deploy-pages#413). Mute only that
+    # code until a release ships the artifact v6+ rebuild.
+    env:
+      NODE_OPTIONS: --disable-warning=DEP0040
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
