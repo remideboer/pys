@@ -273,6 +273,101 @@ main th { background: #efebe3; }
   font-size: 1.6rem;
   font-weight: 700;
 }
+.fn-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.55rem 0.65rem;
+}
+.fn-port {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 6.5rem;
+  max-width: 9rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px dashed #aaa397;
+  border-radius: 6px;
+  background: var(--bg);
+  text-align: center;
+  font-size: 0.9rem;
+}
+.fn-port-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fn-port .fn-type {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.fn-arrow {
+  align-self: center;
+  color: var(--accent);
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+.fn-box {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  background: #e5edff;
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+.fn-box-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0.45rem;
+}
+.fn-gear {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.fn-box-head code {
+  font-weight: 650;
+  background: transparent;
+  padding: 0;
+}
+.fn-repeat {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.fn-body {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--fg);
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.fn-box-foot {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.fn-port.fn-out {
+  border-style: solid;
+  border-color: var(--accent);
+  background: #e5edff;
+}
+.fn-port.fn-side {
+  border-color: #8a6d3b;
+  background: #f5ecd8;
+}
 main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }
 .mermaid {
