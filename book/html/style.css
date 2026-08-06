@@ -204,10 +204,25 @@ main th { background: #efebe3; }
   font-family: Consolas, "Cascadia Mono", monospace;
   font-size: 0.85rem;
 }
+.memory-cell .memory-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25rem;
+  min-height: 1em;
+}
+.memory-cell.locked .memory-meta {
+  padding-right: 1.15rem;
+}
 .memory-cell .addr {
-  display: block;
   color: var(--muted);
   font-size: 0.78rem;
+  text-align: left;
+}
+.memory-cell .type {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
 }
 .memory-cell.named {
   border: 2px solid var(--accent);
@@ -218,11 +233,45 @@ main th { background: #efebe3; }
   margin-top: 0.2rem;
   font-weight: 650;
   color: var(--accent);
+  font-size: 0.72rem;
+  word-break: break-word;
 }
 .memory-cell .val {
   display: block;
   margin-top: 0.15rem;
   color: var(--fg);
+}
+.memory-cell.locked {
+  border-color: #8a6d3b;
+  background: #f5ecd8;
+}
+.memory-cell .lock {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.3rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+.memory-cell.changed {
+  box-shadow: inset 0 0 0 2px #c47b00;
+}
+.memory-compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.75rem 1rem;
+}
+.memory-compare > .concept-diagram {
+  flex: 1 1 16rem;
+  margin: 0;
+  max-width: 20rem;
+}
+.memory-compare-arrow {
+  align-self: center;
+  color: var(--accent);
+  font-size: 1.6rem;
+  font-weight: 700;
 }
 main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }

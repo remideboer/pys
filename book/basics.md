@@ -68,15 +68,19 @@ has a **number** (its address). A variable is one drawer; its name —
 `firstName` — is a label that points at that number so you can find it
 again.
 
+On each drawer you can also read **what kind of data** lives there — the
+*type*. Address on the left, type on the right (here drawer **5** is a
+`string` drawer holding text).
+
 Here is a tiny map of memory: sixteen drawers in a 4×4 grid, numbered
 **0 through 15**. Most are empty. Drawer **5** holds `"Ada"` and wears
 the name `firstName`:
 
-<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels drawer 5 which holds Ada">
+<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels string drawer 5 which holds Ada">
   <div class="memory-legend">
     <span class="memory-name-tag">firstName</span>
     <span aria-hidden="true">→</span>
-    <span>drawer <strong>5</strong></span>
+    <span>drawer <strong>5</strong> <code>string</code></span>
   </div>
   <div class="memory-grid">
     <div class="memory-cell"><span class="addr">0</span></div>
@@ -85,7 +89,7 @@ the name `firstName`:
     <div class="memory-cell"><span class="addr">3</span></div>
     <div class="memory-cell"><span class="addr">4</span></div>
     <div class="memory-cell named">
-      <span class="addr">5</span>
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
       <span class="varname">firstName</span>
       <span class="val">"Ada"</span>
     </div>
@@ -102,13 +106,15 @@ the name `firstName`:
   </div>
   <figcaption>
     Simplified teaching map — real machines use many more addresses.
-    The name points at a drawer number; the value lives in that drawer.
+    The name points at a drawer number; the type says what kind of value
+    fits; the value lives in that drawer.
   </figcaption>
 </figure>
 
 `var firstName = "Ada"` does two things:
 
-1. Labels a new drawer (here, drawer **5**) with the name `firstName`.
+1. Labels a new drawer (here, drawer **5**) with the name `firstName`
+   and remembers its type is `string` (text in quotes).
 2. Puts `"Ada"` inside it.
 
 > By convention PYS variables use **camelCase**: no spaces, no
@@ -139,28 +145,239 @@ Greetings, Tom!
 
 After the first print, we open the `firstName` drawer, remove `"Ada"`, and
 put `"Tom"` in. We do **not** write `var` again — the drawer already
-exists; we only change its contents. The second print shows
-`Greetings, Tom!`.
+exists; we only change its contents. The type stays `string`. The second
+print shows `Greetings, Tom!`.
+
+Same drawer number and type, new contents:
+
+<div class="memory-compare">
+<figure class="concept-diagram" role="img" aria-label="Memory before reassignment: string drawer 5 firstName holds Ada">
+  <div class="memory-legend"><strong>Before</strong> — after <code>var firstName = "Ada"</code></div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Ada"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+</figure>
+<p class="memory-compare-arrow" aria-hidden="true">→</p>
+<figure class="concept-diagram" role="img" aria-label="Memory after reassignment: string drawer 5 firstName now holds Tom">
+  <div class="memory-legend"><strong>After</strong> — <code>firstName = "Tom"</code></div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named changed">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+</figure>
+</div>
 
 ### A drawer that can’t be swapped: `fix`
 
-Sometimes you want a value that must not change later. PYS has `fix` for
-that:
+Keep building on the same program. `firstName` is still a normal `var`
+drawer (we left it holding `"Tom"`). Add a second drawer that must not
+change later — PYS uses `fix` for that. A year is a whole number, so this
+drawer’s type is `int`, not `string`:
 
 ```pys
-fix string birthYear = "1990"
-print("Born in " + birthYear)
+var firstName = "Ada"
+print("Hello, " + firstName + "!")
 
-# birthYear = "1991"   # does not compile — the drawer is locked
+firstName = "Tom"
+print("Greetings, " + firstName + "!")
+
+fix int birthYear = 1990
+print(firstName + " was born in " + str(birthYear))
+
+# birthYear = 1991     # does not compile — the drawer is locked
+# firstName = "Sam"    # this would still be allowed — var is not locked
 ```
 
-*Compile error if the commented line is uncommented.*
+Output:
 
+```text
+Hello, Ada!
+Greetings, Tom!
+Tom was born in 1990
+```
 
+*Compile error if the `birthYear = …` line is uncommented.*
 
-`fix` locks the drawer after the first value is placed. Trying to reopen
-it is a **compile error**, not a silent bug later. Prefer `fix` when the
-value should stay put; use `var` when you already know it must change.
+`str(birthYear)` turns the number into text so it can be glued into the
+print string. The drawer itself still holds an `int` — look at the type
+on the right of the address.
+
+`fix` locks **that** drawer after the first value is placed. Trying to
+reopen it is a **compile error**, not a silent bug later. Prefer `fix`
+when the value should stay put; use `var` when you already know it must
+change.
+
+Memory now has **two** named drawers. Read each label: address on the
+left, type on the right — `5 string` versus `9 int`.
+
+<figure class="concept-diagram" role="img" aria-label="Memory with string firstName in drawer 5 holding Tom and fix int birthYear locked in drawer 9 holding 1990">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>5 <code>string</code></span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">birthYear</span>
+    <span aria-hidden="true">→</span>
+    <span>9 <code>int</code></span>
+    <span aria-hidden="true">🔒</span>
+    <span><code>fix</code></span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">9</span><span class="type">int</span></div>
+      <span class="varname">birthYear</span>
+      <span class="val">1990</span>
+    </div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Growing example: a <code>string</code> drawer and an <code>int</code>
+    drawer. The <code>var</code> can still change; the <code>fix</code>
+    stays locked.
+  </figcaption>
+</figure>
+
+### Memory slowly fills up
+
+Add one more fact — place of birth — without throwing away what you
+already have. Another `fix` drawer opens (a `string` again); more of the
+map lights up:
+
+```pys
+var firstName = "Ada"
+print("Hello, " + firstName + "!")
+
+firstName = "Tom"
+print("Greetings, " + firstName + "!")
+
+fix int birthYear = 1990
+fix string placeOfBirth = "Utrecht"
+print(firstName + " was born in " + str(birthYear) + " in " + placeOfBirth)
+```
+
+Output:
+
+```text
+Hello, Ada!
+Greetings, Tom!
+Tom was born in 1990 in Utrecht
+```
+
+Now **three** named drawers are in use — check the type on each label:
+
+- `firstName` → drawer **5** `string` (`"Tom"`, unlocked `var`)
+- `birthYear` → drawer **9** `int` (`1990`, 🔒 `fix`)
+- `placeOfBirth` → drawer **12** `string` (`"Utrecht"`, 🔒 `fix`)
+
+<figure class="concept-diagram" role="img" aria-label="Memory filling up: string firstName in drawer 5, fix int birthYear in drawer 9, fix string placeOfBirth in drawer 12">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>5 <code>string</code></span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">birthYear</span>
+    <span aria-hidden="true">→</span>
+    <span>9 <code>int</code></span>
+    <span aria-hidden="true">🔒</span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">placeOfBirth</span>
+    <span aria-hidden="true">→</span>
+    <span>12 <code>string</code></span>
+    <span aria-hidden="true">🔒</span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">9</span><span class="type">int</span></div>
+      <span class="varname">birthYear</span>
+      <span class="val">1990</span>
+    </div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">12</span><span class="type">string</span></div>
+      <span class="varname">placeOfBirth</span>
+      <span class="val">"Utrecht"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Same tiny cabinet, one more drawer occupied. The type on the right of
+    each address tells you what kind of data belongs there.
+  </figcaption>
+</figure>
 
 You will also meet `const` later — a compile-time constant, usually in
 `SCREAMING_SNAKE_CASE`. Details: [Variables: var, fix, and const](chapter_2_2.md).
@@ -168,8 +385,9 @@ You will also meet `const` later — a compile-time constant, usually in
 > **Sidebar — typed drawers**
 >
 > Writing `string label = "hi"` or `int n = 3` declares a reassignable
-> binding with an explicit type. Prefer that form once you know the type;
-> keep `var` for obvious initializers. Session 1 goes deeper.
+> binding with an explicit type — the same kind of label you see on the
+> right of the drawer number in the maps above. Prefer that form once you
+> know the type; keep `var` for obvious initializers. Session 1 goes deeper.
 
 > **Sidebar — one drawer per declaration**
 >

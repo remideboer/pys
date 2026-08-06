@@ -163,14 +163,17 @@ program runs:</p>
 has a <strong>number</strong> (its address). A variable is one drawer; its name —
 <code>firstName</code> — is a label that points at that number so you can find it
 again.</p>
+<p>On each drawer you can also read <strong>what kind of data</strong> lives there — the
+<em>type</em>. Address on the left, type on the right (here drawer <strong>5</strong> is a
+<code>string</code> drawer holding text).</p>
 <p>Here is a tiny map of memory: sixteen drawers in a 4×4 grid, numbered
 <strong>0 through 15</strong>. Most are empty. Drawer <strong>5</strong> holds <code>"Ada"</code> and wears
 the name <code>firstName</code>:</p>
-<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels drawer 5 which holds Ada">
+<figure class="concept-diagram" role="img" aria-label="Four by four memory drawers numbered 0 to 15; firstName labels string drawer 5 which holds Ada">
   <div class="memory-legend">
     <span class="memory-name-tag">firstName</span>
     <span aria-hidden="true">→</span>
-    <span>drawer <strong>5</strong></span>
+    <span>drawer <strong>5</strong> <code>string</code></span>
   </div>
   <div class="memory-grid">
     <div class="memory-cell"><span class="addr">0</span></div>
@@ -179,7 +182,7 @@ the name <code>firstName</code>:</p>
     <div class="memory-cell"><span class="addr">3</span></div>
     <div class="memory-cell"><span class="addr">4</span></div>
     <div class="memory-cell named">
-      <span class="addr">5</span>
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
       <span class="varname">firstName</span>
       <span class="val">"Ada"</span>
     </div>
@@ -196,13 +199,15 @@ the name <code>firstName</code>:</p>
   </div>
   <figcaption>
     Simplified teaching map — real machines use many more addresses.
-    The name points at a drawer number; the value lives in that drawer.
+    The name points at a drawer number; the type says what kind of value
+    fits; the value lives in that drawer.
   </figcaption>
 </figure>
 
 <p><code>var firstName = "Ada"</code> does two things:</p>
 <ol>
-<li>Labels a new drawer (here, drawer <strong>5</strong>) with the name <code>firstName</code>.</li>
+<li>Labels a new drawer (here, drawer <strong>5</strong>) with the name <code>firstName</code>
+   and remembers its type is <code>string</code> (text in quotes).</li>
 <li>Puts <code>"Ada"</code> inside it.</li>
 </ol>
 <blockquote>
@@ -225,26 +230,226 @@ Greetings, Tom!
 </code></pre>
 <p>After the first print, we open the <code>firstName</code> drawer, remove <code>"Ada"</code>, and
 put <code>"Tom"</code> in. We do <strong>not</strong> write <code>var</code> again — the drawer already
-exists; we only change its contents. The second print shows
-<code>Greetings, Tom!</code>.</p>
-<h3>A drawer that can’t be swapped: <code>fix</code></h3>
-<p>Sometimes you want a value that must not change later. PYS has <code>fix</code> for
-that:</p>
-<pre><code class="language-pys"><span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">birthYear</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">1990</span><span class="tok-string">&quot;</span>
-<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Born in </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">birthYear</span>)
+exists; we only change its contents. The type stays <code>string</code>. The second
+print shows <code>Greetings, Tom!</code>.</p>
+<p>Same drawer number and type, new contents:</p>
+<div class="memory-compare">
+<figure class="concept-diagram" role="img" aria-label="Memory before reassignment: string drawer 5 firstName holds Ada">
+  <div class="memory-legend"><strong>Before</strong> — after <code>var firstName = "Ada"</code></div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Ada"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+</figure>
+<p class="memory-compare-arrow" aria-hidden="true">→</p>
+<figure class="concept-diagram" role="img" aria-label="Memory after reassignment: string drawer 5 firstName now holds Tom">
+  <div class="memory-legend"><strong>After</strong> — <code>firstName = "Tom"</code></div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named changed">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell"><span class="addr">9</span></div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+</figure>
+</div>
 
-<span class="tok-comment"># birthYear = &quot;1991&quot;   # does not compile — the drawer is locked</span></code></pre>
-<p><em>Compile error if the commented line is uncommented.</em></p>
-<p><code>fix</code> locks the drawer after the first value is placed. Trying to reopen
-it is a <strong>compile error</strong>, not a silent bug later. Prefer <code>fix</code> when the
-value should stay put; use <code>var</code> when you already know it must change.</p>
+<h3>A drawer that can’t be swapped: <code>fix</code></h3>
+<p>Keep building on the same program. <code>firstName</code> is still a normal <code>var</code>
+drawer (we left it holding <code>"Tom"</code>). Add a second drawer that must not
+change later — PYS uses <code>fix</code> for that. A year is a whole number, so this
+drawer’s type is <code>int</code>, not <code>string</code>:</p>
+<pre><code class="language-pys"><span class="tok-mod">var</span> <span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Greetings, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">birthYear</span> <span class="tok-op">=</span> <span class="tok-number">1990</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string"> was born in </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-type">str</span>(<span class="tok-ident">birthYear</span>))
+
+<span class="tok-comment"># birthYear = 1991     # does not compile — the drawer is locked</span>
+<span class="tok-comment"># firstName = &quot;Sam&quot;    # this would still be allowed — var is not locked</span></code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Hello, Ada!
+Greetings, Tom!
+Tom was born in 1990
+</code></pre>
+<p><em>Compile error if the <code>birthYear = …</code> line is uncommented.</em></p>
+<p><code>str(birthYear)</code> turns the number into text so it can be glued into the
+print string. The drawer itself still holds an <code>int</code> — look at the type
+on the right of the address.</p>
+<p><code>fix</code> locks <strong>that</strong> drawer after the first value is placed. Trying to
+reopen it is a <strong>compile error</strong>, not a silent bug later. Prefer <code>fix</code>
+when the value should stay put; use <code>var</code> when you already know it must
+change.</p>
+<p>Memory now has <strong>two</strong> named drawers. Read each label: address on the
+left, type on the right — <code>5 string</code> versus <code>9 int</code>.</p>
+<figure class="concept-diagram" role="img" aria-label="Memory with string firstName in drawer 5 holding Tom and fix int birthYear locked in drawer 9 holding 1990">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>5 <code>string</code></span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">birthYear</span>
+    <span aria-hidden="true">→</span>
+    <span>9 <code>int</code></span>
+    <span aria-hidden="true">🔒</span>
+    <span><code>fix</code></span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">9</span><span class="type">int</span></div>
+      <span class="varname">birthYear</span>
+      <span class="val">1990</span>
+    </div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell"><span class="addr">12</span></div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Growing example: a <code>string</code> drawer and an <code>int</code>
+    drawer. The <code>var</code> can still change; the <code>fix</code>
+    stays locked.
+  </figcaption>
+</figure>
+
+<h3>Memory slowly fills up</h3>
+<p>Add one more fact — place of birth — without throwing away what you
+already have. Another <code>fix</code> drawer opens (a <code>string</code> again); more of the
+map lights up:</p>
+<pre><code class="language-pys"><span class="tok-mod">var</span> <span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-ident">firstName</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Greetings, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-mod">fix</span> <span class="tok-type">int</span> <span class="tok-ident">birthYear</span> <span class="tok-op">=</span> <span class="tok-number">1990</span>
+<span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">placeOfBirth</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Utrecht</span><span class="tok-string">&quot;</span>
+<span class="tok-builtin">print</span>(<span class="tok-ident">firstName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string"> was born in </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-type">str</span>(<span class="tok-ident">birthYear</span>) <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string"> in </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">placeOfBirth</span>)</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">Hello, Ada!
+Greetings, Tom!
+Tom was born in 1990 in Utrecht
+</code></pre>
+<p>Now <strong>three</strong> named drawers are in use — check the type on each label:</p>
+<ul>
+<li><code>firstName</code> → drawer <strong>5</strong> <code>string</code> (<code>"Tom"</code>, unlocked <code>var</code>)</li>
+<li><code>birthYear</code> → drawer <strong>9</strong> <code>int</code> (<code>1990</code>, 🔒 <code>fix</code>)</li>
+<li><code>placeOfBirth</code> → drawer <strong>12</strong> <code>string</code> (<code>"Utrecht"</code>, 🔒 <code>fix</code>)</li>
+</ul>
+<figure class="concept-diagram" role="img" aria-label="Memory filling up: string firstName in drawer 5, fix int birthYear in drawer 9, fix string placeOfBirth in drawer 12">
+  <div class="memory-legend">
+    <span class="memory-name-tag">firstName</span>
+    <span aria-hidden="true">→</span>
+    <span>5 <code>string</code></span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">birthYear</span>
+    <span aria-hidden="true">→</span>
+    <span>9 <code>int</code></span>
+    <span aria-hidden="true">🔒</span>
+    <span aria-hidden="true">·</span>
+    <span class="memory-name-tag">placeOfBirth</span>
+    <span aria-hidden="true">→</span>
+    <span>12 <code>string</code></span>
+    <span aria-hidden="true">🔒</span>
+  </div>
+  <div class="memory-grid">
+    <div class="memory-cell"><span class="addr">0</span></div>
+    <div class="memory-cell"><span class="addr">1</span></div>
+    <div class="memory-cell"><span class="addr">2</span></div>
+    <div class="memory-cell"><span class="addr">3</span></div>
+    <div class="memory-cell"><span class="addr">4</span></div>
+    <div class="memory-cell named">
+      <div class="memory-meta"><span class="addr">5</span><span class="type">string</span></div>
+      <span class="varname">firstName</span>
+      <span class="val">"Tom"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">6</span></div>
+    <div class="memory-cell"><span class="addr">7</span></div>
+    <div class="memory-cell"><span class="addr">8</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">9</span><span class="type">int</span></div>
+      <span class="varname">birthYear</span>
+      <span class="val">1990</span>
+    </div>
+    <div class="memory-cell"><span class="addr">10</span></div>
+    <div class="memory-cell"><span class="addr">11</span></div>
+    <div class="memory-cell named locked">
+      <span class="lock" title="fix — locked" aria-hidden="true">🔒</span>
+      <div class="memory-meta"><span class="addr">12</span><span class="type">string</span></div>
+      <span class="varname">placeOfBirth</span>
+      <span class="val">"Utrecht"</span>
+    </div>
+    <div class="memory-cell"><span class="addr">13</span></div>
+    <div class="memory-cell"><span class="addr">14</span></div>
+    <div class="memory-cell"><span class="addr">15</span></div>
+  </div>
+  <figcaption>
+    Same tiny cabinet, one more drawer occupied. The type on the right of
+    each address tells you what kind of data belongs there.
+  </figcaption>
+</figure>
+
 <p>You will also meet <code>const</code> later — a compile-time constant, usually in
 <code>SCREAMING_SNAKE_CASE</code>. Details: <a href="chapter_2_2.html">Variables: var, fix, and const</a>.</p>
 <blockquote>
 <p><strong>Sidebar — typed drawers</strong></p>
 <p>Writing <code>string label = "hi"</code> or <code>int n = 3</code> declares a reassignable
-binding with an explicit type. Prefer that form once you know the type;
-keep <code>var</code> for obvious initializers. Session 1 goes deeper.</p>
+binding with an explicit type — the same kind of label you see on the
+right of the drawer number in the maps above. Prefer that form once you
+know the type; keep <code>var</code> for obvious initializers. Session 1 goes deeper.</p>
 <p><strong>Sidebar — one drawer per declaration</strong></p>
 <p>Give every variable its own line: <code>int x = 10</code>, then <code>int y = 10</code>.
 PYS rejects <code>int x, y = 10</code> because it is unclear at a glance whether
