@@ -4,7 +4,7 @@
 > already know what a variable is, skip ahead to
 > [Session 1](chapter_2.md).
 
-The other day someone asked: “Can you teach me how software works — from
+What if someone would ask me: “Can you teach me how software works — from
 scratch?” This chapter is that answer for **PYS**: small steps, plain
 language, and examples you can run yourself.
 
