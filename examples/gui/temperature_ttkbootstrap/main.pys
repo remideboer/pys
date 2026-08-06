@@ -24,7 +24,7 @@ Button convertButton = ttkb.Button(window, text="Convert", bootstyle="primary", 
     switch (parsed) {
         case ok(celsius): {
             float fahrenheit = celsius * 9 / 5 + 32
-            resultLabel.config(text=str(celsius) + "°C is " + str(fahrenheit) + "°F", bootstyle="success")
+            resultLabel.config(text=celsius + "°C is " + fahrenheit + "°F", bootstyle="success")
         }
         case err(message): {
             resultLabel.config(text="Error: " + message, bootstyle="danger")

@@ -33,7 +33,7 @@ What you type is always text first. To use it as a number, convert it
 ```pys
 string raw = input("How old are you? ")
 int age = int(raw)
-print("Next year you will be " + str(age + 1))
+print("Next year you will be " + (age + 1))
 ```
 
 *Interactive — type answers at the prompts; output depends on your input.*

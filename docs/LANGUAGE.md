@@ -1081,7 +1081,25 @@ the correct section — that relocation is intentional.
 `+` `-` `*` `/` `%`  
 `<` `<=` `>` `>=` `==` `!=` `<>`  
 
-`+` also concatenates when a string is involved (numeric parts are coerced).
+**`+` overload (string concatenate):** left-associative.
+
+| Operands | Meaning |
+|----------|---------|
+| Both non-string (e.g. `int` / `float`) | Arithmetic add |
+| Either side is `string` | Concatenation; the other operand(s) are coerced to text |
+
+```pys
+print(3 + 10)                          # 13 — arithmetic
+print("age=" + 18)                     # age=18 — coerce int
+print(1990 + " was a year")            # 1990 was a year
+fix int birthYear = 1990
+print("born in " + birthYear)          # born in 1990 — no str(...) needed
+```
+
+Emit lowers coerced operands with the Python target’s `str(...)`. Explicit
+`str(x)` remains valid when you need a `string` without a concatenate
+(e.g. `string label = str(n)`). Typed interpolation (`#i{…}`, …) is unchanged
+— those tags are type *guards*, not this coerce rule.
 
 ### Logical
 

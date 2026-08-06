@@ -24,7 +24,9 @@ Output:
   Fails at runtime on bad text (there is no recoverable path).
 - `float(...)` — parse a floating-point number. Same: bad text is not a
   `result`.
-- `str(...)` — turn a value into a string for printing or concatenation.
+- `str(...)` — turn a value into a string explicitly (e.g. `string label = str(n)`).
+  When you already concatenate with `+` and one side is a string, PYS coerces
+  the other side for you — `print("n=" + n)` needs no `str(n)`.
 - `parseInt(text)` — `result<int, string>`: `ok` on success, `err` on
   failure (preferred for form fields and other recoverable input).
 - `parseFloat(text)` — `result<float, string>`: same pattern for floats.

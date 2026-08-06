@@ -135,7 +135,9 @@ another — for example text from the keyboard into an <code>int</code>.</p>
   Fails at runtime on bad text (there is no recoverable path).</li>
 <li><code>float(...)</code> — parse a floating-point number. Same: bad text is not a
   <code>result</code>.</li>
-<li><code>str(...)</code> — turn a value into a string for printing or concatenation.</li>
+<li><code>str(...)</code> — turn a value into a string explicitly (e.g. <code>string label = str(n)</code>).
+  When you already concatenate with <code>+</code> and one side is a string, PYS coerces
+  the other side for you — <code>print("n=" + n)</code> needs no <code>str(n)</code>.</li>
 <li><code>parseInt(text)</code> — <code>result&lt;int, string&gt;</code>: <code>ok</code> on success, <code>err</code> on
   failure (preferred for form fields and other recoverable input).</li>
 <li><code>parseFloat(text)</code> — <code>result&lt;float, string&gt;</code>: same pattern for floats.</li>

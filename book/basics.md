@@ -219,7 +219,7 @@ firstName = "Tom"
 print("Greetings, " + firstName + "!")
 
 fix int birthYear = 1990
-print(firstName + " was born in " + str(birthYear))
+print(firstName + " was born in " + birthYear)
 
 # birthYear = 1991     # does not compile — the drawer is locked
 # firstName = "Sam"    # this would still be allowed — var is not locked
@@ -235,9 +235,9 @@ Tom was born in 1990
 
 *Compile error if the `birthYear = …` line is uncommented.*
 
-`str(birthYear)` turns the number into text so it can be glued into the
-print string. The drawer itself still holds an `int` — look at the type
-on the right of the address.
+When one side of `+` is a string, PYS concatenates and turns the other
+side into text for you — no `str(birthYear)` needed here. The drawer
+itself still holds an `int` — look at the type on the right of the address.
 
 `fix` locks **that** drawer after the first value is placed. Trying to
 reopen it is a **compile error**, not a silent bug later. Prefer `fix`
@@ -308,7 +308,7 @@ print("Greetings, " + firstName + "!")
 
 fix int birthYear = 1990
 fix string placeOfBirth = "Utrecht"
-print(firstName + " was born in " + str(birthYear) + " in " + placeOfBirth)
+print(firstName + " was born in " + birthYear + " in " + placeOfBirth)
 ```
 
 Output:

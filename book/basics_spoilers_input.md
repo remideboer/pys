@@ -7,7 +7,7 @@ with both.
 string firstName = input("First name: ")
 string raw = input("Favorite number: ")
 int favorite = int(raw)
-print(firstName + " likes " + str(favorite))
+print(firstName + " likes " + favorite)
 ```
 
 *Interactive — type answers at the prompts; output depends on your input.*

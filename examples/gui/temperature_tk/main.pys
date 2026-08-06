@@ -25,7 +25,7 @@ Button convertButton = tk.Button(window, text="Convert", command=() => {
     switch (parsed) {
         case ok(celsius): {
             float fahrenheit = celsius * 9 / 5 + 32
-            resultLabel.config(text=str(celsius) + "°C is " + str(fahrenheit) + "°F")
+            resultLabel.config(text=celsius + "°C is " + fahrenheit + "°F")
         }
         case err(message): {
             resultLabel.config(text="Error: " + message)
