@@ -507,9 +507,7 @@ PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
 packages for `.pys` programs are declared in a `pys.deps` file. Resolved
 environments live in a local **content-addressable dependency cache**: each
 locked tree is stored once under the SHA-256 digest of `pys.lock`, and any
-project with that same lock reuses the tree (no per-project copy). That is a
-CAS, not a Maven-style registry (name+version distribution) and not an
-in-memory GoF flyweight.
+project with that same lock reuses the tree (no per-project copy). 
 
 Default cache root (`PYS_REPO` overrides):
 
@@ -639,12 +637,19 @@ via `python tests/golden/regen.py` (never in CI).
 
 Errors include a line number and a short source preview to help fix syntax quickly.
 
-## VS Code support
+## VS Code / Cursor workspace files
 
-This project includes `.vscode/settings.json` and `.vscode/pys.code-snippets` to make `.pys` files feel like a first-class editing experience:
+Tracked under `.vscode/` (everything else there stays gitignored for personal
+launch configs, tasks, and local snippets):
 
-- `.vscode/settings.json` associates `*.pys` with Python syntax highlighting.
-- `.vscode/pys.code-snippets` provides quick templates for `let`, `func`, `if`, `repeat`, and `print`.
+- `settings.json` — `*.pys` → PYS language id, exclude `pys-language` from npm
+  task detection, and `python.analysis.extraPaths` for editing the transpiler
+- `extensions.json` — recommends **PYS Language Support** and the Microsoft
+  Python extension
+
+Install the PYS extension for Run/debug, highlighting, and snippets (bundled in
+the extension — not workspace snippets). Prefer `pys.toml` `[project].main` over
+the deprecated `pys.mainFile` setting.
 
 ## Extending the language
 
