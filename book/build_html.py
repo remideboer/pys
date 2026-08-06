@@ -393,9 +393,41 @@ main th { background: #efebe3; }
   padding: 0.75rem 0.85rem 0.85rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.55);
 }
+.cls-machine.is-abstract {
+  border-style: dashed;
+  border-color: #5a6f9e;
+  background:
+    linear-gradient(180deg, rgba(232, 238, 252, 0.92) 0%, rgba(217, 228, 248, 0.92) 100%),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      rgba(90, 111, 158, 0.07) 6px,
+      rgba(90, 111, 158, 0.07) 12px
+    );
+}
 .cls-machine-sm {
   flex: 1 1 14rem;
   max-width: 20rem;
+}
+.cls-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.4rem;
+  margin: 0.28rem 0;
+  padding: 0.4rem 0.45rem;
+  border: 1.5px dashed #6a6a6a;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+}
+.cls-slot code {
+  background: transparent;
+  padding: 0;
+}
+.cls-member.cls-slot-filled {
+  box-shadow: inset 3px 0 0 #2a7a3a;
 }
 .cls-head,
 .iface-head {
