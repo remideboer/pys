@@ -505,9 +505,11 @@ python -m transpiler transpile examples/main.pys .transpiled/main.py
 
 PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
 packages for `.pys` programs are declared in a `pys.deps` file. Resolved
-environments are stored once in a **shared central cache** (a flyweight:
-many projects reuse the same locked tree by digest instead of copying packages
-per project).
+environments live in a local **content-addressable dependency cache**: each
+locked tree is stored once under the SHA-256 digest of `pys.lock`, and any
+project with that same lock reuses the tree (no per-project copy). That is a
+CAS, not a Maven-style registry (name+version distribution) and not an
+in-memory GoF flyweight.
 
 Default cache root (`PYS_REPO` overrides):
 
@@ -526,10 +528,11 @@ Default cache root (`PYS_REPO` overrides):
 3. It verifies the committed `pys.lock` matches `pys.deps`, Python, and platform.
 4. Every direct and transitive package is installed from the exact URL and
    SHA-256 in the lock, using pip `--require-hashes --no-deps`.
-5. The locked environment is cached once by lock digest and prepended to `PYTHONPATH` for the generated
-   Python process — imports like `import matplotlib` then resolve normally.
+5. The locked environment is addressed by lock digest in the cache and
+   prepended to `PYTHONPATH` for the generated Python process — imports like
+   `import matplotlib` then resolve normally.
 
-**Layout** (under the cache root above)
+**Layout** (content-addressable path under the cache root)
 
 ```
 environments/
