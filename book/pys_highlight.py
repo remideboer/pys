@@ -124,6 +124,9 @@ BUILTINS = frozenset(
         "parseFloat",
         "parseInt",
         "input",
+        "toBin",
+        "toHex",
+        "toOct",
     }
 )
 

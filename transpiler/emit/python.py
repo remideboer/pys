@@ -133,6 +133,33 @@ def _pys_parse_int(text):
     except ValueError as exc:
         return _pys_err(str(exc))
 '''
+
+# Only when toBin / toHex / toOct appear (ADR-024).
+_BASE_DISPLAY_HELPERS = '''
+def _pys_to_base(value, width, spec, name):
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{name} requires an int-like value")
+    if value < 0:
+        raise ValueError(f"{name} requires a non-negative integer")
+    digits = format(value, spec)
+    if width is not None:
+        if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+            raise ValueError(f"{name} width must be an integer >= 1")
+        digits = digits.zfill(width)
+    return digits
+
+
+def _pys_to_bin(value, width=None):
+    return _pys_to_base(value, width, "b", "toBin")
+
+
+def _pys_to_hex(value, width=None):
+    return _pys_to_base(value, width, "x", "toHex")
+
+
+def _pys_to_oct(value, width=None):
+    return _pys_to_base(value, width, "o", "toOct")
+'''
 from ..language_spec import _default_value_for_type, _translate_string_literal
 
 _CAST = {
@@ -279,6 +306,7 @@ class _Emitter:
         self.needs_enum = False
         self.needs_result = False
         self.needs_parse = False
+        self.needs_base_display = False
         self.needs_format = False
         self.shared_vars: set[str] = set()
         self.atomic_vars: set[str] = set()
@@ -406,6 +434,8 @@ class _Emitter:
             preamble.extend(_RESULT_PREAMBLE.splitlines())
         if self.needs_parse:
             preamble.extend(_PARSE_HELPERS.splitlines())
+        if self.needs_base_display:
+            preamble.extend(_BASE_DISPLAY_HELPERS.splitlines())
         if self.needs_format:
             preamble.extend(_FORMAT_HELPER.splitlines())
         out = preamble + self.lines
@@ -1493,6 +1523,19 @@ class _Emitter:
                     if expr.callee.name == "parseFloat"
                     else "_pys_parse_int"
                 )
+                return f"{helper}({args})"
+            if isinstance(expr.callee, Identifier) and expr.callee.name in {
+                "toBin",
+                "toHex",
+                "toOct",
+            }:
+                self.needs_base_display = True
+                args = ", ".join(self._call_arg(a) for a in expr.args)
+                helper = {
+                    "toBin": "_pys_to_bin",
+                    "toHex": "_pys_to_hex",
+                    "toOct": "_pys_to_oct",
+                }[expr.callee.name]
                 return f"{helper}({args})"
             # Atomic synthesized accessors: avoid Identifier → .get() on the receiver.
             if (

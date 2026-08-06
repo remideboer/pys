@@ -56,3 +56,11 @@ print(0b1010 shift right 1)  # 5
 print(0b1010 + 0b0101)  # 15
 print(0b1010 // 0b0010)  # 5
 print(2 ** 3)  # 8
+
+# --- Display other bases (ADR-024): digits only, optional width pad ---
+# print(b1) stays decimal (189); use toBin / toHex for dumps.
+print(toBin(b1))       # 10111101
+print(toHex(b1))       # bd
+print(toOct(10))       # 12
+print(toBin(0b1010, 8))  # 00001010  (pad bits; never truncates)
+print(toHex(n1, 2))      # 0a

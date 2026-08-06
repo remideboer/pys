@@ -32,6 +32,9 @@ literals, bitwise operators, and small fixed-width integer names. Requirements:
 - Expression precedence gains bit/shift/power levels (EBNF + railroad synced).
 - Pedagogy: JIT `J-int-literals`; example `examples/int_literals.pys`.
 - Security boundaries (ADR-001) unchanged.
+- **Display** of ints in other bases is separate: [ADR-024](ADR-024-base-display-builtins.md)
+  (`toBin` / `toHex` / `toOct`). Literals stay `0b` / `0x` in source; print
+  stays decimal unless those builtins are used.
 
 ## Rejected alternatives
 

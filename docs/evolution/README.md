@@ -66,5 +66,6 @@ Each record then uses:
 | [CER-029](CER-029-gui-book-track.md) | Procedural Tkinter book track + temperature examples | Docs / Examples |
 | [CER-030](CER-030-parse-float-int.md) | `parseFloat` / `parseInt` recoverable builtins | Language |
 | [CER-031](CER-031-builtin-input.md) | Builtin `input` (no import) | Language |
+| [CER-032](CER-032-to-bin-hex-oct.md) | `toBin` / `toHex` / `toOct` display builtins | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

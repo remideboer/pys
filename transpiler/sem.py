@@ -206,6 +206,10 @@ def analyze(
     # Console I/O (like print): no import required.
     function_returns.setdefault("input", "string")
     function_params.setdefault("input", ["string"])  # optional; arity checked separately
+    # Base display (ADR-024): optional width as second int.
+    for _base_fn in ("toBin", "toHex", "toOct"):
+        function_returns.setdefault(_base_fn, "string")
+        function_params.setdefault(_base_fn, ["int", "int"])
     if import_resolver is not None:
         function_returns.update(import_resolver.function_returns)
         function_params.update(import_resolver.function_params)
@@ -1788,6 +1792,38 @@ def _check_results(
                         code="pys.input-arity",
                         tips=['Use `input()` or `input("prompt")`.'],
                     )
+                if expr.callee.name in {"toBin", "toHex", "toOct"}:
+                    n = len(expr.args)
+                    if n < 1 or n > 2:
+                        fail(
+                            f"`{expr.callee.name}` takes one value and an optional width.",
+                            expr,
+                            code="pys.base-display-arity",
+                            tips=[
+                                f'Use `{expr.callee.name}(value)` or '
+                                f'`{expr.callee.name}(value, width)`.'
+                            ],
+                        )
+                    else:
+                        for index, arg in enumerate(expr.args):
+                            value = arg.value if isinstance(arg, KeywordArg) else arg
+                            actual = expr_type(
+                                value,
+                                env,
+                                return_type=return_type,
+                                scope_kind=scope_kind,
+                            )
+                            if actual is not None and actual not in _INT_LIKE:
+                                kind = "value" if index == 0 else "width"
+                                fail(
+                                    f"`{expr.callee.name}` {kind} must be int-like "
+                                    f"(int / byte / nibble / …), got {actual}.",
+                                    value,
+                                    code="pys.base-display-type",
+                                    tips=[
+                                        "Width aliases such as `byte` are allowed."
+                                    ],
+                                )
             elif isinstance(expr.callee, Member):
                 receiver_type = expr_type(
                     expr.callee.object,
@@ -5968,7 +6004,7 @@ def _check_await_placement(body: list[Any]) -> None:
 def _check_seen_name_calls(body: list[Any], resolver: Any) -> None:
     builtins = {
         "print", "str", "int", "float", "bool", "len", "range", "super", "ABC", "abstractmethod",
-        "parseFloat", "parseInt", "input",
+        "parseFloat", "parseInt", "input", "toBin", "toHex", "toOct",
     }
     imported = set(resolver.imported_names)
     exports = set(getattr(resolver, "exports", set()))

@@ -98,6 +98,28 @@ Bitwise operators: `& | ^ ~ << >>`, plus word forms `xor` and `shift left` /
 `shift right`. Logical `and` / `or` / `not` stay short-circuit boolean (not
 bitwise). Rotate (`<<<` / `>>>`) is deferred.
 
+**Display other bases** (hardware dumps; [ADR-024](adr/ADR-024-base-display-builtins.md)):
+
+| Builtin | Meaning |
+|---------|---------|
+| `toBin(value)` / `toBin(value, widthBits)` | Binary digits as `string` |
+| `toHex(value)` / `toHex(value, widthDigits)` | Lowercase hex digits |
+| `toOct(value)` / `toOct(value, widthDigits)` | Octal digits |
+
+No `0b` / `0x` / `0o` prefix in the result (source literals still use those
+prefixes). Optional width left-pads with `'0'`; if the value needs more digits
+than `width`, the full form is kept (no truncation). Values must be
+non-negative int-like. Typed interpolation `#b{…}` remains **bool**, not binary.
+
+```pys
+byte flags = 0b1011_1101
+print(flags)             # 189 (decimal)
+print(toBin(flags))      # 10111101
+print(toHex(flags))      # bd
+print(toBin(0b1010, 8))  # 00001010
+print(toHex(0xA, 2))     # 0a
+```
+
 ### Declaration forms
 
 ```pys
