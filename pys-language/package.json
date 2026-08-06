@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.75",
+  "version": "0.0.76",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -82,7 +82,7 @@
     "viewsWelcome": [
       {
         "view": "pys.sidebar",
-        "contents": "Create a PYS project with source roots (`src` / `tests`), `pys.toml`, and a template `pys.deps`.\n\n[Create PYS Project](command:pys.createProject)\n\nAfter editing dependencies, right-click `pys.deps` → **Run Deps**."
+        "contents": "Create a PYS project with source roots (`src` / `tests`), `pys.toml`, and a template `pys.deps`.\n\n[Create PYS Project](command:pys.createProject)\n\nAfter editing dependencies, right-click `pys.deps` → **Run Deps Lock**."
       }
     ],
     "languages": [
@@ -190,7 +190,7 @@
       },
       {
         "command": "pys.lockDeps",
-        "title": "Run Deps",
+        "title": "Run Deps Lock",
         "category": "PYS",
         "icon": "$(package)"
       },

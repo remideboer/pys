@@ -22,7 +22,7 @@ primary-sidebar PYS surface for project setup.
 ### Why it hurt
 
 - Easy to miss ADR-017 roots and start with a flat folder (blocks same-package
-  tests). Empty `pys.deps` format was not discoverable next to Run Deps (CER-022).
+  tests). Empty `pys.deps` format was not discoverable next to Run Deps Lock (CER-022).
 
 ### Post-behavior
 

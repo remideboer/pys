@@ -36,6 +36,27 @@ discoverable surface on the deps file itself.
 - Manual: right-click `pys.deps` → Run Deps; terminal prints lock path.
 - Extension **0.0.66**.
 
+## Entry 2 — rename to Run Deps Lock
+
+### Pre-behavior
+
+Menu title was **Run Deps**, which understated that the action is `deps lock`.
+
+### Why it hurt
+
+Authors could confuse it with “run the program’s dependencies” rather than
+regenerating `pys.lock`.
+
+### Post-behavior
+
+Command title (and template / welcome copy) is **PYS: Run Deps Lock**. Command
+id stays `pys.lockDeps`. Extension **0.0.76**.
+
+### Evidence
+
+`package.json` command title; `create-project.js` template comment;
+root README imports / dependency sections.
+
 ## Trade-offs
 
 - Does not auto-lock on save (still explicit per ADR-002).

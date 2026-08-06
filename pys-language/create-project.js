@@ -26,7 +26,7 @@ const PYS_DEPS = `[interpreter]
 \tversion: >=3.10
 
 [dependencies]
-# Add third-party packages here, then right-click this file → PYS: Run Deps
+# Add third-party packages here, then right-click this file → PYS: Run Deps Lock
 #\texample-package
 #\t\tversion: 1.2.3
 `;

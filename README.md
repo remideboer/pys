@@ -180,7 +180,21 @@ import tkinter as tk         # stdlib with alias
 # import hello from funcs.pys
 ```
 
-Third-party packages need a `pys.deps` entry (see [Dependency management](#dependency-management-pysdeps)). Then:
+Third-party packages need a `pys.deps` entry next to the project (full
+rules: [Dependency management](#dependency-management-pysdeps)):
+
+```
+[interpreter]
+	version: >=3.10
+
+[dependencies]
+	mysql-connector-python
+		version: 8.0.33
+		build: run
+```
+
+Then lock once — CLI `python -m transpiler deps lock pys.deps`, or in the IDE
+right-click **`pys.deps`** → **PYS: Run Deps Lock** — and import:
 
 ```pys
 import mysql.connector
@@ -550,6 +564,9 @@ Python/platform:
 ```bash
 python -m transpiler deps lock pys.deps
 ```
+
+In VS Code / Cursor, right-click **`pys.deps`** → **PYS: Run Deps Lock** (same
+command as the CLI).
 
 Run fails closed if the lock is missing, stale, has the wrong platform/Python,
 or contains an invalid hash.

@@ -1195,7 +1195,7 @@ function activate(context) {
     }
     const base = path.basename(filePath);
     if (base !== 'pys.deps') {
-      vscode.window.showErrorMessage('Run Deps only works on a pys.deps file.');
+      vscode.window.showErrorMessage('Run Deps Lock only works on a pys.deps file.');
       return;
     }
     const bundled = ensureBundledTranspiler();

@@ -30,7 +30,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
 - `result<T,E>`, `ok` / `err`, `propagate`, and result-pattern highlighting,
   completions, hovers, snippets, diagnostics, and entrypoint conflict fixes
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
-  - Right-click **`pys.deps`** → **PYS: Run Deps** (runs `deps lock` / refreshes `pys.lock`)
+  - Right-click **`pys.deps`** → **PYS: Run Deps Lock** (runs `deps lock` / refreshes `pys.lock`)
 - **PYS activity bar** (sidebar icon): **Create PYS Project** — scaffolds a
   runnable `src/main.pys`, `tests/`, `pys.toml` (`[project].main` and
   `[source_roots]`), and a template `pys.deps`
