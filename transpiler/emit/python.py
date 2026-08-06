@@ -116,8 +116,10 @@ def _pys_panic(result):
     for file, line, function in result.sites:
         print(f"  at {file}:{line} in {function}", file=_pys_sys.stderr)
     raise SystemExit(1)
+'''
 
-
+# Only when parseFloat / parseInt appear (depends on _RESULT_PREAMBLE helpers).
+_PARSE_HELPERS = '''
 def _pys_parse_float(text):
     try:
         return _pys_ok(float(text))
@@ -276,6 +278,7 @@ class _Emitter:
         self.needs_struct_copy = False
         self.needs_enum = False
         self.needs_result = False
+        self.needs_parse = False
         self.needs_format = False
         self.shared_vars: set[str] = set()
         self.atomic_vars: set[str] = set()
@@ -401,6 +404,8 @@ class _Emitter:
             preamble.extend(_STRUCT_COPY_HELPER.splitlines())
         if self.needs_result:
             preamble.extend(_RESULT_PREAMBLE.splitlines())
+        if self.needs_parse:
+            preamble.extend(_PARSE_HELPERS.splitlines())
         if self.needs_format:
             preamble.extend(_FORMAT_HELPER.splitlines())
         out = preamble + self.lines
@@ -1481,6 +1486,7 @@ class _Emitter:
                 "parseInt",
             }:
                 self.needs_result = True
+                self.needs_parse = True
                 args = ", ".join(self._call_arg(a) for a in expr.args)
                 helper = (
                     "_pys_parse_float"

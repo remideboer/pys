@@ -51,6 +51,27 @@ recognize `parseFloat` / `parseInt`.
 
 Same tests; temperature converter uses `parseCelsius` → `parseFloat`.
 
+## Entry 3 — gate parse helpers on use
+
+### Pre-behavior
+
+`_pys_parse_float` / `_pys_parse_int` lived inside `_RESULT_PREAMBLE`, so every
+`result` program emitted them.
+
+### Why it hurt
+
+Goldens such as `result_propagate.pys` drifted without calling `parseFloat`.
+
+### Post-behavior
+
+Helpers are a separate `_PARSE_HELPERS` chunk, emitted only when
+`parseFloat` / `parseInt` appear (`needs_parse`).
+
+### Evidence
+
+`tests/test_parse_float_int.py`;
+`tests/test_golden_transpile.py` for `ebnf/expressions/result_propagate.pys`.
+
 ## Trade-offs
 
 - No general exception surface; only these builtins bridge `ValueError`.

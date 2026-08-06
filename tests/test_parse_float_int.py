@@ -91,3 +91,27 @@ print(looksLikeFloat("nope"))
 def test_parse_float_result_not_assignable_to_float() -> None:
     with pytest.raises(TranspileError, match="result"):
         transpile('float n = parseFloat("1")\n')
+
+
+def test_parse_helpers_omitted_when_unused() -> None:
+    """Result programs without parseFloat/parseInt must not emit parse helpers."""
+    py = transpile(
+        """
+result<int, string> r = ok(1)
+switch (r) {
+    case ok(value):
+        print(value)
+    case err(message):
+        print(message)
+}
+"""
+    )
+    assert "_pys_ok" in py
+    assert "_pys_parse_float" not in py
+    assert "_pys_parse_int" not in py
+
+
+def test_parse_helpers_emitted_when_used() -> None:
+    py = transpile('result<float, string> n = parseFloat("1")\n')
+    assert "def _pys_parse_float" in py
+    assert "def _pys_ok" in py
