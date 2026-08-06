@@ -1,0 +1,36 @@
+# Celsius → Fahrenheit converter (ttkbootstrap)
+# Book: book/gui_ttkbootstrap_project.md — same logic, themed widgets.
+
+import ttkbootstrap as ttkb
+
+function result<float, string> parseCelsius(string input) {
+    return parseFloat(input.strip())
+}
+
+Window window = ttkb.Window(themename="flatly")
+window.title("Celsius to Fahrenheit")
+
+Label instructions = ttkb.Label(window, text="Enter a temperature in Celsius:")
+instructions.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+
+Entry celsiusEntry = ttkb.Entry(window)
+celsiusEntry.grid(row=1, column=0, padx=10, pady=5)
+
+Label resultLabel = ttkb.Label(window, text="", bootstyle="info")
+resultLabel.grid(row=2, column=0, columnspan=2, padx=10, pady=10)
+
+Button convertButton = ttkb.Button(window, text="Convert", bootstyle="primary", command=() => {
+    result<float, string> parsed = parseCelsius(celsiusEntry.get())
+    switch (parsed) {
+        case ok(celsius): {
+            float fahrenheit = celsius * 9 / 5 + 32
+            resultLabel.config(text=str(celsius) + "°C is " + str(fahrenheit) + "°F", bootstyle="success")
+        }
+        case err(message): {
+            resultLabel.config(text="Error: " + message, bootstyle="danger")
+        }
+    }
+})
+convertButton.grid(row=1, column=1, padx=10, pady=5)
+
+window.mainloop()

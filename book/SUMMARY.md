@@ -59,38 +59,48 @@
   - [6.2. Lambdas](chapter_5_2.md)
   - [6.3. Passing functions around](chapter_5_3.md)
 
-# 7. Session 5 — Doing several things at once
+# 7. GUI programming (procedural Tkinter)
+
+- [7.1. GUI programming with Tkinter — introduction](gui_intro.md)
+- [7.2. Widgets and layout](gui_widgets.md)
+- [7.3. Events and callbacks](gui_events.md)
+- [7.4. A small project: temperature converter](gui_project.md)
+- [7.5. Modern styling with ttkbootstrap](gui_ttkbootstrap_intro.md)
+- [7.6. Styled widgets](gui_ttkbootstrap_widgets.md)
+- [7.7. Restyling the temperature converter](gui_ttkbootstrap_project.md)
+
+# 8. Session 5 — Doing several things at once
 
 - [Session 5 — Doing several things at once](chapter_6.md)
-  - [7.1. tasks, task, and await](chapter_6_1.md)
-  - [7.2. shared state](chapter_6_2.md)
-  - [7.3. atomic updates](chapter_6_3.md)
-  - [7.4. Lambdas and capture rules](chapter_6_4.md)
+  - [8.1. tasks, task, and await](chapter_6_1.md)
+  - [8.2. shared state](chapter_6_2.md)
+  - [8.3. atomic updates](chapter_6_3.md)
+  - [8.4. Lambdas and capture rules](chapter_6_4.md)
 
-# 8. Session 6 — Tests you can trust
+# 9. Session 6 — Tests you can trust
 
 - [Session 6 — Tests you can trust](chapter_7.md)
-  - [8.1. Writing a first test](chapter_7_1.md)
-  - [8.2. Better PYS with TDD](chapter_7_2.md)
-  - [8.3. Packages and source roots](chapter_7_3.md)
+  - [9.1. Writing a first test](chapter_7_1.md)
+  - [9.2. Better PYS with TDD](chapter_7_2.md)
+  - [9.3. Packages and source roots](chapter_7_3.md)
 
-# 9. Session 7 — From PYS to C# and Java
+# 10. Session 7 — From PYS to C# and Java
 
 - [Session 7 — From PYS to C# and Java](chapter_8.md)
-  - [9.1. Types and declarations](chapter_8_1.md)
-  - [9.2. Classes, interfaces, and members](chapter_8_2.md)
-  - [9.3. Control flow and collections](chapter_8_3.md)
-  - [9.4. What has no direct twin](chapter_8_4.md)
+  - [10.1. Types and declarations](chapter_8_1.md)
+  - [10.2. Classes, interfaces, and members](chapter_8_2.md)
+  - [10.3. Control flow and collections](chapter_8_3.md)
+  - [10.4. What has no direct twin](chapter_8_4.md)
 
-# 10. Under the hood (optional)
+# 11. Under the hood (optional)
 
-- [10.1. From source file to running process](under_the_hood_entrypoint.md)
-- [10.2. Processes, calls, and memory](under_the_hood_memory.md)
+- [11.1. From source file to running process](under_the_hood_entrypoint.md)
+- [11.2. Processes, calls, and memory](under_the_hood_memory.md)
 
-# 11. Exercises
+# 12. Exercises
 
 - [Exercise: Contact book](exercises_contact_book.md)
 
-# 12. Resources
+# 13. Resources
 
 - [Resources](resources.md)

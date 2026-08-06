@@ -63,5 +63,7 @@ Each record then uses:
 | [CER-026](CER-026-optional-terminators-grammar.md) | Optional `;`, C-for `;`, comma enums, multi-label switch | Language |
 | [CER-027](CER-027-trait-requires-remapping.md) | Trait `requires` remapping via `uses Trait(a: b)` | Language |
 | [CER-028](CER-028-nullable.md) | Explicit nullable values | Language / IDE |
+| [CER-029](CER-029-gui-book-track.md) | Procedural Tkinter book track + temperature examples | Docs / Examples |
+| [CER-030](CER-030-parse-float-int.md) | `parseFloat` / `parseInt` recoverable builtins | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

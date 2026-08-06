@@ -1,4 +1,4 @@
-# 9.1. Types and declarations
+# 10.1. Types and declarations
 
 | PYS | C# (typical) | Java (typical) |
 |-----|--------------|----------------|

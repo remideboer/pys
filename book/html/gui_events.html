@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>7.3. Events and callbacks — PYS Development Classes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc">
+      <h1><a href="index.html">PYS Development Classes</a></h1>
+      <ul>
+<li><a href="preface.html">Preface</a></li>
+</ul>
+<span class="section">1. Preparation</span>
+<ul>
+<li><a href="chapter_1_1.html">1.1. Getting ready</a></li>
+</ul>
+<span class="section">2. Back to the basics</span>
+<ul>
+<li><a href="basics.html">Back to the basics</a></li>
+<li><a href="basics_functions.html">2.1. Functions</a></li>
+<li><a href="basics_input.html">2.2. Processing input</a></li>
+<li><a href="basics_choices.html">2.3. Making choices</a></li>
+<li><a href="basics_data.html">2.4. Data structures</a></li>
+<li><a href="basics_loops.html">2.5. Loops</a></li>
+<li><a href="basics_conversion.html">2.6. Conversion</a></li>
+<li><a href="basics_null.html">2.7. Null and missing values</a></li>
+<li><a href="basics_outcomes.html">2.8. Expressing success and failure</a></li>
+<li><a href="basics_structuring.html">2.9. Structuring code</a></li>
+<li><a href="basics_files.html">2.10. Files</a></li>
+<li><a href="basics_project.html">2.11. A small contact book</a></li>
+<li><a href="basics_spoilers.html">2.12. Spoilers</a></li>
+<li><a href="basics_spoilers_input.html">2.12.1. Processing input</a></li>
+<li><a href="basics_spoilers_structuring.html">2.12.2. Structuring code</a></li>
+<li><a href="basics_spoilers_files.html">2.12.3. Files</a></li>
+</ul>
+<span class="section">3. Session 1 — Types that protect you</span>
+<ul>
+<li><a href="chapter_2.html">Session 1 — Types that protect you</a></li>
+<li><a href="chapter_2_1.html">3.1. Formatting output</a></li>
+<li><a href="chapter_2_2.html">3.2. Variables: var, fix, and const</a></li>
+<li><a href="chapter_2_3.html">3.3. Static types and casts</a></li>
+<li><a href="chapter_2_4.html">3.4. Running and checking your work</a></li>
+</ul>
+<span class="section">4. Session 2 — Control flow and collections</span>
+<ul>
+<li><a href="chapter_3.html">Session 2 — Control flow and collections</a></li>
+<li><a href="chapter_3_1.html">4.1. Control flow</a></li>
+<li><a href="chapter_3_2.html">4.2. Loops</a></li>
+<li><a href="chapter_3_3.html">4.3. Arrays and lists</a></li>
+<li><a href="chapter_3_4.html">4.4. Dicts, tuples, and sets</a></li>
+<li><a href="chapter_3_5.html">4.5. Enums and switch</a></li>
+</ul>
+<span class="section">5. Session 3 — Objects and composition</span>
+<ul>
+<li><a href="chapter_4.html">Session 3 — Objects and composition</a></li>
+<li><a href="chapter_4_1.html">5.1. Classes and member order</a></li>
+<li><a href="chapter_4_2.html">5.2. Interfaces</a></li>
+<li><a href="chapter_4_3.html">5.3. Abstract classes</a></li>
+<li><a href="chapter_4_4.html">5.4. Traits</a></li>
+<li><a href="chapter_4_5.html">5.5. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6.html">5.6. Choosing the right construct</a></li>
+</ul>
+<span class="section">6. Session 4 — Functions and lambdas</span>
+<ul>
+<li><a href="chapter_5.html">Session 4 — Functions and lambdas</a></li>
+<li><a href="chapter_5_1.html">6.1. Functions that return values</a></li>
+<li><a href="chapter_5_2.html">6.2. Lambdas</a></li>
+<li><a href="chapter_5_3.html">6.3. Passing functions around</a></li>
+</ul>
+<span class="section">7. GUI programming (procedural Tkinter)</span>
+<ul>
+<li><a href="gui_intro.html">7.1. GUI programming with Tkinter — introduction</a></li>
+<li><a href="gui_widgets.html">7.2. Widgets and layout</a></li>
+<li><a href="gui_events.html">7.3. Events and callbacks</a></li>
+<li><a href="gui_project.html">7.4. A small project: temperature converter</a></li>
+<li><a href="gui_ttkbootstrap_intro.html">7.5. Modern styling with ttkbootstrap</a></li>
+<li><a href="gui_ttkbootstrap_widgets.html">7.6. Styled widgets</a></li>
+<li><a href="gui_ttkbootstrap_project.html">7.7. Restyling the temperature converter</a></li>
+</ul>
+<span class="section">8. Session 5 — Doing several things at once</span>
+<ul>
+<li><a href="chapter_6.html">Session 5 — Doing several things at once</a></li>
+<li><a href="chapter_6_1.html">8.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2.html">8.2. shared state</a></li>
+<li><a href="chapter_6_3.html">8.3. atomic updates</a></li>
+<li><a href="chapter_6_4.html">8.4. Lambdas and capture rules</a></li>
+</ul>
+<span class="section">9. Session 6 — Tests you can trust</span>
+<ul>
+<li><a href="chapter_7.html">Session 6 — Tests you can trust</a></li>
+<li><a href="chapter_7_1.html">9.1. Writing a first test</a></li>
+<li><a href="chapter_7_2.html">9.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3.html">9.3. Packages and source roots</a></li>
+</ul>
+<span class="section">10. Session 7 — From PYS to C# and Java</span>
+<ul>
+<li><a href="chapter_8.html">Session 7 — From PYS to C# and Java</a></li>
+<li><a href="chapter_8_1.html">10.1. Types and declarations</a></li>
+<li><a href="chapter_8_2.html">10.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3.html">10.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4.html">10.4. What has no direct twin</a></li>
+</ul>
+<span class="section">11. Under the hood (optional)</span>
+<ul>
+<li><a href="under_the_hood_entrypoint.html">11.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">11.2. Processes, calls, and memory</a></li>
+</ul>
+<span class="section">12. Exercises</span>
+<ul>
+<li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
+</ul>
+<span class="section">13. Resources</span>
+<ul>
+<li><a href="resources.html">Resources</a></li>
+</ul>
+    </nav>
+    <main>
+<h1>7.3. Events and callbacks</h1>
+<blockquote>
+<p>This chapter uses lambdas. If you want the full treatment, see
+<a href="chapter_5_2.html">Lambdas</a>. The short version: a lambda is a small,
+unnamed function you can pass around as a value — <code>() =&gt; print("hi")</code>
+is a lambda that, when called, prints <code>hi</code>. That&rsquo;s exactly what a
+button needs: something to call later, when it&rsquo;s clicked, not right
+now while the window is being built.</p>
+</blockquote>
+<h2>1. Connecting a button to a function</h2>
+<p>A <code>tk.Button</code> accepts a <code>command</code> argument: a value of type
+<code>lambda&lt;void&gt;</code>, called exactly once per click.</p>
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
+
+<span class="tok-typename">Tk</span> <span class="tok-ident">window</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Tk</span>()
+<span class="tok-ident">window</span>.<span class="tok-ident">title</span>(<span class="tok-string">&quot;</span><span class="tok-string">A working button</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-typename">Label</span> <span class="tok-ident">status</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Label</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Not clicked yet</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">status</span>.<span class="tok-ident">pack</span>()
+
+<span class="tok-typename">Button</span> <span class="tok-ident">myButton</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Button</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Click me</span><span class="tok-string">&quot;</span>, <span class="tok-ident">command</span><span class="tok-op">=</span>() <span class="tok-op">=&gt;</span> {
+    <span class="tok-ident">status</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Clicked!</span><span class="tok-string">&quot;</span>)
+})
+<span class="tok-ident">myButton</span>.<span class="tok-ident">pack</span>()
+
+<span class="tok-ident">window</span>.<span class="tok-ident">mainloop</span>()</code></pre>
+<p>Run it, click the button, and the label&rsquo;s text changes from
+<code>Not clicked yet</code> to <code>Clicked!</code>. Walking through the new part:</p>
+<ul>
+<li><code>command=() =&gt; { status.config(text="Clicked!") }</code> passes a lambda
+  as the button&rsquo;s <code>command</code>. It takes no parameters (<code>()</code>), because
+  Tkinter doesn&rsquo;t hand a button&rsquo;s command function any information about
+  the click — it just calls it.</li>
+<li>The lambda body isn&rsquo;t executed when the window is built. It&rsquo;s stored
+  by the button and only executed later, once, each time the user
+  clicks — this is the event loop from the introduction chapter, made
+  concrete: <code>mainloop()</code> is what actually calls this lambda, in reaction
+  to the click event.</li>
+<li><code>status.config(text="Clicked!")</code> changes a property of an
+  <strong>already-created</strong> widget — this is how you update something on
+  screen after the window is already showing, since you can&rsquo;t call
+  <code>.pack()</code> a second time to &ldquo;re-create&rdquo; the label with new text.</li>
+<li>Capturing <code>status</code> in the lambda is fine: you are calling a method on
+  the widget object, not reassigning the <code>status</code> variable itself.</li>
+</ul>
+<h2>2. Reading an <code>Entry</code> inside a callback</h2>
+<p>Combining this with widgets that hold input:</p>
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
+
+<span class="tok-typename">Tk</span> <span class="tok-ident">window</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Tk</span>()
+<span class="tok-ident">window</span>.<span class="tok-ident">title</span>(<span class="tok-string">&quot;</span><span class="tok-string">Greet me</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-typename">Entry</span> <span class="tok-ident">nameEntry</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Entry</span>(<span class="tok-ident">window</span>)
+<span class="tok-ident">nameEntry</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">0</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">0</span>)
+
+<span class="tok-typename">Label</span> <span class="tok-ident">greeting</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Label</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">greeting</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">1</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">0</span>)
+
+<span class="tok-typename">Button</span> <span class="tok-ident">greetButton</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Button</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Greet</span><span class="tok-string">&quot;</span>, <span class="tok-ident">command</span><span class="tok-op">=</span>() <span class="tok-op">=&gt;</span> {
+    <span class="tok-type">string</span> <span class="tok-ident">typedName</span> <span class="tok-op">=</span> <span class="tok-ident">nameEntry</span>.<span class="tok-ident">get</span>()
+    <span class="tok-ident">greeting</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Hello, </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">typedName</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">!</span><span class="tok-string">&quot;</span>)
+})
+<span class="tok-ident">greetButton</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">0</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">1</span>)
+
+<span class="tok-ident">window</span>.<span class="tok-ident">mainloop</span>()</code></pre>
+<p>Type a name, click <strong>Greet</strong>, and the label under the field shows
+<code>Hello, &lt;name&gt;!</code>.</p>
+<p>Notice <code>nameEntry.get()</code> is called <strong>inside</strong> the lambda, not before it —
+this matters. If you called <code>.get()</code> once while building the window and
+stored the result, you&rsquo;d capture whatever the field held at that instant
+(almost certainly empty, since the user hasn&rsquo;t typed anything yet). By
+calling <code>.get()</code> inside the lambda, you read the field&rsquo;s value at the
+moment of the click, which is what you actually want.</p>
+<h2>3. A field that starts genuinely empty: <code>nullable&lt;T&gt;</code></h2>
+<p>Sometimes you want to distinguish &ldquo;the user hasn&rsquo;t submitted anything
+yet&rdquo; from &ldquo;the user submitted an empty answer.&rdquo; An <code>Entry</code>&rsquo;s <code>.get()</code>
+always returns a <code>string</code> — possibly an empty one, <code>""</code> — but it never
+tells you &ldquo;nothing has been submitted.&rdquo; For that distinction, keep your
+own variable outside the widget, using <code>nullable&lt;T&gt;</code> exactly as
+introduced in <a href="basics_null.html">Null and missing values</a>.</p>
+<p>Because the callback <strong>assigns</strong> to that variable, mark it <code>shared</code>
+(captured names are read-only unless <code>shared</code> or <code>atomic</code> — Session 5
+covers this in depth for tasks; the same rule applies to GUI lambdas):</p>
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
+
+<span class="tok-typename">Tk</span> <span class="tok-ident">window</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Tk</span>()
+<span class="tok-ident">window</span>.<span class="tok-ident">title</span>(<span class="tok-string">&quot;</span><span class="tok-string">Last submitted name</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-mod">shared</span> <span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">lastSubmitted</span> <span class="tok-op">=</span> <span class="tok-const">null</span>
+
+<span class="tok-typename">Entry</span> <span class="tok-ident">nameEntry</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Entry</span>(<span class="tok-ident">window</span>)
+<span class="tok-ident">nameEntry</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">0</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">0</span>)
+
+<span class="tok-typename">Label</span> <span class="tok-ident">status</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Label</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Nothing submitted yet</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">status</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">1</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">0</span>)
+
+<span class="tok-typename">Button</span> <span class="tok-ident">submitButton</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Button</span>(<span class="tok-ident">window</span>, <span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Submit</span><span class="tok-string">&quot;</span>, <span class="tok-ident">command</span><span class="tok-op">=</span>() <span class="tok-op">=&gt;</span> {
+    <span class="tok-ident">lastSubmitted</span> <span class="tok-op">=</span> <span class="tok-ident">nameEntry</span>.<span class="tok-ident">get</span>()
+    <span class="tok-ident">status</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Last submitted: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">lastSubmitted</span>)
+})
+<span class="tok-ident">submitButton</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">0</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">1</span>)
+
+<span class="tok-ident">window</span>.<span class="tok-ident">mainloop</span>()</code></pre>
+<p><code>lastSubmitted</code> starts as <code>null</code> — genuinely nothing, not an empty
+string — and only becomes a real <code>string</code> once the button has actually
+been clicked at least once. This is a small but honest example of why
+<code>nullable&lt;T&gt;</code> earns its place even in a simple GUI: <code>""</code> (submitted, but
+blank) and <code>null</code> (never submitted) are two different facts about your
+program&rsquo;s state, and collapsing them into one would lose real
+information — the same distinction taught with <code>null</code> in the basics
+chapters, showing up again here in a GUI.</p>
+<h2>4. Binding to other events besides clicks</h2>
+<p><code>command</code> on a button covers clicks specifically. For other kinds of
+events — a key pressed inside an <code>Entry</code>, the mouse entering a widget —
+Tkinter uses <code>.bind()</code> with an event name string:</p>
+<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
+
+<span class="tok-typename">Tk</span> <span class="tok-ident">window</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Tk</span>()
+<span class="tok-ident">window</span>.<span class="tok-ident">title</span>(<span class="tok-string">&quot;</span><span class="tok-string">Search on Enter</span><span class="tok-string">&quot;</span>)
+
+<span class="tok-typename">Entry</span> <span class="tok-ident">searchBox</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Entry</span>(<span class="tok-ident">window</span>)
+<span class="tok-ident">searchBox</span>.<span class="tok-ident">grid</span>(<span class="tok-ident">row</span><span class="tok-op">=</span><span class="tok-number">0</span>, <span class="tok-ident">column</span><span class="tok-op">=</span><span class="tok-number">0</span>)
+<span class="tok-ident">searchBox</span>.<span class="tok-ident">bind</span>(<span class="tok-string">&quot;</span><span class="tok-string">&lt;Return&gt;</span><span class="tok-string">&quot;</span>, (<span class="tok-ident">event</span>) <span class="tok-op">=&gt;</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">Search submitted: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">searchBox</span>.<span class="tok-ident">get</span>())
+})
+
+<span class="tok-ident">window</span>.<span class="tok-ident">mainloop</span>()</code></pre>
+<p>Focus the entry, type text, press Enter: the terminal prints
+<code>Search submitted: &lt;text&gt;</code>. The lambda takes one parameter, <code>event</code>,
+unlike the zero-parameter button <code>command</code> — <code>.bind()</code> always hands its
+callback an event object describing what happened (which key, where the
+mouse was, and so on), even if, as here, you don&rsquo;t end up using it.</p>
+<h3>Exercise</h3>
+<blockquote>
+<p>Extend the form from the widgets chapter (name, age, submit button).
+On submit, read both fields and display a single combined label:
+<code>"Name entered: &lt;name&gt;, Age entered: &lt;age&gt;"</code>. Then add a
+<code>shared nullable&lt;string&gt; lastName = null</code> variable outside the
+callback, set it inside the submit callback, and add a second button
+labeled <code>"Show last name"</code> whose callback checks: if <code>lastName</code> is
+<code>null</code>, show <code>"No submission yet"</code>; otherwise show the stored name.</p>
+</blockquote>
+<hr />
+<p><a href="gui_widgets.html">Previous: Widgets and layout</a> · <a href="gui_project.html">Next: A small project: temperature converter</a></p>
+    </main>
+  </div>
+</body>
+</html>

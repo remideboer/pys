@@ -1,0 +1,21 @@
+{
+  "deps_fingerprint": "6e59065cca82501e66e14e0e09701ca9687086d2caf2ac938ab3be1701ed58e7",
+  "index_url": "https://pypi.org/simple",
+  "packages": [
+    {
+      "name": "pillow",
+      "sha256": "8e95e1385e4998ae9694eeaa4730ba5457ff61185b3a55e2e7bea0880aef452a",
+      "url": "https://files.pythonhosted.org/packages/63/c6/4bad1b18d132a50b27e1365e1ab163616f7a5bb56d330f66f9d1d9d4f9d4/pillow-12.3.0-cp311-cp311-win_amd64.whl",
+      "version": "12.3.0"
+    },
+    {
+      "name": "ttkbootstrap",
+      "sha256": "c6a10ee5ea64051a0f8b75c20ef8e5f2417c62b4d0858c831683d4f2135aa573",
+      "url": "https://files.pythonhosted.org/packages/e6/a8/01691c28bb6320f6872e4719140e108b101eddc986aa9d3625972e43ab1c/ttkbootstrap-1.10.1-py3-none-any.whl",
+      "version": "1.10.1"
+    }
+  ],
+  "platform": "win-amd64",
+  "python": "3.11",
+  "schema": 1
+}

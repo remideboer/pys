@@ -1,0 +1,37 @@
+# Celsius → Fahrenheit converter (plain Tkinter)
+# Book: book/gui_project.md — procedural GUI track.
+
+import tkinter as tk
+
+function result<float, string> parseCelsius(string input) {
+    return parseFloat(input.strip())
+}
+
+Tk window = tk.Tk()
+window.title("Celsius to Fahrenheit")
+
+Label instructions = tk.Label(window, text="Enter a temperature in Celsius:")
+instructions.grid(row=0, column=0, columnspan=2)
+
+Entry celsiusEntry = tk.Entry(window)
+celsiusEntry.grid(row=1, column=0)
+
+Label resultLabel = tk.Label(window, text="")
+resultLabel.grid(row=2, column=0, columnspan=2)
+
+Button convertButton = tk.Button(window, text="Convert", command=() => {
+    result<float, string> parsed = parseCelsius(celsiusEntry.get())
+
+    switch (parsed) {
+        case ok(celsius): {
+            float fahrenheit = celsius * 9 / 5 + 32
+            resultLabel.config(text=str(celsius) + "°C is " + str(fahrenheit) + "°F")
+        }
+        case err(message): {
+            resultLabel.config(text="Error: " + message)
+        }
+    }
+})
+convertButton.grid(row=1, column=1)
+
+window.mainloop()

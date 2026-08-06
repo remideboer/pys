@@ -1,4 +1,4 @@
-# 7.2. shared state
+# 8.2. shared state
 
 Outer locals are **read-only** inside a task unless marked `shared` (or
 `atomic`). `shared` is **visibility** for mutation across tasks — it does

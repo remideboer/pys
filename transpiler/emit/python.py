@@ -116,6 +116,20 @@ def _pys_panic(result):
     for file, line, function in result.sites:
         print(f"  at {file}:{line} in {function}", file=_pys_sys.stderr)
     raise SystemExit(1)
+
+
+def _pys_parse_float(text):
+    try:
+        return _pys_ok(float(text))
+    except ValueError as exc:
+        return _pys_err(str(exc))
+
+
+def _pys_parse_int(text):
+    try:
+        return _pys_ok(int(text))
+    except ValueError as exc:
+        return _pys_err(str(exc))
 '''
 from ..language_spec import _default_value_for_type, _translate_string_literal
 
@@ -1462,6 +1476,18 @@ class _Emitter:
                 self.needs_format = True
                 args = ", ".join(self._call_arg(a) for a in expr.args)
                 return f"_pys_format({args})"
+            if isinstance(expr.callee, Identifier) and expr.callee.name in {
+                "parseFloat",
+                "parseInt",
+            }:
+                self.needs_result = True
+                args = ", ".join(self._call_arg(a) for a in expr.args)
+                helper = (
+                    "_pys_parse_float"
+                    if expr.callee.name == "parseFloat"
+                    else "_pys_parse_int"
+                )
+                return f"{helper}({args})"
             # Atomic synthesized accessors: avoid Identifier → .get() on the receiver.
             if (
                 isinstance(expr.callee, Member)

@@ -1,4 +1,4 @@
-# 9.2. Classes, interfaces, and members
+# 10.2. Classes, interfaces, and members
 
 | PYS | C# | Java |
 |-----|----|------|

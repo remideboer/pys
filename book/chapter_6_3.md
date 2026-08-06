@@ -1,4 +1,4 @@
-# 7.3. atomic updates
+# 8.3. atomic updates
 
 `atomic` marks a cell whose `+=` / `-=` / `++` / `--` updates are
 **indivisible**. It also implies shared capture for tasks.

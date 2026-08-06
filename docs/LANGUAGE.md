@@ -520,6 +520,16 @@ switch must contain both patterns or a `default`; duplicate patterns and
 literal labels on a result are errors. Expression arms must also yield one
 common type.
 
+Built-in recoverable parsers return results directly:
+
+- `parseInt(text)` → `result<int, string>`
+- `parseFloat(text)` → `result<float, string>`
+
+They succeed or fail according to the Python emit target's `int` / `float`
+constructors (a deliberate dependency: see the temperature-converter teaching
+note on “looks like” vs “is parseable”). Prefer them over bare `int(...)` /
+`float(...)` when the caller must handle bad text without crashing.
+
 Postfix `propagate` unwraps success and returns failure immediately:
 
 ```pys

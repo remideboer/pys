@@ -21,8 +21,34 @@ Output:
 
 
 - `int(...)` — parse an integer (or convert from another numeric form).
-- `float(...)` — parse a floating-point number.
+  Fails at runtime on bad text (there is no recoverable path).
+- `float(...)` — parse a floating-point number. Same: bad text is not a
+  `result`.
 - `str(...)` — turn a value into a string for printing or concatenation.
+- `parseInt(text)` — `result<int, string>`: `ok` on success, `err` on
+  failure (preferred for form fields and other recoverable input).
+- `parseFloat(text)` — `result<float, string>`: same pattern for floats.
+
+```pys
+result<float, string> parsed = parseFloat("3.14")
+switch (parsed) {
+    case ok(value):
+        print(value)
+    case err(message):
+        print(message)
+}
+```
+
+Output:
+
+```text
+3.14
+```
+
+`parseFloat` / `parseInt` accept whatever the Python emit target's
+`float(...)` / `int(...)` accept (including forms like `"1e10"` for
+floats). That is broader than a hand-written digit scanner — see the
+temperature-converter chapter for when that trade-off matters.
 
 ## Explicit casts
 

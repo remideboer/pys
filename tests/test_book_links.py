@@ -83,9 +83,9 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     from transpiler.transpiler import transpile
 
     summary = (BOOK / "SUMMARY.md").read_text(encoding="utf-8")
-    under_the_hood = summary.index("# 10. Under the hood")
-    assert summary.index("# 9. Session 7") < under_the_hood
-    assert under_the_hood < summary.index("# 11. Exercises")
+    under_the_hood = summary.index("# 11. Under the hood")
+    assert summary.index("# 10. Session 7") < under_the_hood
+    assert under_the_hood < summary.index("# 12. Exercises")
 
     for name in ("under_the_hood_entrypoint.md", "under_the_hood_memory.md"):
         text = (BOOK / name).read_text(encoding="utf-8")

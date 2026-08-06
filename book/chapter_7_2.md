@@ -1,4 +1,4 @@
-# 8.2. Better PYS with TDD
+# 9.2. Better PYS with TDD
 
 **Test-driven development** flips the order:
 

@@ -1,4 +1,4 @@
-# 7.4. Lambdas and capture rules
+# 8.4. Lambdas and capture rules
 
 Lambdas capture outer names **by value** when created. Captured names are
 read-only unless they were declared `shared` or `atomic`.

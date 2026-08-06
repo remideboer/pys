@@ -1,4 +1,4 @@
-# 9.4. What has no direct twin
+# 10.4. What has no direct twin
 
 Not everything maps 1:1 — and that is fine.
 

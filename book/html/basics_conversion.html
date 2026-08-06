@@ -70,39 +70,49 @@
 <li><a href="chapter_5_2.html">6.2. Lambdas</a></li>
 <li><a href="chapter_5_3.html">6.3. Passing functions around</a></li>
 </ul>
-<span class="section">7. Session 5 — Doing several things at once</span>
+<span class="section">7. GUI programming (procedural Tkinter)</span>
+<ul>
+<li><a href="gui_intro.html">7.1. GUI programming with Tkinter — introduction</a></li>
+<li><a href="gui_widgets.html">7.2. Widgets and layout</a></li>
+<li><a href="gui_events.html">7.3. Events and callbacks</a></li>
+<li><a href="gui_project.html">7.4. A small project: temperature converter</a></li>
+<li><a href="gui_ttkbootstrap_intro.html">7.5. Modern styling with ttkbootstrap</a></li>
+<li><a href="gui_ttkbootstrap_widgets.html">7.6. Styled widgets</a></li>
+<li><a href="gui_ttkbootstrap_project.html">7.7. Restyling the temperature converter</a></li>
+</ul>
+<span class="section">8. Session 5 — Doing several things at once</span>
 <ul>
 <li><a href="chapter_6.html">Session 5 — Doing several things at once</a></li>
-<li><a href="chapter_6_1.html">7.1. tasks, task, and await</a></li>
-<li><a href="chapter_6_2.html">7.2. shared state</a></li>
-<li><a href="chapter_6_3.html">7.3. atomic updates</a></li>
-<li><a href="chapter_6_4.html">7.4. Lambdas and capture rules</a></li>
+<li><a href="chapter_6_1.html">8.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2.html">8.2. shared state</a></li>
+<li><a href="chapter_6_3.html">8.3. atomic updates</a></li>
+<li><a href="chapter_6_4.html">8.4. Lambdas and capture rules</a></li>
 </ul>
-<span class="section">8. Session 6 — Tests you can trust</span>
+<span class="section">9. Session 6 — Tests you can trust</span>
 <ul>
 <li><a href="chapter_7.html">Session 6 — Tests you can trust</a></li>
-<li><a href="chapter_7_1.html">8.1. Writing a first test</a></li>
-<li><a href="chapter_7_2.html">8.2. Better PYS with TDD</a></li>
-<li><a href="chapter_7_3.html">8.3. Packages and source roots</a></li>
+<li><a href="chapter_7_1.html">9.1. Writing a first test</a></li>
+<li><a href="chapter_7_2.html">9.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3.html">9.3. Packages and source roots</a></li>
 </ul>
-<span class="section">9. Session 7 — From PYS to C# and Java</span>
+<span class="section">10. Session 7 — From PYS to C# and Java</span>
 <ul>
 <li><a href="chapter_8.html">Session 7 — From PYS to C# and Java</a></li>
-<li><a href="chapter_8_1.html">9.1. Types and declarations</a></li>
-<li><a href="chapter_8_2.html">9.2. Classes, interfaces, and members</a></li>
-<li><a href="chapter_8_3.html">9.3. Control flow and collections</a></li>
-<li><a href="chapter_8_4.html">9.4. What has no direct twin</a></li>
+<li><a href="chapter_8_1.html">10.1. Types and declarations</a></li>
+<li><a href="chapter_8_2.html">10.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3.html">10.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4.html">10.4. What has no direct twin</a></li>
 </ul>
-<span class="section">10. Under the hood (optional)</span>
+<span class="section">11. Under the hood (optional)</span>
 <ul>
-<li><a href="under_the_hood_entrypoint.html">10.1. From source file to running process</a></li>
-<li><a href="under_the_hood_memory.html">10.2. Processes, calls, and memory</a></li>
+<li><a href="under_the_hood_entrypoint.html">11.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">11.2. Processes, calls, and memory</a></li>
 </ul>
-<span class="section">11. Exercises</span>
+<span class="section">12. Exercises</span>
 <ul>
 <li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
 </ul>
-<span class="section">12. Resources</span>
+<span class="section">13. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
 </ul>
@@ -121,10 +131,29 @@ another — for example text from the keyboard into an <code>int</code>.</p>
 <pre><code class="language-text">42
 </code></pre>
 <ul>
-<li><code>int(...)</code> — parse an integer (or convert from another numeric form).</li>
-<li><code>float(...)</code> — parse a floating-point number.</li>
+<li><code>int(...)</code> — parse an integer (or convert from another numeric form).
+  Fails at runtime on bad text (there is no recoverable path).</li>
+<li><code>float(...)</code> — parse a floating-point number. Same: bad text is not a
+  <code>result</code>.</li>
 <li><code>str(...)</code> — turn a value into a string for printing or concatenation.</li>
+<li><code>parseInt(text)</code> — <code>result&lt;int, string&gt;</code>: <code>ok</code> on success, <code>err</code> on
+  failure (preferred for form fields and other recoverable input).</li>
+<li><code>parseFloat(text)</code> — <code>result&lt;float, string&gt;</code>: same pattern for floats.</li>
 </ul>
+<pre><code class="language-pys"><span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parsed</span> <span class="tok-op">=</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-string">&quot;</span><span class="tok-string">3.14</span><span class="tok-string">&quot;</span>)
+<span class="tok-kw">switch</span> (<span class="tok-ident">parsed</span>) {
+    <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">3.14
+</code></pre>
+<p><code>parseFloat</code> / <code>parseInt</code> accept whatever the Python emit target&rsquo;s
+<code>float(...)</code> / <code>int(...)</code> accept (including forms like <code>"1e10"</code> for
+floats). That is broader than a hand-written digit scanner — see the
+temperature-converter chapter for when that trade-off matters.</p>
 <h2>Explicit casts</h2>
 <p>When both sides are numeric (or otherwise cast-compatible), you can write
 a cast:</p>

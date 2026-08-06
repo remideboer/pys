@@ -1,4 +1,4 @@
-# 10.2. Processes, calls, and memory
+# 11.2. Processes, calls, and memory
 
 > **Optional background.** This chapter gives you a useful mental model, not a
 > promise about the exact byte address of every PYS value. PYS currently emits

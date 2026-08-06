@@ -198,6 +198,11 @@ def analyze(
         for stmt in module.body
         if isinstance(stmt, FunctionDef)
     }
+    # Built-in recoverable parsers (Python emit target defines acceptance).
+    function_returns.setdefault("parseFloat", "result<float, string>")
+    function_params.setdefault("parseFloat", ["string"])
+    function_returns.setdefault("parseInt", "result<int, string>")
+    function_params.setdefault("parseInt", ["string"])
     if import_resolver is not None:
         function_returns.update(import_resolver.function_returns)
         function_params.update(import_resolver.function_params)
@@ -4477,6 +4482,12 @@ def _switch_subject_type(
         t = _base_type_name(declared)
         if t:
             return t
+    if isinstance(expr, Call) and isinstance(expr.callee, Identifier):
+        # Built-in recoverable parsers (also seeded in analyze()).
+        if expr.callee.name == "parseFloat":
+            return "result<float, string>"
+        if expr.callee.name == "parseInt":
+            return "result<int, string>"
     if isinstance(expr, Member) and isinstance(expr.object, Identifier):
         ename = expr.object.name
         if ename in enum_info and expr.name in enum_info[ename]["members"]:
@@ -5010,6 +5021,12 @@ def _check_switch(
                         walk(case.body.statements)
                 continue
             if isinstance(stmt, AssignStmt):
+                if stmt.declare_type and stmt.declare_type != "var":
+                    types[stmt.name] = stmt.declare_type
+                walk_expr(stmt.value)
+            elif isinstance(stmt, SharedDecl):
+                if stmt.declare_type:
+                    types[stmt.name] = stmt.declare_type
                 walk_expr(stmt.value)
             elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
                 walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None))
@@ -5941,6 +5958,7 @@ def _check_await_placement(body: list[Any]) -> None:
 def _check_seen_name_calls(body: list[Any], resolver: Any) -> None:
     builtins = {
         "print", "str", "int", "float", "bool", "len", "range", "super", "ABC", "abstractmethod",
+        "parseFloat", "parseInt",
     }
     imported = set(resolver.imported_names)
     exports = set(getattr(resolver, "exports", set()))

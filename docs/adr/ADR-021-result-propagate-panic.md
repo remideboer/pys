@@ -51,7 +51,10 @@ behavior depend on import position.
 - APIs advertise recoverable errors and callers must handle or propagate them.
 - The same manifest value drives Run, Debug, Run Main, and source analysis.
 - Generated Python uses an internal exception for lowering, but arbitrary
-  Python exceptions are neither caught nor exposed as PYS results.
+  Python exceptions are neither caught nor exposed as PYS results — except
+  the dedicated builtins `parseInt` / `parseFloat`, which catch only
+  `ValueError` from the emit target's `int`/`float` constructors and lower
+  that to `result<…, string>` (see CER-030).
 - Panic chains contain PYS file, line, and function sites rather than generated
   implementation frames.
 - ADR-001 remains unchanged: manifest parsing is passive and contained; only

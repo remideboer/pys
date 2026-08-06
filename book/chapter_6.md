@@ -13,4 +13,4 @@ Read the deep dive any time: [`docs/CONCURRENCY.md`](../docs/CONCURRENCY.md).
 
 ---
 
-[Previous: Passing functions around](chapter_5_3.md) · [Next: tasks, task, and await](chapter_6_1.md)
+[Previous: Restyling the temperature converter](gui_ttkbootstrap_project.md) · [Next: tasks, task, and await](chapter_6_1.md)

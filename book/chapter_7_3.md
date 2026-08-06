@@ -1,4 +1,4 @@
-# 8.3. Packages and source roots
+# 9.3. Packages and source roots
 
 By default, “same package” means **same folder**. Projects often mirror
 production and tests:

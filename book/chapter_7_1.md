@@ -1,4 +1,4 @@
-# 8.1. Writing a first test
+# 9.1. Writing a first test
 
 Suppose production code offers a pure function:
 

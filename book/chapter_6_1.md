@@ -1,4 +1,4 @@
-# 7.1. tasks, task, and await
+# 8.1. tasks, task, and await
 
 A `tasks { … }` block starts concurrent units and **waits** until they all
 finish before the code after the block runs.

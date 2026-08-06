@@ -111,7 +111,19 @@ TYPES = frozenset(
 
 CONSTANTS = frozenset({"true", "false", "null"})
 BUILTINS = frozenset(
-    {"print", "len", "range", "str", "int", "float", "bool", "ok", "err"}
+    {
+        "print",
+        "len",
+        "range",
+        "str",
+        "int",
+        "float",
+        "bool",
+        "ok",
+        "err",
+        "parseFloat",
+        "parseInt",
+    }
 )
 
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
