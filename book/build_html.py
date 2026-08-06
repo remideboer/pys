@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html as html_lib
 import re
 import shutil
 from pathlib import Path
@@ -188,6 +189,14 @@ main th { background: #efebe3; }
 }
 main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }
+.mermaid {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
   nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
@@ -296,7 +305,35 @@ def _esc(s: str) -> str:
     )
 
 
-def page(title: str, nav: str, content: str) -> str:
+def promote_mermaid_blocks(body: str) -> tuple[str, bool]:
+    """Turn fenced mermaid code blocks into ``div.mermaid`` for the CDN renderer."""
+    found = False
+
+    def repl(match: re.Match[str]) -> str:
+        nonlocal found
+        found = True
+        source = html_lib.unescape(match.group(1)).strip("\n")
+        return f'<div class="mermaid">\n{source}\n</div>'
+
+    out = re.sub(
+        r'<pre><code class="language-mermaid">(.*?)</code></pre>',
+        repl,
+        body,
+        flags=re.DOTALL,
+    )
+    return out, found
+
+
+def page(title: str, nav: str, content: str, *, mermaid: bool = False) -> str:
+    mermaid_boot = ""
+    if mermaid:
+        mermaid_boot = """
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+    await mermaid.run({ querySelector: ".mermaid" });
+  </script>
+"""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -315,7 +352,7 @@ def page(title: str, nav: str, content: str) -> str:
 {content}
     </main>
   </div>
-</body>
+{mermaid_boot}</body>
 </html>
 """
 
@@ -346,6 +383,7 @@ def convert() -> None:
         MD = _markdown_converter()
         MD.reset()
         body = rewrite_links(MD.convert(text))
+        body, has_mermaid = promote_mermaid_blocks(body)
         title = title_from_md(text, md_path.stem)
 
         if md_path.name == "SUMMARY.md":
@@ -361,7 +399,7 @@ def convert() -> None:
         else:
             out_name = md_path.stem + ".html"
 
-        html = page(title, nav, body)
+        html = page(title, nav, body, mermaid=has_mermaid)
         html = highlight_html_document(html)
         (OUT / out_name).write_text(html, encoding="utf-8", newline="\n")
         print(f"wrote {out_name}")

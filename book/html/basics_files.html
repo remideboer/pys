@@ -123,10 +123,10 @@
 Python’s <code>pathlib.Path</code> through an import (the same pattern real examples
 in this repo use).</p>
 <blockquote>
-<p><strong>Sidebar — two import spellings</strong></p>
-<p><code>import input from builtins</code> is PYS’s usual “bring this name from that
-module” form. <code>from pathlib import Path</code> is the Python-shaped form some
-library modules expect. Both must stay at the <strong>top</strong> of the file.</p>
+<p><strong>Sidebar — import spellings</strong></p>
+<p><code>input</code> and <code>print</code> are built-in — no import. For libraries such as
+<code>pathlib</code>, use <code>from pathlib import Path</code> (Python-shaped form some modules
+expect). All imports must stay at the <strong>top</strong> of the file.</p>
 </blockquote>
 <pre><code class="language-pys"><span class="tok-kw">from</span> <span class="tok-ident">pathlib</span> <span class="tok-kw">import</span> <span class="tok-typename">Path</span>
 

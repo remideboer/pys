@@ -141,8 +141,8 @@ programmer bug. PYS has no <code>try</code>/<code>catch</code>; instead
 text can be parsed as a float, <code>err</code> with a message when it cannot.</p>
 <pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
 
-<span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parseCelsius</span>(<span class="tok-type">string</span> <span class="tok-ident">input</span>) {
-    <span class="tok-kw">return</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-ident">input</span>.<span class="tok-ident">strip</span>())
+<span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parseCelsius</span>(<span class="tok-type">string</span> <span class="tok-builtin">input</span>) {
+    <span class="tok-kw">return</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-builtin">input</span>.<span class="tok-ident">strip</span>())
 }
 
 <span class="tok-typename">Tk</span> <span class="tok-ident">window</span> <span class="tok-op">=</span> <span class="tok-ident">tk</span>.<span class="tok-typename">Tk</span>()
@@ -223,8 +223,8 @@ broader rules. Prefer a hand-written check only when the form must enforce
 a strict format you own.</p>
 <p>If you only need a yes/no without keeping the value, you can still wrap
 the same builtin:</p>
-<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">bool</span> <span class="tok-ident">looksLikeFloat</span>(<span class="tok-type">string</span> <span class="tok-ident">input</span>) {
-    <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parsed</span> <span class="tok-op">=</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-ident">input</span>.<span class="tok-ident">strip</span>())
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">bool</span> <span class="tok-ident">looksLikeFloat</span>(<span class="tok-type">string</span> <span class="tok-builtin">input</span>) {
+    <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parsed</span> <span class="tok-op">=</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-builtin">input</span>.<span class="tok-ident">strip</span>())
     <span class="tok-kw">switch</span> (<span class="tok-ident">parsed</span>) {
         <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>): <span class="tok-kw">return</span> <span class="tok-const">true</span>
         <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>): <span class="tok-kw">return</span> <span class="tok-const">false</span>

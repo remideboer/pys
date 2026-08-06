@@ -16,8 +16,6 @@ A tiny program that:
 Sketch of the in-memory core:
 
 ```pys
-import input from builtins
-
 list<string> contacts = []
 
 function void showContacts() {

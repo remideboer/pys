@@ -131,9 +131,7 @@ like — a file for persistence.</p>
    (<code>Path.write_text</code> / <code>read_text</code>).</li>
 </ol>
 <p>Sketch of the in-memory core:</p>
-<pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">input</span> <span class="tok-kw">from</span> <span class="tok-ident">builtins</span>
-
-<span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">contacts</span> <span class="tok-op">=</span> []
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">contacts</span> <span class="tok-op">=</span> []
 
 <span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">showContacts</span>() {
     <span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">contacts</span>) {
@@ -145,7 +143,7 @@ like — a file for persistence.</p>
     <span class="tok-ident">contacts</span>.<span class="tok-ident">append</span>(<span class="tok-ident">name</span>)
 }
 
-<span class="tok-type">string</span> <span class="tok-ident">typed</span> <span class="tok-op">=</span> <span class="tok-ident">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">New contact name: </span><span class="tok-string">&quot;</span>)
+<span class="tok-type">string</span> <span class="tok-ident">typed</span> <span class="tok-op">=</span> <span class="tok-builtin">input</span>(<span class="tok-string">&quot;</span><span class="tok-string">New contact name: </span><span class="tok-string">&quot;</span>)
 <span class="tok-ident">addContact</span>(<span class="tok-ident">typed</span>)
 <span class="tok-ident">showContacts</span>()</code></pre>
 <p><em>Interactive — type answers at the prompts; output depends on your input.</em></p>

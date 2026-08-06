@@ -4,66 +4,136 @@ Write `.pys` programs with explicit types and brace blocks; run them through an
 on-demand transpile step to standard Python. Designed for classroom use with an
 IDE run/debug path and a **didactic tutorial track** (not a keyword tour).
 
-## Learn PYS (students)
+## Design philosophy
 
-Start here: **[`tutorials/00-start-here.md`](tutorials/00-start-here.md)**
+PYS is a **bridge language**: typed, brace-shaped source that feels closer to
+**C# / Java**, while students still run on the familiar **Python** ecosystem
+(stdlib, PyPI via `pys.deps`, VS Code / Cursor).
 
-The track uses **4C/ID**, **faded scaffolding** (worked → completion → conventional),
-and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md).
+| Principle | What it means in practice |
+| --- | --- |
+| Make the implicit explicit | Types on bindings, `identity(...)` for entities, `shared` / `atomic` for cross-task mutation, ordered class members |
+| Habits that transfer | camelCase, visibility, `const` / `fix`, member order — carry into C#/Java even when those compilers stay silent |
+| Real language forms, not annotations | No `@` decorators in `.pys`; needs become keywords or declarations |
+| Educational failures | Parse/sem errors name the rule and how to fix it |
+| Fail closed at boundaries | Hashed `pys.lock`, no surprise workspace `PYTHONPATH`, Run uses the bundled toolchain |
+| Teach with whole tasks | Curriculum under `tutorials/` (4C/ID, faded scaffolding); `examples/` is a dense showcase, not lesson 1 |
 
-## Goals
-- Teach a simpler typed syntax that compiles into Python
-- Enable VS Code / Cursor “Run” / debug via the PYS extension and wrappers
-- Minimize a separate build step for students
-- Ship a curriculum path separate from the dense `examples/` showcase
+Goals in one line: simpler typed syntax → Python, one-click Run/debug, minimal
+separate build step for students.
 
-## Why `data` and `entity`?
+## Important features
 
-Mainstream languages leave **identity vs value equality** to frameworks
-(Hibernate `@Id`, EF Core `[Key]`, ActiveRecord). That produces a well-known
-class of defects: mutable keys in `hashCode`, hand-written `equals` that widen
-or NPE, Lombok `@Data` applied to entities. PYS makes the Evans (2003)
-distinction first-class and compiler-checked:
+Short samples of what students meet early and what makes PYS distinct. Fuller
+catalog in [Language examples](#language-examples) below.
+
+### Explicit types and braces
+
+```pys
+int count = 0
+string label = "ready"
+loop (int i = 0; i < 3; i++) {
+    print("#i{i}")
+}
+```
+
+`var` still allows inference from an initializer when the type is obvious.
+
+### Console I/O (`print` and `input`)
+
+No import for keyboard or console — same as Python’s builtins, typed as
+`string` for `input`:
+
+```pys
+string name = input("What is your name? ")
+print("Hello, #s{name}")
+```
+
+`input()` with no prompt is allowed. At most one prompt argument.
+
+### Numbers from text (`parseFloat` / `parseInt`)
+
+Recoverable parsing (no silent `0` on bad input):
+
+```pys
+string raw = input("Celsius: ")
+result<float, string> parsed = parseFloat(raw)
+switch (parsed) {
+    case ok(celsius): {
+        print("F=#f{celsius * 9.0 / 5.0 + 32.0}")
+    }
+    case err(msg): {
+        print(msg)
+    }
+}
+```
+
+### `data`, `entity`, and `struct`
+
+Mainstream stacks leave **identity vs value equality** to frameworks
+(`@Id`, `[Key]`, Lombok `@Data` on entities). PYS checks the Evans (2003)
+distinction in the language:
 
 | Construct | Equality | Mutability | Typical use |
 |-----------|----------|------------|-------------|
-| `data` | All fields (structural) | Immutable | Value objects (`Money`, `Point`) |
+| `data` | All fields | Immutable | Value objects (`Money`, `Point`) |
 | `entity` | `identity(...)` keys only | Keys `fix`; other fields mutable | Domain rows with a lifecycle |
-| `struct` | Field-wise, not a VO/Entity contract | Per-field `fix` optional | Ad-hoc bags without identity semantics |
+| `struct` | Field-wise copy | Per-field `fix` optional | Ad-hoc bags (not a VO/Entity contract) |
 
-Full rationale (Java/C#/Hibernate counterexamples + sources):
-[`docs/DATA_ENTITY.md`](docs/DATA_ENTITY.md). Samples:
-[`examples/data.pys`](examples/data.pys), [`examples/entities.pys`](examples/entities.pys).
+```pys
+data Money {
+    string currency
+    int cents
+}
 
-## Why lambdas capture by value
+entity Account identity(iban) {
+    private fix string iban
+    public int balanceCents
 
-Python and older JS close over **bindings** (late-binding / shared loop vars).
-PYS lambdas capture **values at creation**; captured names are read-only unless
-`shared` or `atomic` (same visibility rule as `tasks`). Sample:
-[`examples/lambdas.pys`](examples/lambdas.pys). JIT: [`tutorials/jit/J-lambda.md`](tutorials/jit/J-lambda.md).
+    public Account(string iban, int balanceCents) {
+        this.iban = iban
+        this.balanceCents = balanceCents
+    }
+}
+```
 
-## Why `atomic` exists next to `shared`
+Full rationale: [`docs/DATA_ENTITY.md`](docs/DATA_ENTITY.md) ·
+[`examples/data.pys`](examples/data.pys) · [`examples/entities.pys`](examples/entities.pys).
 
-`shared` declares cross-task mutation (visibility). It does **not** make
-`counter = counter + 1` race-free. Use `atomic` for indivisible `+=` / CAS.
-Sample: [`examples/atomic.pys`](examples/atomic.pys). Guide:
-[`docs/CONCURRENCY.md`](docs/CONCURRENCY.md). JIT: [`tutorials/jit/J-atomic.md`](tutorials/jit/J-atomic.md).
+### Lambdas capture by value
 
-## Why enforced member ordering?
+Python/JS often close over **bindings** (late-binding / shared loop vars).
+PYS captures **values at creation**; captures are read-only unless `shared` or
+`atomic`:
 
-Java, C#, Kotlin, and PEP 8 **recommend** constants → fields → constructors →
-methods. PYS **rejects** out-of-order kinds at compile time (parse error with
-an educational message). Visibility stays free within a section.
+```pys
+int n = 10
+lambda<void> greeter = () => {
+    print(n)   # sees 10 even if n changes later
+}
+```
 
-1. **Sweller / scanning load** — a fixed place for each kind means readers do
-   not scan the whole body to classify a declaration.
-2. **Make the implicit explicit** — same family as `requires` and
-   `identity(...)`: a habit experts already follow becomes a compiler rule.
-3. **Refactor = relocate** — promoting a field to `fix` (or adding a
-   constructor) means physically moving it to the right section.
-4. **Transferable habit** — *PYS enforces this because it is good practice
-   everywhere; most other languages only recommend it.* Carry the discipline
-   into Java/C#/Python even when those compilers stay silent.
+[`examples/lambdas.pys`](examples/lambdas.pys) ·
+[`tutorials/jit/J-lambda.md`](tutorials/jit/J-lambda.md).
+
+### `shared` and `atomic`
+
+`shared` is **visibility** across tasks. It does **not** make
+`counter = counter + 1` race-free — use `atomic` for indivisible `+=` / CAS:
+
+```pys
+atomic int hits = 0
+hits += 1
+```
+
+[`examples/atomic.pys`](examples/atomic.pys) ·
+[`docs/CONCURRENCY.md`](docs/CONCURRENCY.md).
+
+### Enforced member ordering
+
+Experts already put constants → fields → constructors → methods. PYS
+**rejects** out-of-order kinds (educational parse error). Visibility stays free
+within a section.
 
 | Body | Order |
 |------|--------|
@@ -71,163 +141,18 @@ an educational message). Visibility stays free within a section.
 | `class` | `const` → `fix` → fields → constructors → methods |
 | `struct` | `fix` → mutable |
 | `trait` | `requires` → methods |
-| `entity` | Identity fields → other `fix` → mutable → constructors → methods |
+| `entity` | Identity → other `fix` → mutable → constructors → methods |
 
-Not applied inside `tasks { }` (DAG/`await` already structures intent). Spec:
-[`docs/LANGUAGE.md`](docs/LANGUAGE.md#enforced-member-ordering). JIT:
-[`tutorials/jit/J-member-order.md`](tutorials/jit/J-member-order.md). Habit
-model: [`tutorials/supportive/S7-order-as-habit.md`](tutorials/supportive/S7-order-as-habit.md).
+Not inside `tasks { }`. Spec:
+[`docs/LANGUAGE.md`](docs/LANGUAGE.md#enforced-member-ordering).
 
-## Getting Started
+### Explicit nullability and results
 
-### Students — install the extension
+Plain `T` is non-null; absence is `nullable<T>`. Recoverable errors use
+`result<T,E>`, `ok` / `err`, and postfix `propagate` — see
+[`examples/results.pys`](examples/results.pys).
 
-1. Install **Python 3.10+** and ensure `python` / `python3` is on your PATH.
-2. Prefer the Marketplace (auto-update):
-   - VS Code **Extensions** → **PYS Language Support**, or `ext install remideboer.pys-language`
-3. **ELO / offline:** download `pys-student-<version>.zip` from your course site,
-   unzip, run `install.cmd` (Windows) or `./install.sh`, then reload VS Code.
-4. Open a folder with `.pys` files and use **PYS: Run File**.
-
-Third-party libraries use **`pys.deps`** (no project venv) — see below. First Run may
-download packages into `~/.pys/repository`.
-
-Maintainers: [`pys-language/PUBLISH.md`](pys-language/PUBLISH.md) (Marketplace + ELO zip).
-
-### Contributors — develop the language / extension
-
-```bash
-python -m pip install -e .
-./install-extension.bat          # Windows: package + install latest VSIX
-./install-extension.sh           # macOS/Linux
-# or: pys install extension
-#     python -m transpiler install extension
-#     ./install-extension.bat --no-build
-#     ./install-extension.bat --editor cursor
-```
-
-```bash
-cd pys-language
-npm run prepare          # copies transpiler into bundled/
-npm run package          # builds pys-language-*.vsix (also done by install-extension)
-```
-
-F5 from `pys-language` after `npm run prepare`. Diagnostics still use a workspace
-`PYTHONPATH` / editable install until a later phase.
-
-### Run a tutorial or sample (CLI)
-
-```bash
-python -m transpiler run tutorials/tasks/T1-sensor-log/1-worked.pys
-python -m transpiler run examples/main.pys
-```
-
-### Transpile only
-
-```bash
-python -m transpiler transpile examples/main.pys .transpiled/main.py
-```
-
-### Dependency management (`pys.deps`)
-
-PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
-packages for `.pys` programs are declared in a `pys.deps` file and resolved
-through a **Maven-style central repository** shared across projects.
-
-**How it works**
-
-1. On run/transpile, the tool walks upward from the `.pys` file until it finds
-   `pys.deps`.
-2. It checks the optional `[interpreter]` version constraint against the
-   Python executable that launched the transpiler.
-3. It verifies the committed `pys.lock` matches `pys.deps`, Python, and platform.
-4. Every direct and transitive package is installed from the exact URL and
-   SHA-256 in the lock, using pip `--require-hashes --no-deps`.
-5. The locked environment is cached once by lock digest and prepended to `PYTHONPATH` for the generated
-   Python process — imports like `import matplotlib` then resolve normally.
-
-**Layout**
-
-```
-~/.pys/repository/
-  environments/
-    <lock-sha256>/
-      .pys-lock.json
-      matplotlib/
-      ...
-```
-
-Override the repo root with env `PYS_REPO` if needed.
-
-**Declare dependencies**
-
-Place `pys.deps` in the project root (or any parent of the `.pys` file):
-
-```
-[interpreter]
-	version: >=3.10
-
-[dependencies]
-	matplotlib
-		version: 3.10.5
-	mysql-connector-python
-		version: 8.0.33
-		build: run
-```
-
-| Field | Meaning |
-| --- | --- |
-| package name (indented line) | PyPI name; required |
-| `version` | Exact version (e.g. `8.0.33`); required for Run dependencies |
-| `build` | `run`, `test`, or omit (= available for both) |
-
-`interpreter.path` is intentionally not supported in project-controlled
-`pys.deps`. To use another interpreter, invoke the transpiler with that Python:
-`C:\Python311\python.exe -m transpiler run main.pys`.
-
-After changing dependencies, regenerate and commit the lock for the current
-Python/platform:
-
-```bash
-python -m transpiler deps lock pys.deps
-```
-
-Run fails closed if the lock is missing, stale, has the wrong platform/Python,
-or contains an invalid hash.
-
-Stdlib modules need no entry. Non-stdlib packages must be listed in `pys.deps`
-before you `import` them from `.pys`.
-
-## VS Code Integration
-
-Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
-editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
-**PYS** icon offers **Create PYS Project** (`src` / `tests` + `pys.toml` + template
-`pys.deps`), including a runnable manifest-selected `src/main.pys`.
-
-- Put the authoritative entrypoint in `pys.toml`, for example
-  `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.
-  `pys.mainFile` remains only as a deprecated fallback for folders without a
-  manifest.
-- Recoverable errors use `result<T,E>`, `ok` / `err`, exhaustive result
-  switches, and postfix `propagate`. An unhandled entrypoint error becomes a
-  non-zero panic; see [`examples/results.pys`](examples/results.pys) and
-  [`examples/result_panic/`](examples/result_panic/).
-- Explicit absence uses `nullable<T>` (plain `T` is non-null); SQL `NULL` maps to
-  PYS `null` without collapsing to `""` / `0`.
-- Debug prepares generated Python + line maps, launches debugpy on the program,
-  and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
-  PYS-only stepping is on by default: native Step Over/Into/Out skip extra
-  generated Python lines and stop at the next mapped PYS statement. Toggle it
-  with the filter icon in the debug toolbar; breakpoints/exceptions/Pause are
-  never skipped. **PYS Advanced: Debug Transpiled Python** opens the generated
-  `.py` and permits stepping into Python internals.
-  Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
-  context / gutter / tab. Requires the Microsoft Python extension.
-  Sample: [`examples/debug_step.pys`](examples/debug_step.pys).
-- Third-party imports resolve through `pys.deps` / `~/.pys/repository` on Run.
-
-## Language Features
+## Language examples
 
 Formal grammar (EBNF): [`docs/language.ebnf`](docs/language.ebnf) · overview
 [`docs/LANGUAGE.md`](docs/LANGUAGE.md) · visuals
@@ -255,7 +180,7 @@ import tkinter as tk         # stdlib with alias
 # import hello from funcs.pys
 ```
 
-Third-party packages need a `pys.deps` entry (see above). Then:
+Third-party packages need a `pys.deps` entry (see [Dependency management](#dependency-management-pysdeps)). Then:
 
 ```pys
 import mysql.connector
@@ -503,6 +428,163 @@ tasks {
 - Use 4 spaces per indentation level.
 - Tabs are not supported.
 - Blank lines are preserved.
+
+
+## Learn PYS (students)
+
+Start here: **[`tutorials/00-start-here.md`](tutorials/00-start-here.md)**
+
+The track uses **4C/ID**, **faded scaffolding** (worked → completion → conventional),
+and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md).
+
+## Getting Started
+
+### Students — install the extension
+
+1. Install **Python 3.10+** and ensure `python` / `python3` is on your PATH.
+2. Prefer the Marketplace (auto-update):
+   - VS Code **Extensions** → **PYS Language Support**, or `ext install remideboer.pys-language`
+3. **ELO / offline:** download `pys-student-<version>.zip` from your course site,
+   unzip, run `install.cmd` (Windows) or `./install.sh`, then reload VS Code.
+4. Open a folder with `.pys` files and use **PYS: Run File**.
+
+Third-party libraries use **`pys.deps`** (no project venv) — see below. First Run may
+download packages into `~/.pys/repository`.
+
+Maintainers: [`pys-language/PUBLISH.md`](pys-language/PUBLISH.md) (Marketplace + ELO zip).
+
+### Contributors — develop the language / extension
+
+```bash
+python -m pip install -e .
+./install-extension.bat          # Windows: package + install latest VSIX
+./install-extension.sh           # macOS/Linux
+# or: pys install extension
+#     python -m transpiler install extension
+#     ./install-extension.bat --no-build
+#     ./install-extension.bat --editor cursor
+```
+
+```bash
+cd pys-language
+npm run prepare          # copies transpiler into bundled/
+npm run package          # builds pys-language-*.vsix (also done by install-extension)
+```
+
+F5 from `pys-language` after `npm run prepare`. Diagnostics still use a workspace
+`PYTHONPATH` / editable install until a later phase.
+
+### Run a tutorial or sample (CLI)
+
+```bash
+python -m transpiler run tutorials/tasks/T1-sensor-log/1-worked.pys
+python -m transpiler run examples/main.pys
+```
+
+### Transpile only
+
+```bash
+python -m transpiler transpile examples/main.pys .transpiled/main.py
+```
+
+### Dependency management (`pys.deps`)
+
+PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
+packages for `.pys` programs are declared in a `pys.deps` file and resolved
+through a **Maven-style central repository** shared across projects.
+
+**How it works**
+
+1. On run/transpile, the tool walks upward from the `.pys` file until it finds
+   `pys.deps`.
+2. It checks the optional `[interpreter]` version constraint against the
+   Python executable that launched the transpiler.
+3. It verifies the committed `pys.lock` matches `pys.deps`, Python, and platform.
+4. Every direct and transitive package is installed from the exact URL and
+   SHA-256 in the lock, using pip `--require-hashes --no-deps`.
+5. The locked environment is cached once by lock digest and prepended to `PYTHONPATH` for the generated
+   Python process — imports like `import matplotlib` then resolve normally.
+
+**Layout**
+
+```
+~/.pys/repository/
+  environments/
+    <lock-sha256>/
+      .pys-lock.json
+      matplotlib/
+      ...
+```
+
+Override the repo root with env `PYS_REPO` if needed.
+
+**Declare dependencies**
+
+Place `pys.deps` in the project root (or any parent of the `.pys` file):
+
+```
+[interpreter]
+	version: >=3.10
+
+[dependencies]
+	matplotlib
+		version: 3.10.5
+	mysql-connector-python
+		version: 8.0.33
+		build: run
+```
+
+| Field | Meaning |
+| --- | --- |
+| package name (indented line) | PyPI name; required |
+| `version` | Exact version (e.g. `8.0.33`); required for Run dependencies |
+| `build` | `run`, `test`, or omit (= available for both) |
+
+`interpreter.path` is intentionally not supported in project-controlled
+`pys.deps`. To use another interpreter, invoke the transpiler with that Python:
+`C:\Python311\python.exe -m transpiler run main.pys`.
+
+After changing dependencies, regenerate and commit the lock for the current
+Python/platform:
+
+```bash
+python -m transpiler deps lock pys.deps
+```
+
+Run fails closed if the lock is missing, stale, has the wrong platform/Python,
+or contains an invalid hash.
+
+Stdlib modules need no entry. Non-stdlib packages must be listed in `pys.deps`
+before you `import` them from `.pys`.
+
+## VS Code Integration
+
+Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
+editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
+**PYS** icon offers **Create PYS Project** (`src` / `tests` + `pys.toml` + template
+`pys.deps`), including a runnable manifest-selected `src/main.pys`.
+
+- Put the authoritative entrypoint in `pys.toml`, for example
+  `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.
+  `pys.mainFile` remains only as a deprecated fallback for folders without a
+  manifest.
+- Recoverable errors use `result<T,E>`, `ok` / `err`, exhaustive result
+  switches, and postfix `propagate`. An unhandled entrypoint error becomes a
+  non-zero panic; see [`examples/results.pys`](examples/results.pys) and
+  [`examples/result_panic/`](examples/result_panic/).
+- Explicit absence uses `nullable<T>` (plain `T` is non-null); SQL `NULL` maps to
+  PYS `null` without collapsing to `""` / `0`.
+- Debug prepares generated Python + line maps, launches debugpy on the program,
+  and remaps breakpoints/stack/Variables to `.pys` ([ADR-014](docs/adr/ADR-014-pys-dap-stepping.md)).
+  PYS-only stepping is on by default: native Step Over/Into/Out skip extra
+  generated Python lines and stop at the next mapped PYS statement. Toggle it
+  with the filter icon in the debug toolbar; breakpoints/exceptions/Pause are
+  never skipped. **PYS Advanced: Debug Transpiled Python** opens the generated
+  `.py` and permits stepping into Python internals.
+  Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
+  context / gutter / tab. Requires the Microsoft Python extension.
+  Sample: [`examples/debug_step.pys`](examples/debug_step.pys).
+- Third-party imports resolve through `pys.deps` / `~/.pys/repository` on Run.
 
 ## How this transpiler works
 

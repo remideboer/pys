@@ -171,6 +171,14 @@ main th { background: #efebe3; }
 }
 main hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
 .nav-footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.95rem; }
+.mermaid {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow-x: auto;
+}
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
   nav.toc { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }

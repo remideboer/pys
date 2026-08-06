@@ -10,8 +10,8 @@ sessions.
    - add a name,
    - print all names,
    - (optional) remove a name if it exists.
-3. Drive the program from keyboard input (`import input from builtins`)
-   with a simple menu: `add` / `list` / `quit`.
+3. Drive the program from keyboard input (`input("…")`, built-in like
+   `print`) with a simple menu: `add` / `list` / `quit`.
 4. (Stretch) Persist names to `contacts.txt` between runs using
    `from pathlib import Path` and `write_text` / `read_text`.
 5. (Stretch) Move pure helpers into a `package` module and keep the menu

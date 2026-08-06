@@ -4,8 +4,6 @@ Exercise: ask for a first name and a favorite number; print a sentence
 with both.
 
 ```pys
-import input from builtins
-
 string firstName = input("First name: ")
 string raw = input("Favorite number: ")
 int favorite = int(raw)
@@ -13,8 +11,6 @@ print(firstName + " likes " + str(favorite))
 ```
 
 *Interactive — type answers at the prompts; output depends on your input.*
-
-
 
 ---
 

@@ -530,6 +530,12 @@ constructors (a deliberate dependency: see the temperature-converter teaching
 note on “looks like” vs “is parseable”). Prefer them over bare `int(...)` /
 `float(...)` when the caller must handle bad text without crashing.
 
+Console I/O builtins (no import):
+
+- `print(...)` — write a line
+- `input()` / `input(prompt)` → `string` — read a line from the keyboard
+  (optional prompt). Legacy `import input from builtins` still compiles.
+
 Postfix `propagate` unwraps success and returns failure immediately:
 
 ```pys

@@ -123,6 +123,7 @@ BUILTINS = frozenset(
         "err",
         "parseFloat",
         "parseInt",
+        "input",
     }
 )
 

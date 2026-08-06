@@ -138,15 +138,16 @@ idle until the user does something (a click, a keypress), at which point
 it runs a small piece of your code in response, then goes back to
 waiting. This &ldquo;wait, react, wait, react&rdquo; cycle is called the <strong>event
 loop</strong>, and it runs until the user closes the window.</p>
-<pre><code class="language-mermaid">flowchart TD
-    A[Program starts] --&gt; B[Create window and widgets]
-    B --&gt; C[Enter the event loop&lt;br/&gt;tkinter's mainloop]
-    C --&gt;|user clicks a button| D[Run that button's command function]
-    D --&gt; C
-    C --&gt;|user types in a text field| E[Run that field's binding, if any]
-    E --&gt; C
-    C --&gt;|user closes the window| F[Event loop ends, program exits]
-</code></pre>
+<div class="mermaid">
+flowchart TD
+    A[Program starts] --> B[Create window and widgets]
+    B --> C[Enter the event loop<br/>tkinter's mainloop]
+    C -->|user clicks a button| D[Run that button's command function]
+    D --> C
+    C -->|user types in a text field| E[Run that field's binding, if any]
+    E --> C
+    C -->|user closes the window| F[Event loop ends, program exits]
+</div>
 <p>This is why a GUI program&rsquo;s top-level code looks different from a short
 console script: it does not contain your program&rsquo;s logic only as a
 straight list of prints. It builds the window, tells the window which
@@ -199,5 +200,11 @@ to check.</p>
 <p><a href="chapter_5_3.html">Previous: Passing functions around</a> · <a href="gui_widgets.html">Next: Widgets and layout</a></p>
     </main>
   </div>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+    await mermaid.run({ querySelector: ".mermaid" });
+  </script>
 </body>
 </html>

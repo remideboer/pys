@@ -203,6 +203,9 @@ def analyze(
     function_params.setdefault("parseFloat", ["string"])
     function_returns.setdefault("parseInt", "result<int, string>")
     function_params.setdefault("parseInt", ["string"])
+    # Console I/O (like print): no import required.
+    function_returns.setdefault("input", "string")
+    function_params.setdefault("input", ["string"])  # optional; arity checked separately
     if import_resolver is not None:
         function_returns.update(import_resolver.function_returns)
         function_params.update(import_resolver.function_params)
@@ -1778,6 +1781,13 @@ def _check_results(
             expected_params: list[str] = []
             if isinstance(expr.callee, Identifier):
                 expected_params = function_params.get(expr.callee.name, [])
+                if expr.callee.name == "input" and len(expr.args) > 1:
+                    fail(
+                        "`input` takes at most one string prompt argument.",
+                        expr,
+                        code="pys.input-arity",
+                        tips=['Use `input()` or `input("prompt")`.'],
+                    )
             elif isinstance(expr.callee, Member):
                 receiver_type = expr_type(
                     expr.callee.object,
@@ -5958,7 +5968,7 @@ def _check_await_placement(body: list[Any]) -> None:
 def _check_seen_name_calls(body: list[Any], resolver: Any) -> None:
     builtins = {
         "print", "str", "int", "float", "bool", "len", "range", "super", "ABC", "abstractmethod",
-        "parseFloat", "parseInt",
+        "parseFloat", "parseInt", "input",
     }
     imported = set(resolver.imported_names)
     exports = set(getattr(resolver, "exports", set()))

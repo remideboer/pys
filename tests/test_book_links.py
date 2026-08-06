@@ -118,3 +118,12 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     assert "Virtual address space" in memory_html
     assert "Thread 1" in memory_html
     assert "Shared runtime data" in memory_html
+
+
+def test_gui_intro_mermaid_is_rendered_as_div_not_code_fence() -> None:
+    gui = (BOOK / "html" / "gui_intro.html").read_text(encoding="utf-8")
+    assert 'class="language-mermaid"' not in gui
+    assert 'class="mermaid"' in gui
+    assert "flowchart TD" in gui
+    assert "mermaid.esm.min.mjs" in gui
+    assert "Create window and widgets" in gui

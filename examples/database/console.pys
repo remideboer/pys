@@ -1,7 +1,5 @@
 # Console I/O port + stdin adapter (SRP: prompting only).
 
-import input from builtins
-
 package interface Console {
     string readLine(string prompt)
     void writeLine(string text)

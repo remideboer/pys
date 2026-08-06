@@ -57,8 +57,29 @@ deps silo (ADR-001 / CER-001).
 `python -m transpiler transpile` / analyze of each `main.pys` with
 `PYS_WORKSPACE_ROOT` set to that silo directory.
 
+## Entry 3 — Mermaid diagrams in static HTML
+
+### Pre-behavior
+
+````mermaid` fences became `<pre><code class="language-mermaid">` with
+HTML-escaped arrows (`--&gt;`); no Mermaid runtime was loaded.
+
+### Why it hurt
+
+`gui_intro` showed a dead code block instead of the event-loop flowchart.
+
+### Post-behavior
+
+`book/build_html.py` promotes those fences to `<div class="mermaid">`
+(with `html.unescape`), injects Mermaid 11 ESM only on pages that need it,
+and styles the container. Pages without diagrams stay script-free.
+
+### Evidence
+
+`tests/test_book_links.py::test_gui_intro_mermaid_is_rendered_as_div_not_code_fence`
+
 ## Trade-offs
 
 - Bidirectional F↔C remains a book exercise, not shipped source.
 - Procedural style after OO sessions on purpose; class GUIs stay in Pokemon/shop.
-- No new language builtins for numeric parsing.
+- Mermaid loads from jsDelivr (offline HTML viewers without network see source text only).
