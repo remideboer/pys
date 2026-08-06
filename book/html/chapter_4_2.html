@@ -119,10 +119,14 @@
     </nav>
     <main>
 <h1>5.2. Interfaces</h1>
-<p>An <strong>interface</strong> is a contract: method names and signatures, no fields, no
-bodies. Implementing classes must provide matching <strong>public</strong> methods.
-Omit access modifiers on the interface signatures — they are always public
-and abstract.</p>
+<p>If a class is a machine full of state and gears, an <strong>interface</strong> is only
+the <strong>socket on the front</strong>: a faceplate that lists openings (method
+signatures) and has <strong>no mechanics inside</strong> — no fields, no method
+bodies. Any class that <code>implements</code> the interface must wire real public
+methods into those openings.</p>
+<p>Omit access modifiers on the interface signatures — they are always
+public and abstract. Omit a return type when the method returns nothing
+(same rule as classes: <code>void</code> is allowed but not required).</p>
 <pre><code class="language-pys"><span class="tok-kw">interface</span> <span class="tok-typename">Greeter</span> {
     <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>)
 }
@@ -138,8 +142,55 @@ and abstract.</p>
 <p>Output:</p>
 <pre><code class="language-text">Hello, Ada
 </code></pre>
+<figure class="concept-diagram" role="img" aria-label="Interface Greeter as a hollow socket; ConsoleGreeter machine plugs public greet into that opening">
+  <div class="iface-pair">
+    <div class="iface-socket">
+      <div class="iface-head">
+        <span class="iface-icon" title="socket / contract" aria-hidden="true">⬡</span>
+        <code>Greeter</code>
+        <span class="cls-tag">interface · socket</span>
+      </div>
+      <div class="iface-slot">
+        <span class="iface-hole" aria-hidden="true"></span>
+        <code>greet(string name)</code>
+        <span class="cls-note">opening only</span>
+      </div>
+      <p class="iface-empty">no state · no gears · no body</p>
+    </div>
+    <div class="iface-plug" aria-hidden="true">
+      <span class="iface-plug-arrow">→</span>
+      <span class="iface-plug-label">implements</span>
+    </div>
+    <div class="cls-machine cls-machine-sm">
+      <div class="cls-head">
+        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+        <code>ConsoleGreeter</code>
+        <span class="cls-tag">class machine</span>
+      </div>
+      <div class="cls-section">
+        <div class="cls-section-label">wired to the socket</div>
+        <div class="cls-member is-public">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>public greet(string name)</code>
+          <span class="cls-note">real body</span>
+        </div>
+      </div>
+      <div class="cls-channels">
+        <span class="cls-channels-label">outside channel</span>
+        <code>greet(…)</code>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    The socket promises <code>greet</code> exists. The class supplies the
+    working gear. Callers can depend on the socket type
+    (<code>Greeter g</code>) without caring which machine is plugged in.
+  </figcaption>
+</figure>
+
 <p><code>Greeter</code> is a <strong>type</strong>: you can declare variables of that type and store
-any implementing object.</p>
+any implementing object. The channel you use is still <code>g.greet(...)</code> —
+the interface listed that opening; the class made it real.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Add <code>farewell(string name)</code> to the interface and implement it on
