@@ -1,0 +1,7 @@
+print("=== shop mysql route table (doc) ===")
+print("GET  /health")
+print("CRUD /api/products")
+print("CRUD /api/orders")
+print("CRUD /api/orders/{id}/lines")
+print("PASS route table documented")
+print("=== mysql route doc done ===")

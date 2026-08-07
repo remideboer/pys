@@ -1,0 +1,23 @@
+# Tunables for MySQL-backed shop REST (phase 2).
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public int idleTimeoutMs
+    public int writeTimeoutMs
+    public string dbHost
+    public string dbUser
+    public string dbPassword
+    public string dbName
+
+    public ServerConfig() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8091
+        this.idleTimeoutMs = 2000
+        this.writeTimeoutMs = 2000
+        this.dbHost = "localhost"
+        this.dbUser = "pys"
+        this.dbPassword = "123456789"
+        this.dbName = "shop"
+    }
+}

@@ -1,14 +1,39 @@
-# Phase 2 — MySQL-backed shop REST (deferred)
+# Phase 2 — MySQL-backed shop REST
 
-**Status:** placeholder until [F-008](../../../docs/TODO-FUTURE.md#f-008-rest-shop-mysql).
+Same HTTP JSON surface as [`../memory/`](../memory/), but repositories use
+MySQL (`ShopDatabase` + mappers) matching the console shop schema.
 
-**Blocked by:** phase 1 ([`../memory/`](../memory/)) DoD.
+**Diff vs memory:** `store.pys` / `db.pys` / `mappers.pys` / `repositories.pys`
+— transport and `api_*.pys` stay the same shape.
 
-## Intent
+## Setup
 
-Keep the same `/api/products`, `/api/orders`, and `/api/orders/.../lines`
-surface as memory, but wire `ShopDatabase` + mappers + repositories from the
-console shop (`examples/database`) instead of `InMemory*Repository`.
+```bash
+mysql -u pys -p < examples/rest-api/shop/mysql/shop.sql
+mysql -u pys -p shop < examples/rest-api/shop/mysql/seed_boardgames.sql
+```
 
-Students should be able to diff `memory/` vs `mysql/` and see only the
-persistence layer change.
+Credentials default to `pys` / `123456789` / `shop` (see `src/config.pys`).
+
+## Run
+
+```bash
+python -m transpiler run examples/rest-api/shop/mysql/src/main.pys
+curl http://127.0.0.1:8091/health
+curl http://127.0.0.1:8091/api/products
+```
+
+Port **8091** (memory uses 8090).
+
+## Tests (CI without live MySQL)
+
+```bash
+set PYS_WORKSPACE_ROOT=examples\rest-api\shop\mysql
+python -m pytest tests/test_rest_shop_mysql.py -q
+```
+
+Transpile gate only — live CRUD needs a running MySQL (manual / local).
+
+## Routes
+
+Identical to memory: `/api/products`, `/api/orders`, `/api/orders/{id}/lines`, …

@@ -1,0 +1,170 @@
+# Method + path dispatch for shop REST (MySQL-backed — same routes as memory).
+
+import HttpRequest, HttpResponse from http11
+import JsonUtil from json_util
+import ServerConfig from config
+import ShopStore from store
+import ProductApi from api_products
+import OrderApi from api_orders
+import LineApi from api_lines
+
+package class AppContext {
+    public ServerConfig cfg
+    public ShopStore store
+    public JsonUtil json
+    public ProductApi products
+    public OrderApi orders
+    public LineApi lines
+
+    public AppContext(ServerConfig cfg) {
+        this.cfg = cfg
+        this.store = ShopStore(cfg.dbHost, cfg.dbUser, cfg.dbPassword, cfg.dbName)
+        this.json = JsonUtil()
+        this.products = ProductApi(this.store, this.json)
+        this.orders = OrderApi(this.store, this.json)
+        this.lines = LineApi(this.store, this.json)
+    }
+}
+
+package class Router {
+    private AppContext ctx
+
+    public Router(AppContext ctx) {
+        this.ctx = ctx
+    }
+
+    public AppContext context() {
+        return this.ctx
+    }
+
+    public HttpResponse handle(HttpRequest req) {
+        string method = req.method
+        string path = req.path
+
+        if (method == "GET" && path == "/health") {
+            return HttpResponse(200, "OK", this.ctx.json.healthOk())
+        }
+
+        if (path == "/api/products") {
+            if (method == "GET") {
+                return this.ctx.products.listAll()
+            }
+            if (method == "POST") {
+                return this.ctx.products.create(req)
+            }
+            return this.methodNotAllowed()
+        }
+
+        if (path == "/api/orders") {
+            if (method == "GET") {
+                return this.ctx.orders.listAll()
+            }
+            if (method == "POST") {
+                return this.ctx.orders.create(req)
+            }
+            return this.methodNotAllowed()
+        }
+
+        var parts = path.split("/")
+        if (len(parts) == 4 && parts[1] == "api" && parts[2] == "products") {
+            nullable<int> idN = this.parseIntToken(parts[3])
+            if (idN == null) {
+                return this.badPath()
+            }
+            int pid = idN
+            if (method == "GET") {
+                return this.ctx.products.getOne(pid)
+            }
+            if (method == "PUT") {
+                return this.ctx.products.update(pid, req)
+            }
+            if (method == "DELETE") {
+                return this.ctx.products.delete(pid)
+            }
+            return this.methodNotAllowed()
+        }
+
+        if (len(parts) == 6 && parts[1] == "api" && parts[2] == "orders" && parts[4] == "lines") {
+            nullable<int> oidN = this.parseIntToken(parts[3])
+            if (oidN == null) {
+                return this.badPath()
+            }
+            nullable<int> lnN = this.parseIntToken(parts[5])
+            if (lnN == null) {
+                return this.badPath()
+            }
+            int oid = oidN
+            int ln = lnN
+            if (method == "GET") {
+                return this.ctx.lines.getOne(oid, ln)
+            }
+            if (method == "PUT") {
+                return this.ctx.lines.update(oid, ln, req)
+            }
+            if (method == "DELETE") {
+                return this.ctx.lines.delete(oid, ln)
+            }
+            return this.methodNotAllowed()
+        }
+
+        if (len(parts) == 5 && parts[1] == "api" && parts[2] == "orders" && parts[4] == "lines") {
+            nullable<int> oidN = this.parseIntToken(parts[3])
+            if (oidN == null) {
+                return this.badPath()
+            }
+            int oid = oidN
+            if (method == "GET") {
+                return this.ctx.lines.listForOrder(oid)
+            }
+            if (method == "POST") {
+                return this.ctx.lines.create(oid, req)
+            }
+            return this.methodNotAllowed()
+        }
+
+        if (len(parts) == 4 && parts[1] == "api" && parts[2] == "orders") {
+            nullable<int> idN = this.parseIntToken(parts[3])
+            if (idN == null) {
+                return this.badPath()
+            }
+            int oid = idN
+            if (method == "GET") {
+                return this.ctx.orders.getOne(oid)
+            }
+            if (method == "PUT") {
+                return this.ctx.orders.update(oid, req)
+            }
+            if (method == "DELETE") {
+                return this.ctx.orders.delete(oid)
+            }
+            return this.methodNotAllowed()
+        }
+
+        return HttpResponse(404, "Not Found", this.ctx.json.errorBody("not found"))
+    }
+
+    private HttpResponse methodNotAllowed() {
+        return HttpResponse(405, "Method Not Allowed", this.ctx.json.errorBody("method not allowed"))
+    }
+
+    private HttpResponse badPath() {
+        return HttpResponse(400, "Bad Request", this.ctx.json.errorBody("invalid path id"))
+    }
+
+    private nullable<int> parseIntToken(string token) {
+        if (token == "") {
+            return null
+        }
+        string digits = "0123456789"
+        int i = 0
+        loop (i < len(token)) {
+            int j = i + 1
+            string ch = token[i:j]
+            if (digits.find(ch) < 0) {
+                return null
+            }
+            i = j
+        }
+        return (int)(token)
+    }
+}
