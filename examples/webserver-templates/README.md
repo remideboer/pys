@@ -4,6 +4,9 @@ Renders HTML from `templates/` with `{{key}}` placeholders (HTML-escaped).
 Port **8101**. Separate from the static-file server so students see the
 templating layer alone.
 
+For `{% if %}` / `{% for %}`, use
+[`../webserver-templates-logic/`](../webserver-templates-logic/) (port **8102**, CER-040).
+
 ## Run
 
 ```bash

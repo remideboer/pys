@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+
+  {% if showSale %}
+  <p class="sale">Sale on now!</p>
+  {% else %}
+  <p class="nosale">No sale today.</p>
+  {% endif %}
+
+  {% if products %}
+  <ul>
+    {% for p in products %}
+    <li>{{ p.name }} — {{ p.price }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No products on the shelf.</p>
+  {% endif %}
+
+  {% if emptyCart %}
+  <p>Your cart is empty.</p>
+  {% endif %}
+</body>
+</html>

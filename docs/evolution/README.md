@@ -74,5 +74,6 @@ Each record then uses:
 | [CER-037](CER-037-rest-shop-jwt.md) | JWT shop REST (phase 3 / F-009) | Examples |
 | [CER-038](CER-038-webserver-static.md) | Static-file HTTP example | Examples |
 | [CER-039](CER-039-webserver-templates.md) | Template HTTP example | Examples |
+| [CER-040](CER-040-webserver-templates-logic.md) | Template HTTP with if/for | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

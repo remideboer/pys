@@ -1,0 +1,51 @@
+import HttpRequest, HttpResponse from http11
+import TemplateEngine from template_engine
+
+package class Router {
+    private TemplateEngine engine
+
+    public Router(TemplateEngine engine) {
+        this.engine = engine
+    }
+
+    public HttpResponse handle(HttpRequest req) {
+        if (req.method != "GET") {
+            return HttpResponse(405, "Method Not Allowed", "method not allowed", "text/plain; charset=utf-8")
+        }
+        if (req.path == "/health") {
+            return HttpResponse(200, "OK", "ok", "text/plain; charset=utf-8")
+        }
+        if (req.path == "/" || req.path == "/shop") {
+            dict ctx = dict()
+            ctx["title"] = "Board games"
+            ctx["showSale"] = true
+            list products = []
+            dict a = dict()
+            a["name"] = "Catan"
+            a["price"] = "44.95"
+            products.append(a)
+            dict b = dict()
+            b["name"] = "Azul"
+            b["price"] = "39.95"
+            products.append(b)
+            ctx["products"] = products
+            ctx["emptyCart"] = false
+            string htmlBody = this.engine.render("shop.html", ctx)
+            if (htmlBody == "") {
+                return HttpResponse(500, "Error", "template missing", "text/plain; charset=utf-8")
+            }
+            return HttpResponse(200, "OK", htmlBody, "text/html; charset=utf-8")
+        }
+        if (req.path == "/empty") {
+            dict ctx = dict()
+            ctx["title"] = "Empty shelf"
+            ctx["showSale"] = false
+            list products = []
+            ctx["products"] = products
+            ctx["emptyCart"] = true
+            string htmlBody = this.engine.render("shop.html", ctx)
+            return HttpResponse(200, "OK", htmlBody, "text/html; charset=utf-8")
+        }
+        return HttpResponse(404, "Not Found", "not found", "text/plain; charset=utf-8")
+    }
+}

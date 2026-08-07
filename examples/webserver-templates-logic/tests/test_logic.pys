@@ -1,0 +1,51 @@
+import os
+
+import TemplateEngine from template_engine
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== template logic ===")
+
+string root = os.environ["PYS_TEMPLATES_DIR"]
+TemplateEngine engine = TemplateEngine(root)
+
+dict ctx = dict()
+ctx["title"] = "Shelf"
+ctx["showSale"] = true
+ctx["emptyCart"] = false
+list products = []
+dict a = dict()
+a["name"] = "Catan"
+a["price"] = "10"
+products.append(a)
+dict b = dict()
+b["name"] = "Ada <x>"
+b["price"] = "1"
+products.append(b)
+ctx["products"] = products
+
+string out = engine.render("shop.html", ctx)
+assertTrue("rendered", out != "")
+assertTrue("sale branch", out.find("Sale on now") >= 0)
+assertTrue("has Catan", out.find("Catan") >= 0)
+assertTrue("escaped name", out.find("Ada &lt;x&gt;") >= 0)
+assertTrue("no raw angle", out.find("Ada <x>") < 0)
+
+dict emptyCtx = dict()
+emptyCtx["title"] = "Empty"
+emptyCtx["showSale"] = false
+emptyCtx["emptyCart"] = true
+list none = []
+emptyCtx["products"] = none
+string emptyOut = engine.render("shop.html", emptyCtx)
+assertTrue("else nosale", emptyOut.find("No sale today") >= 0)
+assertTrue("else no products", emptyOut.find("No products on the shelf") >= 0)
+assertTrue("empty cart", emptyOut.find("cart is empty") >= 0)
+
+print("=== template logic done ===")

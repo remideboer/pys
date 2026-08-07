@@ -1,0 +1,119 @@
+# Template server with {% if %} / {% for %} (CER-040).
+#
+#   python -m transpiler run examples/webserver-templates-logic/src/main.pys
+#   curl http://127.0.0.1:8102/shop
+
+import os
+from pathlib import Path
+import socket
+import select
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11 from http11
+import ConnHandler from conn_handler
+import TemplateEngine from template_engine
+import Router from router
+
+ServerConfig cfg = ServerConfig()
+string envDir = os.environ.get("PYS_TEMPLATES_DIR", "")
+if (envDir != "") {
+    cfg.templatesDir = envDir
+} else {
+    if (Path("templates/shop.html").is_file()) {
+        cfg.templatesDir = str(Path("templates").resolve())
+    } else {
+        cfg.templatesDir = str(Path("examples/webserver-templates-logic/templates").resolve())
+    }
+}
+
+TemplateEngine engine = TemplateEngine(cfg.templatesDir)
+Router router = Router(engine)
+Http11 http = Http11()
+ConnHandler handler = ConnHandler(http, router, cfg.idleTimeoutMs / 1000.0, cfg.writeTimeoutMs / 1000.0)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared ConnHandler sharedHandler = handler
+
+print("template-logic server on " + cfg.listenHost + ":" + str(cfg.listenPort))
+print("templates=" + cfg.templatesDir)
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = [cfg.listenHost, cfg.listenPort]
+        srv.bind(tuple(bindAddr))
+        srv.listen(64)
+        srv.setblocking(false)
+        print("listening")
+        var empty = []
+        loop (running) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.5)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                work.putConn(client)
+            }
+        }
+        int w = 0
+        loop (w < 4) {
+            work.putPoison()
+            w = w + 1
+        }
+        srv.close()
+    }
+
+    task worker0 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker1 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker2 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker3 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+}
+
+print("server stopped")

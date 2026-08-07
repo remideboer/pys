@@ -22,5 +22,7 @@ separate folder so the templating layer is obvious.
 
 ## Trade-offs
 
-- No loops/conditionals yet (intentional teaching increment).
+- No loops/conditionals yet (intentional teaching increment) — see
+  [`examples/webserver-templates-logic/`](../../examples/webserver-templates-logic/)
+  / [CER-040](CER-040-webserver-templates-logic.md) for `{% if %}` / `{% for %}`.
 - Query-string name binding deferred.
