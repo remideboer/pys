@@ -397,9 +397,10 @@ case_label       = result_pattern
                  | integer | string_lit | char_lit | boolean | null_lit ;
 
 result_pattern   = "ok" , "(" , [ identifier ] , ")"
-                 | "err" , "(" , identifier , ")" ;
-(* Only for a result-typed switch. Both ok and err are required unless
-   default is present. ok() is the result<void,E> success pattern. *)
+                 | "error" , "(" , identifier , ")" ;
+(* Only for a result-typed switch. Both ok and error are required unless
+   default is present. ok() is the result<void,E> success pattern.
+   Bindings cannot be named ok or error. *)
 
 loop_stmt        = c_for_loop | while_loop | foreach_loop ;
 
@@ -499,8 +500,8 @@ primary          = identifier
                  | switch_expr
                  | lambda_expr ;
 
-result_ctor_call = ( "ok" | "err" ) , "(" , [ expression ] , ")" ;
-(* Contextually typed. ok() requires result<void,E>; err always has a payload. *)
+result_ctor_call = ( "ok" | "error" ) , "(" , [ expression ] , ")" ;
+(* Contextually typed. ok() requires result<void,E>; error always has a payload. *)
 
 (* ------------------------- Lambdas ------------------------- *)
 
@@ -589,5 +590,5 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   list dict tuple set
   true false null
   tasks task await shared atomic
-  result nullable ok err propagate
+  result nullable ok error propagate
 *)

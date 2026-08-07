@@ -1556,7 +1556,7 @@ def _check_results(
 ) -> None:
     """Validate contextual result construction and postfix propagation."""
 
-    reserved = {"ok", "err"}
+    reserved = {"ok", "error"}
     entry_error_type: str | None = None
     method_returns: dict[tuple[str, str], str] = {}
     method_params: dict[tuple[str, str], list[str]] = {}
@@ -4729,13 +4729,13 @@ def _check_one_switch(
                 case.labels[0], ResultPattern
             ):
                 _transpile_error(
-                    "Switch on a result requires `ok(value)` and `err(error)` "
+                    "Switch on a result requires `ok(value)` and `error(message)` "
                     "case patterns.",
                     line,
                     col,
                     "case",
                     code="pys.result-pattern",
-                    tips=["Use `case ok(value)` or `case err(error)`."],
+                    tips=["Use `case ok(value)` or `case error(message)`."],
                 )
             pattern = case.labels[0]
             if pattern.kind in seen_patterns:
@@ -4747,7 +4747,7 @@ def _check_one_switch(
                     code="pys.switch-duplicate",
                 )
             seen_patterns.add(pattern.kind)
-            if pattern.binding in {"ok", "err"}:
+            if pattern.binding in {"ok", "error"}:
                 _transpile_error(
                     f"'{pattern.binding}' is reserved and cannot be a pattern binding.",
                     pattern.span.line if pattern.span else line,
@@ -4775,10 +4775,10 @@ def _check_one_switch(
                     )
             elif not pattern.binding:
                 _transpile_error(
-                    "`err` requires an error payload binding.",
+                    "`error` requires an error payload binding.",
                     line,
                     col,
-                    "err",
+                    "error",
                     code="pys.result-pattern",
                 )
             if case.fallthrough:
@@ -4792,7 +4792,7 @@ def _check_one_switch(
             if is_expr:
                 arm_value_types.append(result_arm_type(case))
 
-        missing = [kind for kind in ("ok", "err") if kind not in seen_patterns]
+        missing = [kind for kind in ("ok", "error") if kind not in seen_patterns]
         if missing and not has_default:
             _transpile_error(
                 "Result switch is not exhaustive "

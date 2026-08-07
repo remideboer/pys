@@ -6,7 +6,7 @@ handle. PYS writes both in the type:
 ```pys
 function result<int, string> checkAge(int age) {
     if (age < 0) {
-        return err("age cannot be negative")
+        return error("age cannot be negative")
     }
     return ok(age)
 }
@@ -15,8 +15,8 @@ function result<int, string> checkAge(int age) {
 - `result<int, string>` means “success contains an `int`; failure contains a
   `string`”.
 - `ok(age)` constructs the success outcome.
-- `err("...")` constructs the failure outcome.
-- `ok` and `err` are PYS words. You cannot reuse them as names.
+- `error("...")` constructs the failure outcome.
+- `ok` and `error` are PYS words. You cannot reuse them as names.
 
 This function only declares behavior, so it produces no output by itself.
 
@@ -28,7 +28,7 @@ to handle it:
 ```pys
 function result<int, string> checkAge(int age) {
     if (age < 0) {
-        return err("age cannot be negative")
+        return error("age cannot be negative")
     }
     return ok(age)
 }
@@ -37,16 +37,16 @@ result<int, string> accepted = checkAge(15)
 switch (accepted) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 
 result<int, string> rejected = checkAge(-2)
 switch (rejected) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -57,9 +57,9 @@ Output:
 age cannot be negative
 ```
 
-`case ok(value)` gives that arm the success payload. `case err(error)` gives
-that arm the error payload. The names `value` and `error` exist only in their
-own arm.
+`case ok(value)` gives that arm the success payload. `case error(message)` gives
+that arm the error payload. The names `value` and `message` exist only in their
+own arm. Because `error` is a PYS word, you cannot use it as the binding name.
 
 The switch must cover both outcomes. A `default` arm may stand in for one, but
 naming both is usually clearer. A plain value such as `case 15:` is not a
@@ -84,7 +84,7 @@ Sometimes a function cannot solve a failure but its caller can. Postfix
 ```pys
 function result<int, string> checkAge(int age) {
     if (age < 0) {
-        return err("age cannot be negative")
+        return error("age cannot be negative")
     }
     return ok(age)
 }
@@ -99,16 +99,16 @@ result<int, string> first = ageNextYear(15)
 switch (first) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 
 result<int, string> second = ageNextYear(-2)
 switch (second) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -131,7 +131,7 @@ Use `result<void, E>` when success only means “completed”:
 ```pys
 function result<void, string> save(bool allowed) {
     if (allowed == false) {
-        return err("save denied")
+        return error("save denied")
     }
     return ok()
 }
@@ -140,8 +140,8 @@ result<void, string> outcome = save(true)
 switch (outcome) {
     case ok():
         print("saved")
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -151,7 +151,7 @@ Output:
 saved
 ```
 
-Only a `void` success uses `ok()` and `case ok()` without a payload. `err`
+Only a `void` success uses `ok()` and `case ok()` without a payload. `error`
 always needs an error value.
 
 ## When an error reaches the program boundary
@@ -160,7 +160,7 @@ The directly run file is the **entrypoint**. It may propagate at top level:
 
 ```pys
 function result<int, string> readCount() {
-    return err("count is missing")
+    return error("count is missing")
 }
 
 int count = readCount() propagate
@@ -195,7 +195,7 @@ functions, but may not propagate at top level.
 ### Exercise
 
 > Write `function result<int, string> half(int number)`. Return
-> `err("must be even")` when `number % 2 != 0`; otherwise return
+> `error("must be even")` when `number % 2 != 0`; otherwise return
 > `ok(number / 2)`. Handle calls with `8` and `7`. Expected output: `4`, then
 > `must be even`.
 

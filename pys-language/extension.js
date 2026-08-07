@@ -57,7 +57,7 @@ const PYS_KEYWORDS = [
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate', 'nullable',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ];
 
 const PYS_TYPES = [
@@ -71,7 +71,7 @@ const PYS_MD_KEYWORDS = new Set([
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
   'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
-  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'err', 'propagate', 'nullable',
+  'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ]);
 const PYS_MD_TYPES = new Set([
   'int', 'float', 'char', 'string', 'bool', 'void',
@@ -586,10 +586,10 @@ function activate(context) {
         await: 'Wait until a value is ready (named task handle / future). Only inside a `task` body.',
         shared: 'Visibility of cross-task mutation: `shared int counter = 0`. Does **not** make `+=` race-free — use `atomic` for indivisible RMW.',
         atomic: 'Indivisible RMW cell: `atomic int counter = 0`.\nImplies shared for capture. Ops: `+=`/`-=`/`++`/`--`, `get()`, `compareAndSet(expected, new)`. Rejects `*=`/`/=`/`%=`.',
-        result: 'Recoverable outcome: `result<Value, Error>`. Construct with `ok(value)` or `err(error)`; handle with exhaustive `switch` or postfix `propagate`.',
+        result: 'Recoverable outcome: `result<Value, Error>`. Construct with `ok(value)` or `error(payload)`; handle with exhaustive `switch` or postfix `propagate`.',
         nullable: 'Explicit absence: `nullable<string> name = null`.\nPlain `string` never holds null. Check before use (`if (name != null) { … }`). Not the same as `result` (failure) or empty string/zero.',
         ok: 'Success constructor for an expected `result<T, E>`: `ok(value)`. Use `ok()` only for `result<void, E>`.',
-        err: 'Failure constructor for an expected `result<T, E>`: `err(error)`. An error payload is always required.',
+        error: 'Failure constructor for an expected `result<T, E>`: `error(payload)`. An error payload is always required. Because `error` is a keyword, bind switch payloads as `message` (or another name), not `error`.',
         propagate: 'Postfix result handling: `load() propagate`. Success yields the value; failure immediately returns the same error. At the entrypoint, an unhandled error becomes a panic.',
         string: 'Text type (transpiles to Python `str`)',
         int: 'Integer type. Literals: `10`, `0b1010`, `0xFF` (optional `_` separators).',

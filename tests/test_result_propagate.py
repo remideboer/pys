@@ -1,4 +1,4 @@
-"""BDD coverage for result<T, E>, ok/err, propagate, and panic."""
+"""BDD coverage for result<T, E>, ok/error, propagate, and panic."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ function result<int, string> readNumber() {
 }
 function result<int, string> useNumber() {
     int value = readNumber() propagate
-    return err("stop")
+    return error("stop")
 }
 """
     )
@@ -49,7 +49,7 @@ function result<int, string> useNumber() {
     assert isinstance(value_decl.value, PropagateExpr)
     error_return = use_number.body.statements[1]
     assert isinstance(error_return.value, ResultCtor)
-    assert error_return.value.kind == "err"
+    assert error_return.value.kind == "error"
 
 
 def test_result_syntax_has_rd_and_peg_ast_parity() -> None:
@@ -61,8 +61,8 @@ def test_result_syntax_has_rd_and_peg_ast_parity() -> None:
         "switch (outcome) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
     )
     tokens = tokenize(source)
@@ -74,13 +74,36 @@ def test_result_syntax_has_rd_and_peg_ast_parity() -> None:
 
 
 def test_result_keywords_are_reserved_by_the_lexer() -> None:
-    tokens = tokenize("result<int, string> r = ok(1) propagate\nerr(\"x\")\n")
+    tokens = tokenize("result<int, string> r = ok(1) propagate\nerror(\"x\")\n")
     reserved = {
         token.text
         for token in tokens
         if token.kind == TokenKind.KEYWORD
     }
-    assert {"result", "ok", "err", "propagate"} <= reserved
+    assert {"result", "ok", "error", "propagate"} <= reserved
+
+
+def test_legacy_err_constructor_is_rejected_with_rename_tip() -> None:
+    with pytest.raises(TranspileError, match="not a result constructor") as caught:
+        parse_program('result<int, string> bad = err("x")\n')
+    assert caught.value.code == "pys.result-err-renamed"
+    assert caught.value.suggested_fix == "error"
+    assert any("error(payload)" in tip for tip in caught.value.tips)
+
+
+def test_legacy_err_pattern_is_rejected_with_rename_tip() -> None:
+    with pytest.raises(TranspileError, match="not a result pattern") as caught:
+        parse_program(
+            "result<int, string> outcome = ok(1)\n"
+            "switch (outcome) {\n"
+            "    case ok(value):\n"
+            "        print(value)\n"
+            "    case err(message):\n"
+            "        print(message)\n"
+            "}\n"
+        )
+    assert caught.value.code == "pys.result-err-renamed"
+    assert caught.value.suggested_fix == "error"
 
 
 @pytest.mark.parametrize(
@@ -97,7 +120,7 @@ def test_result_type_requires_success_and_error_type(source: str) -> None:
 
 def test_result_error_type_cannot_be_void() -> None:
     with pytest.raises(TranspileError, match="E cannot be `void`"):
-        parse_program("result<int, void> value = err(1)\n")
+        parse_program("result<int, void> value = error(1)\n")
 
 
 def test_result_diagnostic_json_has_stable_code_and_actionable_tip(
@@ -134,7 +157,7 @@ def test_err_requires_a_payload() -> None:
     with pytest.raises(TranspileError, match="requires an error value"):
         parse_program(
             "function result<int, string> fail() {\n"
-            "    return err()\n"
+            "    return error()\n"
             "}\n"
         )
 
@@ -143,12 +166,12 @@ def test_result_constructors_are_checked_against_declared_type() -> None:
     analyze(
         parse_program(
             'result<int, string> success = ok(10)\n'
-            'result<int, string> failure = err("bad input")\n'
+            'result<int, string> failure = error("bad input")\n'
         )
     )
 
     with pytest.raises(TranspileError, match="error payload"):
-        analyze(parse_program("result<int, string> bad = err(404)\n"))
+        analyze(parse_program("result<int, string> bad = error(404)\n"))
     with pytest.raises(TranspileError, match="success payload"):
         analyze(parse_program('result<int, string> bad = ok("ten")\n'))
 
@@ -244,7 +267,7 @@ def test_result_method_boundary_returns_propagated_error(capsys) -> None:
     source = (
         "class Reader {\n"
         "    public result<int, string> read() {\n"
-        '        return err("method failed")\n'
+        '        return error("method failed")\n'
         "    }\n"
         "    public result<int, string> use() {\n"
         "        int value = this.read() propagate\n"
@@ -257,8 +280,8 @@ def test_result_method_boundary_returns_propagated_error(capsys) -> None:
         "switch (outcome) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
     )
 
@@ -284,7 +307,7 @@ def test_propagate_requires_matching_enclosing_error_type() -> None:
         analyze(
             parse_program(
                 "function result<int, string> readNumber() {\n"
-                '    return err("bad")\n'
+                '    return error("bad")\n'
                 "}\n"
                 "function result<int, bool> bad() {\n"
                 "    int value = readNumber() propagate\n"
@@ -330,10 +353,10 @@ def test_entrypoint_propagations_require_one_exact_error_type() -> None:
         analyze(
             parse_program(
                 "function result<int, string> textError() {\n"
-                '    return err("bad")\n'
+                '    return error("bad")\n'
                 "}\n"
                 "function result<int, bool> flagError() {\n"
-                "    return err(false)\n"
+                "    return error(false)\n"
                 "}\n"
                 "int first = textError() propagate\n"
                 "int second = flagError() propagate\n"
@@ -342,7 +365,7 @@ def test_entrypoint_propagations_require_one_exact_error_type() -> None:
         )
 
 
-@pytest.mark.parametrize("name", ["ok", "err"])
+@pytest.mark.parametrize("name", ["ok", "error"])
 def test_result_constructor_names_cannot_be_redeclared(name: str) -> None:
     with pytest.raises(TranspileError, match="reserved result constructor"):
         analyze(parse_program(f"int {name} = 1\n"))
@@ -371,17 +394,17 @@ def test_imported_result_function_signature_supports_propagate(tmp_path) -> None
 
 def test_result_switch_patterns_parse_and_bind_payloads() -> None:
     module = parse_program(
-        'result<int, string> outcome = err("bad")\n'
+        'result<int, string> outcome = error("bad")\n'
         "switch (outcome) {\n"
         "    case ok(value):\n"
         '        print("#i{value}")\n'
-        "    case err(message):\n"
+        "    case error(message):\n"
         '        print("#s{message}")\n'
         "}\n"
     )
     switch = module.body[1]
     assert isinstance(switch, SwitchStmt)
-    assert [case.labels[0].kind for case in switch.cases] == ["ok", "err"]
+    assert [case.labels[0].kind for case in switch.cases] == ["ok", "error"]
     assert all(isinstance(case.labels[0], ResultPattern) for case in switch.cases)
     analyze(module)
 
@@ -392,7 +415,7 @@ def test_result_switch_expression_unwraps_payload() -> None:
             "result<int, string> outcome = ok(10)\n"
             "int value = switch (outcome) {\n"
             "    case ok(number) => number\n"
-            "    case err(message) => 0\n"
+            "    case error(message) => 0\n"
             "}\n"
         )
     )
@@ -403,13 +426,13 @@ def test_switch_expression_arms_use_expected_result_context(capsys) -> None:
         "bool valid = true\n"
         "result<int, string> outcome = switch (valid) {\n"
         "    case true => ok(10)\n"
-        '    default => err("invalid")\n'
+        '    default => error("invalid")\n'
         "}\n"
         "switch (outcome) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
     )
 
@@ -419,7 +442,7 @@ def test_switch_expression_arms_use_expected_result_context(capsys) -> None:
 
 
 def test_result_switch_expression_must_be_exhaustive() -> None:
-    with pytest.raises(TranspileError, match="not exhaustive.*err"):
+    with pytest.raises(TranspileError, match="not exhaustive.*error"):
         analyze(
             parse_program(
                 "result<int, string> outcome = ok(10)\n"
@@ -432,7 +455,7 @@ def test_result_switch_expression_must_be_exhaustive() -> None:
 
 def test_result_switch_default_can_complete_exhaustiveness(capsys) -> None:
     source = (
-        'result<int, string> outcome = err("bad")\n'
+        'result<int, string> outcome = error("bad")\n'
         "switch (outcome) {\n"
         "    case ok(number):\n"
         "        print(number)\n"
@@ -456,7 +479,7 @@ def test_result_switch_rejects_duplicate_constructor_pattern() -> None:
                 "        print(first)\n"
                 "    case ok(second):\n"
                 "        print(second)\n"
-                "    case err(message):\n"
+                "    case error(message):\n"
                 "        print(message)\n"
                 "}\n"
             )
@@ -471,8 +494,8 @@ def test_result_switch_pattern_cannot_fall_through() -> None:
                 "switch (outcome) {\n"
                 "    case ok(number):\n"
                 "        continue\n"
-                "    case err(error):\n"
-                "        print(error)\n"
+                "    case error(message):\n"
+                "        print(message)\n"
                 "}\n"
             )
         )
@@ -497,7 +520,7 @@ def test_propagate_runtime_returns_same_error_and_skips_remaining_body(capsys) -
     source = (
         "function result<int, string> mayFail(bool fail) {\n"
         "    if (fail) {\n"
-        '        return err("boom")\n'
+        '        return error("boom")\n'
         "    }\n"
         "    return ok(7)\n"
         "}\n"
@@ -510,15 +533,15 @@ def test_propagate_runtime_returns_same_error_and_skips_remaining_body(capsys) -
         "switch (success) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
         "result<int, string> failure = addOne(true)\n"
         "switch (failure) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
     )
 
@@ -535,7 +558,7 @@ def test_result_switch_expression_emits_payload_binding(capsys) -> None:
         "result<int, string> outcome = ok(42)\n"
         "int answer = switch (outcome) {\n"
         "    case ok(value) => value\n"
-        "    case err(error) => 0\n"
+        "    case error(message) => 0\n"
         "}\n"
         "print(answer)\n"
     )
@@ -551,8 +574,8 @@ def test_result_pattern_binding_is_visible_to_find_usages(tmp_path) -> None:
         "switch (outcome) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n",
         encoding="utf-8",
     )
@@ -565,7 +588,7 @@ def test_result_typed_lambda_catches_its_own_propagation(capsys) -> None:
     source = (
         "function result<int, string> mayFail(bool fail) {\n"
         "    if (fail) {\n"
-        '        return err("lambda failed")\n'
+        '        return error("lambda failed")\n'
         "    }\n"
         "    return ok(4)\n"
         "}\n"
@@ -577,8 +600,8 @@ def test_result_typed_lambda_catches_its_own_propagation(capsys) -> None:
         "switch (outcome) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
-        "        print(error)\n"
+        "    case error(message):\n"
+        "        print(message)\n"
         "}\n"
     )
 
@@ -606,7 +629,7 @@ def test_results_teaching_example_covers_success_handled_error_and_void(
 def test_nested_propagation_records_deterministic_source_sites() -> None:
     source = (
         "function result<int, string> leaf() {\n"
-        '    return err("broken")\n'
+        '    return error("broken")\n'
         "}\n"
         "function result<int, string> middle() {\n"
         "    int value = leaf() propagate\n"

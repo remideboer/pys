@@ -12,7 +12,7 @@
 
 `result<T, E>` is a built-in, lowercase generic type representing the outcome of an operation that can either succeed with a value of type `T` or fail with an error of type `E`. It is the sole mechanism PYS provides for *recoverable* errors — errors the caller can reasonably be expected to react to (a malformed file, a failed network request, invalid user input). PYS deliberately has no `try`/`catch` construct; this specification, together with the earlier evaluation of that decision, replaces it.
 
-Consistent with `int`, `list<T>`, and `lambda<T -> R>` being lowercase built-in types, `result<T,E>`'s constructors are also lowercase — `ok(...)` and `err(...)` — rather than the PascalCase `Ok`/`Err` used in the earlier informal examples. This keeps the signal consistent: a capitalized identifier in PYS always denotes a user-defined type or constructor; a lowercase one always denotes a language-level construct or literal, matching `true`/`false`/`null`.
+Consistent with `int`, `list<T>`, and `lambda<T -> R>` being lowercase built-in types, `result<T,E>`'s constructors are also lowercase — `ok(...)` and `error(...)` — rather than the PascalCase `Ok`/`Err` used in the earlier informal examples. This keeps the signal consistent: a capitalized identifier in PYS always denotes a user-defined type or constructor; a lowercase one always denotes a language-level construct or literal, matching `true`/`false`/`null`.
 
 ### 2. Grammar
 
@@ -34,8 +34,8 @@ type_expr         = primitive_type
 
 (* ------------------------- Result construction ------------------------- *)
 
-result_ctor_call  = ( "ok" | "err" ) , "(" , [ expression ] , ")" ;
-(* ok(expr) and err(expr) are built-in constructors, not user-callable
+result_ctor_call  = ( "ok" | "error" ) , "(" , [ expression ] , ")" ;
+(* ok(expr) and error(expr) are built-in constructors, not user-callable
    identifiers — analogous to true/false/null, not to a class constructor.
    ok() with no argument is valid only when the success type is inferred
    as void. *)
@@ -55,7 +55,7 @@ primary           = identifier
 (* ------------------------- Result matching ------------------------- *)
 
 result_pattern    = "ok" , "(" , [ identifier ] , ")"
-                  | "err" , "(" , identifier , ")" ;
+                  | "error" , "(" , identifier , ")" ;
 
 (* Amendment to case_label *)
 case_label        = result_pattern
@@ -79,9 +79,9 @@ postfix_expr      = primary ,
 
 1. **`propagate` is only legal on an expression of type `result<T, E>`.** Using it on any other type is a compile-time error.
 2. **`propagate` is only legal inside a function whose own return type is `result<T', E>`**, where the error type `E` matches exactly. Using it inside a function that does not return `result<...>` is a compile-time error — there is nowhere for the error to propagate *to*.
-3. **Evaluation**: `expr propagate` evaluates `expr`. If the result is `err(e)`, the enclosing function immediately returns `err(e)` — no further statements in that function execute. If the result is `ok(v)`, the expression evaluates to `v`, and execution continues normally.
-4. **`ok`/`err` are not user-declarable identifiers** — redeclaring either as a variable, function, or type name is a compile-time error, the same restriction already applied to other language-reserved words.
-5. **No implicit conversion between `result<T,E>` and `T`.** A `result<T,E>` value must be explicitly unwrapped — via `propagate`, or via exhaustive `switch` patterns `case ok(v)` / `case err(e)` — before its success value can be used as a plain `T`. This is the structural mechanism preventing the "forgot to handle the error" class of bug this construct exists to eliminate.
+3. **Evaluation**: `expr propagate` evaluates `expr`. If the result is `error(e)`, the enclosing function immediately returns `error(e)` — no further statements in that function execute. If the result is `ok(v)`, the expression evaluates to `v`, and execution continues normally.
+4. **`ok`/`error` are not user-declarable identifiers** — redeclaring either as a variable, function, or type name is a compile-time error, the same restriction already applied to other language-reserved words.
+5. **No implicit conversion between `result<T,E>` and `T`.** A `result<T,E>` value must be explicitly unwrapped — via `propagate`, or via exhaustive `switch` patterns `case ok(v)` / `case error(e)` — before its success value can be used as a plain `T`. This is the structural mechanism preventing the "forgot to handle the error" class of bug this construct exists to eliminate.
 6. **Error types match exactly.** There is no implicit compatibility or
    conversion rule for `E`; an author converts an error explicitly before
    returning it.
@@ -121,9 +121,9 @@ A full keyword (`propagate`) avoids all three problems: it costs enough keystrok
 ### 7. Resolved design items
 
 1. Propagation syntax: postfix `propagate`.
-2. Panic modeling: runtime outcome when an `err` leaves the resolved
+2. Panic modeling: runtime outcome when an `error` leaves the resolved
    entrypoint; no source-level panic construct.
-3. Result matching: exhaustive `case ok(value)` / `case err(error)` patterns,
+3. Result matching: exhaustive `case ok(value)` / `case error(message)` patterns,
    or a `default` arm.
 4. Propagated error compatibility: exact `E` equality.
 
@@ -158,12 +158,12 @@ Because this behavior must not silently apply to every file that happens to cont
 ### 2. Semantics of top-level `propagate`
 
 1. A file's top-level statement sequence is treated as the body of an implicit function with return type `result<void, E>`, where `E` is inferred from the error types of any `result<T,E>` expressions the top level applies `propagate` to. If multiple such error types appear, they must match exactly or the file fails to compile.
-2. `propagate` at the top level behaves exactly as specified for function bodies: on `err(e)`, execution of the top-level sequence stops immediately, exactly as a `return err(e)` would inside an ordinary function.
+2. `propagate` at the top level behaves exactly as specified for function bodies: on `error(e)`, execution of the top-level sequence stops immediately, exactly as a `return error(e)` would inside an ordinary function.
 3. **This implicit wrapping, and its associated `propagate` behavior, applies only to a file resolved as the project's entrypoint** (§4). A file containing top-level code that is instead reached via `import` is not wrapped this way — see §5.
 
 ### 3. `panic`
 
-`panic` is the observable outcome, not a separate keyword construct: when an `err(e)` reaches the outermost implicit scope of the entrypoint file (i.e., propagates past the last statement with nowhere further to go), the runtime:
+`panic` is the observable outcome, not a separate keyword construct: when an `error(e)` reaches the outermost implicit scope of the entrypoint file (i.e., propagates past the last statement with nowhere further to go), the runtime:
 
 1. Halts further execution immediately — no statements after the point of failure run.
 2. Prints a diagnostic to standard error containing the error value `e` and, where available, the propagation chain (each `propagate` site that passed the error upward), analogous to a stack trace.
@@ -189,10 +189,10 @@ If neither is present — no `pys.toml` `main` field and no file directly named 
 
 ### 5. Import safety — why this cannot apply to every file with top-level code
 
-If every file's top-level code implicitly panicked on `err(...)`, merely importing a module for its declarations could crash the importing program before it ever got a chance to handle anything — a well-documented nuisance in Python, where module-level code executes unconditionally on import and is commonly worked around with `if __name__ == "__main__":` guards [reference: Python's own documentation recommends this idiom specifically to prevent import-time side effects]. PYS avoids needing an equivalent workaround by making the distinction structural rather than conventional:
+If every file's top-level code implicitly panicked on `error(...)`, merely importing a module for its declarations could crash the importing program before it ever got a chance to handle anything — a well-documented nuisance in Python, where module-level code executes unconditionally on import and is commonly worked around with `if __name__ == "__main__":` guards [reference: Python's own documentation recommends this idiom specifically to prevent import-time side effects]. PYS avoids needing an equivalent workaround by making the distinction structural rather than conventional:
 
-1. Only the file resolved as the entrypoint (§4) receives the implicit `result<void,E>` wrapping and associated panic-on-`err` behavior described in §2–3.
-2. A non-entrypoint file's top-level code executes on import exactly as today's grammar already implies, with no additional implicit error-propagation semantics layered on top. If such a file's top-level code contains a `result<T,E>`-typed expression, `propagate` is illegal there under the existing rule (§3.2 of the prior specification: `propagate` requires an enclosing function or entrypoint scope) — the author must handle the result explicitly via `switch`/`ok`/`err`, exactly as inside any ordinary non-entrypoint function today.
+1. Only the file resolved as the entrypoint (§4) receives the implicit `result<void,E>` wrapping and associated panic-on-`error` behavior described in §2–3.
+2. A non-entrypoint file's top-level code executes on import exactly as today's grammar already implies, with no additional implicit error-propagation semantics layered on top. If such a file's top-level code contains a `result<T,E>`-typed expression, `propagate` is illegal there under the existing rule (§3.2 of the prior specification: `propagate` requires an enclosing function or entrypoint scope) — the author must handle the result explicitly via `switch`/`ok`/`error`, exactly as inside any ordinary non-entrypoint function today.
 
 This keeps the guarantee precise: **"top-level code can fail loudly and stop the program" is a property of the entrypoint, not a property of top-level code in general** — avoiding the Python pitfall by construction rather than by convention.
 
@@ -226,4 +226,4 @@ Config cfg = loadConfig("settings.toml") propagate
 print("Loaded config for: " + cfg.name)
 ```
 
-If `settings.toml` is missing, `loadConfig` returns `err("...")`, `propagate` at the top level of `app.pys` halts the script, prints the error and the propagation chain (`loadConfig` → top level), and exits non-zero — the exact behavior an uncaught exception would produce in C#/Java, reached here through the same single mechanism used throughout the rest of the language, rather than a second, separately-specified crash pathway.
+If `settings.toml` is missing, `loadConfig` returns `error("...")`, `propagate` at the top level of `app.pys` halts the script, prints the error and the propagation chain (`loadConfig` → top level), and exits non-zero — the exact behavior an uncaught exception would produce in C#/Java, reached here through the same single mechanism used throughout the rest of the language, rather than a second, separately-specified crash pathway.

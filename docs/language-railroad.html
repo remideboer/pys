@@ -781,10 +781,10 @@
     {
       id: 'result_pattern',
       title: 'result_pattern',
-      ebnf: '"ok" "(" [ identifier ] ")" | "err" "(" identifier ")" ;',
+      ebnf: '"ok" "(" [ identifier ] ")" | "error" "(" identifier ")" ;',
       node: Choice(
         Seq(T('ok'), T('('), Opt(N('identifier')), T(')')),
-        Seq(T('err'), T('('), N('identifier'), T(')'))
+        Seq(T('error'), T('('), N('identifier'), T(')'))
       )
     },
     {
@@ -1034,8 +1034,8 @@
     {
       id: 'result_ctor_call',
       title: 'result_ctor_call',
-      ebnf: '("ok"|"err") "(" [ expression ] ")" ;',
-      node: Seq(Choice(T('ok'), T('err')), T('('), Opt(N('expression')), T(')'))
+      ebnf: '("ok"|"error") "(" [ expression ] ")" ;',
+      node: Seq(Choice(T('ok'), T('error')), T('('), Opt(N('expression')), T(')'))
     },
     {
       id: 'postfix_expr',

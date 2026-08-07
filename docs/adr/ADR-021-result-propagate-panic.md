@@ -22,13 +22,13 @@ behavior depend on import position.
 
 ## Decision
 
-1. `result<T,E>` is the recoverable-error type. `ok(value)` and `err(error)`
+1. `result<T,E>` is the recoverable-error type. `ok(value)` and `error(payload)`
    are contextually typed constructors. `ok()` is limited to `result<void,E>`;
-   `err` always has a payload. Result values never implicitly unwrap.
+   `error` always has a payload. Result values never implicitly unwrap.
 2. Postfix `expr propagate` yields `T` for `ok(T)` and immediately returns the
-   unchanged `err(E)` from a result-returning function or lambda. Error types
+   unchanged `error(E)` from a result-returning function or lambda. Error types
    match exactly. Propagation cannot cross a `task` boundary.
-3. A result switch uses scoped `ok(value)` / `err(error)` patterns and is
+3. A result switch uses scoped `ok(value)` / `error(message)` patterns and is
    exhaustive through both patterns or `default`. Literal result cases and
    pattern fallthrough are rejected.
 4. The emitter uses private tagged result values and a private propagation

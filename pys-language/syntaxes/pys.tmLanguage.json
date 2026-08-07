@@ -557,7 +557,7 @@
       "patterns": [
         {
           "name": "support.function.builtin.pys",
-          "match": "\\b(?:print|ok|err|parseFloat|parseInt|input|toBin|toHex|toOct)\\b"
+          "match": "\\b(?:print|ok|error|parseFloat|parseInt|input|toBin|toHex|toOct)\\b"
         }
       ]
     },

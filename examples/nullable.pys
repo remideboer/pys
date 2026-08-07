@@ -39,7 +39,7 @@ print(aliases[1] == null)               # True
 # --- Absence versus failure ---
 function result<nullable<string>, string> lookup(bool found, bool offline) {
     if (offline) {
-        return err("database unavailable")
+        return error("database unavailable")
     }
     if (!found) {
         return ok(null)
@@ -55,7 +55,7 @@ switch (missing) {
         } else {
             print(value)
         }
-    case err(message):
+    case error(message):
         print(message)
 }
 

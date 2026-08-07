@@ -42,7 +42,7 @@ Button convertButton = ttkb.Button(window, text="Convert", bootstyle="primary", 
             float fahrenheit = celsius * 9 / 5 + 32
             resultLabel.config(text=celsius + "°C is " + fahrenheit + "°F", bootstyle="success")
         }
-        case err(message): {
+        case error(message): {
             resultLabel.config(text="Error: " + message, bootstyle="danger")
         }
     }
@@ -60,7 +60,7 @@ Same trials as the plain converter: `100` → success-styled result text;
 | Changed | Unchanged |
 |---|---|
 | `import tkinter as tk` → `import ttkbootstrap as ttkb` | `parseCelsius` / `parseFloat` — identical |
-| `tk.Tk()` → `ttkb.Window(themename="flatly")` | The `result<T,E>` / `switch` / `ok`/`err` pattern inside the callback |
+| `tk.Tk()` → `ttkb.Window(themename="flatly")` | The `result<T,E>` / `switch` / `ok`/`error` pattern inside the callback |
 | `tk.Label`/`tk.Entry`/`tk.Button` → `ttkb.Label`/`ttkb.Entry`/`ttkb.Button` | `.grid(row=..., column=...)` positions |
 | Added `bootstyle` to the button and, dynamically, to the result label | The lambda passed as `command` |
 | Added `padx`/`pady` for breathing room between widgets | The event loop, `.mainloop()` |
@@ -70,7 +70,7 @@ callback** — `"success"` on a valid conversion, `"danger"` on a parse
 error. This is a meaningful use of styling, not just decoration: the
 color itself now carries information the user can register at a glance,
 before even reading the text — a valid result looks distinctly different
-from an error, reinforcing the same `ok`/`err` distinction your code is
+from an error, reinforcing the same `ok`/`error` distinction your code is
 already making, visually.
 
 ## 3. The broader lesson

@@ -71,7 +71,7 @@ class Call(Expr):
 
 @dataclass
 class ResultCtor(Expr):
-    """Built-in ``ok(value)`` or ``err(error)`` result constructor."""
+    """Built-in ``ok(value)`` or ``error(payload)`` result constructor."""
 
     kind: str = ""
     value: Expr | None = None
@@ -86,7 +86,7 @@ class PropagateExpr(Expr):
 
 @dataclass
 class ResultPattern(Expr):
-    """Result switch pattern: ``ok(value)``, ``ok()``, or ``err(error)``."""
+    """Result switch pattern: ``ok(value)``, ``ok()``, or ``error(binding)``."""
 
     kind: str = ""
     binding: str = ""

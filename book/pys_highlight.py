@@ -120,7 +120,7 @@ BUILTINS = frozenset(
         "float",
         "bool",
         "ok",
-        "err",
+        "error",
         "parseFloat",
         "parseInt",
         "input",

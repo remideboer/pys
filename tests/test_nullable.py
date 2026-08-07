@@ -209,13 +209,13 @@ def test_nullable_entity_identity_is_rejected() -> None:
 
 
 def test_nested_nullable_position_and_result_absence_remain_distinct() -> None:
-    """Scenarios I/J: wrapper position is retained and ok(null) is not err."""
+    """Scenarios I/J: wrapper position is retained and ok(null) is not error."""
     analyze(
         parse_program(
             "nullable<list<string>> missingList = null\n"
             "list<nullable<string>> presentList = [\"Ada\", null]\n"
             "result<nullable<string>, string> missing = ok(null)\n"
-            "result<nullable<string>, string> failure = err(\"offline\")\n"
+            "result<nullable<string>, string> failure = error(\"offline\")\n"
         )
     )
 

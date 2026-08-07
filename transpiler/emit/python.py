@@ -96,18 +96,18 @@ def _pys_ok(value=None):
     return _PysResult("ok", value)
 
 
-def _pys_err(value):
-    return _PysResult("err", value)
+def _pys_error(value):
+    return _PysResult("error", value)
 
 
 def _pys_propagate(result, file, line, function):
     kind = getattr(result, "_pys_result_kind", None)
     if kind == "ok":
         return result.value
-    if kind != "err":
+    if kind != "error":
         raise TypeError("propagate expected a PYS result value")
     sites = [*result.sites, (file, line, function)]
-    raise _PysPropagateSignal(_PysResult("err", result.value, sites))
+    raise _PysPropagateSignal(_PysResult("error", result.value, sites))
 
 
 def _pys_panic(result):
@@ -124,14 +124,14 @@ def _pys_parse_float(text):
     try:
         return _pys_ok(float(text))
     except ValueError as exc:
-        return _pys_err(str(exc))
+        return _pys_error(str(exc))
 
 
 def _pys_parse_int(text):
     try:
         return _pys_ok(int(text))
     except ValueError as exc:
-        return _pys_err(str(exc))
+        return _pys_error(str(exc))
 '''
 
 # Only when toBin / toHex / toOct appear (ADR-024).

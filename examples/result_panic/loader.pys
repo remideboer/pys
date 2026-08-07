@@ -1,4 +1,4 @@
 # Library code returns a recoverable error. It does not panic by itself.
 global function result<int, string> loadCount() {
-    return err("missing count")
+    return error("missing count")
 }

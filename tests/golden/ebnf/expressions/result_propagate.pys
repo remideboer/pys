@@ -1,6 +1,6 @@
 function result<int, string> readNumber(bool valid) {
     if (valid == false) {
-        return err("invalid")
+        return error("invalid")
     }
     return ok(4)
 }
@@ -14,6 +14,6 @@ result<int, string> outcome = addOne(true)
 switch (outcome) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }

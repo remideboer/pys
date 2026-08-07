@@ -27,7 +27,7 @@ Output:
 - `str(...)` — turn a value into a string explicitly (e.g. `string label = str(n)`).
   When you already concatenate with `+` and one side is a string, PYS coerces
   the other side for you — `print("n=" + n)` needs no `str(n)`.
-- `parseInt(text)` — `result<int, string>`: `ok` on success, `err` on
+- `parseInt(text)` — `result<int, string>`: `ok` on success, `error` on
   failure (preferred for form fields and other recoverable input).
 - `parseFloat(text)` — `result<float, string>`: same pattern for floats.
 
@@ -36,7 +36,7 @@ result<float, string> parsed = parseFloat("3.14")
 switch (parsed) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print(message)
 }
 ```

@@ -203,7 +203,7 @@ turn that helper into a second application boundary.</p>
 <li><code>0</code> conventionally means successful completion;</li>
 <li>a non-zero value means the program did not complete successfully.</li>
 </ul>
-<p>When an <code>err</code> reaches the PYS entrypoint through <code>propagate</code>, the runtime
+<p>When an <code>error</code> reaches the PYS entrypoint through <code>propagate</code>, the runtime
 reports a panic on stderr and exits non-zero. This is not a second entrypoint
 or a <code>panic(...)</code> statement. It is the terminal outcome at the existing
 application boundary.</p>

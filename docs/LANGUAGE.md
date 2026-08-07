@@ -506,9 +506,9 @@ See [ADR-023](adr/ADR-023-explicit-nullability.md) and [CER-028](evolution/CER-0
 `result<T, E>` makes recoverable failure visible in a function signature:
 
 - `ok(value)` carries a success value of type `T`
-- `err(error)` carries an error value of type `E`
-- `ok()` is valid only for `result<void, E>`; `err` always needs a payload
-- `ok` and `err` are reserved constructors, not user-declarable names
+- `error(payload)` carries an error value of type `E`
+- `ok()` is valid only for `result<void, E>`; `error` always needs a payload
+- `ok` and `error` are reserved constructors, not user-declarable names
 
 Constructors are contextually typed by a declared binding, parameter, lambda,
 or return type:
@@ -516,7 +516,7 @@ or return type:
 ```pys
 function result<int, string> parseCount(bool valid) {
     if (valid == false) {
-        return err("count is invalid")
+        return error("count is invalid")
     }
     return ok(3)
 }
@@ -525,8 +525,8 @@ result<int, string> outcome = parseCount(true)
 switch (outcome) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -536,11 +536,12 @@ Output:
 3
 ```
 
-A result switch uses `case ok(name)` and `case err(name)`. Each payload name
+A result switch uses `case ok(name)` and `case error(name)`. Each payload name
 exists only inside its arm and has the corresponding `T` or `E` type. The
 switch must contain both patterns or a `default`; duplicate patterns and
 literal labels on a result are errors. Expression arms must also yield one
-common type.
+common type. Because `error` is a keyword, do not name the failure binding
+`error` — prefer `message`, `reason`, or a domain word.
 
 Built-in recoverable parsers return results directly:
 
@@ -577,7 +578,7 @@ illegal across `task` boundaries. A `result<T,E>` never implicitly converts to
 lambda/switch `=>`; `try(...)` collides with exception `try`/`catch` (rejected
 in PYS). See [ADR-021](adr/ADR-021-result-propagate-panic.md).
 
-At a resolved entrypoint, top-level `propagate` may pass an `err` to the
+At a resolved entrypoint, top-level `propagate` may pass an `error` to the
 runtime. This outcome is a **panic**: remaining statements are skipped, stderr
 shows the error and PYS propagation sites, and the process exits non-zero.
 `panic` is not source syntax.

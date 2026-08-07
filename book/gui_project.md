@@ -22,7 +22,7 @@ Point 3 is exactly the kind of situation `result<T,E>` exists for:
 parsing user input is a classic recoverable-failure case, not a
 programmer bug. PYS has no `try`/`catch`; instead
 `parseFloat(string)` returns `result<float, string>` — `ok` when the
-text can be parsed as a float, `err` with a message when it cannot.
+text can be parsed as a float, `error` with a message when it cannot.
 
 ```pys
 import tkinter as tk
@@ -51,7 +51,7 @@ Button convertButton = tk.Button(window, text="Convert", command=() => {
             float fahrenheit = celsius * 9 / 5 + 32
             resultLabel.config(text=celsius + "°C is " + fahrenheit + "°F")
         }
-        case err(message): {
+        case error(message): {
             resultLabel.config(text="Error: " + message)
         }
     }
@@ -98,7 +98,7 @@ function bool looksLikeFloat(string input) {
     result<float, string> parsed = parseFloat(input.strip())
     switch (parsed) {
         case ok(value): return true
-        case err(message): return false
+        case error(message): return false
     }
 }
 ```
@@ -114,7 +114,7 @@ For this converter we need the number, so `parseCelsius` returns the
   other function call.
 - **The `result<T,E>` from the error-handling chapters isn't just a
   console-program idea** — it fits naturally into GUI callbacks too. The
-  callback reads a `result`, and a `switch` on `ok(...)`/`err(...)`
+  callback reads a `result`, and a `switch` on `ok(...)`/`error(...)`
   decides what to display.
 - **`columnspan=2`** is a small `.grid()` feature not covered yet:
   it lets a widget span more than one column, useful for a label meant

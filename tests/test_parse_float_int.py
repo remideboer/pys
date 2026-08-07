@@ -18,14 +18,14 @@ result<float, string> good = parseFloat("3.14")
 switch (good) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print(message)
 }
 result<float, string> bad = parseFloat("abc")
 switch (bad) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print("fail")
 }
 """
@@ -45,14 +45,14 @@ result<int, string> good = parseInt("42")
 switch (good) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print(message)
 }
 result<int, string> bad = parseInt("3.14")
 switch (bad) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print("fail")
 }
 """
@@ -72,7 +72,7 @@ function bool looksLikeFloat(string input) {
     result<float, string> parsed = parseFloat(input.strip())
     switch (parsed) {
         case ok(value): return true
-        case err(message): return false
+        case error(message): return false
     }
 }
 print(looksLikeFloat("1e10"))
@@ -101,7 +101,7 @@ result<int, string> r = ok(1)
 switch (r) {
     case ok(value):
         print(value)
-    case err(message):
+    case error(message):
         print(message)
 }
 """

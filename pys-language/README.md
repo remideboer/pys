@@ -27,7 +27,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
   - `pys.mainFile` is a deprecated fallback only when no manifest exists
 - `nullable<T>` highlighting, hover, diagnostics, and quick fixes (make nullable /
   surround with null check); debugger Variables show `null` not Python `None`
-- `result<T,E>`, `ok` / `err`, `propagate`, and result-pattern highlighting,
+- `result<T,E>`, `ok` / `error`, `propagate`, and result-pattern highlighting,
   completions, hovers, snippets, diagnostics, and entrypoint conflict fixes
 - Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
   - Right-click **`pys.deps`** → **PYS: Run Deps Lock** (runs `deps lock` / refreshes `pys.lock`)

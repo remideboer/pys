@@ -124,7 +124,7 @@
 handle. PYS writes both in the type:</p>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
-        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+        <span class="tok-kw">return</span> <span class="tok-builtin">error</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
     }
     <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
 }</code></pre>
@@ -132,8 +132,8 @@ handle. PYS writes both in the type:</p>
 <li><code>result&lt;int, string&gt;</code> means “success contains an <code>int</code>; failure contains a
   <code>string</code>”.</li>
 <li><code>ok(age)</code> constructs the success outcome.</li>
-<li><code>err("...")</code> constructs the failure outcome.</li>
-<li><code>ok</code> and <code>err</code> are PYS words. You cannot reuse them as names.</li>
+<li><code>error("...")</code> constructs the failure outcome.</li>
+<li><code>ok</code> and <code>error</code> are PYS words. You cannot reuse them as names.</li>
 </ul>
 <p>This function only declares behavior, so it produces no output by itself.</p>
 <h2>Handle both outcomes</h2>
@@ -141,7 +141,7 @@ handle. PYS writes both in the type:</p>
 to handle it:</p>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
-        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+        <span class="tok-kw">return</span> <span class="tok-builtin">error</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
     }
     <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
 }
@@ -150,24 +150,24 @@ to handle it:</p>
 <span class="tok-kw">switch</span> (<span class="tok-ident">accepted</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
-        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }
 
 <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">rejected</span> <span class="tok-op">=</span> <span class="tok-ident">checkAge</span>(<span class="tok-op">-</span><span class="tok-number">2</span>)
 <span class="tok-kw">switch</span> (<span class="tok-ident">rejected</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
-        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }</code></pre>
 <p>Output:</p>
 <pre><code class="language-text">15
 age cannot be negative
 </code></pre>
-<p><code>case ok(value)</code> gives that arm the success payload. <code>case err(error)</code> gives
-that arm the error payload. The names <code>value</code> and <code>error</code> exist only in their
-own arm.</p>
+<p><code>case ok(value)</code> gives that arm the success payload. <code>case error(message)</code> gives
+that arm the error payload. The names <code>value</code> and <code>message</code> exist only in their
+own arm. Because <code>error</code> is a PYS word, you cannot use it as the binding name.</p>
 <p>The switch must cover both outcomes. A <code>default</code> arm may stand in for one, but
 naming both is usually clearer. A plain value such as <code>case 15:</code> is not a
 result pattern.</p>
@@ -186,7 +186,7 @@ There is also no <code>try</code>/<code>catch</code> in PYS — recoverable fail
 </blockquote>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">checkAge</span>(<span class="tok-type">int</span> <span class="tok-ident">age</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">age</span> <span class="tok-op">&lt;</span> <span class="tok-number">0</span>) {
-        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
+        <span class="tok-kw">return</span> <span class="tok-builtin">error</span>(<span class="tok-string">&quot;</span><span class="tok-string">age cannot be negative</span><span class="tok-string">&quot;</span>)
     }
     <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">age</span>)
 }
@@ -201,16 +201,16 @@ There is also no <code>try</code>/<code>catch</code> in PYS — recoverable fail
 <span class="tok-kw">switch</span> (<span class="tok-ident">first</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
-        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }
 
 <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">second</span> <span class="tok-op">=</span> <span class="tok-ident">ageNextYear</span>(<span class="tok-op">-</span><span class="tok-number">2</span>)
 <span class="tok-kw">switch</span> (<span class="tok-ident">second</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
-        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }</code></pre>
 <p>Output:</p>
 <pre><code class="language-text">age accepted
@@ -224,7 +224,7 @@ first. The error type must match exactly. For example, a function returning
 <p>Use <code>result&lt;void, E&gt;</code> when success only means “completed”:</p>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">void</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">save</span>(<span class="tok-type">bool</span> <span class="tok-ident">allowed</span>) {
     <span class="tok-kw">if</span> (<span class="tok-ident">allowed</span> <span class="tok-op">==</span> <span class="tok-const">false</span>) {
-        <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">save denied</span><span class="tok-string">&quot;</span>)
+        <span class="tok-kw">return</span> <span class="tok-builtin">error</span>(<span class="tok-string">&quot;</span><span class="tok-string">save denied</span><span class="tok-string">&quot;</span>)
     }
     <span class="tok-kw">return</span> <span class="tok-builtin">ok</span>()
 }
@@ -233,18 +233,18 @@ first. The error type must match exactly. For example, a function returning
 <span class="tok-kw">switch</span> (<span class="tok-ident">outcome</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>():
         <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">saved</span><span class="tok-string">&quot;</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">error</span>):
-        <span class="tok-builtin">print</span>(<span class="tok-ident">error</span>)
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
+        <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }</code></pre>
 <p>Output:</p>
 <pre><code class="language-text">saved
 </code></pre>
-<p>Only a <code>void</code> success uses <code>ok()</code> and <code>case ok()</code> without a payload. <code>err</code>
+<p>Only a <code>void</code> success uses <code>ok()</code> and <code>case ok()</code> without a payload. <code>error</code>
 always needs an error value.</p>
 <h2>When an error reaches the program boundary</h2>
 <p>The directly run file is the <strong>entrypoint</strong>. It may propagate at top level:</p>
 <pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">readCount</span>() {
-    <span class="tok-kw">return</span> <span class="tok-builtin">err</span>(<span class="tok-string">&quot;</span><span class="tok-string">count is missing</span><span class="tok-string">&quot;</span>)
+    <span class="tok-kw">return</span> <span class="tok-builtin">error</span>(<span class="tok-string">&quot;</span><span class="tok-string">count is missing</span><span class="tok-string">&quot;</span>)
 }
 
 <span class="tok-type">int</span> <span class="tok-ident">count</span> <span class="tok-op">=</span> <span class="tok-ident">readCount</span>() <span class="tok-kw">propagate</span>
@@ -270,7 +270,7 @@ fixed set of named choices such as colors or order states.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Write <code>function result&lt;int, string&gt; half(int number)</code>. Return
-<code>err("must be even")</code> when <code>number % 2 != 0</code>; otherwise return
+<code>error("must be even")</code> when <code>number % 2 != 0</code>; otherwise return
 <code>ok(number / 2)</code>. Handle calls with <code>8</code> and <code>7</code>. Expected output: <code>4</code>, then
 <code>must be even</code>.</p>
 </blockquote>

@@ -28,7 +28,7 @@ Recoverable input could not share one parse path with typed success/failure.
 - `parseFloat(text)` → `result<float, string>`
 - `parseInt(text)` → `result<int, string>`
 - Emit lowers to helpers that catch only `ValueError` and wrap `_pys_ok` /
-  `_pys_err`. Acceptance matches the Python emit target (documented trade-off).
+  `_pys_error`. Acceptance matches the Python emit target (documented trade-off).
 
 ### Evidence
 

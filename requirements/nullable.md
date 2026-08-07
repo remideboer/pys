@@ -316,7 +316,7 @@ Use `result<T,E>` when an operation can fail and the caller needs the reason:
 
 ```pys
 function result<Product, string> loadProduct(string sku) {
-    return err("database unavailable")
+    return error("database unavailable")
 }
 ```
 
@@ -326,7 +326,7 @@ Use `result<nullable<T>,E>` when all three states are meaningful:
 function result<nullable<Product>, string> queryProduct(string sku) {
     # ok(product): found
     # ok(null): query succeeded, no matching row
-    # err(message): query failed
+    # error(message): query failed
 }
 ```
 
@@ -670,7 +670,7 @@ that empty and null are distinct.
 
 **Given** `result<nullable<Product>, string>`  
 **When** the result is `ok(null)`  
-**Then** it is a successful query with no row, distinct from `err(message)`.
+**Then** it is a successful query with no row, distinct from `error(message)`.
 
 ### 23. Definition of done
 

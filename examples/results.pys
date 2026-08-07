@@ -13,7 +13,7 @@
 
 function result<int, string> readCount(bool valid) {
     if (valid == false) {
-        return err("invalid count")
+        return error("invalid count")
     }
     return ok(7)
 }
@@ -31,29 +31,29 @@ result<int, string> success = addOne(true)
 switch (success) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 
 result<int, string> failure = addOne(false)
 switch (failure) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 
 # A result switch is also an expression. Both arms yield int here.
 int fallback = switch (failure) {
     case ok(value) => value
-    case err(error) => 0
+    case error(message) => 0
 }
 print(fallback)
 
 # A void success has no payload and is matched with ok().
 function result<void, string> save(bool allowed) {
     if (allowed == false) {
-        return err("save denied")
+        return error("save denied")
     }
     print("saved")
     return ok()
@@ -63,8 +63,8 @@ result<void, string> saved = save(true)
 switch (saved) {
     case ok():
         print("save accepted")
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 
 # Compile-error contrasts (shown as comments so this example stays runnable):
@@ -72,5 +72,5 @@ switch (saved) {
 #   Error: a result never implicitly converts to its success payload.
 # - function int wrong() { return readCount(true) propagate }
 #   Error: propagate needs an enclosing result-returning function.
-# - result<int, void> impossible = err(1)
+# - result<int, void> impossible = error(1)
 #   Error: the error type E must be concrete, not void.

@@ -87,11 +87,11 @@
       "switch (${1:outcome}) {",
       "\tcase ok(${2:value}):",
       "\t\t${3}",
-      "\tcase err(${4:error}):",
+      "\tcase error(${4:message}):",
       "\t\t${0}",
       "}"
     ],
-    "description": "Exhaustively handle ok and err payloads"
+    "description": "Exhaustively handle ok and error payloads"
   },
   "If statement": {
     "prefix": "if",

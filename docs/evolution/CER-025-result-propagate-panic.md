@@ -19,7 +19,7 @@ stable main file.
 
 ### Pre-behavior
 
-Generic-looking type names parsed without result arity rules. `ok`, `err`, and
+Generic-looking type names parsed without result arity rules. `ok`, `error`, and
 `propagate` had no language meaning, and switch labels could not bind a
 payload.
 
@@ -35,9 +35,9 @@ binding-aware tooling.
   be `void`.
 - Dedicated `ResultCtor`, `PropagateExpr`, and `ResultPattern` AST nodes retain
   source spans and intent.
-- `ok(value)`, `ok()`, `err(error)`, postfix `propagate`, and result switch
+- `ok(value)`, `ok()`, `error(payload)`, postfix `propagate`, and result switch
   patterns parse in the existing single-lex RD/PEG-capable pipeline.
-- `ok` and `err` cannot be redeclared.
+- `ok` and `error` cannot be redeclared.
 
 ### Evidence
 
@@ -64,7 +64,7 @@ Implicitly treating a result as `T` would discard a failure path.
   context. A result never implicitly converts to its success type.
 - `propagate` requires a result boundary with exactly matching `E`, and is
   rejected in plain functions, non-entry top-level code, and across tasks.
-- Result switches require `ok` plus `err` or `default`; bindings are arm-local,
+- Result switches require `ok` plus `error` or `default`; bindings are arm-local,
   typed, and visible to rename/find-usages. Expression arms agree on type.
 
 ### Evidence
@@ -137,3 +137,33 @@ the extension Node suite.
 - No implicit error conversion or task-crossing propagation.
 - Result runtime values are private implementation details, not a reflection
   API.
+
+## Entry 5 — Rename failure constructor `err` → `error`
+
+### Pre-behavior
+
+The failure constructor and switch pattern were spelled `err(...)` /
+`case err(binding)`. Teaching examples often bound the payload as `error`,
+which read as if the short keyword and the English word were interchangeable.
+
+### Why it hurt
+
+`err` is opaque for beginners. The explicit word `error` matches the mental
+model already used in prose (`error type E`, “handle the error”).
+
+### Post-behavior
+
+- Lexer keyword and reserved constructor set are `ok` / `error` (not `err`).
+- Source surface is `error(payload)` and `case error(message)`. Because `error`
+  is a keyword, pattern bindings cannot be named `error` — use `message`,
+  `reason`, or a domain name.
+- Emit tags use `_pys_error` / `_PysResult("error", …)`.
+- Former `err(...)` / `case err(...)` is a hard error
+  (`pys.result-err-renamed`) with tip and `suggested_fix` pointing at `error`.
+- Empty failure ctor/pattern diagnostics use `pys.result-error-value` /
+  `pys.result-pattern` with `error`-spelled tips.
+
+### Evidence
+
+`tests/test_result_propagate.py` (including rename migration tests); LANGUAGE §
+`result`; EBNF / railroad; book `basics_outcomes`; IDE keywords/hover/snippets.

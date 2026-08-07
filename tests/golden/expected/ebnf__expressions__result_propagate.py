@@ -21,18 +21,18 @@ def _pys_ok(value=None):
     return _PysResult("ok", value)
 
 
-def _pys_err(value):
-    return _PysResult("err", value)
+def _pys_error(value):
+    return _PysResult("error", value)
 
 
 def _pys_propagate(result, file, line, function):
     kind = getattr(result, "_pys_result_kind", None)
     if kind == "ok":
         return result.value
-    if kind != "err":
+    if kind != "error":
         raise TypeError("propagate expected a PYS result value")
     sites = [*result.sites, (file, line, function)]
-    raise _PysPropagateSignal(_PysResult("err", result.value, sites))
+    raise _PysPropagateSignal(_PysResult("error", result.value, sites))
 
 
 def _pys_panic(result):
@@ -46,7 +46,7 @@ def _pys_format(value):
 def readNumber(valid):
     try:
         if valid == False:
-            return _pys_err("invalid")
+            return _pys_error("invalid")
         return _pys_ok(4)
     except _PysPropagateSignal as _pys_signal:
         return _pys_signal.result
@@ -63,6 +63,6 @@ _pys_result_0 = outcome
 if _pys_result_0._pys_result_kind == 'ok':
     _pys_b1_value = _pys_result_0.value
     print(_pys_format(_pys_b1_value))
-elif _pys_result_0._pys_result_kind == 'err':
-    _pys_b2_error = _pys_result_0.value
-    print(_pys_format(_pys_b2_error))
+elif _pys_result_0._pys_result_kind == 'error':
+    _pys_b2_message = _pys_result_0.value
+    print(_pys_format(_pys_b2_message))

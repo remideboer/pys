@@ -139,7 +139,7 @@ another — for example text from the keyboard into an <code>int</code>.</p>
 <li><code>str(...)</code> — turn a value into a string explicitly (e.g. <code>string label = str(n)</code>).
   When you already concatenate with <code>+</code> and one side is a string, PYS coerces
   the other side for you — <code>print("n=" + n)</code> needs no <code>str(n)</code>.</li>
-<li><code>parseInt(text)</code> — <code>result&lt;int, string&gt;</code>: <code>ok</code> on success, <code>err</code> on
+<li><code>parseInt(text)</code> — <code>result&lt;int, string&gt;</code>: <code>ok</code> on success, <code>error</code> on
   failure (preferred for form fields and other recoverable input).</li>
 <li><code>parseFloat(text)</code> — <code>result&lt;float, string&gt;</code>: same pattern for floats.</li>
 </ul>
@@ -147,7 +147,7 @@ another — for example text from the keyboard into an <code>int</code>.</p>
 <span class="tok-kw">switch</span> (<span class="tok-ident">parsed</span>) {
     <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">value</span>)
-    <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>):
+    <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>):
         <span class="tok-builtin">print</span>(<span class="tok-ident">message</span>)
 }</code></pre>
 <p>Output:</p>

@@ -8,7 +8,7 @@ Open a card **when a task step needs a form or fix**. Do not read the whole fold
 | [J-print-interpolate](J-print-interpolate.md) | `print`, `{x}`, `#i{x}` / `#s{…}` |
 | [J-control](J-control.md) | `if` / `else` / `unless` |
 | [J-switch](J-switch.md) | `switch` statement / expression, `continue` fall-through |
-| [J-result](J-result.md) | `result<T,E>`, `ok` / `err`, `propagate`, panic |
+| [J-result](J-result.md) | `result<T,E>`, `ok` / `error`, `propagate`, panic |
 | [J-loop](J-loop.md) | `loop` forms |
 | [J-function-import](J-function-import.md) | `function`, `import`, visibility |
 | [J-class](J-class.md) | `class` / `interface` / `inherits` |

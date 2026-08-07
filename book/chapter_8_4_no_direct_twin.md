@@ -24,7 +24,7 @@ PYS puts an expected failure in the return type:
 ```pys
 function result<int, string> readCount(bool valid) {
     if (valid == false) {
-        return err("invalid count")
+        return error("invalid count")
     }
     return ok(7)
 }
@@ -33,8 +33,8 @@ result<int, string> outcome = readCount(false)
 switch (outcome) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -118,7 +118,7 @@ the signature at all.
 
 When moving a PYS result API:
 
-1. Decide which `err(E)` values are expected, recoverable conditions.
+1. Decide which `error(E)` values are expected, recoverable conditions.
 2. In C#/Java, choose a specific exception type or a project-specific result
    class according to the target codebase's conventions.
 3. Translate a handling `switch` to a narrow `catch` (or explicit result

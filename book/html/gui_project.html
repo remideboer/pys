@@ -139,7 +139,7 @@ input validation.</p>
 parsing user input is a classic recoverable-failure case, not a
 programmer bug. PYS has no <code>try</code>/<code>catch</code>; instead
 <code>parseFloat(string)</code> returns <code>result&lt;float, string&gt;</code> — <code>ok</code> when the
-text can be parsed as a float, <code>err</code> with a message when it cannot.</p>
+text can be parsed as a float, <code>error</code> with a message when it cannot.</p>
 <pre><code class="language-pys"><span class="tok-kw">import</span> <span class="tok-ident">tkinter</span> <span class="tok-kw">as</span> <span class="tok-ident">tk</span>
 
 <span class="tok-kw">function</span> <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parseCelsius</span>(<span class="tok-type">string</span> <span class="tok-builtin">input</span>) {
@@ -166,7 +166,7 @@ text can be parsed as a float, <code>err</code> with a message when it cannot.</
             <span class="tok-type">float</span> <span class="tok-ident">fahrenheit</span> <span class="tok-op">=</span> <span class="tok-ident">celsius</span> <span class="tok-op">*</span> <span class="tok-number">9</span> <span class="tok-op">/</span> <span class="tok-number">5</span> <span class="tok-op">+</span> <span class="tok-number">32</span>
             <span class="tok-ident">resultLabel</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-ident">celsius</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">°C is </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">fahrenheit</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">°F</span><span class="tok-string">&quot;</span>)
         }
-        <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>): {
+        <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>): {
             <span class="tok-ident">resultLabel</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Error: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">message</span>)
         }
     }
@@ -228,7 +228,7 @@ the same builtin:</p>
     <span class="tok-type">result</span><span class="tok-op">&lt;</span><span class="tok-type">float</span>, <span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">parsed</span> <span class="tok-op">=</span> <span class="tok-builtin">parseFloat</span>(<span class="tok-builtin">input</span>.<span class="tok-ident">strip</span>())
     <span class="tok-kw">switch</span> (<span class="tok-ident">parsed</span>) {
         <span class="tok-kw">case</span> <span class="tok-builtin">ok</span>(<span class="tok-ident">value</span>): <span class="tok-kw">return</span> <span class="tok-const">true</span>
-        <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>): <span class="tok-kw">return</span> <span class="tok-const">false</span>
+        <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>): <span class="tok-kw">return</span> <span class="tok-const">false</span>
     }
 }</code></pre>
 <p>For this converter we need the number, so <code>parseCelsius</code> returns the
@@ -241,7 +241,7 @@ the same builtin:</p>
   other function call.</li>
 <li><strong>The <code>result&lt;T,E&gt;</code> from the error-handling chapters isn&rsquo;t just a
   console-program idea</strong> — it fits naturally into GUI callbacks too. The
-  callback reads a <code>result</code>, and a <code>switch</code> on <code>ok(...)</code>/<code>err(...)</code>
+  callback reads a <code>result</code>, and a <code>switch</code> on <code>ok(...)</code>/<code>error(...)</code>
   decides what to display.</li>
 <li><strong><code>columnspan=2</code></strong> is a small <code>.grid()</code> feature not covered yet:
   it lets a widget span more than one column, useful for a label meant

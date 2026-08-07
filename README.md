@@ -62,7 +62,7 @@ switch (parsed) {
     case ok(celsius): {
         print("F=#f{celsius * 9.0 / 5.0 + 32.0}")
     }
-    case err(msg): {
+    case error(msg): {
         print(msg)
     }
 }
@@ -149,7 +149,7 @@ Not inside `tasks { }`. Spec:
 ### Explicit nullability and results
 
 Plain `T` is non-null; absence is `nullable<T>`. Recoverable errors use
-`result<T,E>`, `ok` / `err`, and postfix `propagate` — see
+`result<T,E>`, `ok` / `error`, and postfix `propagate` — see
 [`examples/results.pys`](examples/results.pys).
 
 ## Language examples
@@ -595,7 +595,7 @@ editor Run controls — no workspace `.vscode/run_pys.py` required. The activity
   `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.
   `pys.mainFile` remains only as a deprecated fallback for folders without a
   manifest.
-- Recoverable errors use `result<T,E>`, `ok` / `err`, exhaustive result
+- Recoverable errors use `result<T,E>`, `ok` / `error`, exhaustive result
   switches, and postfix `propagate`. An unhandled entrypoint error becomes a
   non-zero panic; see [`examples/results.pys`](examples/results.pys) and
   [`examples/result_panic/`](examples/result_panic/).

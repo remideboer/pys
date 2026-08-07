@@ -102,12 +102,14 @@ class ParseError(ValueError):
         *,
         code: str | None = None,
         tips: list[str] | None = None,
+        suggested_fix: str | None = None,
     ) -> None:
         self.message = message
         self.line = line
         self.column = column
         self.code = code
         self.tips = tips or []
+        self.suggested_fix = suggested_fix
         super().__init__(f"{message} (line {line}, column {column})")
 
 
@@ -493,6 +495,7 @@ def _parse_brace_module_rd(
             "",
             code=exc.code,
             tips=exc.tips,
+            suggested_fix=getattr(exc, "suggested_fix", None),
         ) from exc
     except ParseError as exc:
         from .transpiler import TranspileError
@@ -504,6 +507,7 @@ def _parse_brace_module_rd(
             "",
             code=getattr(exc, "code", None),
             tips=getattr(exc, "tips", None),
+            suggested_fix=getattr(exc, "suggested_fix", None),
         ) from exc
 
     return Module(span=Span(1, 1), source=source, body=body, brace_mode=brace_mode)
@@ -2588,10 +2592,37 @@ def _parse_switch_stmt_body(p: _Tok, arm_sp: Span) -> tuple[Block, bool, bool]:
     return Block(span=arm_sp, statements=body_stmts), fallthrough, False
 
 
+def _reject_legacy_err_ctor(p: _Tok, *, pattern: bool) -> None:
+    """Reject former ``err(...)`` spelling; tip callers toward ``error(...)``."""
+    tok = p.cur()
+    if tok.kind != TokenKind.IDENT or tok.text != "err":
+        return
+    if p.peek(1).kind != TokenKind.LPAREN:
+        return
+    if pattern:
+        raise FatalParseError(
+            "`err` is not a result pattern; use `error`.",
+            tok.line,
+            tok.column,
+            code="pys.result-err-renamed",
+            tips=["Write `case error(message)` instead of `case err(...)`."],
+            suggested_fix="error",
+        )
+    raise FatalParseError(
+        "`err` is not a result constructor; use `error`.",
+        tok.line,
+        tok.column,
+        code="pys.result-err-renamed",
+        tips=["Write `error(payload)` instead of `err(...)`."],
+        suggested_fix="error",
+    )
+
+
 def _parse_case_label(p: _Tok) -> Expr:
     """Parse a case label: literal, bare name, or ``Enum.MEMBER``."""
     sp = p.span()
-    if p.at_kw("ok", "err") and p.peek(1).kind == TokenKind.LPAREN:
+    _reject_legacy_err_ctor(p, pattern=True)
+    if p.at_kw("ok", "error") and p.peek(1).kind == TokenKind.LPAREN:
         kind = p.eat(TokenKind.KEYWORD).text
         p.eat(TokenKind.LPAREN)
         binding = ""
@@ -2600,13 +2631,13 @@ def _parse_case_label(p: _Tok) -> Expr:
             token = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
             binding = token.text
             binding_span = p.token_span(token)
-        elif kind == "err":
+        elif kind == "error":
             raise FatalParseError(
-                "`err` switch patterns require an error binding.",
+                "`error` switch patterns require an error binding.",
                 sp.line,
                 sp.column,
                 code="pys.result-pattern",
-                tips=["Write `case err(errorName)`."],
+                tips=["Write `case error(message)`."],
             )
         p.eat(TokenKind.RPAREN)
         return ResultPattern(
@@ -3294,19 +3325,20 @@ def _parse_primary(p: _Tok) -> Expr:
     if p.at_kw("null"):
         p.eat_kw("null")
         return Literal(span=sp, kind="null", text="null")
-    if p.at_kw("ok", "err"):
+    _reject_legacy_err_ctor(p, pattern=False)
+    if p.at_kw("ok", "error"):
         kind = p.eat(TokenKind.KEYWORD).text
         p.eat(TokenKind.LPAREN)
         value: Expr | None = None
         if not p.at(TokenKind.RPAREN):
             value = _parse_expression(p)
-        elif kind == "err":
+        elif kind == "error":
             raise FatalParseError(
-                "`err` requires an error value.",
+                "`error` requires an error value.",
                 sp.line,
                 sp.column,
-                code="pys.result-err-value",
-                tips=["Write `err(errorValue)`."],
+                code="pys.result-error-value",
+                tips=["Write `error(payload)`."],
             )
         p.eat(TokenKind.RPAREN)
         return ResultCtor(span=sp, kind=kind, value=value)

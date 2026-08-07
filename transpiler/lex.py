@@ -115,7 +115,7 @@ KEYWORDS = frozenset(
         "result",
         "nullable",
         "ok",
-        "err",
+        "error",
         "propagate",
         "in",
         "as",

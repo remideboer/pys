@@ -5,7 +5,7 @@ Use `result<T, E>` when the caller can react to failure:
 ```pys
 function result<int, string> readCount(bool valid) {
     if (valid == false) {
-        return err("invalid count")
+        return error("invalid count")
     }
     return ok(7)
 }
@@ -18,8 +18,8 @@ result<int, string> outcome = readCount(false)
 switch (outcome) {
     case ok(value):
         print(value)
-    case err(error):
-        print(error)
+    case error(message):
+        print(message)
 }
 ```
 
@@ -43,8 +43,9 @@ Rules:
 - The propagated error type must match the enclosing result's `E` exactly.
 - A result never automatically becomes its success value.
 - `ok()` is only for `result<void, E>`; write `case ok():` to match it.
-- `err(error)` always carries and binds a value.
-- A result switch needs `ok` plus `err`, or `default`.
+- `error(payload)` always carries a value; switch patterns always bind one
+  (`case error(message)`).
+- A result switch needs `ok` plus `error`, or `default`.
 - Do not propagate through a `task` or from imported top-level code.
 
 At the `[project].main` entrypoint, an unhandled top-level propagation becomes

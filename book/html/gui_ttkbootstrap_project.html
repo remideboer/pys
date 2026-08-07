@@ -156,7 +156,7 @@ constructors differ below.</p>
             <span class="tok-type">float</span> <span class="tok-ident">fahrenheit</span> <span class="tok-op">=</span> <span class="tok-ident">celsius</span> <span class="tok-op">*</span> <span class="tok-number">9</span> <span class="tok-op">/</span> <span class="tok-number">5</span> <span class="tok-op">+</span> <span class="tok-number">32</span>
             <span class="tok-ident">resultLabel</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-ident">celsius</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">°C is </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">fahrenheit</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string">°F</span><span class="tok-string">&quot;</span>, <span class="tok-ident">bootstyle</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">success</span><span class="tok-string">&quot;</span>)
         }
-        <span class="tok-kw">case</span> <span class="tok-builtin">err</span>(<span class="tok-ident">message</span>): {
+        <span class="tok-kw">case</span> <span class="tok-builtin">error</span>(<span class="tok-ident">message</span>): {
             <span class="tok-ident">resultLabel</span>.<span class="tok-ident">config</span>(<span class="tok-ident">text</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Error: </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">message</span>, <span class="tok-ident">bootstyle</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">danger</span><span class="tok-string">&quot;</span>)
         }
     }
@@ -181,7 +181,7 @@ constructors differ below.</p>
 </tr>
 <tr>
 <td><code>tk.Tk()</code> → <code>ttkb.Window(themename="flatly")</code></td>
-<td>The <code>result&lt;T,E&gt;</code> / <code>switch</code> / <code>ok</code>/<code>err</code> pattern inside the callback</td>
+<td>The <code>result&lt;T,E&gt;</code> / <code>switch</code> / <code>ok</code>/<code>error</code> pattern inside the callback</td>
 </tr>
 <tr>
 <td><code>tk.Label</code>/<code>tk.Entry</code>/<code>tk.Button</code> → <code>ttkb.Label</code>/<code>ttkb.Entry</code>/<code>ttkb.Button</code></td>
@@ -202,7 +202,7 @@ callback</strong> — <code>"success"</code> on a valid conversion, <code>"dange
 error. This is a meaningful use of styling, not just decoration: the
 color itself now carries information the user can register at a glance,
 before even reading the text — a valid result looks distinctly different
-from an error, reinforcing the same <code>ok</code>/<code>err</code> distinction your code is
+from an error, reinforcing the same <code>ok</code>/<code>error</code> distinction your code is
 already making, visually.</p>
 <h2>3. The broader lesson</h2>
 <p>This restyling exercise demonstrates something worth stating explicitly:

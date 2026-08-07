@@ -107,7 +107,7 @@ A process reports a small integer when it finishes:
 - `0` conventionally means successful completion;
 - a non-zero value means the program did not complete successfully.
 
-When an `err` reaches the PYS entrypoint through `propagate`, the runtime
+When an `error` reaches the PYS entrypoint through `propagate`, the runtime
 reports a panic on stderr and exits non-zero. This is not a second entrypoint
 or a `panic(...)` statement. It is the terminal outcome at the existing
 application boundary.

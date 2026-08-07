@@ -73,7 +73,7 @@ def test_direct_file_top_level_propagate_panics(
     main = tmp_path / "main.pys"
     main.write_text(
         "function result<int, string> fail() {\n"
-        '    return err("broken input")\n'
+        '    return error("broken input")\n'
         "}\n"
         "int value = fail() propagate\n"
         'print("unreachable")\n',
@@ -93,7 +93,7 @@ def test_manifest_directory_run_uses_main_and_preserves_import_chain(
     helper = tmp_path / "helper.pys"
     helper.write_text(
         "global function result<int, string> load() {\n"
-        '    return err("missing config")\n'
+        '    return error("missing config")\n'
         "}\n",
         encoding="utf-8",
     )
@@ -124,7 +124,7 @@ def test_imported_top_level_propagate_never_gets_entrypoint_semantics(
     helper = tmp_path / "helper.pys"
     helper.write_text(
         "global function result<int, string> fail() {\n"
-        '    return err("bad")\n'
+        '    return error("bad")\n'
         "}\n"
         "int value = fail() propagate\n",
         encoding="utf-8",
@@ -160,7 +160,7 @@ def test_ide_analysis_applies_top_level_propagate_only_to_manifest_main(
     helper = tmp_path / "helper.pys"
     source = (
         "function result<int, string> fail() {\n"
-        '    return err("bad")\n'
+        '    return error("bad")\n'
         "}\n"
         "int value = fail() propagate\n"
     )
@@ -203,12 +203,12 @@ def test_handled_propagation_does_not_pollute_a_later_panic_chain(
         "    int value = input propagate\n"
         "    return ok(value)\n"
         "}\n"
-        'result<int, string> failure = err("reused")\n'
+        'result<int, string> failure = error("reused")\n'
         "result<int, string> handled = forward(failure)\n"
         "switch (handled) {\n"
         "    case ok(value):\n"
         "        print(value)\n"
-        "    case err(error):\n"
+        "    case error(message):\n"
         '        print("handled")\n'
         "}\n"
         "int value = forward(failure) propagate\n",
