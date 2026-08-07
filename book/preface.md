@@ -53,4 +53,4 @@ memory or guesswork.
 
 ---
 
-Continue to [Getting ready](chapter_1_1.md).
+Continue to [Getting ready](chapter_1_1_getting_ready.md).

@@ -1,7 +1,7 @@
 # 7.3. Events and callbacks
 
 > This chapter uses lambdas. If you want the full treatment, see
-> [Lambdas](chapter_5_2.md). The short version: a lambda is a small,
+> [Lambdas](chapter_5_2_lambdas.md). The short version: a lambda is a small,
 > unnamed function you can pass around as a value — `() => print("hi")`
 > is a lambda that, when called, prints `hi`. That's exactly what a
 > button needs: something to call later, when it's clicked, not right

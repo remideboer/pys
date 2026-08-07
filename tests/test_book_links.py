@@ -50,7 +50,7 @@ def test_repo_directory_link_rewrites_to_github_tree() -> None:
 def test_result_teaching_snippets_stay_compilable() -> None:
     from transpiler.transpiler import transpile
 
-    for name in ("basics_outcomes.md", "chapter_8_4.md"):
+    for name in ("basics_outcomes.md", "chapter_8_4_no_direct_twin.md"):
         text = (BOOK / name).read_text(encoding="utf-8")
         blocks = re.findall(r"```pys\n(.*?)```", text, flags=re.DOTALL)
         assert blocks, f"No PYS teaching blocks found in {name}"

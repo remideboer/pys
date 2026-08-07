@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>5.2. Inheritance and subclasses — PYS Development Classes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc">
+      <h1><a href="index.html">PYS Development Classes</a></h1>
+      <ul>
+<li><a href="preface.html">Preface</a></li>
+</ul>
+<span class="section">1. Preparation</span>
+<ul>
+<li><a href="chapter_1_1_getting_ready.html">1.1. Getting ready</a></li>
+</ul>
+<span class="section">2. Back to the basics</span>
+<ul>
+<li><a href="basics.html">Back to the basics</a></li>
+<li><a href="basics_functions.html">2.1. Functions</a></li>
+<li><a href="basics_input.html">2.2. Processing input</a></li>
+<li><a href="basics_choices.html">2.3. Making choices</a></li>
+<li><a href="basics_data.html">2.4. Data structures</a></li>
+<li><a href="basics_loops.html">2.5. Loops</a></li>
+<li><a href="basics_conversion.html">2.6. Conversion</a></li>
+<li><a href="basics_null.html">2.7. Null and missing values</a></li>
+<li><a href="basics_outcomes.html">2.8. Expressing success and failure</a></li>
+<li><a href="basics_structuring.html">2.9. Structuring code</a></li>
+<li><a href="basics_files.html">2.10. Files</a></li>
+<li><a href="basics_project.html">2.11. A small contact book</a></li>
+<li><a href="basics_spoilers.html">2.12. Spoilers</a></li>
+<li><a href="basics_spoilers_input.html">2.12.1. Processing input</a></li>
+<li><a href="basics_spoilers_structuring.html">2.12.2. Structuring code</a></li>
+<li><a href="basics_spoilers_files.html">2.12.3. Files</a></li>
+</ul>
+<span class="section">3. Session 1 — Types that protect you</span>
+<ul>
+<li><a href="chapter_2_session_types.html">Session 1 — Types that protect you</a></li>
+<li><a href="chapter_2_1_formatting_output.html">3.1. Formatting output</a></li>
+<li><a href="chapter_2_2_variables.html">3.2. Variables: var, fix, and const</a></li>
+<li><a href="chapter_2_3_static_types.html">3.3. Static types and casts</a></li>
+<li><a href="chapter_2_4_running_and_checking.html">3.4. Running and checking your work</a></li>
+</ul>
+<span class="section">4. Session 2 — Control flow and collections</span>
+<ul>
+<li><a href="chapter_3_session_control_flow.html">Session 2 — Control flow and collections</a></li>
+<li><a href="chapter_3_1_control_flow.html">4.1. Control flow</a></li>
+<li><a href="chapter_3_2_loops.html">4.2. Loops</a></li>
+<li><a href="chapter_3_3_arrays_and_lists.html">4.3. Arrays and lists</a></li>
+<li><a href="chapter_3_4_dicts_tuples_sets.html">4.4. Dicts, tuples, and sets</a></li>
+<li><a href="chapter_3_5_enums_and_switch.html">4.5. Enums and switch</a></li>
+</ul>
+<span class="section">5. Session 3 — Objects and composition</span>
+<ul>
+<li><a href="chapter_4_session_objects.html">Session 3 — Objects and composition</a></li>
+<li><a href="chapter_4_1a_classes.html">5.1. Classes and member order</a></li>
+<li><a href="chapter_4_1b_inheriting_classes.html">5.2. Inheritance and subclasses</a></li>
+<li><a href="chapter_4_2_interfaces.html">5.3. Interfaces</a></li>
+<li><a href="chapter_4_3_abstract_classes.html">5.4. Abstract classes</a></li>
+<li><a href="chapter_4_4_traits.html">5.5. Traits</a></li>
+<li><a href="chapter_4_5_structs_data_entity.html">5.6. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6_choosing_construct.html">5.7. Choosing the right construct</a></li>
+</ul>
+<span class="section">6. Session 4 — Functions and lambdas</span>
+<ul>
+<li><a href="chapter_5_session_functions_lambdas.html">Session 4 — Functions and lambdas</a></li>
+<li><a href="chapter_5_1_functions_return.html">6.1. Functions that return values</a></li>
+<li><a href="chapter_5_2_lambdas.html">6.2. Lambdas</a></li>
+<li><a href="chapter_5_3_passing_functions.html">6.3. Passing functions around</a></li>
+</ul>
+<span class="section">7. GUI programming (procedural Tkinter)</span>
+<ul>
+<li><a href="gui_intro.html">7.1. GUI programming with Tkinter — introduction</a></li>
+<li><a href="gui_widgets.html">7.2. Widgets and layout</a></li>
+<li><a href="gui_events.html">7.3. Events and callbacks</a></li>
+<li><a href="gui_project.html">7.4. A small project: temperature converter</a></li>
+<li><a href="gui_ttkbootstrap_intro.html">7.5. Modern styling with ttkbootstrap</a></li>
+<li><a href="gui_ttkbootstrap_widgets.html">7.6. Styled widgets</a></li>
+<li><a href="gui_ttkbootstrap_project.html">7.7. Restyling the temperature converter</a></li>
+</ul>
+<span class="section">8. Session 5 — Doing several things at once</span>
+<ul>
+<li><a href="chapter_6_session_concurrency.html">Session 5 — Doing several things at once</a></li>
+<li><a href="chapter_6_1_tasks_await.html">8.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2_shared_state.html">8.2. shared state</a></li>
+<li><a href="chapter_6_3_atomic_updates.html">8.3. atomic updates</a></li>
+<li><a href="chapter_6_4_lambdas_capture.html">8.4. Lambdas and capture rules</a></li>
+</ul>
+<span class="section">9. Session 6 — Tests you can trust</span>
+<ul>
+<li><a href="chapter_7_session_tests.html">Session 6 — Tests you can trust</a></li>
+<li><a href="chapter_7_1_first_test.html">9.1. Writing a first test</a></li>
+<li><a href="chapter_7_2_tdd.html">9.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3_packages_source_roots.html">9.3. Packages and source roots</a></li>
+</ul>
+<span class="section">10. Session 7 — From PYS to C# and Java</span>
+<ul>
+<li><a href="chapter_8_session_csharp_java.html">Session 7 — From PYS to C# and Java</a></li>
+<li><a href="chapter_8_1_types_declarations.html">10.1. Types and declarations</a></li>
+<li><a href="chapter_8_2_classes_interfaces.html">10.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3_control_flow_collections.html">10.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4_no_direct_twin.html">10.4. What has no direct twin</a></li>
+</ul>
+<span class="section">11. Under the hood (optional)</span>
+<ul>
+<li><a href="under_the_hood_entrypoint.html">11.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">11.2. Processes, calls, and memory</a></li>
+</ul>
+<span class="section">12. Exercises</span>
+<ul>
+<li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
+</ul>
+<span class="section">13. Resources</span>
+<ul>
+<li><a href="resources.html">Resources</a></li>
+</ul>
+    </nav>
+    <main>
+<h1>5.2. Inheritance and subclasses</h1>
+<p>You already built a <strong>Counter</strong> — a machine whose purpose is counting.
+Sometimes you need <strong>the same purpose with a special rule</strong>. Tennis does
+not count 1, 2, 3…; it jumps 0 → 15 → 30 → 40. That is still <em>counting
+points</em>, just with a different gear for “advance.”</p>
+<p><strong>Inheritance</strong> lets you build a <strong>subclass</strong>: a specialized machine that
+starts from an existing class (<code>inherits</code>) instead of reinventing the
+whole chassis.</p>
+<p>Two reasons this matters — both at once:</p>
+<ol>
+<li><strong>Reuse</strong> — keep the shared parts (state shape, <code>getValue</code>, assembly
+   with <code>super()</code>). You only rewrite the part that must differ.</li>
+<li><strong>Same kind of thing</strong> — a <code>TennisCounter</code> <em>is still a</em> <code>Counter</code>.
+   Code that expects a counting machine can use either; when it calls
+   <code>bump()</code>, the <strong>special rule of the plugged-in machine</strong> runs.</li>
+</ol>
+<pre><code class="language-pys"><span class="tok-kw">class</span> <span class="tok-typename">Counter</span> {
+    <span class="tok-mod">protected</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
+
+    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>() {
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-ident">bump</span>() {
+        <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">int</span> <span class="tok-ident">getValue</span>() {
+        <span class="tok-kw">return</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span>
+    }
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">TennisCounter</span> <span class="tok-kw">inherits</span> <span class="tok-typename">Counter</span> {
+    <span class="tok-mod">public</span> <span class="tok-typename">TennisCounter</span>() {
+        <span class="tok-kw">super</span>()
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-ident">bump</span>() {
+        <span class="tok-kw">if</span> (<span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+            <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">15</span>
+        } <span class="tok-kw">else</span> <span class="tok-kw">if</span> (<span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">==</span> <span class="tok-number">15</span>) {
+            <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">30</span>
+        } <span class="tok-kw">else</span> <span class="tok-kw">if</span> (<span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">==</span> <span class="tok-number">30</span>) {
+            <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">40</span>
+        } <span class="tok-kw">else</span> {
+            <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+        }
+    }
+}
+
+<span class="tok-typename">Counter</span> <span class="tok-ident">ordinary</span> <span class="tok-op">=</span> <span class="tok-typename">Counter</span>()
+<span class="tok-ident">ordinary</span>.<span class="tok-ident">bump</span>()
+<span class="tok-ident">ordinary</span>.<span class="tok-ident">bump</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">ordinary</span>.<span class="tok-ident">getValue</span>())
+
+<span class="tok-typename">TennisCounter</span> <span class="tok-ident">tennis</span> <span class="tok-op">=</span> <span class="tok-typename">TennisCounter</span>()
+<span class="tok-ident">tennis</span>.<span class="tok-ident">bump</span>()
+<span class="tok-ident">tennis</span>.<span class="tok-ident">bump</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">tennis</span>.<span class="tok-ident">getValue</span>())
+
+<span class="tok-typename">Counter</span> <span class="tok-ident">either</span> <span class="tok-op">=</span> <span class="tok-ident">tennis</span>
+<span class="tok-ident">either</span>.<span class="tok-ident">bump</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">either</span>.<span class="tok-ident">getValue</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+30
+40
+</code></pre>
+<p>Breakdown:</p>
+<ul>
+<li><code>class TennisCounter inherits Counter</code> — specialize the counting
+  machine; do not start from zero.</li>
+<li><code>super()</code> in the constructor — run the parent assembly first so
+  <code>value</code> starts at <code>0</code>.</li>
+<li><code>protected int value</code> — subclasses may touch this drawer; unrelated
+  code still cannot.</li>
+<li><code>public bump()</code> in the subclass <strong>replaces</strong> the parent’s bump gear
+  with the tennis rule. <code>getValue</code> is reused as-is.</li>
+<li><code>Counter either = tennis</code> — the cable is typed as the general
+  machine; the object on the other end is the tennis specialist. Calling
+  <code>either.bump()</code> still runs the tennis rule.</li>
+</ul>
+<figure class="concept-diagram" role="img" aria-label="Counter base machine and TennisCounter specialization that reuses the chassis but replaces the bump gear">
+  <div class="iface-choice">
+    <div class="cls-machine">
+      <div class="cls-head">
+        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+        <code>Counter</code>
+        <span class="cls-tag">purpose: counting</span>
+      </div>
+      <div class="cls-columns">
+        <div class="cls-section">
+          <div class="cls-section-label">shared chassis</div>
+          <div class="cls-member is-private">
+            <span class="cls-lock" aria-hidden="true">🔒</span>
+            <code>protected int value</code>
+          </div>
+          <div class="cls-member is-public">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>getValue()</code>
+            <span class="cls-note">reused</span>
+          </div>
+        </div>
+        <div class="cls-section">
+          <div class="cls-section-label">default rule</div>
+          <div class="cls-member is-public">
+            <span class="fn-gear" aria-hidden="true">⚙</span>
+            <code>bump()</code>
+            <span class="cls-note">+1 each time</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="iface-plug iface-plug-down" aria-hidden="true">
+      <span class="iface-plug-arrow">↓</span>
+      <span class="iface-plug-label">inherits · specializes</span>
+    </div>
+
+    <div class="cls-machine cls-specialized">
+      <div class="cls-head">
+        <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+        <code>TennisCounter</code>
+        <span class="cls-tag">same purpose · special rule</span>
+      </div>
+      <div class="cls-section cls-station">
+        <div class="cls-section-label">keeps from Counter</div>
+        <div class="cls-member is-private">
+          <span class="cls-lock" aria-hidden="true">🔒</span>
+          <code>value</code> · <code>getValue()</code> · <code>super()</code>
+        </div>
+      </div>
+      <div class="cls-section">
+        <div class="cls-section-label">replaced gear</div>
+        <div class="cls-member is-public cls-slot-filled">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>bump()</code>
+          <span class="cls-note">0→15→30→40</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Specialization, not a brand-new factory: reuse the counting chassis,
+    swap only the advance rule. That is inheritance for
+    <strong>reuse</strong>.
+  </figcaption>
+</figure>
+
+<figure class="concept-diagram" role="img" aria-label="Caller cable typed as Counter can plug into ordinary Counter or TennisCounter; bump runs the plugged-in rule">
+  <div class="iface-choice">
+    <div class="iface-caller">
+      <div class="iface-caller-label">caller · general cable</div>
+      <code>Counter either</code>
+      <span class="cls-note">asks only for counting channels</span>
+      <div class="iface-cable" aria-hidden="true">
+        <span class="iface-cable-line"></span>
+        <span class="iface-cable-tip">either.bump()</span>
+      </div>
+    </div>
+
+    <div class="iface-impls">
+      <div class="cls-machine cls-machine-sm">
+        <div class="cls-head">
+          <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+          <code>Counter</code>
+          <span class="cls-tag">ordinary</span>
+        </div>
+        <div class="cls-member is-public">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>bump() → +1</code>
+        </div>
+      </div>
+      <div class="cls-machine cls-machine-sm cls-specialized">
+        <div class="cls-head">
+          <span class="cls-icon" aria-hidden="true">⚙⚙</span>
+          <code>TennisCounter</code>
+          <span class="cls-tag">specialist</span>
+        </div>
+        <div class="cls-member is-public">
+          <span class="fn-gear" aria-hidden="true">⚙</span>
+          <code>bump() → tennis</code>
+        </div>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Because the subclass <em>is a</em> Counter, the same cable fits both
+    machines. The caller does not rewrite its call — yet the tennis
+    specialist still answers with its own rule. That is inheritance for
+    <strong>using specials through the general type</strong>.
+  </figcaption>
+</figure>
+
+<blockquote>
+<p><strong>Sidebar — <code>protected</code></strong></p>
+<p><code>private</code> = only this class’s own methods. <code>protected</code> = this class
+<strong>and</strong> its subclasses. Tennis needs to update <code>value</code> inside its own
+<code>bump</code>, so the drawer is <code>protected</code>. Unrelated code still has no
+channel to <code>value</code>.</p>
+</blockquote>
+<h3>Exercise</h3>
+<blockquote>
+<p>Add a <code>TwoStepCounter</code> that <code>inherits Counter</code> and whose <code>bump</code>
+advances by 2. Store both a <code>TwoStepCounter</code> and a <code>TennisCounter</code> in
+<code>Counter</code> variables and call <code>bump()</code> on each.</p>
+</blockquote>
+<hr />
+<p><a href="chapter_4_1a_classes.html">Previous: Classes and member order</a> · <a href="chapter_4_2_interfaces.html">Next: Interfaces</a></p>
+    </main>
+  </div>
+</body>
+</html>

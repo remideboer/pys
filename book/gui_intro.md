@@ -87,4 +87,4 @@ returning once the window closes.
 
 ---
 
-[Previous: Passing functions around](chapter_5_3.md) · [Next: Widgets and layout](gui_widgets.md)
+[Previous: Passing functions around](chapter_5_3_passing_functions.md) · [Next: Widgets and layout](gui_widgets.md)

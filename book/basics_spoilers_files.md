@@ -20,4 +20,4 @@ Ada
 
 ---
 
-[Previous: Spoiler — structuring](basics_spoilers_structuring.md) · [Next: Formatting output](chapter_2_1.md)
+[Previous: Spoiler — structuring](basics_spoilers_structuring.md) · [Next: Formatting output](chapter_2_1_formatting_output.md)

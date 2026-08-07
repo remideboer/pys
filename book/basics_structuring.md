@@ -15,7 +15,7 @@ One giant file becomes hard to read. PYS lets you split code across
 >
 > Larger projects can mirror `src/` and `tests/` with a `pys.toml`
 > `[source_roots]` table so the same package path exists in both trees.
-> That is Session 6: [Packages and source roots](chapter_7_3.md).
+> That is Session 6: [Packages and source roots](chapter_7_3_packages_source_roots.md).
 
 > **Sidebar — `global` in one line**
 >

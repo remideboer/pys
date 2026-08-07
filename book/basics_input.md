@@ -41,7 +41,7 @@ print("Next year you will be " + (age + 1))
 > **Sidebar — typed declarations**
 >
 > `string name = …` and `int age = …` name the type on the left. That is
-> the usual PYS style (more in [Session 1 — Variables](chapter_2_2.md)).
+> the usual PYS style (more in [Session 1 — Variables](chapter_2_2_variables.md)).
 > `var` still works when the right-hand side makes the type obvious.
 
 `int(raw)` asks PYS/Python to parse the string as an integer. If the text

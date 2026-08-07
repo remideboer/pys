@@ -13,11 +13,11 @@ deleted tomorrow, the permanent docs must still stand alone.
 | Requirement draft | Permanent home (content lives here) |
 | --- | --- |
 | [`data_entity.md`](data_entity.md) | [`docs/DATA_ENTITY.md`](../docs/DATA_ENTITY.md) · [ADR-011](../docs/adr/ADR-011-data-and-entity.md) |
-| [`traits.md`](traits.md) | [ADR-009](../docs/adr/ADR-009-traits-composition.md) · LANGUAGE §Traits · book `chapter_4_4` |
+| [`traits.md`](traits.md) | [ADR-009](../docs/adr/ADR-009-traits-composition.md) · LANGUAGE §Traits · book `chapter_4_4_traits` |
 | [`trait_requires_remapping.md`](trait_requires_remapping.md) | ADR-009 · [CER-027](../docs/evolution/CER-027-trait-requires-remapping.md) · LANGUAGE · book |
-| [`abstract_class.md`](abstract_class.md) | [ADR-010](../docs/adr/ADR-010-abstract-classes.md) · LANGUAGE · book `chapter_4_3` |
-| [`lambda.md`](lambda.md) | [ADR-012](../docs/adr/ADR-012-lambdas.md) · LANGUAGE §Lambdas · book `chapter_6_4` |
-| [`atomic.md`](atomic.md) | [ADR-013](../docs/adr/ADR-013-atomic.md) · [`docs/CONCURRENCY.md`](../docs/CONCURRENCY.md) · book `chapter_6_2`–`6_3` |
+| [`abstract_class.md`](abstract_class.md) | [ADR-010](../docs/adr/ADR-010-abstract-classes.md) · LANGUAGE · book `chapter_4_3_abstract_classes` |
+| [`lambda.md`](lambda.md) | [ADR-012](../docs/adr/ADR-012-lambdas.md) · LANGUAGE §Lambdas · book `chapter_6_4_lambdas_capture` |
+| [`atomic.md`](atomic.md) | [ADR-013](../docs/adr/ADR-013-atomic.md) · [`docs/CONCURRENCY.md`](../docs/CONCURRENCY.md) · book `chapter_6_2_shared_state`–`chapter_6_3_atomic_updates` |
 | [`enforced_ordering.md`](enforced_ordering.md) | [ADR-015](../docs/adr/ADR-015-enforced-ordering.md) · LANGUAGE § ordering |
 | [`package_resolution_testing_philosophy.md`](package_resolution_testing_philosophy.md) | [ADR-017](../docs/adr/ADR-017-source-roots-same-package-tests.md) (impl Active / F-006) |
 | [`propagate_panic.md`](propagate_panic.md) | [ADR-021](../docs/adr/ADR-021-result-propagate-panic.md) · LANGUAGE · book `basics_outcomes` |

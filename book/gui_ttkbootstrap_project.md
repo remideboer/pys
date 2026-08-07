@@ -98,4 +98,4 @@ rewrite.
 
 ---
 
-[Previous: Styled widgets](gui_ttkbootstrap_widgets.md) · [Next: Session 5 — Doing several things at once](chapter_6.md)
+[Previous: Styled widgets](gui_ttkbootstrap_widgets.md) · [Next: Session 5 — Doing several things at once](chapter_6_session_concurrency.md)

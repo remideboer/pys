@@ -2,7 +2,7 @@
 
 > This section is for people with **0%** programming experience. If you
 > already know what a variable is, skip ahead to
-> [Session 1](chapter_2.md).
+> [Session 1](chapter_2_session_types.md).
 
 What if someone would ask me: “Can you teach me how software works — from
 scratch?” This chapter is that answer for **PYS**: small steps, plain
@@ -15,7 +15,7 @@ To write software you need:
 1. A **compiler** that turns your text into something the computer can run.
 2. An **editor** to write that text in.
 
-Complete [Getting ready](chapter_1_1.md) first. Then create `main.pys`:
+Complete [Getting ready](chapter_1_1_getting_ready.md) first. Then create `main.pys`:
 
 ```pys
 print("Hello, world!")
@@ -380,7 +380,7 @@ Now **three** named drawers are in use — check the type on each label:
 </figure>
 
 You will also meet `const` later — a compile-time constant, usually in
-`SCREAMING_SNAKE_CASE`. Details: [Variables: var, fix, and const](chapter_2_2.md).
+`SCREAMING_SNAKE_CASE`. Details: [Variables: var, fix, and const](chapter_2_2_variables.md).
 
 > **Sidebar — typed drawers**
 >
@@ -405,4 +405,4 @@ You will also meet `const` later — a compile-time constant, usually in
 
 ---
 
-[Previous: Getting ready](chapter_1_1.md) · [Next: Functions](basics_functions.md)
+[Previous: Getting ready](chapter_1_1_getting_ready.md) · [Next: Functions](basics_functions.md)

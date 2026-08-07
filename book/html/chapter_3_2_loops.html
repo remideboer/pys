@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>4.2. Loops — PYS Development Classes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc">
+      <h1><a href="index.html">PYS Development Classes</a></h1>
+      <ul>
+<li><a href="preface.html">Preface</a></li>
+</ul>
+<span class="section">1. Preparation</span>
+<ul>
+<li><a href="chapter_1_1_getting_ready.html">1.1. Getting ready</a></li>
+</ul>
+<span class="section">2. Back to the basics</span>
+<ul>
+<li><a href="basics.html">Back to the basics</a></li>
+<li><a href="basics_functions.html">2.1. Functions</a></li>
+<li><a href="basics_input.html">2.2. Processing input</a></li>
+<li><a href="basics_choices.html">2.3. Making choices</a></li>
+<li><a href="basics_data.html">2.4. Data structures</a></li>
+<li><a href="basics_loops.html">2.5. Loops</a></li>
+<li><a href="basics_conversion.html">2.6. Conversion</a></li>
+<li><a href="basics_null.html">2.7. Null and missing values</a></li>
+<li><a href="basics_outcomes.html">2.8. Expressing success and failure</a></li>
+<li><a href="basics_structuring.html">2.9. Structuring code</a></li>
+<li><a href="basics_files.html">2.10. Files</a></li>
+<li><a href="basics_project.html">2.11. A small contact book</a></li>
+<li><a href="basics_spoilers.html">2.12. Spoilers</a></li>
+<li><a href="basics_spoilers_input.html">2.12.1. Processing input</a></li>
+<li><a href="basics_spoilers_structuring.html">2.12.2. Structuring code</a></li>
+<li><a href="basics_spoilers_files.html">2.12.3. Files</a></li>
+</ul>
+<span class="section">3. Session 1 — Types that protect you</span>
+<ul>
+<li><a href="chapter_2_session_types.html">Session 1 — Types that protect you</a></li>
+<li><a href="chapter_2_1_formatting_output.html">3.1. Formatting output</a></li>
+<li><a href="chapter_2_2_variables.html">3.2. Variables: var, fix, and const</a></li>
+<li><a href="chapter_2_3_static_types.html">3.3. Static types and casts</a></li>
+<li><a href="chapter_2_4_running_and_checking.html">3.4. Running and checking your work</a></li>
+</ul>
+<span class="section">4. Session 2 — Control flow and collections</span>
+<ul>
+<li><a href="chapter_3_session_control_flow.html">Session 2 — Control flow and collections</a></li>
+<li><a href="chapter_3_1_control_flow.html">4.1. Control flow</a></li>
+<li><a href="chapter_3_2_loops.html">4.2. Loops</a></li>
+<li><a href="chapter_3_3_arrays_and_lists.html">4.3. Arrays and lists</a></li>
+<li><a href="chapter_3_4_dicts_tuples_sets.html">4.4. Dicts, tuples, and sets</a></li>
+<li><a href="chapter_3_5_enums_and_switch.html">4.5. Enums and switch</a></li>
+</ul>
+<span class="section">5. Session 3 — Objects and composition</span>
+<ul>
+<li><a href="chapter_4_session_objects.html">Session 3 — Objects and composition</a></li>
+<li><a href="chapter_4_1a_classes.html">5.1. Classes and member order</a></li>
+<li><a href="chapter_4_1b_inheriting_classes.html">5.2. Inheritance and subclasses</a></li>
+<li><a href="chapter_4_2_interfaces.html">5.3. Interfaces</a></li>
+<li><a href="chapter_4_3_abstract_classes.html">5.4. Abstract classes</a></li>
+<li><a href="chapter_4_4_traits.html">5.5. Traits</a></li>
+<li><a href="chapter_4_5_structs_data_entity.html">5.6. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6_choosing_construct.html">5.7. Choosing the right construct</a></li>
+</ul>
+<span class="section">6. Session 4 — Functions and lambdas</span>
+<ul>
+<li><a href="chapter_5_session_functions_lambdas.html">Session 4 — Functions and lambdas</a></li>
+<li><a href="chapter_5_1_functions_return.html">6.1. Functions that return values</a></li>
+<li><a href="chapter_5_2_lambdas.html">6.2. Lambdas</a></li>
+<li><a href="chapter_5_3_passing_functions.html">6.3. Passing functions around</a></li>
+</ul>
+<span class="section">7. GUI programming (procedural Tkinter)</span>
+<ul>
+<li><a href="gui_intro.html">7.1. GUI programming with Tkinter — introduction</a></li>
+<li><a href="gui_widgets.html">7.2. Widgets and layout</a></li>
+<li><a href="gui_events.html">7.3. Events and callbacks</a></li>
+<li><a href="gui_project.html">7.4. A small project: temperature converter</a></li>
+<li><a href="gui_ttkbootstrap_intro.html">7.5. Modern styling with ttkbootstrap</a></li>
+<li><a href="gui_ttkbootstrap_widgets.html">7.6. Styled widgets</a></li>
+<li><a href="gui_ttkbootstrap_project.html">7.7. Restyling the temperature converter</a></li>
+</ul>
+<span class="section">8. Session 5 — Doing several things at once</span>
+<ul>
+<li><a href="chapter_6_session_concurrency.html">Session 5 — Doing several things at once</a></li>
+<li><a href="chapter_6_1_tasks_await.html">8.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2_shared_state.html">8.2. shared state</a></li>
+<li><a href="chapter_6_3_atomic_updates.html">8.3. atomic updates</a></li>
+<li><a href="chapter_6_4_lambdas_capture.html">8.4. Lambdas and capture rules</a></li>
+</ul>
+<span class="section">9. Session 6 — Tests you can trust</span>
+<ul>
+<li><a href="chapter_7_session_tests.html">Session 6 — Tests you can trust</a></li>
+<li><a href="chapter_7_1_first_test.html">9.1. Writing a first test</a></li>
+<li><a href="chapter_7_2_tdd.html">9.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3_packages_source_roots.html">9.3. Packages and source roots</a></li>
+</ul>
+<span class="section">10. Session 7 — From PYS to C# and Java</span>
+<ul>
+<li><a href="chapter_8_session_csharp_java.html">Session 7 — From PYS to C# and Java</a></li>
+<li><a href="chapter_8_1_types_declarations.html">10.1. Types and declarations</a></li>
+<li><a href="chapter_8_2_classes_interfaces.html">10.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3_control_flow_collections.html">10.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4_no_direct_twin.html">10.4. What has no direct twin</a></li>
+</ul>
+<span class="section">11. Under the hood (optional)</span>
+<ul>
+<li><a href="under_the_hood_entrypoint.html">11.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">11.2. Processes, calls, and memory</a></li>
+</ul>
+<span class="section">12. Exercises</span>
+<ul>
+<li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
+</ul>
+<span class="section">13. Resources</span>
+<ul>
+<li><a href="resources.html">Resources</a></li>
+</ul>
+    </nav>
+    <main>
+<h1>4.2. Loops</h1>
+<p>Three shapes:</p>
+<pre><code class="language-pys"><span class="tok-comment"># C-style</span>
+<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
+}
+
+<span class="tok-comment"># while-style</span>
+<span class="tok-type">int</span> <span class="tok-ident">n</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-kw">loop</span> (<span class="tok-ident">n</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
+    <span class="tok-ident">n</span><span class="tok-op">++</span>
+}
+
+<span class="tok-comment"># foreach</span>
+<span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">xs</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">a</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">b</span><span class="tok-string">&quot;</span>]
+<span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">x</span> <span class="tok-kw">in</span> <span class="tok-ident">xs</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">x</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">0
+1
+2
+0
+1
+2
+a
+b
+</code></pre>
+<h2>Why a C-style loop has one counter</h2>
+<p>PYS deliberately keeps the C-style form narrow. The initializer, condition,
+and step must all name the same counter, and that counter is immutable in the
+body. This gives the reader one clear answer to: “what controls this loop?”</p>
+<p>Java and C++ allow this denser form (the following is <strong>not PYS</strong>):</p>
+<pre><code class="language-java">for (int x = 0, y = 10; x &lt; 3; x++, y++) {
+    System.out.println(x + &quot;, &quot; + y);
+}
+</code></pre>
+<p>Output while both updates stay aligned:</p>
+<pre><code class="language-text">0, 10
+1, 11
+2, 12
+</code></pre>
+<p>Their compilers also accept an extra update to only one value. For example,
+this Java body accidentally advances <code>y</code> twice during one pass:</p>
+<pre><code class="language-java">for (int x = 0, y = 10; x &lt; 3; x++, y++) {
+    if (x == 1) {
+        y++;
+    }
+    System.out.println(x + &quot;, &quot; + y);
+}
+</code></pre>
+<p>Output — notice that the last two pairs are no longer ten apart:</p>
+<pre><code class="language-text">0, 10
+1, 12
+2, 13
+</code></pre>
+<p>The condition still checks only <code>x</code>; nothing guarantees that <code>y</code> stays in
+step. A different <code>y += 2</code> in the header would compile too. C++ expresses the
+update with its comma operator, while Java uses a comma-separated update list.</p>
+<p>PYS does not add comma-separated counters or a special <code>{x, y}</code> group. Use
+the existing while-style form when several ordinary mutable values take part:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+<span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+
+<span class="tok-kw">loop</span> (<span class="tok-ident">x</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-interp">#i{x}</span><span class="tok-string">, </span><span class="tok-interp">#i{y}</span><span class="tok-string">&quot;</span>)
+    <span class="tok-ident">x</span><span class="tok-op">++</span>
+    <span class="tok-ident">y</span><span class="tok-op">++</span>
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">0, 10
+1, 11
+2, 12
+</code></pre>
+<p>This is the same algorithm, but initialization and every mutation are visible.
+The trade-off is the normal while-loop responsibility: make sure the body
+eventually changes the values needed to make the condition false.</p>
+<h2>Leaving early: <code>break</code></h2>
+<p><code>break</code> stops the loop <strong>immediately</strong>. Use it when you have found what you
+were looking for and further passes would waste work.</p>
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">names</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Tom</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">Sam</span><span class="tok-string">&quot;</span>]
+<span class="tok-type">string</span> <span class="tok-ident">target</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">Lin</span><span class="tok-string">&quot;</span>
+<span class="tok-type">bool</span> <span class="tok-ident">found</span> <span class="tok-op">=</span> <span class="tok-const">false</span>
+
+<span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">name</span> <span class="tok-kw">in</span> <span class="tok-ident">names</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">name</span> <span class="tok-op">==</span> <span class="tok-ident">target</span>) {
+        <span class="tok-ident">found</span> <span class="tok-op">=</span> <span class="tok-const">true</span>
+        <span class="tok-kw">break</span>
+    }
+}
+
+<span class="tok-kw">if</span> (<span class="tok-ident">found</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">found </span><span class="tok-string">&quot;</span> <span class="tok-op">+</span> <span class="tok-ident">target</span>)
+} <span class="tok-kw">else</span> {
+    <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">not in the list</span><span class="tok-string">&quot;</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">found Lin
+</code></pre>
+<p>Without <code>break</code>, the loop would keep walking <code>"Sam"</code> after <code>"Lin"</code> was
+already found. With <code>break</code>, control jumps to the first statement <strong>after</strong>
+the loop’s closing <code>}</code>.</p>
+<h2>Skipping one pass: <code>continue</code></h2>
+<p><code>continue</code> ends <strong>only the current iteration</strong> and jumps to the next one
+(the next value, or the next C-style step). Use it to skip work you do not
+want for some items.</p>
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">1</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;=</span> <span class="tok-number">6</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-kw">if</span> (<span class="tok-ident">i</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
+        <span class="tok-kw">continue</span>
+    }
+    <span class="tok-builtin">print</span>(<span class="tok-ident">i</span>)
+}</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">1
+3
+5
+</code></pre>
+<p>Even numbers hit <code>continue</code> and never reach <code>print</code>. Odd numbers print:
+<code>1</code>, <code>3</code>, <code>5</code>.</p>
+<blockquote>
+<p><strong>Sidebar — modulo <code>%</code></strong></p>
+<p><code>i % 2</code> is the remainder after dividing <code>i</code> by 2. Remainder <code>0</code> means
+even. You will use <code>%</code> often in filters and “every Nth item” logic.</p>
+<p><strong>Sidebar — <code>continue</code> in <code>switch</code></strong></p>
+<p>Inside a <code>switch</code> statement, bare <code>continue</code> means something else:
+fall through to the next <code>case</code> (see <a href="chapter_3_5_enums_and_switch.html">Enums and switch</a>).
+In a <code>loop</code>, <code>continue</code> always means “next iteration.”</p>
+</blockquote>
+<h2>Block scope</h2>
+<p>Names declared inside a loop’s <code>{ … }</code> exist only until that closing
+brace. After the loop, they are gone — that is <strong>block scope</strong>.</p>
+<pre><code class="language-pys"><span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">1</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
+    <span class="tok-type">int</span> <span class="tok-ident">scratch</span> <span class="tok-op">=</span> <span class="tok-number">10</span>
+    <span class="tok-builtin">print</span>(<span class="tok-ident">scratch</span>)
+}
+<span class="tok-comment"># print(scratch)  # does not compile — scratch lived only inside the loop</span></code></pre>
+<p><em>Compile error if the commented line is uncommented.</em></p>
+<h3>Exercise</h3>
+<blockquote>
+<p>Sum the numbers 1..10 into <code>int total</code> with a C-style loop and print the
+total. Then change the loop so that when <code>total</code> reaches or exceeds <code>20</code>,
+you <code>break</code> early — confirm the printed total is less than <code>55</code>.</p>
+</blockquote>
+<hr />
+<p><a href="chapter_3_1_control_flow.html">Previous: Control flow</a> · <a href="chapter_3_3_arrays_and_lists.html">Next: Arrays and lists</a></p>
+    </main>
+  </div>
+</body>
+</html>

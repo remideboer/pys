@@ -5,7 +5,7 @@
 | Status | Accepted |
 | Date | 2026-08-03 |
 | Code detail | [CER-013](../evolution/CER-013-atomic.md) |
-| Permanent | This ADR; [CONCURRENCY.md](../CONCURRENCY.md); book `chapter_6_2`–`6_3` |
+| Permanent | This ADR; [CONCURRENCY.md](../CONCURRENCY.md); book `chapter_6_2_shared_state`–`chapter_6_3_atomic_updates` |
 | Draft origin | `requirements/atomic.md` (temporary; do not treat as canonical) |
 | Supersedes | Deferred `atomic` note in [ADR-012](ADR-012-lambdas.md) |
 
