@@ -273,12 +273,19 @@ release compromise path.
 
 ### Post-behavior
 
-- Split **build** (package VSIX, read-only) from **publish** (artifact + PAT)
+- Split **build** (package VSIX / ELO zip, read-only) from **publish**
+  (artifact download + optional PATs)
 - `npm ci` + `npx --no-install` for pinned local tools
 - GitHub Actions pinned to immutable commit SHAs
+- Tag releases require curated `pys-language/RELEASE_NOTES.md` mentioning the
+  `package.json` version; GitHub Release always ships notes + VSIX + student
+  zip. Marketplace / Open VSX publish only when the matching secret is set
+  (missing `VSCE_PAT` must not block the zip channel)
 
 **Evidence:** `test_workflow_actions_use_immutable_commit_shas`,
-`test_publish_workflow_never_downloads_npx_tools`
+`test_publish_workflow_never_downloads_npx_tools`,
+`test_publish_workflow_requires_release_notes_gate`,
+`test_release_notes_mention_package_version`
 
 ---
 

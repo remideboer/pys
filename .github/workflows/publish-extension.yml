@@ -1,9 +1,10 @@
 name: Publish extension
 
-# Publishes to the Visual Studio Marketplace when you push a tag like:
-#   extension-v0.0.31
-# Also builds the ELO student zip and attaches both to a GitHub Release.
-# The tag version must match pys-language/package.json "version".
+# Trunk-based extension release:
+#   1. Bump package.json version + update RELEASE_NOTES.md on main (CI green)
+#   2. git tag extension-v<version> && git push origin extension-v<version>
+# GitHub Release always gets VSIX + student zip with curated notes.
+# Marketplace / Open VSX publish only when the matching secret is set.
 
 on:
   push:
@@ -12,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type publish to release package.json version to Marketplace"
+        description: "Type publish to run the release package path (Marketplace only if VSCE_PAT is set)"
         required: true
         default: ""
 
@@ -79,6 +80,20 @@ jobs:
             exit 1
           fi
 
+      - name: Require RELEASE_NOTES.md for this version
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          NOTES="pys-language/RELEASE_NOTES.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "Missing $NOTES — write release notes before tagging."
+            exit 1
+          fi
+          if ! grep -qF "$VERSION" "$NOTES"; then
+            echo "$NOTES must mention version $VERSION (update notes with the version bump)."
+            exit 1
+          fi
+
       - name: Package VSIX and ELO zip
         working-directory: pys-language
         run: npm run package:elo
@@ -95,6 +110,13 @@ jobs:
         with:
           name: pys-student-elo-${{ steps.ver.outputs.version }}
           path: dist/pys-student-*.zip
+          if-no-files-found: error
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: pys-release-notes-${{ steps.ver.outputs.version }}
+          path: pys-language/RELEASE_NOTES.md
           if-no-files-found: error
 
   publish:
@@ -125,14 +147,36 @@ jobs:
           name: pys-student-elo-${{ needs.build.outputs.version }}
           path: release-artifacts/elo
 
+      - name: Download release notes artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: pys-release-notes-${{ needs.build.outputs.version }}
+          path: release-artifacts/notes
+
+      - name: Build GitHub Release body
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          {
+            cat release-artifacts/notes/RELEASE_NOTES.md
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Install"
+            echo "- **Marketplace:** \`ext install remideboer.pys-language\`"
+            echo "- **ELO / offline:** download \`pys-student-${VERSION}.zip\`, unzip, run \`install.cmd\`"
+            echo ""
+            echo "Requires Python 3.10+ on PATH. Extension includes the bundled transpiler."
+          } > release-artifacts/RELEASE_BODY.md
+
       - name: Publish to Visual Studio Marketplace
         working-directory: pys-language
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           if [ -z "$VSCE_PAT" ]; then
-            echo "Missing GitHub Actions secret VSCE_PAT."
-            exit 1
+            echo "VSCE_PAT not set; skipping Marketplace (GitHub Release zip still ships)."
+            exit 0
           fi
           VSIX=$(ls -1 ../release-artifacts/vsix/*.vsix)
           npx --no-install vsce publish --packagePath "$VSIX" --pat "$VSCE_PAT"
@@ -149,17 +193,14 @@ jobs:
           VSIX=$(ls -1 ../release-artifacts/vsix/*.vsix)
           npx --no-install ovsx publish "$VSIX" --pat "$OVSX_PAT"
 
-      - name: GitHub Release (VSIX + ELO zip for ELO upload)
+      - name: GitHub Release (notes + VSIX + ELO zip)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
+          name: PYS Language Support v${{ needs.build.outputs.version }}
+          body_path: release-artifacts/RELEASE_BODY.md
+          generate_release_notes: true
           files: |
             release-artifacts/vsix/*.vsix
             release-artifacts/elo/*.zip
           fail_on_unmatched_files: true
-          body: |
-            ## Install
-            - **Marketplace:** `ext install remideboer.pys-language`
-            - **ELO / offline:** download `pys-student-${{ needs.build.outputs.version }}.zip`, unzip, run `install.cmd`
-
-            Requires Python 3.10+ on PATH. Extension includes the bundled transpiler.

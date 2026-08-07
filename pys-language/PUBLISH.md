@@ -2,10 +2,13 @@
 
 Two student channels:
 
-1. **Visual Studio Marketplace** (preferred — auto-update)
-2. **ELO zip** — offline / LMS download + local `install.cmd`
+1. **GitHub Release** (zip + VSIX) — offline / LMS / ELO download
+2. **Visual Studio Marketplace** — auto-update when `VSCE_PAT` is configured
 
-## One-time setup (Marketplace)
+Trunk-based: keep `main` releasable. Bump version and write notes on `main`,
+then tag. No release branches.
+
+## One-time setup (Marketplace, optional)
 
 1. Create a Marketplace publisher whose id is **`remideboer`**
    (must match `publisher` in [`package.json`](package.json)):
@@ -21,27 +24,33 @@ Two student channels:
 
    | Secret | Purpose |
    | --- | --- |
-   | `VSCE_PAT` | Required — VS Marketplace publish |
+   | `VSCE_PAT` | Optional — VS Marketplace publish |
    | `OVSX_PAT` | Optional — [Open VSX](https://open-vsx.org/) (helps Cursor / VSCodium) |
 
-## Release a new version
+Without these secrets, a tag still creates a **GitHub Release** with the student
+zip and VSIX.
 
-1. Bump `"version"` in [`package.json`](package.json) (e.g. `0.0.31`).
-2. Commit and push to `main`.
-3. Tag and push (tag **must** match the version):
+## Release a new version (DoD)
+
+1. On `main`, with CI green:
+   - Bump `"version"` in [`package.json`](package.json) (and lockfile if needed).
+   - Rewrite [`RELEASE_NOTES.md`](RELEASE_NOTES.md) for **that** version (must
+     contain the version string — the publish workflow fails otherwise).
+2. Commit and push to `main`. Wait for the Extension CI workflow to pass.
+3. Tag and push from the same tip of `main` (tag **must** match the version):
 
 ```bash
-git tag extension-v0.0.31
-git push origin extension-v0.0.31
+git tag extension-v0.0.79
+git push origin extension-v0.0.79
 ```
 
 4. Workflow [Publish extension](../.github/workflows/publish-extension.yml):
-   - tests + packages VSIX
-   - publishes to Marketplace
-   - builds **`dist/pys-student-<version>.zip`** (ELO pack)
-   - attaches VSIX + ELO zip to a **GitHub Release**
+   - tests + packages VSIX + **`dist/pys-student-<version>.zip`**
+   - creates a **GitHub Release** with curated notes (+ auto-generated commit
+     list), VSIX, and ELO zip
+   - publishes to Marketplace / Open VSX **only if** the matching secret is set
 
-Upload the Release asset `pys-student-<version>.zip` to your ELO.
+Upload the Release asset `pys-student-<version>.zip` to your ELO / LMS.
 
 ### Local builds
 
@@ -72,5 +81,5 @@ npm run publish:marketplace
 
 **Marketplace:** Extensions → **PYS Language Support**, or `ext install remideboer.pys-language`.
 
-**ELO zip:** unzip → run `install.cmd` (Windows) or `./install.sh` → reload VS Code.  
+**GitHub Release / ELO zip:** unzip → run `install.cmd` (Windows) or `./install.sh` → reload VS Code.  
 Needs Python 3.10+ on PATH. The zip includes the extension with bundled transpiler (no `pip install` of this repo).
