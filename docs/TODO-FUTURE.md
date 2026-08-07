@@ -16,7 +16,7 @@ mark it done here.
 | [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Done** | `pys.toml` source roots; same package across `src`/`tests` |
 | [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | **Done** | FR8 re-checkout, MockDownstream faults, 429 inbound shed, write timeout, manual 1k soak |
 | [F-008](#f-008-rest-shop-mysql) | Examples / REST shop | **Done** | MySQL-backed shop REST (`examples/rest-api/shop/mysql`) |
-| [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | Deferred | JWT auth layer (`examples/rest-api/shop/jwt`) after MySQL DoD |
+| [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | **Done** | JWT auth layer (`examples/rest-api/shop/jwt`) |
 
 ---
 
@@ -182,9 +182,8 @@ CI: transpile gate only (live DB is local/manual).
 
 | | |
 | --- | --- |
-| Status | Deferred |
+| Status | **Done** — [CER-037](evolution/CER-037-rest-shop-jwt.md) |
 | Source | [`examples/rest-api/shop/jwt/`](../examples/rest-api/shop/jwt/) |
-| Blocked by | [F-008](#f-008-rest-shop-mysql) |
+| Blocked by | ~~[F-008](#f-008-rest-shop-mysql)~~ |
 
-`Authorization: Bearer` gate + login/token issuance on top of the MySQL shop
-API. Diff `mysql/` vs `jwt/` should show mainly auth, not CRUD rewrites.
+`POST /api/login` + Bearer gate on writes; MySQL persistence unchanged. Port 8092.

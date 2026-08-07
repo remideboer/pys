@@ -1,0 +1,75 @@
+# Teaching HS256 JWT (stdlib only — no PyJWT dependency).
+
+import json
+import hmac
+import hashlib
+import base64
+import time
+
+package class JwtService {
+    private string secret
+    private int ttlSec
+
+    public JwtService(string secret, int ttlSec) {
+        this.secret = secret
+        this.ttlSec = ttlSec
+    }
+
+    private string b64url(var raw) {
+        string s = base64.urlsafe_b64encode(raw).decode("utf-8")
+        return s.replace("=", "")
+    }
+
+    private var b64urlDecode(string s) {
+        string pad = s
+        int rem = len(pad) % 4
+        if (rem == 2) {
+            pad = pad + "=="
+        } else {
+            if (rem == 3) {
+                pad = pad + "="
+            }
+        }
+        return base64.urlsafe_b64decode(pad.encode("utf-8"))
+    }
+
+    public string issue(string subject) {
+        dict header = dict()
+        header["alg"] = "HS256"
+        header["typ"] = "JWT"
+        dict payload = dict()
+        payload["sub"] = subject
+        payload["iat"] = (int)(time.time())
+        payload["exp"] = (int)(time.time()) + this.ttlSec
+        string h = this.b64url(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        string p = this.b64url(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+        string signing = h + "." + p
+        var sig = hmac.new(this.secret.encode("utf-8"), signing.encode("utf-8"), hashlib.sha256).digest()
+        return signing + "." + this.b64url(sig)
+    }
+
+    public nullable<string> subjectOf(string token) {
+        var parts = token.split(".")
+        if (len(parts) != 3) {
+            return null
+        }
+        string signing = parts[0] + "." + parts[1]
+        var expected = hmac.new(
+            this.secret.encode("utf-8"),
+            signing.encode("utf-8"),
+            hashlib.sha256
+        ).digest()
+        var got = this.b64urlDecode(parts[2])
+        if (hmac.compare_digest(expected, got) == false) {
+            return null
+        }
+        dict payload = json.loads(this.b64urlDecode(parts[1]).decode("utf-8"))
+        if (!("exp" in payload) || !("sub" in payload)) {
+            return null
+        }
+        if ((int)(payload["exp"]) < (int)(time.time())) {
+            return null
+        }
+        return str(payload["sub"])
+    }
+}

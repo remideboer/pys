@@ -1,0 +1,93 @@
+# Order-line CRUD handlers (nested under /api/orders/{id}/lines).
+
+import HttpRequest, HttpResponse from http11
+import JsonUtil from json_util
+import ShopStore from store
+import Order, OrderLine, Product from models
+
+package class LineApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public LineApi(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public HttpResponse listForOrder(int orderId) {
+        nullable<Order> order = this.store.orders.get(orderId)
+        if (order == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("order not found"))
+        }
+        list items = this.json.linesToList(this.store.lines.forOrder(orderId))
+        return HttpResponse(200, "OK", this.json.encode(items))
+    }
+
+    public HttpResponse getOne(int orderId, int lineNumber) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("line not found"))
+        }
+        return HttpResponse(200, "OK", this.json.encode(this.json.lineToDict(found)))
+    }
+
+    public HttpResponse create(int orderId, HttpRequest req) {
+        nullable<Order> order = this.store.orders.get(orderId)
+        if (order == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("order not found"))
+        }
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        if (!("productId" in body) || !("quantity" in body)) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("productId and quantity required"))
+        }
+        int productId = (int)(body["productId"])
+        int quantity = (int)(body["quantity"])
+        if (quantity <= 0) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("quantity must be positive"))
+        }
+        nullable<Product> product = this.store.products.get(productId)
+        if (product == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("unknown productId"))
+        }
+        OrderLine line = this.store.addLine(order, product, quantity)
+        HttpResponse resp = HttpResponse(201, "Created", this.json.encode(this.json.lineToDict(line)))
+        resp.location = "/api/orders/" + str(orderId) + "/lines/" + str(line.lineKey())
+        return resp
+    }
+
+    public HttpResponse update(int orderId, int lineNumber, HttpRequest req) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("line not found"))
+        }
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        if (!("quantity" in body)) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("quantity required"))
+        }
+        int quantity = (int)(body["quantity"])
+        if (quantity <= 0) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("quantity must be positive"))
+        }
+        OrderLine line = found
+        line.quantity = quantity
+        this.store.lines.save(line)
+        return HttpResponse(200, "OK", this.json.encode(this.json.lineToDict(line)))
+    }
+
+    public HttpResponse delete(int orderId, int lineNumber) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("line not found"))
+        }
+        this.store.lines.remove(found)
+        return HttpResponse(204, "No Content", "")
+    }
+}

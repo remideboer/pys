@@ -1,0 +1,63 @@
+# Login + bearer extraction (teaching users — not a real identity store).
+
+import json
+
+import HttpRequest, HttpResponse from http11
+import JsonUtil from json_util
+import JwtService from jwt_service
+
+package class AuthService {
+    private JwtService jwt
+    private JsonUtil json
+    private dict passwords
+
+    public AuthService(JwtService jwt, JsonUtil json) {
+        this.jwt = jwt
+        this.json = json
+        dict pw = dict()
+        pw["admin"] = "admin123"
+        pw["clerk"] = "clerk123"
+        this.passwords = pw
+    }
+
+    public HttpResponse login(HttpRequest req) {
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        if (!("username" in body) || !("password" in body)) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("username and password required"))
+        }
+        string user = str(body["username"])
+        string password = str(body["password"])
+        dict pw = this.passwords
+        if (!(user in pw) || str(pw[user]) != password) {
+            return HttpResponse(401, "Unauthorized", this.json.errorBody("invalid credentials"))
+        }
+        string token = this.jwt.issue(user)
+        dict out = dict()
+        out["accessToken"] = token
+        out["tokenType"] = "Bearer"
+        out["username"] = user
+        return HttpResponse(200, "OK", this.json.encode(out))
+    }
+
+    # null = unauthorized; otherwise subject username
+    public nullable<string> requireUser(HttpRequest req) {
+        string header = req.authorization
+        if (header == "") {
+            return null
+        }
+        string lower = header.lower()
+        if (!lower.startswith("bearer ")) {
+            return null
+        }
+        string token = header[7:].strip()
+        return this.jwt.subjectOf(token)
+    }
+
+    public HttpResponse unauthorized() {
+        return HttpResponse(401, "Unauthorized", this.json.errorBody("bearer token required"))
+    }
+}

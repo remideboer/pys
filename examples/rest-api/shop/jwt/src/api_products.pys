@@ -1,0 +1,86 @@
+# Product CRUD handlers.
+
+import HttpRequest, HttpResponse from http11
+import JsonUtil from json_util
+import ShopStore from store
+import Product from models
+
+package class ProductApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public ProductApi(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public HttpResponse listAll() {
+        list items = this.json.productsToList(this.store.products.all())
+        return HttpResponse(200, "OK", this.json.encode(items))
+    }
+
+    public HttpResponse getOne(int id) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("product not found"))
+        }
+        return HttpResponse(200, "OK", this.json.encode(this.json.productToDict(found)))
+    }
+
+    public HttpResponse create(HttpRequest req) {
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        if (!("sku" in body) || !("name" in body) || !("unitPrice" in body)) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("sku, name, unitPrice required"))
+        }
+        string sku = str(body["sku"])
+        string name = str(body["name"])
+        float price = (float)(body["unitPrice"])
+        if (sku == "" || name == "") {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("sku and name must be non-empty"))
+        }
+        Product p = this.store.products.add(sku, name, price)
+        HttpResponse resp = HttpResponse(201, "Created", this.json.encode(this.json.productToDict(p)))
+        resp.location = "/api/products/" + str(p.id())
+        return resp
+    }
+
+    public HttpResponse update(int id, HttpRequest req) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("product not found"))
+        }
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        Product p = found
+        if ("sku" in body) {
+            p.sku = str(body["sku"])
+        }
+        if ("name" in body) {
+            p.name = str(body["name"])
+        }
+        if ("unitPrice" in body) {
+            p.unitPrice = (float)(body["unitPrice"])
+        }
+        if ("active" in body) {
+            p.active = (bool)(body["active"])
+        }
+        this.store.products.save(p)
+        return HttpResponse(200, "OK", this.json.encode(this.json.productToDict(p)))
+    }
+
+    public HttpResponse delete(int id) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("product not found"))
+        }
+        this.store.products.remove(found)
+        return HttpResponse(204, "No Content", "")
+    }
+}

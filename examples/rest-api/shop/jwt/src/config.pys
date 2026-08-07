@@ -1,0 +1,27 @@
+# Tunables for JWT + MySQL shop REST (phase 3).
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public int idleTimeoutMs
+    public int writeTimeoutMs
+    public string dbHost
+    public string dbUser
+    public string dbPassword
+    public string dbName
+    public string jwtSecret
+    public int jwtTtlSec
+
+    public ServerConfig() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8092
+        this.idleTimeoutMs = 2000
+        this.writeTimeoutMs = 2000
+        this.dbHost = "localhost"
+        this.dbUser = "pys"
+        this.dbPassword = "123456789"
+        this.dbName = "shop"
+        this.jwtSecret = "pys-teaching-secret-change-me"
+        this.jwtTtlSec = 3600
+    }
+}

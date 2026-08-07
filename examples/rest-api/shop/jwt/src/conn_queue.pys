@@ -1,0 +1,23 @@
+# Shared work queue for acceptor → workers.
+
+import queue
+
+package class ConnQueue {
+    private var q
+
+    public ConnQueue() {
+        this.q = queue.Queue()
+    }
+
+    public void putConn(var conn) {
+        this.q.put(conn)
+    }
+
+    public var takeConn() {
+        return this.q.get()
+    }
+
+    public void putPoison() {
+        this.q.put(null)
+    }
+}

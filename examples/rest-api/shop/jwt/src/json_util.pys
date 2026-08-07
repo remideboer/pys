@@ -1,0 +1,99 @@
+# JSON encode/decode helpers for shop entities.
+
+import json
+
+import Product, Order, OrderLine from models
+
+package class JsonUtil {
+    public JsonUtil() {
+    }
+
+    public string healthOk() {
+        dict d = dict()
+        d["ok"] = true
+        return this.encode(d)
+    }
+
+    public string encode(var value) {
+        return json.dumps(value)
+    }
+
+    public nullable<dict> parseObject(string body) {
+        if (body == "") {
+            return null
+        }
+        var parsed = json.loads(body)
+        if (type(parsed).__name__ != "dict") {
+            return null
+        }
+        dict d = parsed
+        return d
+    }
+
+    public dict productToDict(Product p) {
+        dict d = dict()
+        d["productId"] = p.id()
+        d["sku"] = p.sku
+        d["name"] = p.name
+        d["unitPrice"] = p.unitPrice
+        d["active"] = p.active
+        d["createdAt"] = p.createdAt
+        return d
+    }
+
+    public list productsToList(list<Product> items) {
+        list out = []
+        loop (p in items) {
+            out.append(this.productToDict(p))
+        }
+        return out
+    }
+
+    public dict orderToDict(Order o) {
+        dict d = dict()
+        d["orderId"] = o.id()
+        d["placedAt"] = o.placedAt
+        d["status"] = o.status
+        nullable<string> ref = o.customerRef
+        if (ref == null) {
+            d["customerRef"] = null
+        } else {
+            d["customerRef"] = ref
+        }
+        return d
+    }
+
+    public list ordersToList(list<Order> items) {
+        list out = []
+        loop (o in items) {
+            out.append(this.orderToDict(o))
+        }
+        return out
+    }
+
+    public dict lineToDict(OrderLine line) {
+        dict d = dict()
+        d["orderId"] = line.id()
+        d["lineNumber"] = line.lineKey()
+        d["productId"] = line.productId
+        d["skuSnapshot"] = line.skuSnapshot
+        d["unitPrice"] = line.unitPrice
+        d["quantity"] = line.quantity
+        d["lineTotal"] = line.lineTotal()
+        return d
+    }
+
+    public list linesToList(list<OrderLine> items) {
+        list out = []
+        loop (line in items) {
+            out.append(this.lineToDict(line))
+        }
+        return out
+    }
+
+    public string errorBody(string message) {
+        dict d = dict()
+        d["error"] = message
+        return this.encode(d)
+    }
+}

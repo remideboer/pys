@@ -1,0 +1,45 @@
+# Composition: MySQL mappers → default repositories (same API as memory ShopStore).
+
+import ShopDatabase from db
+import MysqlProductMapper, MysqlOrderMapper, MysqlOrderLineMapper from mappers
+import DefaultProductRepository, DefaultOrderRepository, DefaultOrderLineRepository from repositories
+import Product, Order, OrderLine from models
+
+package class ShopStore {
+    public DefaultProductRepository products
+    public DefaultOrderRepository orders
+    public DefaultOrderLineRepository lines
+    public ShopDatabase db
+
+    public ShopStore(string host, string user, string password, string database) {
+        this.db = ShopDatabase(host, user, password, database)
+        MysqlProductMapper productMapper = MysqlProductMapper(this.db)
+        MysqlOrderMapper orderMapper = MysqlOrderMapper(this.db)
+        MysqlOrderLineMapper lineMapper = MysqlOrderLineMapper(this.db)
+        this.products = DefaultProductRepository(productMapper)
+        this.orders = DefaultOrderRepository(orderMapper)
+        this.lines = DefaultOrderLineRepository(lineMapper)
+    }
+
+    public OrderLine addLine(Order order, Product product, int quantity) {
+        list<OrderLine> existing = this.lines.forOrder(order.id())
+        int n = len(existing) + 1
+        OrderLine line = OrderLine(
+            order.id(),
+            order.placedAt,
+            order.status,
+            order.customerRef,
+            n,
+            product.id(),
+            product.sku,
+            product.unitPrice,
+            quantity
+        )
+        this.lines.add(line)
+        return line
+    }
+
+    public void close() {
+        this.db.close()
+    }
+}

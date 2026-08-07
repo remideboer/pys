@@ -71,5 +71,6 @@ Each record then uses:
 | [CER-034](CER-034-webserver-full-spec.md) | Webserver full-spec remainder (F-007) | Examples |
 | [CER-035](CER-035-rest-shop-memory.md) | In-memory REST shop (phase 1) | Examples |
 | [CER-036](CER-036-rest-shop-mysql.md) | MySQL REST shop (phase 2 / F-008) | Examples |
+| [CER-037](CER-037-rest-shop-jwt.md) | JWT shop REST (phase 3 / F-009) | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
