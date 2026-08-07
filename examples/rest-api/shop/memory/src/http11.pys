@@ -1,0 +1,177 @@
+# Slim HTTP/1.1 helpers for the in-memory shop REST API.
+# Content-Type application/json; Content-Length body assembly for small POSTs.
+
+import select
+
+package class HttpRequest {
+    public string method
+    public string path
+    public string body
+    public string correlationId
+    public bool keepAlive
+
+    public HttpRequest(string method, string path, string body, string correlationId, bool keepAlive) {
+        this.method = method
+        this.path = path
+        this.body = body
+        this.correlationId = correlationId
+        this.keepAlive = keepAlive
+    }
+}
+
+package class HttpResponse {
+    public int status
+    public string reason
+    public string body
+    public string contentType
+    public string location
+
+    public HttpResponse(int status, string reason, string body) {
+        this.status = status
+        this.reason = reason
+        this.body = body
+        this.contentType = "application/json; charset=utf-8"
+        this.location = ""
+    }
+
+    public string wire(bool keepAlive) {
+        string payload = this.body
+        string out = "HTTP/1.1 " + str(this.status) + " " + this.reason + "\r\n"
+        out = out + "Content-Type: " + this.contentType + "\r\n"
+        out = out + "Content-Length: " + str(len(payload.encode("utf-8"))) + "\r\n"
+        if (this.location != "") {
+            out = out + "Location: " + this.location + "\r\n"
+        }
+        if (keepAlive) {
+            out = out + "Connection: keep-alive\r\n"
+        } else {
+            out = out + "Connection: close\r\n"
+        }
+        out = out + "\r\n" + payload
+        return out
+    }
+}
+
+package class Http11 {
+    public Http11() {
+    }
+
+    public HttpRequest parse(string raw) {
+        string method = "GET"
+        string path = "/"
+        string body = ""
+        string correlationId = "corr-0"
+        bool keepAlive = true
+        int contentLength = -1
+        int headerEnd = raw.find("\r\n\r\n")
+        string head = raw
+        if (headerEnd >= 0) {
+            head = raw[0:headerEnd]
+            body = raw[headerEnd + 4:]
+        }
+        var lines = head.split("\r\n")
+        if (len(lines) > 0) {
+            var parts = lines[0].split(" ")
+            if (len(parts) >= 2) {
+                method = parts[0]
+                path = parts[1]
+            }
+            if (len(parts) >= 3) {
+                string ver = parts[2].upper()
+                if (ver == "HTTP/1.0") {
+                    keepAlive = false
+                }
+            }
+        }
+        int qi = path.find("?")
+        if (qi >= 0) {
+            path = path[0:qi]
+        }
+        int i = 1
+        loop (i < len(lines)) {
+            string line = lines[i]
+            int colon = line.find(":")
+            if (colon > 0) {
+                string name = line[0:colon].lower()
+                string value = line[colon + 1:].strip()
+                string valueLower = value.lower()
+                if (name == "x-correlation-id") {
+                    correlationId = value
+                } else {
+                    if (name == "connection") {
+                        if (valueLower.find("close") >= 0) {
+                            keepAlive = false
+                        } else {
+                            if (valueLower.find("keep-alive") >= 0) {
+                                keepAlive = true
+                            }
+                        }
+                    } else {
+                        if (name == "content-length") {
+                            contentLength = (int)(value)
+                        }
+                    }
+                }
+            }
+            i = i + 1
+        }
+        if (contentLength >= 0 && len(body) > contentLength) {
+            body = body[0:contentLength]
+        }
+        return HttpRequest(method, path, body, correlationId, keepAlive)
+    }
+
+    public void write(var conn, HttpResponse resp, bool keepAlive) {
+        conn.sendall(resp.wire(keepAlive).encode("utf-8"))
+    }
+
+    # Read until headers complete, then finish Content-Length body if present.
+    public string readRaw(var conn, float timeoutSec) {
+        string data = ""
+        var empty = []
+        int contentLength = -1
+        int headerEnd = -1
+        loop (true) {
+            var readers = [conn]
+            var ready = select.select(readers, empty, empty, timeoutSec)
+            if (len(ready[0]) == 0) {
+                return data
+            }
+            var chunk = conn.recv(4096)
+            if (len(chunk) == 0) {
+                return data
+            }
+            data = data + chunk.decode("utf-8")
+            if (headerEnd < 0) {
+                headerEnd = data.find("\r\n\r\n")
+                if (headerEnd >= 0) {
+                    string head = data[0:headerEnd]
+                    var lines = head.split("\r\n")
+                    int i = 1
+                    loop (i < len(lines)) {
+                        string line = lines[i]
+                        int colon = line.find(":")
+                        if (colon > 0) {
+                            string name = line[0:colon].lower()
+                            if (name == "content-length") {
+                                contentLength = (int)(line[colon + 1:].strip())
+                            }
+                        }
+                        i = i + 1
+                    }
+                }
+            }
+            if (headerEnd >= 0) {
+                int bodyStart = headerEnd + 4
+                int have = len(data) - bodyStart
+                if (contentLength < 0 || have >= contentLength) {
+                    return data
+                }
+            }
+            if (len(data) > 262144) {
+                return data
+            }
+        }
+        return data
+    }
+}

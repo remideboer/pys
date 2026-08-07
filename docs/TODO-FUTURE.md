@@ -15,6 +15,8 @@ mark it done here.
 | [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
 | [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Done** | `pys.toml` source roots; same package across `src`/`tests` |
 | [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | **Done** | FR8 re-checkout, MockDownstream faults, 429 inbound shed, write timeout, manual 1k soak |
+| [F-008](#f-008-rest-shop-mysql) | Examples / REST shop | Deferred | MySQL-backed shop REST (`examples/rest-api/shop/mysql`) after memory DoD |
+| [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | Deferred | JWT auth layer (`examples/rest-api/shop/jwt`) after MySQL DoD |
 
 ---
 
@@ -160,3 +162,30 @@ full-spec gaps:
   (not CI).
 
 Layout uses `src/` + `tests/` + `pys.toml` (ADR-017).
+
+---
+
+## F-008: REST shop MySQL phase
+
+| | |
+| --- | --- |
+| Status | Deferred |
+| Source | [`examples/rest-api/shop/mysql/`](../examples/rest-api/shop/mysql/); [CER-035](evolution/CER-035-rest-shop-memory.md) |
+| Blocked by | Phase 1 memory DoD ([`examples/rest-api/shop/memory/`](../examples/rest-api/shop/memory/)) |
+
+Same `/api/products` / `/api/orders` / lines surface as memory, persistence via
+`ShopDatabase` + mappers from the console shop. Students should diff `memory/`
+vs `mysql/` and see mainly the repository wiring change.
+
+---
+
+## F-009: REST shop JWT phase
+
+| | |
+| --- | --- |
+| Status | Deferred |
+| Source | [`examples/rest-api/shop/jwt/`](../examples/rest-api/shop/jwt/) |
+| Blocked by | [F-008](#f-008-rest-shop-mysql) |
+
+`Authorization: Bearer` gate + login/token issuance on top of the MySQL shop
+API. Diff `mysql/` vs `jwt/` should show mainly auth, not CRUD rewrites.

@@ -1,0 +1,3 @@
+[source_roots]
+main = "src"
+test = "tests"

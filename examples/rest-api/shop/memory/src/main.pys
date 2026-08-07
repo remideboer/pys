@@ -1,0 +1,111 @@
+# In-memory shop REST API — phase 1.
+#
+# Run (from repo root):
+#   python -m transpiler run examples/rest-api/shop/memory/src/main.pys
+#   curl http://127.0.0.1:8090/health
+
+import socket
+import select
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11 from http11
+import ConnHandler from conn_handler
+import AppContext, Router from router
+
+ServerConfig cfg = ServerConfig()
+AppContext ctx = AppContext()
+Router router = Router(ctx)
+Http11 http = Http11()
+ConnHandler handler = ConnHandler(
+    http,
+    router,
+    cfg.idleTimeoutMs / 1000.0,
+    cfg.writeTimeoutMs / 1000.0
+)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared ConnHandler sharedHandler = handler
+
+print("shop REST (memory) on " + cfg.listenHost + ":" + str(cfg.listenPort))
+print("seeded products=" + str(len(ctx.store.products.all())))
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = [cfg.listenHost, cfg.listenPort]
+        srv.bind(tuple(bindAddr))
+        srv.listen(64)
+        srv.setblocking(false)
+        print("listening")
+        var empty = []
+        loop (running) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.5)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                work.putConn(client)
+            }
+        }
+        int w = 0
+        loop (w < 4) {
+            work.putPoison()
+            w = w + 1
+        }
+        srv.close()
+    }
+
+    task worker0 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker1 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker2 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker3 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+}
+
+print("server stopped")

@@ -1,0 +1,338 @@
+# In-memory repositories — same ports as examples/database (phase 2 swaps MySQL).
+
+import time
+import threading
+
+import Product, Order, OrderLine from models
+
+package abstract class ProductRepository {
+    public abstract list<Product> all()
+    public abstract nullable<Product> get(int id)
+    public abstract Product add(string sku, string name, float unitPrice)
+    public abstract void save(Product product)
+    public abstract void remove(Product product)
+}
+
+package abstract class OrderRepository {
+    public abstract list<Order> all()
+    public abstract nullable<Order> get(int id)
+    public abstract Order add(string status, nullable<string> customerRef)
+    public abstract void save(Order order)
+    public abstract void remove(Order order)
+}
+
+package abstract class OrderLineRepository {
+    public abstract list<OrderLine> all()
+    public abstract list<OrderLine> forOrder(int orderId)
+    public abstract nullable<OrderLine> get(int orderId, int lineNumber)
+    public abstract OrderLine addLine(Order order, Product product, int quantity)
+    public abstract void save(OrderLine line)
+    public abstract void remove(OrderLine line)
+    public abstract void removeForOrder(int orderId)
+}
+
+package class InMemoryProductRepository inherits ProductRepository {
+    private var lock
+    private dict byId
+    private int nextId
+
+    public InMemoryProductRepository() {
+        this.lock = threading.Lock()
+        dict empty = dict()
+        this.byId = empty
+        this.nextId = 1
+    }
+
+    public void seedDemo() {
+        this.lock.acquire()
+        dict empty = dict()
+        this.byId = empty
+        this.nextId = 1
+        this.lock.release()
+        this.add("BG-CATAN", "Catan", 44.95)
+        this.add("BG-TICKET", "Ticket to Ride", 49.99)
+        this.add("BG-AZUL", "Azul", 39.95)
+    }
+
+    public list<Product> all() {
+        this.lock.acquire()
+        dict m = this.byId
+        list<Product> out = []
+        loop (key in m) {
+            out.append(m[key])
+        }
+        this.lock.release()
+        return out
+    }
+
+    public nullable<Product> get(int id) {
+        this.lock.acquire()
+        dict m = this.byId
+        nullable<Product> found = null
+        if (id in m) {
+            found = m[id]
+        }
+        this.lock.release()
+        return found
+    }
+
+    public Product add(string sku, string name, float unitPrice) {
+        this.lock.acquire()
+        int id = this.nextId
+        this.nextId = this.nextId + 1
+        string created = time.strftime("%Y-%m-%dT%H:%M:%S")
+        Product p = Product(id, sku, name, unitPrice, true, created)
+        dict m = this.byId
+        m[id] = p
+        this.byId = m
+        this.lock.release()
+        return p
+    }
+
+    public void save(Product product) {
+        this.lock.acquire()
+        dict m = this.byId
+        m[product.id()] = product
+        this.byId = m
+        this.lock.release()
+    }
+
+    public void remove(Product product) {
+        this.lock.acquire()
+        dict m = this.byId
+        if (product.id() in m) {
+            m.pop(product.id())
+        }
+        this.byId = m
+        this.lock.release()
+    }
+}
+
+package class InMemoryOrderRepository inherits OrderRepository {
+    private var lock
+    private dict byId
+    private int nextId
+    private OrderLineRepository lines
+
+    public InMemoryOrderRepository(OrderLineRepository lines) {
+        this.lock = threading.Lock()
+        dict empty = dict()
+        this.byId = empty
+        this.nextId = 1
+        this.lines = lines
+    }
+
+    public void reset() {
+        this.lock.acquire()
+        dict empty = dict()
+        this.byId = empty
+        this.nextId = 1
+        this.lock.release()
+    }
+
+    public list<Order> all() {
+        this.lock.acquire()
+        dict m = this.byId
+        list<Order> out = []
+        loop (key in m) {
+            out.append(m[key])
+        }
+        this.lock.release()
+        return out
+    }
+
+    public nullable<Order> get(int id) {
+        this.lock.acquire()
+        dict m = this.byId
+        nullable<Order> found = null
+        if (id in m) {
+            found = m[id]
+        }
+        this.lock.release()
+        return found
+    }
+
+    public Order add(string status, nullable<string> customerRef) {
+        this.lock.acquire()
+        int id = this.nextId
+        this.nextId = this.nextId + 1
+        string placed = time.strftime("%Y-%m-%dT%H:%M:%S")
+        Order o = Order(id, placed, status, customerRef)
+        dict m = this.byId
+        m[id] = o
+        this.byId = m
+        this.lock.release()
+        return o
+    }
+
+    public void save(Order order) {
+        this.lock.acquire()
+        dict m = this.byId
+        m[order.id()] = order
+        this.byId = m
+        this.lock.release()
+    }
+
+    public void remove(Order order) {
+        this.lines.removeForOrder(order.id())
+        this.lock.acquire()
+        dict m = this.byId
+        if (order.id() in m) {
+            m.pop(order.id())
+        }
+        this.byId = m
+        this.lock.release()
+    }
+}
+
+package class InMemoryOrderLineRepository inherits OrderLineRepository {
+    private var lock
+    private dict byKey
+    private dict nextLine
+
+    public InMemoryOrderLineRepository() {
+        this.lock = threading.Lock()
+        dict emptyKeys = dict()
+        dict emptyNext = dict()
+        this.byKey = emptyKeys
+        this.nextLine = emptyNext
+    }
+
+    public void reset() {
+        this.lock.acquire()
+        dict emptyKeys = dict()
+        dict emptyNext = dict()
+        this.byKey = emptyKeys
+        this.nextLine = emptyNext
+        this.lock.release()
+    }
+
+    private string keyOf(int orderId, int lineNumber) {
+        return str(orderId) + ":" + str(lineNumber)
+    }
+
+    public list<OrderLine> all() {
+        this.lock.acquire()
+        dict m = this.byKey
+        list<OrderLine> out = []
+        loop (key in m) {
+            out.append(m[key])
+        }
+        this.lock.release()
+        return out
+    }
+
+    public list<OrderLine> forOrder(int orderId) {
+        this.lock.acquire()
+        dict m = this.byKey
+        list<OrderLine> out = []
+        loop (key in m) {
+            OrderLine line = m[key]
+            if (line.id() == orderId) {
+                out.append(line)
+            }
+        }
+        this.lock.release()
+        return out
+    }
+
+    public nullable<OrderLine> get(int orderId, int lineNumber) {
+        this.lock.acquire()
+        dict m = this.byKey
+        string k = this.keyOf(orderId, lineNumber)
+        nullable<OrderLine> found = null
+        if (k in m) {
+            found = m[k]
+        }
+        this.lock.release()
+        return found
+    }
+
+    public OrderLine addLine(Order order, Product product, int quantity) {
+        this.lock.acquire()
+        int oid = order.id()
+        dict nextMap = this.nextLine
+        int n = 1
+        if (oid in nextMap) {
+            n = nextMap[oid]
+        }
+        nextMap[oid] = n + 1
+        this.nextLine = nextMap
+        OrderLine line = OrderLine(
+            oid,
+            order.placedAt,
+            order.status,
+            order.customerRef,
+            n,
+            product.id(),
+            product.sku,
+            product.unitPrice,
+            quantity
+        )
+        dict m = this.byKey
+        m[this.keyOf(oid, n)] = line
+        this.byKey = m
+        this.lock.release()
+        return line
+    }
+
+    public void save(OrderLine line) {
+        this.lock.acquire()
+        dict m = this.byKey
+        m[this.keyOf(line.id(), line.lineKey())] = line
+        this.byKey = m
+        this.lock.release()
+    }
+
+    public void remove(OrderLine line) {
+        this.lock.acquire()
+        dict m = this.byKey
+        string k = this.keyOf(line.id(), line.lineKey())
+        if (k in m) {
+            m.pop(k)
+        }
+        this.byKey = m
+        this.lock.release()
+    }
+
+    public void removeForOrder(int orderId) {
+        this.lock.acquire()
+        dict m = this.byKey
+        list<string> drop = []
+        loop (key in m) {
+            OrderLine line = m[key]
+            if (line.id() == orderId) {
+                drop.append(key)
+            }
+        }
+        loop (k in drop) {
+            m.pop(k)
+        }
+        this.byKey = m
+        dict nextMap = this.nextLine
+        if (orderId in nextMap) {
+            nextMap.pop(orderId)
+        }
+        this.nextLine = nextMap
+        this.lock.release()
+    }
+}
+
+package class ShopStore {
+    public InMemoryProductRepository products
+    public InMemoryOrderLineRepository lines
+    public InMemoryOrderRepository orders
+
+    public ShopStore() {
+        this.products = InMemoryProductRepository()
+        this.lines = InMemoryOrderLineRepository()
+        this.orders = InMemoryOrderRepository(this.lines)
+        this.products.seedDemo()
+    }
+
+    public void resetDemo() {
+        this.lines.reset()
+        this.orders.reset()
+        this.products.seedDemo()
+    }
+}

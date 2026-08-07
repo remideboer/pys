@@ -1,0 +1,87 @@
+# Order CRUD handlers.
+
+import HttpRequest, HttpResponse from http11
+import JsonUtil from json_util
+import ShopStore from repositories
+import Order from models
+
+package class OrderApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public OrderApi(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public HttpResponse listAll() {
+        list items = this.json.ordersToList(this.store.orders.all())
+        return HttpResponse(200, "OK", this.json.encode(items))
+    }
+
+    public HttpResponse getOne(int id) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("order not found"))
+        }
+        return HttpResponse(200, "OK", this.json.encode(this.json.orderToDict(found)))
+    }
+
+    public HttpResponse create(HttpRequest req) {
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        string status = "placed"
+        if ("status" in body) {
+            status = str(body["status"])
+        }
+        nullable<string> customerRef = null
+        if ("customerRef" in body) {
+            var raw = body["customerRef"]
+            if (raw != null) {
+                customerRef = str(raw)
+            }
+        }
+        Order o = this.store.orders.add(status, customerRef)
+        HttpResponse resp = HttpResponse(201, "Created", this.json.encode(this.json.orderToDict(o)))
+        resp.location = "/api/orders/" + str(o.id())
+        return resp
+    }
+
+    public HttpResponse update(int id, HttpRequest req) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("order not found"))
+        }
+        nullable<dict> rawBody = this.json.parseObject(req.body)
+        if (rawBody == null) {
+            return HttpResponse(400, "Bad Request", this.json.errorBody("JSON object required"))
+        }
+        dict body = rawBody
+        Order o = found
+        if ("status" in body) {
+            o.status = str(body["status"])
+        }
+        if ("customerRef" in body) {
+            var raw = body["customerRef"]
+            if (raw == null) {
+                o.customerRef = null
+            } else {
+                o.customerRef = str(raw)
+            }
+        }
+        this.store.orders.save(o)
+        return HttpResponse(200, "OK", this.json.encode(this.json.orderToDict(o)))
+    }
+
+    public HttpResponse delete(int id) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return HttpResponse(404, "Not Found", this.json.errorBody("order not found"))
+        }
+        this.store.orders.remove(found)
+        return HttpResponse(204, "No Content", "")
+    }
+}

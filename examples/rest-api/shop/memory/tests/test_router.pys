@@ -1,0 +1,71 @@
+# Router-level CRUD tests (no sockets).
+
+import json
+
+import AppContext, Router from router
+import HttpRequest from http11
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== shop memory router ===")
+
+AppContext ctx = AppContext()
+Router router = Router(ctx)
+
+var health = router.handle(HttpRequest("GET", "/health", "", "c0", true))
+assertTrue("health 200", health.status == 200)
+assertTrue("health body", health.body.find("\"ok\"") >= 0)
+
+var products = router.handle(HttpRequest("GET", "/api/products", "", "c1", true))
+assertTrue("list products 200", products.status == 200)
+assertTrue("list has Catan", products.body.find("Catan") >= 0)
+
+dict createProd = dict()
+createProd["sku"] = "BG-TEST"
+createProd["name"] = "Test"
+createProd["unitPrice"] = 1.5
+string createBody = json.dumps(createProd)
+var created = router.handle(HttpRequest("POST", "/api/products", createBody, "c2", true))
+assertTrue("create 201", created.status == 201)
+assertTrue("create location", created.location.startswith("/api/products/"))
+
+var one = router.handle(HttpRequest("GET", "/api/products/1", "", "c3", true))
+assertTrue("get product 200", one.status == 200)
+
+string missPath = "/api/products/" + str(5)
+var missing = router.handle(HttpRequest("GET", missPath, "", "c4", true))
+assertTrue("missing 404", missing.status == 404)
+
+dict createOrder = dict()
+createOrder["status"] = "placed"
+createOrder["customerRef"] = "ada"
+string orderBody = json.dumps(createOrder)
+var order = router.handle(HttpRequest("POST", "/api/orders", orderBody, "c5", true))
+assertTrue("order 201", order.status == 201)
+
+dict createLine = dict()
+createLine["productId"] = 1
+createLine["quantity"] = 2
+string lineBody = json.dumps(createLine)
+var line = router.handle(HttpRequest("POST", "/api/orders/1/lines", lineBody, "c6", true))
+assertTrue("line 201", line.status == 201)
+assertTrue("line snapshot", line.body.find("skuSnapshot") >= 0)
+
+var lines = router.handle(HttpRequest("GET", "/api/orders/1/lines", "", "c7", true))
+assertTrue("lines list 200", lines.status == 200)
+
+var badMethod = router.handle(HttpRequest("PATCH", "/api/products", "", "c8", true))
+assertTrue("405", badMethod.status == 405)
+
+var deleted = router.handle(HttpRequest("DELETE", "/api/orders/1", "", "c9", true))
+assertTrue("delete order 204", deleted.status == 204)
+var linesAfter = router.handle(HttpRequest("GET", "/api/orders/1/lines", "", "c10", true))
+assertTrue("order gone after delete", linesAfter.status == 404)
+
+print("=== router done ===")

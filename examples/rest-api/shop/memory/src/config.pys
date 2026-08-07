@@ -1,0 +1,15 @@
+# Tunables for the in-memory shop REST server.
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public int idleTimeoutMs
+    public int writeTimeoutMs
+
+    public ServerConfig() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8090
+        this.idleTimeoutMs = 2000
+        this.writeTimeoutMs = 2000
+    }
+}
