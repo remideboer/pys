@@ -1,14 +1,15 @@
 # examples/webserver deferred remaining work
 
-Remaining full-spec items are tracked as [F-007](../../docs/TODO-FUTURE.md#f-007-webserver-full-spec-remainder).
+All items from [F-007](../../docs/TODO-FUTURE.md#f-007-webserver-full-spec-remainder)
+are delivered for this teaching example:
 
-**Layout:** `src/` + `tests/` via `pys.toml` `[source_roots]` is in place (F-006).
-Teaching increments 1–6 remain the working baseline.
+| Spec item | Delivery |
+|-----------|----------|
+| **FR8** re-checkout | `RetryPolicy.executeOnPool` — acquire → invoke → release per attempt |
+| **Toxiproxy equiv.** | `MockDownstream` fail/reset/fatal/latency; `tests/test_faults.pys` |
+| **FR4 429 vs 503** | Bounded `ConnQueue.tryPutConn` → 429 `inbound_full`; pool → 503 |
+| **Write timeout** | `writeTimeoutMs` applied before HTTP/1.1 and HTTP/2 sends |
+| **FR1 / soak** | Manual gate: [`load/SOAK.md`](load/SOAK.md) + `load/k6/soak.js` (not CI) |
 
-Still deferred vs full concurrent-webserver spec/testplan:
-
-- **FR8** — each retry acquires a new downstream pool checkout
-- **Toxiproxy** (or equivalent) for D/E/H fault scenarios
-- **FR4** — broader 429 capacity shedding if distinct from 503 queue-full
-- **FR1 / soak** — real ≥1k concurrent / memory-FD soak (H1–H3)
-- Write-timeout enforcement parity with read/idle/handler
+Teaching increments 1–6 remain the baseline. External Toxiproxy is still
+optional if you prefer a real proxy in front of a live dependency.

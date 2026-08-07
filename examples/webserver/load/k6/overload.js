@@ -8,6 +8,7 @@ import { check, sleep } from "k6";
 import { Counter } from "k6/metrics";
 
 const status503 = new Counter("status_503");
+const status429 = new Counter("status_429");
 const status200 = new Counter("status_200");
 
 export const options = {
@@ -42,11 +43,19 @@ export default function () {
       "503 has reject reason": (r) =>
         (r.headers["X-Reject-Reason"] || r.headers["x-reject-reason"] || "") !== "",
     });
+  } else if (res.status === 429) {
+    status429.add(1);
+    check(res, {
+      "429 inbound shed": (r) =>
+        (r.headers["X-Reject-Reason"] || r.headers["x-reject-reason"] || "") ===
+        "inbound_full",
+    });
   } else if (res.status === 200) {
     status200.add(1);
   }
   check(res, {
-    "got response": (r) => r.status === 200 || r.status === 503 || r.status === 502,
+    "got response": (r) =>
+      r.status === 200 || r.status === 503 || r.status === 502 || r.status === 429,
   });
   sleep(0.01);
 }

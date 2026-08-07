@@ -12,10 +12,11 @@ package class Http2Server {
     public Http2Server() {
     }
 
-    public void serve(var conn, var router) {
+    public void serve(var conn, var router, float writeTimeoutSec) {
         var h2cfg = h2.config.H2Configuration(false, "utf-8")
         var h2conn = h2.connection.H2Connection(h2cfg)
         h2conn.initiate_connection()
+        conn.settimeout(writeTimeoutSec)
         var preface = h2conn.data_to_send()
         if (len(preface) > 0) {
             conn.sendall(preface)
@@ -30,6 +31,7 @@ package class Http2Server {
                 loop (event in events) {
                     this._handleEvent(h2conn, event, router)
                 }
+                conn.settimeout(writeTimeoutSec)
                 var out = h2conn.data_to_send()
                 if (len(out) > 0) {
                     conn.sendall(out)

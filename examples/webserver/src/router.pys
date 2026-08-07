@@ -11,7 +11,7 @@ import Bulkheads from bulkhead
 import IdempotencyTable from idempotency
 import RetryPolicy from retry
 import Metrics from metrics
-import MockDownstream, MockCall from mock_downstream
+import MockDownstream from mock_downstream
 
 package class AppContext {
     public ServerConfig cfg
@@ -91,14 +91,15 @@ package class Router {
     public HttpResponse proxyThrough(HttpRequest req, DownstreamPool pool, MockDownstream mock, int downstreamBudgetMs) {
         float handlerBudget = this.ctx.cfg.handlerTimeoutMs / 1000.0
         float started = time.monotonic()
-        if (!pool.acquire()) {
-            this.ctx.metrics.onQueueFull()
-            print("reject queue_full corr=" + req.correlationId)
-            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
-        }
-        MockCall call = MockCall(mock, downstreamBudgetMs)
-        string result = this.ctx.retries.execute(req.method, req.path, call, handlerBudget)
-        pool.release()
+        # FR8: RetryPolicy.executeOnPool acquires a new pool slot per attempt.
+        string result = this.ctx.retries.executeOnPool(
+            req.method,
+            req.path,
+            pool,
+            mock,
+            downstreamBudgetMs,
+            handlerBudget
+        )
         float elapsed = time.monotonic() - started
         if (elapsed >= handlerBudget || result == "timeout") {
             print("reject handler_timeout corr=" + req.correlationId)
@@ -106,6 +107,11 @@ package class Router {
         }
         if (result == "ok") {
             return HttpResponse(200, "OK", "data-ok", "")
+        }
+        if (result == "queue_full") {
+            this.ctx.metrics.onQueueFull()
+            print("reject queue_full corr=" + req.correlationId)
+            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
         }
         if (result == "circuit_open") {
             this.ctx.metrics.onCircuitOpen()
@@ -118,19 +124,24 @@ package class Router {
     public HttpResponse createOrder(HttpRequest req) {
         float handlerBudget = this.ctx.cfg.handlerTimeoutMs / 1000.0
         float started = time.monotonic()
-        if (!this.ctx.pool.acquire()) {
-            this.ctx.metrics.onQueueFull()
-            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
-        }
-        MockCall call = MockCall(this.ctx.mockA, this.ctx.cfg.downstreamTimeoutMs)
-        string result = this.ctx.retries.execute(req.method, req.path, call, handlerBudget)
-        this.ctx.pool.release()
+        string result = this.ctx.retries.executeOnPool(
+            req.method,
+            req.path,
+            this.ctx.pool,
+            this.ctx.mockA,
+            this.ctx.cfg.downstreamTimeoutMs,
+            handlerBudget
+        )
         float elapsed = time.monotonic() - started
         if (elapsed >= handlerBudget || result == "timeout") {
             return HttpResponse(504, "Gateway Timeout", "handler timeout", "handler_timeout")
         }
         if (result == "ok") {
             return HttpResponse(201, "Created", "order-created", "")
+        }
+        if (result == "queue_full") {
+            this.ctx.metrics.onQueueFull()
+            return HttpResponse(503, "Service Unavailable", "queue full", "queue_full")
         }
         if (result == "circuit_open") {
             this.ctx.metrics.onCircuitOpen()

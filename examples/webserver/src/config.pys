@@ -30,6 +30,8 @@ package class ServerConfig {
     public int idleTimeoutMs
     public int readTimeoutMs
     public int writeTimeoutMs
+    # FR4: max accepted sockets waiting for a worker (0 = unbounded).
+    public int inboundMaxPending
 
     public ServerConfig() {
         # downstream < handler < client (FR6 / NFR timeout hierarchy)
@@ -39,6 +41,7 @@ package class ServerConfig {
         this.idleTimeoutMs = 500
         this.readTimeoutMs = 500
         this.writeTimeoutMs = 500
+        this.inboundMaxPending = 64
         this.workerTasks = 32
         this.poolSize = 8
         this.poolMaxQueue = 16

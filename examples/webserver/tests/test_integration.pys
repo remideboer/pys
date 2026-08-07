@@ -58,4 +58,22 @@ assertTrue("bh B acquire", ctx.bulkheads.b().acquire())
 assertTrue("pool A still free-ish", ctx.pool.busyCount() == 0)
 ctx.bulkheads.b().release()
 
+# E6 / FR8: each retry is a new pool acquire (not one hold across backoff).
+ServerConfig cfgFr8 = ServerConfig()
+cfgFr8.poolSize = 2
+cfgFr8.poolMaxQueue = 0
+cfgFr8.retryMaxAttempts = 3
+cfgFr8.retryBaseMs = 1
+cfgFr8.retryJitter = 0.0
+cfgFr8.retryFactor = 1.0
+AppContext ctxFr8 = AppContext(cfgFr8)
+Router routerFr8 = Router(ctxFr8)
+ctxFr8.mockA.setFailNext(2)
+int acquiresBefore = ctxFr8.pool.acquireCount()
+var fr8 = routerFr8.handle(HttpRequest("GET", "/proxy/data", "", "e6", true))
+assertTrue("E6 succeeds after retries", fr8.status == 200)
+assertTrue("E6 three mock calls", ctxFr8.mockA.callCount() == 3)
+assertTrue("E6 three pool acquires", ctxFr8.pool.acquireCount() - acquiresBefore == 3)
+assertTrue("E6 pool idle after", ctxFr8.pool.busyCount() == 0)
+
 print("=== integration done ===")

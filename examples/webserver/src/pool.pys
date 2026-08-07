@@ -11,6 +11,7 @@ package class DownstreamPool {
     private int capacity
     private int maxQueue
     private int maxWaitMs
+    private int acquires
 
     public DownstreamPool(int capacity, int maxQueue, int maxWaitMs) {
         this.lock = threading.Lock()
@@ -19,6 +20,7 @@ package class DownstreamPool {
         this.capacity = capacity
         this.maxQueue = maxQueue
         this.maxWaitMs = maxWaitMs
+        this.acquires = 0
     }
 
     public int busyCount() {
@@ -39,7 +41,16 @@ package class DownstreamPool {
         this.lock.acquire()
         this.busy = 0
         this.waiting = 0
+        this.acquires = 0
         this.lock.release()
+    }
+
+    # Checkout count for FR8 / E6: each acquire (including retry) increments.
+    public int acquireCount() {
+        this.lock.acquire()
+        int n = this.acquires
+        this.lock.release()
+        return n
     }
 
     # true = slot granted; false = queue full or wait exceeded (FR12).
@@ -50,6 +61,7 @@ package class DownstreamPool {
             this.lock.acquire()
             if (this.busy < this.capacity) {
                 this.busy = this.busy + 1
+                this.acquires = this.acquires + 1
                 if (queued) {
                     this.waiting = this.waiting - 1
                 }

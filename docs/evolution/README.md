@@ -68,5 +68,6 @@ Each record then uses:
 | [CER-031](CER-031-builtin-input.md) | Builtin `input` (no import) | Language |
 | [CER-032](CER-032-to-bin-hex-oct.md) | `toBin` / `toHex` / `toOct` display builtins | Language |
 | [CER-033](CER-033-string-plus-coerce.md) | String-involved `+` concatenates with coerce | Language |
+| [CER-034](CER-034-webserver-full-spec.md) | Webserver full-spec remainder (F-007) | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

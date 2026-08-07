@@ -18,9 +18,9 @@ AppContext ctx = AppContext(cfg)
 Router router = Router(ctx)
 Http11 http = Http11()
 Http2Server http2 = Http2Server()
-ConnHandler handler = ConnHandler(http, http2, router, 0.5)
+ConnHandler handler = ConnHandler(http, http2, router, 0.5, 0.5)
 
-shared ConnQueue work = ConnQueue()
+shared ConnQueue work = ConnQueue(0)
 shared bool running = true
 shared int listenPort = 0
 shared ConnHandler sharedHandler = handler

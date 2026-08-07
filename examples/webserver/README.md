@@ -19,6 +19,8 @@ visible to tests without widening modifiers.
 ```bash
 python -m transpiler run examples/webserver/tests/test_core.pys
 python -m transpiler run examples/webserver/tests/test_integration.pys
+python -m transpiler run examples/webserver/tests/test_faults.pys
+python -m transpiler run examples/webserver/tests/test_inbound_shed.pys
 python -m transpiler run examples/webserver/tests/test_http_e2e.pys
 python -m transpiler run examples/webserver/tests/test_http_keepalive_e2e.pys
 python -m transpiler run examples/webserver/tests/test_timeouts.pys
@@ -56,15 +58,16 @@ curl -k https://127.0.0.1:8080/health
 curl -k --http2 https://127.0.0.1:8080/health
 ```
 
-## Load (k6) — testplan A/B/C subsets
+## Load (k6) — testplan A/B/C subsets + manual soak
 
-See [`load/README.md`](load/README.md).
+See [`load/README.md`](load/README.md) and [`load/SOAK.md`](load/SOAK.md).
 
 | k6 script | Testplan |
 |-----------|----------|
 | `load/k6/baseline.js` | A1 subset |
-| `load/k6/overload.js` | B1 subset |
+| `load/k6/overload.js` | B1 subset (503 pool / 429 inbound) |
 | `load/k6/pool_exhaust.js` | C1 subset |
+| `load/k6/soak.js` | H1 manual ≥1k VU (not CI) |
 | `load/k6/tls_handshake.js` | A3 subset (HTTPS; enable `tlsEnabled`) |
 | `load/k6/http2_multiplex.js` | A2 subset (HTTPS+h2; enable `tlsEnabled`) |
 
@@ -81,6 +84,7 @@ See [`load/README.md`](load/README.md).
 
 ## Increment status
 
-1–6 — done (see git history).  
-**Layout refactor to source roots — done.**  
-Further full-spec work — [F-007](../../docs/TODO-FUTURE.md#f-007-webserver-full-spec-remainder) / [`DEFERRED.md`](DEFERRED.md).
+1–6 — done.  
+Source-root layout — done (F-006 / ADR-017).  
+Full-spec remainder — **done** ([F-007](../../docs/TODO-FUTURE.md#f-007-webserver-full-spec-remainder) / [CER-034](../../docs/evolution/CER-034-webserver-full-spec.md)).  
+See [`DEFERRED.md`](DEFERRED.md) for the delivery map.

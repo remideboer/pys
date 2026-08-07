@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Status | Accepted (target; implementation Active as F-006) |
+| Status | Accepted |
 | Date | 2026-08-04 |
 | Source | [`requirements/package_resolution_testing_philosophy.md`](../../requirements/package_resolution_testing_philosophy.md); [F-006](../TODO-FUTURE.md#f-006-source-roots-and-same-package-tests) |
 | Trigger | `examples/webserver/` flat same-folder tests — production-like layout gap |
@@ -14,9 +14,9 @@ Today a file’s `package` visibility is **same filesystem folder**. That forced
 see `package class` members without widening modifiers to `public` / `global`.
 
 The webserver was built partly to **discover** such PYS gaps under a
-production-like project. The layout gap is language/tooling work (F-006), not
-an app preference. Remaining webserver spec work is deferred ([F-007](../TODO-FUTURE.md#f-007-webserver-full-spec-remainder)) until this lands and the
-example is refactored.
+production-like project. The layout gap was language/tooling work (F-006), not
+an app preference. Full-spec product remainder after the layout refactor is
+[F-007](../TODO-FUTURE.md#f-007-webserver-full-spec-remainder) (**Done**).
 
 ## Decision
 
@@ -60,7 +60,8 @@ parent directory ⇒ same package (compat for flat examples).
   `dirname(file)`.
 - Access errors for mismatched packages include the educational diagnostic
   (requirements §4): name both packages/roots and suggest the mirrored path.
-- After F-006: refactor `examples/webserver/` to `src/` + `tests/`.
+- After F-006: `examples/webserver/` uses `src/` + `tests/` (done); product
+  remainder closed as F-007 / CER-034.
 - Manifest filename is `pys.toml` (requirements); may coexist with `pys.deps`.
 
 ## Rejected alternatives

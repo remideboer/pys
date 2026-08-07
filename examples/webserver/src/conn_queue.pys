@@ -1,17 +1,38 @@
 # examples/webserver/conn_queue.pys
 # Shared work queue for acceptor → workers (canonical shared object).
+# FR4: bounded inbound pending → tryPutConn false → acceptor answers 429.
 
 import queue
 
 package class ConnQueue {
     private var q
+    private int maxPending
 
-    public ConnQueue() {
-        this.q = queue.Queue()
+    # maxPending <= 0 → unbounded (e2e / default teaching servers).
+    public ConnQueue(int maxPending) {
+        this.maxPending = maxPending
+        if (maxPending > 0) {
+            this.q = queue.Queue(maxPending)
+        } else {
+            this.q = queue.Queue()
+        }
     }
 
     public void putConn(var conn) {
         this.q.put(conn)
+    }
+
+    # Non-blocking capacity check (single acceptor producer → safe vs race).
+    public bool tryPutConn(var conn) {
+        if (this.maxPending > 0 && this.q.qsize() >= this.maxPending) {
+            return false
+        }
+        this.q.put(conn)
+        return true
+    }
+
+    public int pendingCount() {
+        return this.q.qsize()
     }
 
     public var takeConn() {

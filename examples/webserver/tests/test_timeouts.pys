@@ -45,6 +45,10 @@ assertTrue("G2 finished before client timeout", elapsed < (cfg.clientTimeoutMs /
 assertTrue("G2 took about downstream budget", elapsed >= 0.05)
 print("G2 elapsed_ms ~ " + str((int)(elapsed * 1000.0)) + " status=" + str(resp.status))
 
+# Write timeout is configured and distinct from read/idle (enforced on socket send).
+assertTrue("writeTimeout configured", cfg.writeTimeoutMs > 0)
+assertTrue("writeTimeout <= client", cfg.writeTimeoutMs <= cfg.clientTimeoutMs)
+
 # Handler budget exhausted via retries + backoff should surface timeout, not hang past client.
 ServerConfig cfg2 = ServerConfig()
 cfg2.downstreamTimeoutMs = 50

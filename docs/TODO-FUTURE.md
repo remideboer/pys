@@ -14,7 +14,7 @@ mark it done here.
 | [F-004](#f-004-pys-dap-stepping) | IDE / debug | **Done** | PYS source-level DAP stepping (ADR-014) |
 | [F-005](#f-005-full-fowler-refactor-catalog) | IDE / refactor | Deferred | Remaining Fowler catalog beyond educational core (ADR-016) |
 | [F-006](#f-006-source-roots-and-same-package-tests) | Language / packages | **Done** | `pys.toml` source roots; same package across `src`/`tests` |
-| [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | Deferred | FR8 re-checkout, Toxiproxy, 1k-scale soak — after F-006 refactor |
+| [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | **Done** | FR8 re-checkout, MockDownstream faults, 429 inbound shed, write timeout, manual 1k soak |
 
 ---
 
@@ -140,18 +140,23 @@ Remaining webserver product work is [F-007](#f-007-webserver-full-spec-remainder
 
 | | |
 | --- | --- |
-| Status | Deferred (halted) |
-| Source | `examples/webserver/`; [DEFERRED.md](../examples/webserver/DEFERRED.md) |
+| Status | **Done** |
+| Source | `examples/webserver/`; [DEFERRED.md](../examples/webserver/DEFERRED.md); [CER-034](evolution/CER-034-webserver-full-spec.md) |
 | Blocked by | ~~[F-006](#f-006-source-roots-and-same-package-tests)~~ (layout done) |
 
-Teaching increments 1–6 are shipped. Remaining vs full concurrent-webserver
-spec/testplan (not scheduled until after F-006):
+Teaching increments 1–6 were already shipped. F-007 closed the remaining
+full-spec gaps:
 
-- **FR8** — each retry acquires a new downstream pool checkout
-- **Toxiproxy** (or equivalent) for D/E/H fault scenarios
-- **FR4** — broader 429 capacity shedding if distinct from 503 queue-full
-- **FR1 / soak** — real ≥1k concurrent / memory-FD soak (H1–H3)
-- Write-timeout enforcement parity with read/idle/handler
+- **FR8** — `RetryPolicy.executeOnPool`: each retry acquires a new downstream
+  pool checkout; backoff holds no slot (`tests/test_integration.pys` E6,
+  `tests/test_faults.pys`).
+- **Toxiproxy equivalent** — `MockDownstream` fail / reset / fatal / latency
+  knobs for D/E-shaped scenarios (real Toxiproxy still optional).
+- **FR4** — inbound `ConnQueue` capacity → **429** `inbound_full`; downstream
+  pool / circuit → **503** (distinct metrics).
+- **Write-timeout** — `writeTimeoutMs` applied before HTTP/1.1 and HTTP/2 writes.
+- **FR1 / soak** — manual ≥1k VU gate documented in
+  [`examples/webserver/load/SOAK.md`](../examples/webserver/load/SOAK.md)
+  (not CI).
 
-Do not resume webserver feature work until the example uses source-root
-packages; the example exists to validate PYS under production-like layout.
+Layout uses `src/` + `tests/` + `pys.toml` (ADR-017).

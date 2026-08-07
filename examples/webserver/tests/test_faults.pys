@@ -1,0 +1,90 @@
+# examples/webserver/tests/test_faults.pys
+# Toxiproxy-equivalent fault knobs on MockDownstream (D/E teaching scenarios).
+
+import ServerConfig from config
+import AppContext, Router from router
+import HttpRequest from http11
+import DownstreamPool from pool
+import MockDownstream from mock_downstream
+import CircuitBreaker from circuit_breaker
+import IdempotencyTable from idempotency
+import RetryPolicy from retry
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== webserver faults (mock = Toxiproxy stand-in) ===")
+
+ServerConfig cfg = ServerConfig()
+cfg.retryMaxAttempts = 3
+cfg.retryBaseMs = 1
+cfg.retryJitter = 0.0
+cfg.retryFactor = 1.0
+AppContext ctx = AppContext(cfg)
+Router router = Router(ctx)
+
+# E1: transient fail then success (idempotent GET).
+ctx.mockA.clearFaults()
+ctx.mockA.setFailNext(1)
+var e1 = router.handle(HttpRequest("GET", "/proxy/data", "", "e1", true))
+assertTrue("E1 ok after transient", e1.status == 200)
+assertTrue("E1 two calls", ctx.mockA.callCount() == 2)
+
+# Connection-reset stand-in (immediate retryable).
+ctx.mockA.clearFaults()
+ctx.breaker.reset()
+ctx.mockA.setResetNext(1)
+int callsBefore = ctx.mockA.callCount()
+var er = router.handle(HttpRequest("GET", "/proxy/data", "", "reset", true))
+assertTrue("reset recovers", er.status == 200)
+assertTrue("reset two calls", ctx.mockA.callCount() - callsBefore == 2)
+
+# Fatal → no retry success (502).
+ctx.mockA.clearFaults()
+ctx.breaker.reset()
+ctx.mockA.setFatalNext(1)
+var ef = router.handle(HttpRequest("GET", "/proxy/data", "", "fatal", true))
+assertTrue("fatal is 502", ef.status == 502)
+
+# D1 subset: error storm opens circuit.
+ServerConfig cfgD = ServerConfig()
+cfgD.cbFailureThreshold = 2
+cfgD.retryMaxAttempts = 1
+AppContext ctxD = AppContext(cfgD)
+Router routerD = Router(ctxD)
+ctxD.mockA.setFailNext(5)
+var d1a = routerD.handle(HttpRequest("GET", "/proxy/data", "", "d1a", true))
+var d1b = routerD.handle(HttpRequest("GET", "/proxy/data", "", "d1b", true))
+var d1c = routerD.handle(HttpRequest("GET", "/proxy/data", "", "d1c", true))
+assertTrue("D1 circuit open status", d1c.status == 503 && d1c.rejectReason == "circuit_open")
+
+# Latency above budget → retryable/timeout path (G2-shaped).
+MockDownstream slow = MockDownstream()
+slow.setLatencyMs(200)
+string timed = slow.invokeWithin(50)
+assertTrue("latency over budget is retryable", timed == "retryable")
+
+# FR8 unit: executeOnPool acquires per attempt.
+ServerConfig cfgP = ServerConfig()
+cfgP.retryMaxAttempts = 3
+cfgP.retryBaseMs = 1
+cfgP.retryJitter = 0.0
+cfgP.retryFactor = 1.0
+DownstreamPool pool = DownstreamPool(4, 0, 50)
+CircuitBreaker br = CircuitBreaker(cfgP)
+IdempotencyTable idem = IdempotencyTable()
+RetryPolicy rp = RetryPolicy(cfgP, br, idem)
+MockDownstream m = MockDownstream()
+m.setFailNext(2)
+int before = pool.acquireCount()
+string r = rp.executeOnPool("GET", "/proxy/data", pool, m, 100, 0.5)
+assertTrue("executeOnPool ok", r == "ok")
+assertTrue("executeOnPool 3 acquires", pool.acquireCount() - before == 3)
+assertTrue("executeOnPool idle", pool.busyCount() == 0)
+
+print("=== faults done ===")

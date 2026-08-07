@@ -1,5 +1,6 @@
 # examples/webserver/retry.pys
 # §6 retry policy + DownstreamCall contract (same package).
+# FR8: executeOnPool acquires a fresh pool slot per attempt (spec §10.2).
 
 import time
 import random
@@ -8,6 +9,8 @@ import threading
 import ServerConfig from config
 import CircuitBreaker from circuit_breaker
 import IdempotencyTable from idempotency
+import DownstreamPool from pool
+import MockDownstream, MockCall from mock_downstream
 
 # DownstreamCall: implement invoke() → "ok" | "retryable" | "fatal" (ISP via package interface).
 package interface DownstreamCall {
@@ -54,7 +57,67 @@ package class RetryPolicy {
         return delay * jitter
     }
 
+    # FR8: each attempt = acquire → invoke → release; backoff holds no slot.
+    # Returns ok | fatal | retryable | timeout | circuit_open | queue_full.
+    public string executeOnPool(
+        string method,
+        string path,
+        DownstreamPool pool,
+        MockDownstream mock,
+        int downstreamBudgetMs,
+        float handlerBudgetSec
+    ) {
+        bool canRetry = this.cfg.retriesEnabled && this.idem.mayRetry(method, path)
+        float started = time.monotonic()
+        int attempt = 0
+        loop (attempt < this.cfg.retryMaxAttempts) {
+            float elapsed = time.monotonic() - started
+            if (elapsed >= handlerBudgetSec) {
+                return "timeout"
+            }
+            if (!this.breaker.allow()) {
+                return "circuit_open"
+            }
+            if (!pool.acquire()) {
+                return "queue_full"
+            }
+            MockCall call = MockCall(mock, downstreamBudgetMs)
+            string result = call.invoke()
+            pool.release()
+            if (result == "ok") {
+                this.breaker.onSuccess()
+                return "ok"
+            }
+            if (result == "fatal") {
+                this.breaker.onFailure()
+                return "fatal"
+            }
+            this.breaker.onFailure()
+            if (!canRetry) {
+                return "retryable"
+            }
+            if (attempt + 1 >= this.cfg.retryMaxAttempts) {
+                return "retryable"
+            }
+            if (!this.breaker.allow()) {
+                return "circuit_open"
+            }
+            float backoff = this.backoffSeconds(attempt)
+            elapsed = time.monotonic() - started
+            if (elapsed + backoff >= handlerBudgetSec) {
+                return "timeout"
+            }
+            this.lock.acquire()
+            this.retryAttemptsTotal = this.retryAttemptsTotal + 1
+            this.lock.release()
+            time.sleep(backoff)
+            attempt = attempt + 1
+        }
+        return "retryable"
+    }
+
     # handlerBudgetSec: remaining wall time for the handler (FR6); skip retry sleep if exhausted.
+    # Prefer executeOnPool when a DownstreamPool is involved (FR8).
     public string execute(string method, string path, var call, float handlerBudgetSec) {
         bool canRetry = this.cfg.retriesEnabled && this.idem.mayRetry(method, path)
         float started = time.monotonic()

@@ -9,12 +9,20 @@ package class ConnHandler {
     private Http2Server http2
     private var router
     private float idleTimeoutSec
+    private float writeTimeoutSec
 
-    public ConnHandler(Http11 http, Http2Server http2, var router, float idleTimeoutSec) {
+    public ConnHandler(
+        Http11 http,
+        Http2Server http2,
+        var router,
+        float idleTimeoutSec,
+        float writeTimeoutSec
+    ) {
         this.http = http
         this.http2 = http2
         this.router = router
         this.idleTimeoutSec = idleTimeoutSec
+        this.writeTimeoutSec = writeTimeoutSec
     }
 
     public void serveOne(var conn) {
@@ -26,7 +34,7 @@ package class ConnHandler {
             }
         }
         if (alpn == "h2") {
-            this.http2.serve(conn, this.router)
+            this.http2.serve(conn, this.router, this.writeTimeoutSec)
         } else {
             this.serveHttp11(conn)
         }
@@ -34,7 +42,7 @@ package class ConnHandler {
     }
 
     public void serveHttp11(var conn) {
-        # FR6 read timeout on the socket; idle wait also uses select in readRaw.
+        # FR6 read/idle timeout on the socket; write deadline applied before send.
         conn.settimeout(this.idleTimeoutSec)
         bool open = true
         loop (open) {
@@ -44,7 +52,9 @@ package class ConnHandler {
             } else {
                 HttpRequest req = this.http.parse(raw)
                 var resp = this.router.handle(req)
+                conn.settimeout(this.writeTimeoutSec)
                 this.http.write(conn, resp, req.keepAlive)
+                conn.settimeout(this.idleTimeoutSec)
                 if (!req.keepAlive) {
                     open = false
                 }

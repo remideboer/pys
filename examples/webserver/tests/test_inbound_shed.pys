@@ -1,0 +1,34 @@
+# examples/webserver/tests/test_inbound_shed.pys
+# FR4: bounded inbound ConnQueue → tryPut fails (429 path in main acceptor).
+
+import ConnQueue from conn_queue
+import Metrics from metrics
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== webserver inbound shed (FR4) ===")
+
+ConnQueue q = ConnQueue(1)
+assertTrue("first put ok", q.tryPutConn("c1"))
+assertTrue("second put sheds", !q.tryPutConn("c2"))
+assertTrue("pending is 1", q.pendingCount() == 1)
+var taken = q.takeConn()
+assertTrue("took first", taken == "c1")
+assertTrue("put after take ok", q.tryPutConn("c3"))
+
+ConnQueue unbounded = ConnQueue(0)
+assertTrue("unbounded put", unbounded.tryPutConn("x"))
+assertTrue("unbounded put2", unbounded.tryPutConn("y"))
+
+Metrics m = Metrics()
+m.onInboundFull()
+string text = m.prometheusText(0, "closed")
+assertTrue("metric inbound_full", text.find("pys_reject_inbound_full_total 1") >= 0)
+
+print("=== inbound shed done ===")
