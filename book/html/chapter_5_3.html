@@ -121,7 +121,7 @@
     <main>
 <h1>6.3. Passing functions around</h1>
 <p>Because lambdas are values, you can pass them into helpers:</p>
-<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">apply</span>(<span class="tok-type">int</span> <span class="tok-ident">value</span>, <span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">fn</span>) {
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">apply</span>(<span class="tok-type">int</span> <span class="tok-ident">value</span>, <span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span> <span class="tok-op">-</span><span class="tok-op">&gt;</span> <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">fn</span>) {
     <span class="tok-kw">return</span> <span class="tok-ident">fn</span>(<span class="tok-ident">value</span>)
 }
 
@@ -148,7 +148,7 @@ an <code>if</code>, <code>break</code>, or more than one statement per item — 
 </code></pre>
 <h3>Exercise</h3>
 <blockquote>
-<p>Write <code>function int applyTwice(int value, lambda&lt;int, int&gt; fn)</code> that
+<p>Write <code>function int applyTwice(int value, lambda&lt;int -&gt; int&gt; fn)</code> that
 applies <code>fn</code> twice. Call it with <code>n =&gt; n + 1</code> starting from <code>0</code>.</p>
 </blockquote>
 <hr />

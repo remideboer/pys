@@ -44,7 +44,7 @@ test('extension manifest exposes entrypoint command and result language support'
     fs.readFileSync(path.join(extensionRoot, 'package.json'), 'utf8'),
   );
   const commands = manifest.contributes.commands.map((entry) => entry.command);
-  assert.equal(manifest.version, '0.0.77');
+  assert.equal(manifest.version, '0.0.78');
   assert.ok(commands.includes('pys.setAsEntrypoint'));
 
   const grammar = fs.readFileSync(

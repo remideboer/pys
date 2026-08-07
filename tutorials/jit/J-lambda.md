@@ -3,15 +3,15 @@
 ## Forms
 
 ```pys
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 print(isEven(4))
 
-function int apply(int x, lambda<int, int> fn) {
+function int apply(int x, lambda<int -> int> fn) {
     return fn(x)
 }
 print(apply(5, n => n * 2))
 
-lambda<int, int, int> safeDivide = (int a, int b) => {
+lambda<int, int -> int> safeDivide = (a, b) => {
     if (b == 0) {
         return 0
     }
@@ -50,7 +50,8 @@ under concurrent tasks ([J-atomic](J-atomic.md)).
 
 ## Rules
 
-1. `lambda<P…, R>` — last type is return; `lambda<R>` = no parameters  
+1. `lambda<P… -> R>` — params left of `->`, return right; sugar `lambda<R>`
+   (or `lambda<-> R>`) = no parameters  
 2. Body: expression (implicit return) or `{ … }` with `return`  
 3. Captures read-only unless `shared` or `atomic`  
 4. `arr.loop(fn)` → map, not filter  

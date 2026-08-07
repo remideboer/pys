@@ -250,7 +250,7 @@
   "Lambda binding": {
     "prefix": "lambda",
     "body": [
-      "lambda<${1:int}, ${2:bool}> ${3:name} = ${4:n} => ${5:n % 2 == 0}",
+      "lambda<${1:int} -> ${2:bool}> ${3:name} = ${4:n} => ${5:n % 2 == 0}",
       "${0}"
     ],
     "description": "PYS lambda type binding (by-value capture)"

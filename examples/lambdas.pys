@@ -3,18 +3,18 @@
 # are read-only unless declared `shared`. See tutorials/jit/J-lambda.md.
 
 # --- Named lambda<…> type + inferred param ---
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 print(isEven(4))  # True
 print(isEven(3))  # False
 
 # --- Pass as argument ---
-function int apply(int x, lambda<int, int> fn) {
+function int apply(int x, lambda<int -> int> fn) {
     return fn(x)
 }
 print(apply(5, n => n * 2))  # 10
 
-# --- Block body with return ---
-lambda<int, int, int> safeDivide = (int a, int b) => {
+# --- Block body with return (param types omitted; taken from lambda<…>) ---
+lambda<int, int -> int> safeDivide = (a, b) => {
     if (b == 0) {
         return 0
     }
@@ -22,6 +22,10 @@ lambda<int, int, int> safeDivide = (int a, int b) => {
 }
 print(safeDivide(10, 2))  # 5
 print(safeDivide(10, 0))  # 0
+
+# --- Explicit zero-param form (same as sugar lambda<int>) ---
+lambda<-> int> answer = () => 42
+print(answer())  # 42
 
 # --- .loop maps (not filter): callback returns a value per element ---
 list<int> numbers = [1, 2, 3, 4, 5]

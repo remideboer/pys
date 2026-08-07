@@ -1775,15 +1775,26 @@ class _Emitter:
             return ""
         inner = text[len("lambda<") : -1]
         depth = 0
-        last_comma = -1
-        for index, char in enumerate(inner):
-            if char == "<":
+        arrow_at: int | None = None
+        i = 0
+        while i < len(inner):
+            ch = inner[i]
+            if ch == "<":
                 depth += 1
-            elif char == ">":
+                i += 1
+                continue
+            if ch == ">":
                 depth -= 1
-            elif char == "," and depth == 0:
-                last_comma = index
-        return inner[last_comma + 1 :].strip()
+                i += 1
+                continue
+            if depth == 0 and inner.startswith("->", i):
+                arrow_at = i
+                break
+            i += 1
+        if arrow_at is not None:
+            return inner[arrow_at + 2 :].strip()
+        # Sugar `lambda<R>`: whole inner is the return type.
+        return inner.strip()
 
     def _lambda(
         self, expr: LambdaExpr, *, expected_type: str | None = None

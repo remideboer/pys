@@ -12,7 +12,7 @@
 
 `result<T, E>` is a built-in, lowercase generic type representing the outcome of an operation that can either succeed with a value of type `T` or fail with an error of type `E`. It is the sole mechanism PYS provides for *recoverable* errors — errors the caller can reasonably be expected to react to (a malformed file, a failed network request, invalid user input). PYS deliberately has no `try`/`catch` construct; this specification, together with the earlier evaluation of that decision, replaces it.
 
-Consistent with `int`, `list<T>`, and `lambda<T,R>` being lowercase built-in types, `result<T,E>`'s constructors are also lowercase — `ok(...)` and `err(...)` — rather than the PascalCase `Ok`/`Err` used in the earlier informal examples. This keeps the signal consistent: a capitalized identifier in PYS always denotes a user-defined type or constructor; a lowercase one always denotes a language-level construct or literal, matching `true`/`false`/`null`.
+Consistent with `int`, `list<T>`, and `lambda<T -> R>` being lowercase built-in types, `result<T,E>`'s constructors are also lowercase — `ok(...)` and `err(...)` — rather than the PascalCase `Ok`/`Err` used in the earlier informal examples. This keeps the signal consistent: a capitalized identifier in PYS always denotes a user-defined type or constructor; a lowercase one always denotes a language-level construct or literal, matching `true`/`false`/`null`.
 
 ### 2. Grammar
 

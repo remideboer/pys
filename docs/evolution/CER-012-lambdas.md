@@ -22,11 +22,15 @@ teaching samples.
 ### Post-behavior
 
 - Keyword `lambda`; `LambdaExpr`; parse `n =>` / `(…) =>` / block bodies.
-- Type `lambda<…>`; param inference from binding/call targets.
+- Type `lambda<P… -> R>`; sugar `lambda<R>`; explicit zero-param `lambda<-> R>`;
+  param inference from binding/call targets. Old last-is-return comma forms
+  rejected (`pys.lambda-type-arrow`).
 - Capture SA (`pys.lambda-capture`); foreach vars frozen like C-style counters.
 - Emit `def _pys_lam_N(... , _c_free=free)` for by-value snapshots.
 - Docs/IDE 0.0.45; `examples/lambdas.pys` (DoD elaborate + Python pitfall contrast).
 - ~~`atomic` deferred~~ — delivered in [CER-013](CER-013-atomic.md) / ADR-013.
+- Arrow type separator (`->` inside `lambda<…>`) — teaching clarity vs
+  C#-style last-arg-is-return; extension ≥ 0.0.78.
 
 ### Evidence
 

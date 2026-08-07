@@ -569,7 +569,7 @@ def test_result_typed_lambda_catches_its_own_propagation(capsys) -> None:
         "    }\n"
         "    return ok(4)\n"
         "}\n"
-        "lambda<bool, result<int, string>> run = fail => {\n"
+        "lambda<bool -> result<int, string>> run = fail => {\n"
         "    int value = mayFail(fail) propagate\n"
         "    return ok(value + 1)\n"
         "}\n"

@@ -15,7 +15,7 @@ loop gets that iteration’s value.
 > bug cannot compile into your program.
 
 ```pys
-list<lambda<int, int>> adders = []
+list<lambda<int -> int>> adders = []
 loop (int i = 0; i < 3; i++) {
     adders.append((int x) => x + i)
 }
@@ -39,7 +39,7 @@ otherwise treat captures as snapshots.
 
 ### Exercise
 
-> Build three `lambda<string, string>` values that prefix `"A: "`, `"B: "`,
+> Build three `lambda<string -> string>` values that prefix `"A: "`, `"B: "`,
 > and `"C: "` respectively, store them in a list, and call each on
 > `"ok"`.
 

@@ -1013,6 +1013,8 @@ def _parse_type_name(p: _Tok) -> str:
             )
         return base
     p.eat(TokenKind.LT)
+    if base == "lambda":
+        return _parse_lambda_type_args(p, base_tok)
     args = [_parse_type_name(p)]
     while p.at(TokenKind.COMMA):
         p.eat(TokenKind.COMMA)
@@ -1060,6 +1062,45 @@ def _parse_type_name(p: _Tok) -> str:
             tips=[f"Use `{args[0]}` directly."],
         )
     return f"{base}<{', '.join(args)}>"
+
+
+def _parse_lambda_type_args(p: _Tok, base_tok: Token) -> str:
+    """Parse inside `lambda<…>` after `<` was eaten.
+
+    Forms: sugar `lambda<R>`, explicit zero-param `lambda<-> R>`,
+    and `lambda<P… -> R>`. Old comma-only multi-arg forms are rejected.
+    """
+    if p.at(TokenKind.OP, text="->"):
+        p.eat(TokenKind.OP, text="->")
+        ret = _parse_type_name(p)
+        p.eat_gt()
+        return f"lambda<-> {ret}>"
+
+    params = [_parse_type_name(p)]
+    while p.at(TokenKind.COMMA):
+        p.eat(TokenKind.COMMA)
+        params.append(_parse_type_name(p))
+
+    if p.at(TokenKind.OP, text="->"):
+        p.eat(TokenKind.OP, text="->")
+        ret = _parse_type_name(p)
+        p.eat_gt()
+        return f"lambda<{', '.join(params)} -> {ret}>"
+
+    if len(params) == 1 and p.at_gt():
+        p.eat_gt()
+        return f"lambda<{params[0]}>"
+
+    raise FatalParseError(
+        "Lambda types separate parameters from the return type with `->`.",
+        base_tok.line,
+        base_tok.column,
+        code="pys.lambda-type-arrow",
+        tips=[
+            "Write `lambda<int -> bool>` or `lambda<int, int -> int>`.",
+            "Zero parameters: sugar `lambda<int>` or explicit `lambda<-> int>`.",
+        ],
+    )
 
 
 def _at_generic_typed_decl(p: _Tok) -> bool:

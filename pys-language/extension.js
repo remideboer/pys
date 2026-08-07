@@ -556,7 +556,7 @@ function activate(context) {
         data: 'Immutable value object: `data Money { int amountCents\n  string currency }`\nStructural `==` over all fields; fields implicitly fix. No methods/inherits/uses.',
         entity: 'Identity-keyed type: `entity Customer identity(customerId) { private fix int customerId … }`\n`==` uses identity fields only. Root needs `identity(...)`; keys must be `fix`. May inherit another entity.',
         identity: 'Entity key clause: `entity Name identity(id, …) { … }`.\nRoot entities require it; derived entities may omit (share parent keys) or append local fix fields.',
-        lambda: 'Function type / keyword: `lambda<int, bool> isEven = n => n % 2 == 0`.\nCapture by value; captured names read-only unless `shared` or `atomic`. Body: `=> expr` or `=> { … }`.',
+        lambda: 'Function type / keyword: `lambda<int -> bool> isEven = n => n % 2 == 0`.\nParams left of `->`, return right; sugar `lambda<R>` / `lambda<-> R>` for zero params.\nCapture by value; captured names read-only unless `shared` or `atomic`. Body: `=> expr` or `=> { … }`.',
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
         uses: 'Compose traits onto a class: `class Product uses Printable { … }` or remap requires: `uses Printable(name: title)`.\nPlaced after `inherits` and before `implements`. Remapping applies only to `requires`, not trait method names.',

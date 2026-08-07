@@ -5341,30 +5341,64 @@ def _check_enums(
 
 
 def _parse_lambda_type_parts(type_name: str) -> tuple[list[str], str] | None:
-    """Split `lambda<P…, R>` into (param_types, return_type). `lambda<R>` → ([], R)."""
+    """Split `lambda<P… -> R>` into (param_types, return_type).
+
+    Sugar `lambda<R>` and explicit `lambda<-> R>` both yield ([], R).
+    """
     name = (type_name or "").strip()
     if not name.startswith("lambda<") or not name.endswith(">"):
         return None
     inner = name[len("lambda<") : -1].strip()
     if not inner:
         return None
+
+    # Find top-level `->` (not inside nested `<…>`).
+    depth = 0
+    arrow_at: int | None = None
+    i = 0
+    while i < len(inner):
+        ch = inner[i]
+        if ch == "<":
+            depth += 1
+            i += 1
+            continue
+        if ch == ">":
+            depth -= 1
+            i += 1
+            continue
+        if depth == 0 and inner.startswith("->", i):
+            arrow_at = i
+            break
+        i += 1
+
+    if arrow_at is None:
+        # Sugar: single return type, zero params.
+        if "," in inner:
+            return None
+        return [], inner.strip()
+
+    left = inner[:arrow_at].strip()
+    right = inner[arrow_at + 2 :].strip()
+    if not right:
+        return None
+    if not left:
+        return [], right
+
     parts: list[str] = []
     depth = 0
     start = 0
-    for i, ch in enumerate(inner):
+    for j, ch in enumerate(left):
         if ch == "<":
             depth += 1
         elif ch == ">":
             depth -= 1
         elif ch == "," and depth == 0:
-            parts.append(inner[start:i].strip())
-            start = i + 1
-    parts.append(inner[start:].strip())
+            parts.append(left[start:j].strip())
+            start = j + 1
+    parts.append(left[start:].strip())
     if not parts or any(not p for p in parts):
         return None
-    if len(parts) == 1:
-        return [], parts[0]
-    return parts[:-1], parts[-1]
+    return parts, right
 
 
 def _infer_lambda_params(expr: LambdaExpr, target_type: str) -> None:

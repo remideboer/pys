@@ -30,7 +30,10 @@ PYS rule (same pedagogical pattern as `requires` and `identity(...)`).
 
 ## Decision
 
-1. Syntax: `params => expr` / `params => { … }`; type `lambda<P…, R>` (last is return).
+1. Syntax: `params => expr` / `params => { … }`; type `lambda<P… -> R>`
+   (params left of `->`, return right). Sugar `lambda<R>` and explicit
+   `lambda<-> R>` are zero-parameter forms. Old comma-only multi-arg types
+   (`lambda<int, bool>` meaning last-is-return) are rejected.
 2. Capture **by value** at creation; captured names read-only unless `shared`
    or `atomic` (atomic implies shared for capture — see [ADR-013](ADR-013-atomic.md)).
 3. Foreach loop variables are immutable per iteration (same as C-style counters).

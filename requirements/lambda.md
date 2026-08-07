@@ -22,11 +22,11 @@ lambda_param      = [ type_name ] , identifier ;
 
 (* ------------------------- Lambda type ------------------------- *)
 
-lambda_type       = "lambda" , "<" , type_expr , { "," , type_expr } , ">" ;
-(* Last type_expr is the return type; all preceding type_exprs are
-   parameter types, in order. lambda<int> denotes a zero-parameter
-   lambda returning int: () => int.
-   lambda<int, int, bool> denotes (int, int) => bool. *)
+lambda_type       = "lambda" , "<" , lambda_type_inner , ">" ;
+lambda_type_inner = type_expr
+                  | [ type_expr , { "," , type_expr } ] , "->" , type_expr ;
+(* Sugar `lambda<R>` = () => R. Explicit zero-param: `lambda<-> R>`.
+   With params: `lambda<int -> bool>`, `lambda<int, int -> int>`. *)
 ```
 
 Amendment to `type_expr`:
@@ -76,9 +76,9 @@ list<int> filtered = numbers.loop(n => n > threshold)
 **Named `lambda<...>` type — reusable, benefits from being a first-class value with a type:**
 
 ```pys
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 
-function int apply(int x, lambda<int, int> fn) {
+function int apply(int x, lambda<int -> int> fn) {
     return fn(x)
 }
 
@@ -88,7 +88,7 @@ int result = apply(5, n => n * 2)
 **Block-form lambda body with `return`:**
 
 ```pys
-lambda<int, int, int> safeDivide = (int a, int b) => {
+lambda<int, int -> int> safeDivide = (a, b) => {
     if (b == 0) {
         return 0
     }

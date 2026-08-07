@@ -3,7 +3,7 @@
 Because lambdas are values, you can pass them into helpers:
 
 ```pys
-function int apply(int value, lambda<int, int> fn) {
+function int apply(int value, lambda<int -> int> fn) {
     return fn(value)
 }
 
@@ -44,7 +44,7 @@ Output:
 
 ### Exercise
 
-> Write `function int applyTwice(int value, lambda<int, int> fn)` that
+> Write `function int applyTwice(int value, lambda<int -> int> fn)` that
 > applies `fn` twice. Call it with `n => n + 1` starting from `0`.
 
 ---

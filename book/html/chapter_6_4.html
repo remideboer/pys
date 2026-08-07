@@ -132,7 +132,7 @@ C# <code>foreach</code> had the same “one shared binding” trap. PYS snapshot
 value at creation and keeps loop binders per-iteration so that class of
 bug cannot compile into your program.</p>
 </blockquote>
-<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;&gt;</span> <span class="tok-ident">adders</span> <span class="tok-op">=</span> []
+<pre><code class="language-pys"><span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span> <span class="tok-op">-</span><span class="tok-op">&gt;</span> <span class="tok-type">int</span><span class="tok-op">&gt;&gt;</span> <span class="tok-ident">adders</span> <span class="tok-op">=</span> []
 <span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">i</span> <span class="tok-op">=</span> <span class="tok-number">0</span>; <span class="tok-ident">i</span> <span class="tok-op">&lt;</span> <span class="tok-number">3</span>; <span class="tok-ident">i</span><span class="tok-op">++</span>) {
     <span class="tok-ident">adders</span>.<span class="tok-ident">append</span>((<span class="tok-type">int</span> <span class="tok-ident">x</span>) <span class="tok-op">=&gt;</span> <span class="tok-ident">x</span> <span class="tok-op">+</span> <span class="tok-ident">i</span>)
 }
@@ -149,7 +149,7 @@ predictable: say when mutation crosses a boundary (<code>shared</code> / <code>a
 otherwise treat captures as snapshots.</p>
 <h3>Exercise</h3>
 <blockquote>
-<p>Build three <code>lambda&lt;string, string&gt;</code> values that prefix <code>"A: "</code>, <code>"B: "</code>,
+<p>Build three <code>lambda&lt;string -&gt; string&gt;</code> values that prefix <code>"A: "</code>, <code>"B: "</code>,
 and <code>"C: "</code> respectively, store them in a list, and call each on
 <code>"ok"</code>.</p>
 </blockquote>

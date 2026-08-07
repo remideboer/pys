@@ -1,14 +1,16 @@
 # 6.2. Lambdas
 
-A lambda type lists parameter types and then the return type:
-`lambda<int, bool>` means “one `int` in, `bool` out”.
+A lambda type lists **inputs left of `->`** and the **return type on the
+right**: `lambda<int -> bool>` means “one `int` in, `bool` out”.
+Sugar `lambda<int>` (or explicit `lambda<-> int>`) means no parameters,
+returns `int`.
 
 ```pys
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 print(isEven(4))
 print(isEven(5))
 
-lambda<int, int, int> safeDivide = (int a, int b) => {
+lambda<int, int -> int> safeDivide = (a, b) => {
     if (b == 0) {
         return 0
     }
@@ -26,6 +28,10 @@ False
 ```
 
 
+Parameter types on `(a, b)` are omitted here: the binding’s `lambda<…>`
+already names them. You may write `(int a, int b)` if you want the types
+repeated next to the names.
+
 Forms: `n => expr`, `(params) => expr`, `(params) => { … }`, `() => …`.
 
 Captures are **by value** at creation and read-only unless the outer name
@@ -35,7 +41,7 @@ then, treat captured names as snapshots you can read, not reassign.
 
 ### Exercise
 
-> Write `lambda<string, string> shout` that adds `"!"` and call it on
+> Write `lambda<string -> string> shout` that adds `"!"` and call it on
 > `"hey"`.
 
 ---

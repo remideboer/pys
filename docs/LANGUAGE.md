@@ -889,14 +889,15 @@ Rules (summary):
 
 ### Lambdas
 
-Anonymous first-class functions. Type form `lambda<P…, R>` (last type is the
-return; `lambda<int>` means zero parameters returning `int`).
+Anonymous first-class functions. Type form `lambda<P… -> R>` (parameters left
+of `->`, return type right). Sugar `lambda<int>` means zero parameters
+returning `int`; write `lambda<-> int>` for the same shape without sugar.
 
 ```pys
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 int doubled = apply(5, n => n * 2)
 
-lambda<int, int, int> safeDivide = (int a, int b) => {
+lambda<int, int -> int> safeDivide = (a, b) => {
     if (b == 0) {
         return 0
     }

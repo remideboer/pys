@@ -120,13 +120,15 @@
     </nav>
     <main>
 <h1>6.2. Lambdas</h1>
-<p>A lambda type lists parameter types and then the return type:
-<code>lambda&lt;int, bool&gt;</code> means “one <code>int</code> in, <code>bool</code> out”.</p>
-<pre><code class="language-pys"><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">bool</span><span class="tok-op">&gt;</span> <span class="tok-ident">isEven</span> <span class="tok-op">=</span> <span class="tok-ident">n</span> <span class="tok-op">=&gt;</span> <span class="tok-ident">n</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>
+<p>A lambda type lists <strong>inputs left of <code>-&gt;</code></strong> and the <strong>return type on the
+right</strong>: <code>lambda&lt;int -&gt; bool&gt;</code> means “one <code>int</code> in, <code>bool</code> out”.
+Sugar <code>lambda&lt;int&gt;</code> (or explicit <code>lambda&lt;-&gt; int&gt;</code>) means no parameters,
+returns <code>int</code>.</p>
+<pre><code class="language-pys"><span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span> <span class="tok-op">-</span><span class="tok-op">&gt;</span> <span class="tok-type">bool</span><span class="tok-op">&gt;</span> <span class="tok-ident">isEven</span> <span class="tok-op">=</span> <span class="tok-ident">n</span> <span class="tok-op">=&gt;</span> <span class="tok-ident">n</span> <span class="tok-op">%</span> <span class="tok-number">2</span> <span class="tok-op">==</span> <span class="tok-number">0</span>
 <span class="tok-builtin">print</span>(<span class="tok-ident">isEven</span>(<span class="tok-number">4</span>))
 <span class="tok-builtin">print</span>(<span class="tok-ident">isEven</span>(<span class="tok-number">5</span>))
 
-<span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span>, <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">safeDivide</span> <span class="tok-op">=</span> (<span class="tok-type">int</span> <span class="tok-ident">a</span>, <span class="tok-type">int</span> <span class="tok-ident">b</span>) <span class="tok-op">=&gt;</span> {
+<span class="tok-kw">lambda</span><span class="tok-op">&lt;</span><span class="tok-type">int</span>, <span class="tok-type">int</span> <span class="tok-op">-</span><span class="tok-op">&gt;</span> <span class="tok-type">int</span><span class="tok-op">&gt;</span> <span class="tok-ident">safeDivide</span> <span class="tok-op">=</span> (<span class="tok-ident">a</span>, <span class="tok-ident">b</span>) <span class="tok-op">=&gt;</span> {
     <span class="tok-kw">if</span> (<span class="tok-ident">b</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
         <span class="tok-kw">return</span> <span class="tok-number">0</span>
     }
@@ -138,6 +140,9 @@
 False
 5.0
 </code></pre>
+<p>Parameter types on <code>(a, b)</code> are omitted here: the binding’s <code>lambda&lt;…&gt;</code>
+already names them. You may write <code>(int a, int b)</code> if you want the types
+repeated next to the names.</p>
 <p>Forms: <code>n =&gt; expr</code>, <code>(params) =&gt; expr</code>, <code>(params) =&gt; { … }</code>, <code>() =&gt; …</code>.</p>
 <p>Captures are <strong>by value</strong> at creation and read-only unless the outer name
 is <code>shared</code> or <code>atomic</code> — concurrency keywords taught in
@@ -145,7 +150,7 @@ is <code>shared</code> or <code>atomic</code> — concurrency keywords taught in
 then, treat captured names as snapshots you can read, not reassign.</p>
 <h3>Exercise</h3>
 <blockquote>
-<p>Write <code>lambda&lt;string, string&gt; shout</code> that adds <code>"!"</code> and call it on
+<p>Write <code>lambda&lt;string -&gt; string&gt; shout</code> that adds <code>"!"</code> and call it on
 <code>"hey"</code>.</p>
 </blockquote>
 <hr />

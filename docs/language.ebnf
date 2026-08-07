@@ -111,9 +111,13 @@ type_expr        = primitive_type
 
 collection_type  = "list" | "dict" | "tuple" | "set" ;
 
-lambda_type      = "lambda" , "<" , type_expr , { "," , type_expr } , ">" ;
-(* Last type_expr is the return type; preceding are parameter types.
-   lambda<int> = () => int; lambda<int, bool> = (int) => bool. *)
+lambda_type      = "lambda" , "<" , lambda_type_inner , ">" ;
+lambda_type_inner = type_expr
+                  | [ type_expr , { "," , type_expr } ] , "->" , type_expr ;
+(* Sugar `lambda<R>` = zero parameters returning R.
+   Explicit zero-param: `lambda<-> R>`.
+   With params: `lambda<int -> bool>`, `lambda<int, int -> int>`.
+   Comma-only multi-arg forms (old last-is-return) are illegal. *)
 
 result_type      = "result" , "<" , result_value_type , "," , type_expr , ">" ;
 result_value_type = type_expr | "void" ;

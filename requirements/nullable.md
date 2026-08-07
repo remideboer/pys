@@ -55,7 +55,7 @@ required at every use.
 5. **Transferable vocabulary.** Students learn the industry term `null` while
    PYS removes the implicit-nullability traps found in older type systems.
 6. **Explicit words over punctuation.** `nullable<T>` follows `result<T,E>`,
-   `lambda<T,R>`, `identity(...)`, and `propagate`; no terse `T?` or `!`.
+   `lambda<T -> R>`, `identity(...)`, and `propagate`; no terse `T?` or `!`.
 7. **No duplicate spellings.** `null` is the sole absence literal. PYS does not
    add permanent aliases such as `none`, `nothing`, `empty`, or `blank`.
 

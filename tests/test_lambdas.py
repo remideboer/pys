@@ -31,10 +31,10 @@ def test_example_lambdas_emit_is_valid_python() -> None:
 
 def test_lambda_call_and_apply(capsys: pytest.CaptureFixture[str]) -> None:
     source = """
-lambda<int, bool> isEven = n => n % 2 == 0
+lambda<int -> bool> isEven = n => n % 2 == 0
 print(isEven(4))
 print(isEven(3))
-function int apply(int x, lambda<int, int> fn) {
+function int apply(int x, lambda<int -> int> fn) {
     return fn(x)
 }
 print(apply(5, n => n * 2))
@@ -47,6 +47,45 @@ print(apply(5, n => n * 2))
             [sys.executable, str(path)], capture_output=True, text=True, check=True
         )
     assert proc.stdout.strip().splitlines() == ["True", "False", "10"]
+
+
+def test_lambda_arrow_multi_param_omitted_types(capsys: pytest.CaptureFixture[str]) -> None:
+    source = """
+lambda<int, int -> int> safeDivide = (a, b) => {
+    if (b == 0) {
+        return 0
+    }
+    return a / b
+}
+print(safeDivide(10, 2))
+print(safeDivide(10, 0))
+lambda<-> int> answer = () => 42
+print(answer())
+"""
+    py = transpile(source)
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(path)], capture_output=True, text=True, check=True
+        )
+    assert proc.stdout.strip().splitlines() == ["5.0", "0", "42"]
+
+
+def test_lambda_nested_type_arg() -> None:
+    source = """
+lambda<list<int> -> int> lenish = xs => 0
+print(lenish([1, 2]))
+"""
+    py = transpile(source)
+    ast.parse(py)
+
+
+def test_old_comma_lambda_type_rejected() -> None:
+    with pytest.raises(TranspileError, match=r"->"):
+        transpile("lambda<int, bool> f = n => n > 0\n")
+    with pytest.raises(TranspileError, match=r"->"):
+        transpile("lambda<int, int, int> f = (a, b) => a + b\n")
 
 
 def test_foreach_capture_is_by_value() -> None:
@@ -94,7 +133,7 @@ print(counter)
     [
         (
             "int counter = 0\n"
-            "lambda<int, int> add = n => {\n"
+            "lambda<int -> int> add = n => {\n"
             "  counter += n\n"
             "  return counter\n"
             "}\n",
@@ -105,7 +144,7 @@ print(counter)
             r"immutable",
         ),
         (
-            "lambda<int, bool> f = (int a, int b) => a > b\n",
+            "lambda<int -> bool> f = (int a, int b) => a > b\n",
             r"parameter",
         ),
     ],

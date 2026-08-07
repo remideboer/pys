@@ -363,8 +363,20 @@
     {
       id: 'lambda_type',
       title: 'lambda_type',
-      ebnf: 'lambda_type = "lambda" "<" type_expr { "," type_expr } ">" ;',
-      node: Seq(T('lambda'), T('<'), N('type_expr'), Star(Seq(T(','), N('type_expr'))), T('>'))
+      ebnf: 'lambda_type = "lambda" "<" ( type_expr | [ type_expr { "," type_expr } ] "->" type_expr ) ">" ;',
+      node: Seq(
+        T('lambda'),
+        T('<'),
+        Choice(
+          N('type_expr'),
+          Seq(
+            Opt(Seq(N('type_expr'), Star(Seq(T(','), N('type_expr'))))),
+            T('->'),
+            N('type_expr')
+          )
+        ),
+        T('>')
+      )
     },
     {
       id: 'result_type',
