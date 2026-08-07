@@ -1,0 +1,34 @@
+import os
+
+import StaticFiles from static_files
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== static resolve ===")
+
+string www = os.environ["PYS_STATIC_WWW"]
+StaticFiles files = StaticFiles(www)
+
+string indexPath = files.resolve("/")
+assertTrue("index resolves", indexPath != "")
+assertTrue("index is file", indexPath.find("index.html") >= 0)
+
+string about = files.resolve("/about.html")
+assertTrue("about resolves", about != "")
+
+string missing = files.resolve("/nope.html")
+assertTrue("missing empty", missing == "")
+
+string traversal = files.resolve("/../README.md")
+assertTrue("traversal blocked", traversal == "")
+
+assertTrue("mime html", files.mimeFor("/x.html").find("text/html") >= 0)
+assertTrue("mime css", files.mimeFor("/x.css").find("text/css") >= 0)
+
+print("=== static resolve done ===")

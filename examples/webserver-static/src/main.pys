@@ -1,0 +1,120 @@
+# Static file HTTP server (teaching).
+#
+# Run from examples/webserver-static (or set wwwDir absolute):
+#   python -m transpiler run examples/webserver-static/src/main.pys
+#   curl http://127.0.0.1:8100/
+
+import os
+from pathlib import Path
+import socket
+import select
+
+import ServerConfig from config
+import ConnQueue from conn_queue
+import Http11 from http11
+import ConnHandler from conn_handler
+import StaticFiles from static_files
+import Router from router
+
+ServerConfig cfg = ServerConfig()
+string wwwEnv = os.environ.get("PYS_STATIC_WWW", "")
+if (wwwEnv != "") {
+    cfg.wwwDir = wwwEnv
+} else {
+    if (Path("www/index.html").is_file()) {
+        cfg.wwwDir = str(Path("www").resolve())
+    } else {
+        cfg.wwwDir = str(Path("examples/webserver-static/www").resolve())
+    }
+}
+
+StaticFiles files = StaticFiles(cfg.wwwDir)
+Router router = Router(files)
+Http11 http = Http11()
+ConnHandler handler = ConnHandler(http, router, cfg.idleTimeoutMs / 1000.0, cfg.writeTimeoutMs / 1000.0)
+
+shared ConnQueue work = ConnQueue()
+shared bool running = true
+shared ConnHandler sharedHandler = handler
+
+print("static server on " + cfg.listenHost + ":" + str(cfg.listenPort))
+print("www=" + cfg.wwwDir)
+
+tasks {
+    task acceptor {
+        var srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        var bindAddr = [cfg.listenHost, cfg.listenPort]
+        srv.bind(tuple(bindAddr))
+        srv.listen(64)
+        srv.setblocking(false)
+        print("listening")
+        var empty = []
+        loop (running) {
+            var readers = [srv]
+            var ready = select.select(readers, empty, empty, 0.5)
+            if (len(ready[0]) > 0) {
+                var pair = srv.accept()
+                var client = pair[0]
+                client.setblocking(true)
+                work.putConn(client)
+            }
+        }
+        int w = 0
+        loop (w < 4) {
+            work.putPoison()
+            w = w + 1
+        }
+        srv.close()
+    }
+
+    task worker0 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker1 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker2 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+
+    task worker3 {
+        bool done = false
+        loop (!done) {
+            var conn = work.takeConn()
+            if (conn == null) {
+                done = true
+            } else {
+                sharedHandler.serveOne(conn)
+            }
+        }
+    }
+}
+
+print("server stopped")

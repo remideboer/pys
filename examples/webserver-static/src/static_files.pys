@@ -1,0 +1,66 @@
+# Safe static file resolution under a www root (containment via resolve + prefix).
+
+from pathlib import Path
+
+package class StaticFiles {
+    private Path root
+    private string rootPrefix
+
+    public StaticFiles(string rootDir) {
+        this.root = Path(rootDir).resolve()
+        this.rootPrefix = str(this.root)
+    }
+
+    public string mimeFor(string path) {
+        string lower = path.lower()
+        if (lower.endswith(".html") || lower.endswith(".htm")) {
+            return "text/html; charset=utf-8"
+        }
+        if (lower.endswith(".css")) {
+            return "text/css; charset=utf-8"
+        }
+        if (lower.endswith(".js")) {
+            return "application/javascript; charset=utf-8"
+        }
+        if (lower.endswith(".svg")) {
+            return "image/svg+xml"
+        }
+        if (lower.endswith(".png")) {
+            return "image/png"
+        }
+        if (lower.endswith(".txt")) {
+            return "text/plain; charset=utf-8"
+        }
+        return "application/octet-stream"
+    }
+
+    public string resolve(string urlPath) {
+        string rel = urlPath
+        if (rel == "/" || rel == "") {
+            rel = "/index.html"
+        }
+        if (rel.startswith("/")) {
+            rel = rel[1:]
+        }
+        rel = rel.replace("\\", "/")
+        if (rel.find("..") >= 0) {
+            return ""
+        }
+        Path candidate = this.root / rel
+        candidate = candidate.resolve()
+        string cand = str(candidate)
+        string prefix = this.rootPrefix
+        if (!(cand == prefix || cand.startswith(prefix + "\\") || cand.startswith(prefix + "/"))) {
+            return ""
+        }
+        if (!candidate.is_file()) {
+            return ""
+        }
+        return cand
+    }
+
+    public string readFile(string absPath) {
+        var data = Path(absPath).read_bytes()
+        return data.decode("latin-1")
+    }
+}
