@@ -1,0 +1,33 @@
+import os
+
+import TemplateEngine from template_engine
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== template engine ===")
+
+string root = os.environ["PYS_TEMPLATES_DIR"]
+TemplateEngine engine = TemplateEngine(root)
+
+dict ctx = dict()
+ctx["title"] = "Hi"
+ctx["name"] = "Ada <script>"
+string out = engine.render("hello.html", ctx)
+assertTrue("rendered", out != "")
+assertTrue("title", out.find("Hi") >= 0)
+assertTrue("escaped", out.find("&lt;script&gt;") >= 0)
+assertTrue("no raw script", out.find("<script>") < 0)
+
+string missing = engine.render("nope.html", ctx)
+assertTrue("missing empty", missing == "")
+
+string traverse = engine.render("../README.md", ctx)
+assertTrue("traversal blocked", traverse == "")
+
+print("=== template engine done ===")

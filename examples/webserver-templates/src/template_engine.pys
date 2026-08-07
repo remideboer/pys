@@ -1,0 +1,38 @@
+# Tiny teaching template engine: {{key}} replacement (+ HTML escape).
+
+import html
+from pathlib import Path
+
+package class TemplateEngine {
+    private Path root
+
+    public TemplateEngine(string rootDir) {
+        this.root = Path(rootDir).resolve()
+    }
+
+    public string escape(string value) {
+        return html.escape(value, quote=true)
+    }
+
+    public string render(string templateName, dict context) {
+        Path path = this.root / templateName
+        path = path.resolve()
+        string prefix = str(this.root)
+        string cand = str(path)
+        if (!(cand == prefix || cand.startswith(prefix + "\\") || cand.startswith(prefix + "/"))) {
+            return ""
+        }
+        if (!path.is_file()) {
+            return ""
+        }
+        string text = path.read_text(encoding="utf-8")
+        loop (key in context) {
+            string token = "{{" + str(key) + "}}"
+            string spaced = "{{ " + str(key) + " }}"
+            string value = this.escape(str(context[key]))
+            text = text.replace(token, value)
+            text = text.replace(spaced, value)
+        }
+        return text
+    }
+}

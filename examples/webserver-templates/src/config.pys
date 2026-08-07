@@ -1,0 +1,15 @@
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public string templatesDir
+    public int idleTimeoutMs
+    public int writeTimeoutMs
+
+    public ServerConfig() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8101
+        this.templatesDir = "templates"
+        this.idleTimeoutMs = 2000
+        this.writeTimeoutMs = 2000
+    }
+}

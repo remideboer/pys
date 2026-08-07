@@ -73,5 +73,6 @@ Each record then uses:
 | [CER-036](CER-036-rest-shop-mysql.md) | MySQL REST shop (phase 2 / F-008) | Examples |
 | [CER-037](CER-037-rest-shop-jwt.md) | JWT shop REST (phase 3 / F-009) | Examples |
 | [CER-038](CER-038-webserver-static.md) | Static-file HTTP example | Examples |
+| [CER-039](CER-039-webserver-templates.md) | Template HTTP example | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
