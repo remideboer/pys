@@ -1,0 +1,246 @@
+# Teaching template engine: {{vars}}, {% if %}/{% else %}, {% for %}.
+# Separate from webserver-templates (placeholders only) — CER-040.
+# Brace chars are built with chr() so PYS emit does not treat {{ as formats.
+
+import html
+import re
+from pathlib import Path
+
+package class TemplateEngine {
+    private Path root
+    private string LB
+    private string RB
+
+    public TemplateEngine(string rootDir) {
+        this.root = Path(rootDir).resolve()
+        this.LB = chr(123)
+        this.RB = chr(125)
+    }
+
+    public string escape(string value) {
+        return html.escape(value, quote=true)
+    }
+
+    public bool isTruthy(var value) {
+        if (value == null) {
+            return false
+        }
+        string kind = type(value).__name__
+        if (kind == "bool") {
+            return value == true
+        }
+        if (kind == "int" || kind == "float") {
+            return value != 0
+        }
+        if (kind == "str") {
+            return value != ""
+        }
+        if (kind == "list" || kind == "tuple") {
+            return len(value) > 0
+        }
+        return true
+    }
+
+    public var lookup(dict context, string expr) {
+        string e = expr.strip()
+        var parts = e.split(".")
+        if (!(parts[0] in context)) {
+            return null
+        }
+        var cur = context[parts[0]]
+        int i = 1
+        loop (i < len(parts)) {
+            if (cur == null) {
+                return null
+            }
+            if (type(cur).__name__ != "dict") {
+                return null
+            }
+            string key = parts[i]
+            if (!(key in cur)) {
+                return null
+            }
+            cur = cur[key]
+            i = i + 1
+        }
+        return cur
+    }
+
+    public string tagOpen() {
+        return this.LB + "%"
+    }
+
+    public string tagClose() {
+        return "%" + this.RB
+    }
+
+    public string varOpen() {
+        return this.LB + this.LB
+    }
+
+    public string varClose() {
+        return this.RB + this.RB
+    }
+
+    public string expandVars(string text, dict context) {
+        # Match {{ name }} / {{ p.price }}
+        string pat = re.escape(this.varOpen()) + "\\s*([a-zA-Z_][a-zA-Z0-9_\\.]*)\\s*" + re.escape(this.varClose())
+        var pattern = re.compile(pat)
+        string out = ""
+        int last = 0
+        loop (m in pattern.finditer(text)) {
+            out = out + text[last:m.start()]
+            var value = this.lookup(context, m.group(1))
+            if (value == null) {
+                out = out + ""
+            } else {
+                out = out + this.escape(str(value))
+            }
+            last = m.end()
+        }
+        out = out + text[last:]
+        return out
+    }
+
+    public var matchEnd(string text, int bodyStart, string openWord, string endWord) {
+        int i = bodyStart
+        int depth = 1
+        string openPat = re.escape(this.tagOpen()) + "\\s*" + openWord + "\\b"
+        string endPat = re.escape(this.tagOpen()) + "\\s*" + endWord + "\\s*" + re.escape(this.tagClose())
+        var openRe = re.compile(openPat)
+        var endRe = re.compile(endPat)
+        loop (i < len(text)) {
+            var openM = openRe.search(text, i)
+            var endM = endRe.search(text, i)
+            if (endM == null) {
+                return null
+            }
+            if (openM != null && openM.start() < endM.start()) {
+                depth = depth + 1
+                i = openM.end()
+            } else {
+                depth = depth - 1
+                if (depth == 0) {
+                    list coords = []
+                    coords.append(bodyStart)
+                    coords.append(endM.start())
+                    coords.append(endM.end())
+                    return coords
+                }
+                i = endM.end()
+            }
+        }
+        return null
+    }
+
+    public dict childContext(dict parent, string name, var value) {
+        dict child = dict(parent)
+        child[name] = value
+        return child
+    }
+
+    public string renderString(string text, dict context) {
+        string forPat = re.escape(this.tagOpen()) + "\\s*for\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s+in\\s+([a-zA-Z_][a-zA-Z0-9_\\.]*)\\s*" + re.escape(this.tagClose())
+        string ifPat = re.escape(this.tagOpen()) + "\\s*if\\s+([a-zA-Z_][a-zA-Z0-9_\\.]*)\\s*" + re.escape(this.tagClose())
+        var forRe = re.compile(forPat)
+        var ifRe = re.compile(ifPat)
+        var forM = forRe.search(text)
+        var ifM = ifRe.search(text)
+        int forPos = 999999
+        int ifPos = 999999
+        if (forM != null) {
+            forPos = forM.start()
+        }
+        if (ifM != null) {
+            ifPos = ifM.start()
+        }
+        if (forPos == 999999 && ifPos == 999999) {
+            return this.expandVars(text, context)
+        }
+        if (forPos < ifPos) {
+            string varName = forM.group(1)
+            string listExpr = forM.group(2)
+            var coords = this.matchEnd(text, forM.end(), "for", "endfor")
+            if (coords == null) {
+                return ""
+            }
+            string body = text[coords[0]:coords[1]]
+            string prefix = text[0:forM.start()]
+            string suffix = text[coords[2]:]
+            var items = this.lookup(context, listExpr)
+            string built = ""
+            string kind = ""
+            if (items != null) {
+                kind = type(items).__name__
+            }
+            if (kind == "list" || kind == "tuple") {
+                loop (item in items) {
+                    built = built + this.renderString(body, this.childContext(context, varName, item))
+                }
+            }
+            return this.renderString(prefix + built + suffix, context)
+        }
+        string condExpr = ifM.group(1)
+        var coords = this.matchEnd(text, ifM.end(), "if", "endif")
+        if (coords == null) {
+            return ""
+        }
+        string inner = text[coords[0]:coords[1]]
+        string prefix = text[0:ifM.start()]
+        string suffix = text[coords[2]:]
+        string thenPart = inner
+        string elsePart = ""
+        int depth = 0
+        int j = 0
+        int elseAt = -1
+        var openIfRe = re.compile(re.escape(this.tagOpen()) + "\\s*if\\b")
+        var endIfRe = re.compile(re.escape(this.tagOpen()) + "\\s*endif\\s*" + re.escape(this.tagClose()))
+        var elseRe = re.compile(re.escape(this.tagOpen()) + "\\s*else\\s*" + re.escape(this.tagClose()))
+        loop (j < len(inner)) {
+            var openIf = openIfRe.match(inner, j)
+            var endIf = endIfRe.match(inner, j)
+            var elseTag = elseRe.match(inner, j)
+            if (openIf != null) {
+                depth = depth + 1
+                j = openIf.end()
+            } else {
+                if (endIf != null) {
+                    depth = depth - 1
+                    j = endIf.end()
+                } else {
+                    if (elseTag != null && depth == 0) {
+                        elseAt = j
+                        j = len(inner)
+                    } else {
+                        j = j + 1
+                    }
+                }
+            }
+        }
+        if (elseAt >= 0) {
+            var elseM = elseRe.match(inner, elseAt)
+            thenPart = inner[0:elseAt]
+            elsePart = inner[elseM.end():]
+        }
+        string chosen = elsePart
+        if (this.isTruthy(this.lookup(context, condExpr))) {
+            chosen = thenPart
+        }
+        return this.renderString(prefix + chosen + suffix, context)
+    }
+
+    public string render(string templateName, dict context) {
+        Path path = this.root / templateName
+        path = path.resolve()
+        string prefix = str(this.root)
+        string cand = str(path)
+        if (!(cand == prefix || cand.startswith(prefix + "\\") || cand.startswith(prefix + "/"))) {
+            return ""
+        }
+        if (!path.is_file()) {
+            return ""
+        }
+        string text = path.read_text(encoding="utf-8")
+        return this.renderString(text, context)
+    }
+}

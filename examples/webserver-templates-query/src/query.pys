@@ -1,0 +1,11 @@
+# Query-string to dict. Uses stdlib urllib.parse.parse_qsl.
+
+import urllib.parse
+
+package function dict parseQuery(string raw) {
+    if (raw == "") {
+        return dict()
+    }
+    # parse_qsl → list of (k,v); dict() keeps last on duplicate keys (teaching OK).
+    return dict(urllib.parse.parse_qsl(raw, keep_blank_values=true))
+}

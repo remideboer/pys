@@ -27,3 +27,4 @@ without rewriting the placeholder-only server.
 - No `{% elif %}`; truthiness is Python-ish (empty list/string false).
 - Template tag characters built via `chr(123/125)` so PYS emit does not treat
   `{{` in engine source as format strings.
+- Query-string binding deferred — [CER-041](CER-041-webserver-templates-query.md).

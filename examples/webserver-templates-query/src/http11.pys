@@ -1,0 +1,140 @@
+# HTTP/1.1 with path + query-string capture (CER-041).
+
+import select
+
+import parseQuery from query
+
+package class HttpRequest {
+    public string method
+    public string path
+    public string body
+    public bool keepAlive
+    public string queryRaw
+    public dict query
+
+    public HttpRequest(string method, string path, string body, bool keepAlive) {
+        this.method = method
+        this.path = path
+        this.body = body
+        this.keepAlive = keepAlive
+        this.queryRaw = ""
+        dict empty = dict()
+        this.query = empty
+    }
+
+    public string queryGet(string key, string defaultValue) {
+        dict q = this.query
+        if (key in q) {
+            return str(q[key])
+        }
+        return defaultValue
+    }
+}
+
+package class HttpResponse {
+    public int status
+    public string reason
+    public string body
+    public string contentType
+
+    public HttpResponse(int status, string reason, string body, string contentType) {
+        this.status = status
+        this.reason = reason
+        this.body = body
+        this.contentType = contentType
+    }
+
+    public string wire(bool keepAlive) {
+        var payload = this.body.encode("latin-1")
+        string out = "HTTP/1.1 " + str(this.status) + " " + this.reason + "\r\n"
+        out = out + "Content-Type: " + this.contentType + "\r\n"
+        out = out + "Content-Length: " + str(len(payload)) + "\r\n"
+        if (keepAlive) {
+            out = out + "Connection: keep-alive\r\n"
+        } else {
+            out = out + "Connection: close\r\n"
+        }
+        out = out + "\r\n"
+        return out
+    }
+
+    public var payloadBytes() {
+        return this.body.encode("latin-1")
+    }
+}
+
+package class Http11 {
+    public Http11() {
+    }
+
+    public HttpRequest parse(string raw) {
+        string method = "GET"
+        string path = "/"
+        string queryRaw = ""
+        bool keepAlive = true
+        int headerEnd = raw.find("\r\n\r\n")
+        string head = raw
+        if (headerEnd >= 0) {
+            head = raw[0:headerEnd]
+        }
+        var lines = head.split("\r\n")
+        if (len(lines) > 0) {
+            var parts = lines[0].split(" ")
+            if (len(parts) >= 2) {
+                method = parts[0]
+                path = parts[1]
+            }
+        }
+        int qi = path.find("?")
+        if (qi >= 0) {
+            queryRaw = path[qi + 1:]
+            path = path[0:qi]
+        }
+        int i = 1
+        loop (i < len(lines)) {
+            string line = lines[i]
+            int colon = line.find(":")
+            if (colon > 0) {
+                string name = line[0:colon].lower()
+                string value = line[colon + 1:].strip().lower()
+                if (name == "connection" && value.find("close") >= 0) {
+                    keepAlive = false
+                }
+            }
+            i = i + 1
+        }
+        HttpRequest req = HttpRequest(method, path, "", keepAlive)
+        req.queryRaw = queryRaw
+        req.query = parseQuery(queryRaw)
+        return req
+    }
+
+    public void write(var conn, HttpResponse resp, bool keepAlive) {
+        conn.sendall(resp.wire(keepAlive).encode("utf-8"))
+        conn.sendall(resp.payloadBytes())
+    }
+
+    public string readRaw(var conn, float timeoutSec) {
+        string data = ""
+        var empty = []
+        loop (true) {
+            var readers = [conn]
+            var ready = select.select(readers, empty, empty, timeoutSec)
+            if (len(ready[0]) == 0) {
+                return data
+            }
+            var chunk = conn.recv(4096)
+            if (len(chunk) == 0) {
+                return data
+            }
+            data = data + chunk.decode("utf-8")
+            if (data.find("\r\n\r\n") >= 0) {
+                return data
+            }
+            if (len(data) > 65536) {
+                return data
+            }
+        }
+        return data
+    }
+}

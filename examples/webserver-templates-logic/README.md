@@ -21,6 +21,9 @@ curl http://127.0.0.1:8102/empty
 
 `/shop` shows a sale banner and two products; `/empty` shows the else branches.
 
+Query-string binding is a separate example:
+[`../webserver-templates-query/`](../webserver-templates-query/) (port **8103**, CER-041).
+
 ## Tests
 
 ```bash

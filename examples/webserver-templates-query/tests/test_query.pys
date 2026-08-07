@@ -1,0 +1,53 @@
+import os
+
+import parseQuery from query
+import Http11, HttpRequest, HttpResponse from http11
+import TemplateEngine from template_engine
+import Router from router
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== template query ===")
+
+dict q = parseQuery("name=Ada+Lovelace&vip=1&title=Hi")
+assertTrue("name decoded", q["name"] == "Ada Lovelace")
+assertTrue("vip", q["vip"] == "1")
+assertTrue("title", q["title"] == "Hi")
+
+dict empty = parseQuery("")
+assertTrue("empty query", len(empty) == 0)
+
+Http11 http = Http11()
+HttpRequest req = http.parse("GET /hello?name=Bob&vip=true HTTP/1.1\r\nHost: x\r\n\r\n")
+assertTrue("path strip", req.path == "/hello")
+assertTrue("query name", req.queryGet("name", "") == "Bob")
+assertTrue("query vip", req.queryGet("vip", "") == "true")
+assertTrue("default missing", req.queryGet("missing", "fallback") == "fallback")
+
+string root = os.environ["PYS_TEMPLATES_DIR"]
+TemplateEngine engine = TemplateEngine(root)
+Router router = Router(engine)
+HttpResponse resp = router.handle(req)
+assertTrue("hello 200", resp.status == 200)
+assertTrue("hello body name", resp.body.find("Bob") >= 0)
+assertTrue("vip branch", resp.body.find("VIP welcome") >= 0)
+
+HttpRequest shopReq = http.parse("GET /shop?name=Remi%20D&sale=0 HTTP/1.1\r\nHost: x\r\n\r\n")
+HttpResponse shop = router.handle(shopReq)
+assertTrue("shop 200", shop.status == 200)
+assertTrue("shop name", shop.body.find("Remi D") >= 0)
+assertTrue("sale off", shop.body.find("No sale today") >= 0)
+assertTrue("has product", shop.body.find("Catan") >= 0)
+
+HttpRequest esc = http.parse("GET /hello?name=Ada%3Cx%3E HTTP/1.1\r\nHost: x\r\n\r\n")
+HttpResponse escResp = router.handle(esc)
+assertTrue("escaped", escResp.body.find("Ada &lt;x&gt;") >= 0)
+assertTrue("no raw angle", escResp.body.find("Ada <x>") < 0)
+
+print("=== template query done ===")

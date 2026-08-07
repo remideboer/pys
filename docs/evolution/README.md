@@ -75,5 +75,6 @@ Each record then uses:
 | [CER-038](CER-038-webserver-static.md) | Static-file HTTP example | Examples |
 | [CER-039](CER-039-webserver-templates.md) | Template HTTP example | Examples |
 | [CER-040](CER-040-webserver-templates-logic.md) | Template HTTP with if/for | Examples |
+| [CER-041](CER-041-webserver-templates-query.md) | Template HTTP with query-string binding | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

@@ -6,6 +6,8 @@ templating layer alone.
 
 For `{% if %}` / `{% for %}`, use
 [`../webserver-templates-logic/`](../webserver-templates-logic/) (port **8102**, CER-040).
+For query-string → template binding, use
+[`../webserver-templates-query/`](../webserver-templates-query/) (port **8103**, CER-041).
 
 ## Run
 

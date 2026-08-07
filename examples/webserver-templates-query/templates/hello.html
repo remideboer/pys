@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+  <p>Hello, <strong>{{ name }}</strong>!</p>
+  {% if vip %}
+  <p class="vip">VIP welcome.</p>
+  {% else %}
+  <p class="std">Standard welcome.</p>
+  {% endif %}
+</body>
+</html>

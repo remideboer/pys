@@ -1,0 +1,51 @@
+import HttpRequest, HttpResponse from http11
+import TemplateEngine from template_engine
+
+package class Router {
+    private TemplateEngine engine
+
+    public Router(TemplateEngine engine) {
+        this.engine = engine
+    }
+
+    public HttpResponse handle(HttpRequest req) {
+        if (req.method != "GET") {
+            return HttpResponse(405, "Method Not Allowed", "method not allowed", "text/plain; charset=utf-8")
+        }
+        if (req.path == "/health") {
+            return HttpResponse(200, "OK", "ok", "text/plain; charset=utf-8")
+        }
+        if (req.path == "/" || req.path == "/hello") {
+            dict ctx = dict()
+            ctx["title"] = req.queryGet("title", "Hello")
+            ctx["name"] = req.queryGet("name", "friend")
+            string vipFlag = req.queryGet("vip", "")
+            ctx["vip"] = vipFlag == "1" || vipFlag.lower() == "true"
+            string htmlBody = this.engine.render("hello.html", ctx)
+            if (htmlBody == "") {
+                return HttpResponse(500, "Error", "template missing", "text/plain; charset=utf-8")
+            }
+            return HttpResponse(200, "OK", htmlBody, "text/html; charset=utf-8")
+        }
+        if (req.path == "/shop") {
+            dict ctx = dict()
+            ctx["title"] = req.queryGet("title", "Board games")
+            ctx["name"] = req.queryGet("name", "guest")
+            string sale = req.queryGet("sale", "1")
+            ctx["showSale"] = sale != "0" && sale.lower() != "false"
+            list products = []
+            dict a = dict()
+            a["name"] = "Catan"
+            a["price"] = "44.95"
+            products.append(a)
+            dict b = dict()
+            b["name"] = "Azul"
+            b["price"] = "39.95"
+            products.append(b)
+            ctx["products"] = products
+            string htmlBody = this.engine.render("shop.html", ctx)
+            return HttpResponse(200, "OK", htmlBody, "text/html; charset=utf-8")
+        }
+        return HttpResponse(404, "Not Found", "not found", "text/plain; charset=utf-8")
+    }
+}
