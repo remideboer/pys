@@ -1,0 +1,56 @@
+# Interpreter — tiny expression language as an object tree.
+# Modern note: use only for small DSLs; prefer a real parser for large languages.
+
+abstract class Expr {
+    public constructor() {
+    }
+
+    public abstract int eval()
+}
+
+class Number inherits Expr {
+    private int value
+
+    public constructor(int value) {
+        super()
+        this.value = value
+    }
+
+    public override int eval() {
+        return this.value
+    }
+}
+
+class Add inherits Expr {
+    private Expr left
+    private Expr right
+
+    public constructor(Expr left, Expr right) {
+        super()
+        this.left = left
+        this.right = right
+    }
+
+    public override int eval() {
+        return this.left.eval() + this.right.eval()
+    }
+}
+
+class Mul inherits Expr {
+    private Expr left
+    private Expr right
+
+    public constructor(Expr left, Expr right) {
+        super()
+        this.left = left
+        this.right = right
+    }
+
+    public override int eval() {
+        return this.left.eval() * this.right.eval()
+    }
+}
+
+# (1 + 2) * 3
+Expr tree = Mul(Add(Number(1), Number(2)), Number(3))
+print(tree.eval())  # 9

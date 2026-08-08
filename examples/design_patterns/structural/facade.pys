@@ -1,0 +1,50 @@
+# Facade — one simple entry point over a small subsystem.
+
+class AuthService {
+    public constructor() {
+    }
+
+    public string login(string user) {
+        return "token:" + user
+    }
+}
+
+class InventoryService {
+    public constructor() {
+    }
+
+    public string reserve(string sku) {
+        return "reserved:" + sku
+    }
+}
+
+class PaymentService {
+    public constructor() {
+    }
+
+    public string charge(int cents) {
+        return "charged:" + str(cents)
+    }
+}
+
+class ShopFacade {
+    private AuthService auth
+    private InventoryService inventory
+    private PaymentService payment
+
+    public constructor() {
+        this.auth = AuthService()
+        this.inventory = InventoryService()
+        this.payment = PaymentService()
+    }
+
+    public string placeOrder(string user, string sku, int cents) {
+        string token = this.auth.login(user)
+        string stock = this.inventory.reserve(sku)
+        string pay = this.payment.charge(cents)
+        return token + "|" + stock + "|" + pay
+    }
+}
+
+ShopFacade shop = ShopFacade()
+print(shop.placeOrder("ada", "BG-001", 2599))  # token:ada|reserved:BG-001|charged:2599

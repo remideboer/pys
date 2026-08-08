@@ -1,0 +1,59 @@
+# Command — encapsulate a request as an object (execute / undo).
+
+abstract class Command {
+    public constructor() {
+    }
+
+    public abstract void execute()
+    public abstract void undo()
+}
+
+class Editor {
+    private string text
+
+    public constructor() {
+        this.text = ""
+    }
+
+    public void write(string chunk) {
+        this.text = this.text + chunk
+    }
+
+    public void erase(int n) {
+        if (n >= len(this.text)) {
+            this.text = ""
+        } else {
+            this.text = this.text[0 : len(this.text) - n]
+        }
+    }
+
+    public string content() {
+        return this.text
+    }
+}
+
+class WriteCommand inherits Command {
+    private Editor editor
+    private string chunk
+
+    public constructor(Editor editor, string chunk) {
+        super()
+        this.editor = editor
+        this.chunk = chunk
+    }
+
+    public override void execute() {
+        this.editor.write(this.chunk)
+    }
+
+    public override void undo() {
+        this.editor.erase(len(this.chunk))
+    }
+}
+
+Editor ed = Editor()
+Command cmd = WriteCommand(ed, "Hi")
+cmd.execute()
+print(ed.content())  # Hi
+cmd.undo()
+print(ed.content())  # (empty)

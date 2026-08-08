@@ -1,0 +1,50 @@
+# Decorator — wrap an object to add behavior without changing its class.
+
+abstract class Notifier {
+    public constructor() {
+    }
+
+    public abstract string send(string message)
+}
+
+class EmailNotifier inherits Notifier {
+    public constructor() {
+        super()
+    }
+
+    public override string send(string message) {
+        return "email:" + message
+    }
+}
+
+abstract class NotifierDecorator inherits Notifier {
+    protected Notifier wrappee
+
+    public constructor(Notifier wrappee) {
+        super()
+        this.wrappee = wrappee
+    }
+}
+
+class SmsDecorator inherits NotifierDecorator {
+    public constructor(Notifier wrappee) {
+        super(wrappee)
+    }
+
+    public override string send(string message) {
+        return this.wrappee.send(message) + "+sms:" + message
+    }
+}
+
+class SlackDecorator inherits NotifierDecorator {
+    public constructor(Notifier wrappee) {
+        super(wrappee)
+    }
+
+    public override string send(string message) {
+        return this.wrappee.send(message) + "+slack:" + message
+    }
+}
+
+Notifier stack = SlackDecorator(SmsDecorator(EmailNotifier()))
+print(stack.send("hi"))  # email:hi+sms:hi+slack:hi

@@ -1,0 +1,76 @@
+# Visitor — add operations over an object structure without changing elements.
+
+abstract class ShapeVisitor {
+    public constructor() {
+    }
+
+    public abstract string visitDot(Dot dot)
+    public abstract string visitCircle(Circle circle)
+}
+
+abstract class Shape {
+    public constructor() {
+    }
+
+    public abstract string accept(ShapeVisitor visitor)
+}
+
+class Dot inherits Shape {
+    private int x
+    private int y
+
+    public constructor(int x, int y) {
+        super()
+        this.x = x
+        this.y = y
+    }
+
+    public int getX() {
+        return this.x
+    }
+
+    public int getY() {
+        return this.y
+    }
+
+    public override string accept(ShapeVisitor visitor) {
+        return visitor.visitDot(this)
+    }
+}
+
+class Circle inherits Shape {
+    private int radius
+
+    public constructor(int radius) {
+        super()
+        this.radius = radius
+    }
+
+    public int getRadius() {
+        return this.radius
+    }
+
+    public override string accept(ShapeVisitor visitor) {
+        return visitor.visitCircle(this)
+    }
+}
+
+class DescribeVisitor inherits ShapeVisitor {
+    public constructor() {
+        super()
+    }
+
+    public override string visitDot(Dot dot) {
+        return "dot@" + str(dot.getX()) + "," + str(dot.getY())
+    }
+
+    public override string visitCircle(Circle circle) {
+        return "circle r=" + str(circle.getRadius())
+    }
+}
+
+Shape a = Dot(1, 2)
+Shape b = Circle(4)
+ShapeVisitor v = DescribeVisitor()
+print(a.accept(v))  # dot@1,2
+print(b.accept(v))  # circle r=4

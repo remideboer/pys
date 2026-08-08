@@ -1,0 +1,52 @@
+# Prototype — create new objects by cloning a prototype (explicit clone()).
+
+interface Shape {
+    Shape clone()
+    string describe()
+}
+
+class Circle implements Shape {
+    private int radius
+    private string color
+
+    public constructor(int radius, string color) {
+        this.radius = radius
+        this.color = color
+    }
+
+    public Shape clone() {
+        return Circle(this.radius, this.color)
+    }
+
+    public string describe() {
+        return "circle r=" + str(this.radius) + " " + this.color
+    }
+}
+
+class Rectangle implements Shape {
+    private int width
+    private int height
+    private string color
+
+    public constructor(int width, int height, string color) {
+        this.width = width
+        this.height = height
+        this.color = color
+    }
+
+    public Shape clone() {
+        return Rectangle(this.width, this.height, this.color)
+    }
+
+    public string describe() {
+        return "rect " + str(this.width) + "x" + str(this.height) + " " + this.color
+    }
+}
+
+Shape redCircle = Circle(5, "red")
+Shape copy = redCircle.clone()
+print(redCircle.describe())  # circle r=5 red
+print(copy.describe())  # circle r=5 red
+
+Shape box = Rectangle(2, 3, "blue")
+print(box.clone().describe())  # rect 2x3 blue

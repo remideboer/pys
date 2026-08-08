@@ -1,0 +1,61 @@
+# Observer — subject notifies registered observers of state changes.
+
+abstract class Observer {
+    public constructor() {
+    }
+
+    public abstract void update(string event)
+}
+
+class NewsAgency {
+    private list<Observer> observers
+    private string latest
+
+    public constructor() {
+        this.observers = []
+        this.latest = ""
+    }
+
+    public void attach(Observer observer) {
+        this.observers.append(observer)
+    }
+
+    public void publish(string news) {
+        this.latest = news
+        loop (Observer o in this.observers) {
+            o.update(news)
+        }
+    }
+
+    public string getLatest() {
+        return this.latest
+    }
+}
+
+class Channel inherits Observer {
+    private string name
+    private string last
+
+    public constructor(string name) {
+        super()
+        this.name = name
+        this.last = ""
+    }
+
+    public override void update(string event) {
+        this.last = this.name + ":" + event
+    }
+
+    public string headline() {
+        return this.last
+    }
+}
+
+NewsAgency agency = NewsAgency()
+Channel tv = Channel("TV")
+Channel radio = Channel("Radio")
+agency.attach(tv)
+agency.attach(radio)
+agency.publish("launch")
+print(tv.headline())  # TV:launch
+print(radio.headline())  # Radio:launch

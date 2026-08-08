@@ -1,0 +1,63 @@
+# Builder — step-by-step construction of a complex product; director optional.
+
+class Meal {
+    private string main
+    private string drink
+    private string side
+
+    public constructor(string main, string drink, string side) {
+        this.main = main
+        this.drink = drink
+        this.side = side
+    }
+
+    public string describe() {
+        return this.main + "|" + this.drink + "|" + this.side
+    }
+}
+
+class MealBuilder {
+    private string main
+    private string drink
+    private string side
+
+    public constructor() {
+        this.main = ""
+        this.drink = ""
+        this.side = ""
+    }
+
+    public MealBuilder withMain(string main) {
+        this.main = main
+        return this
+    }
+
+    public MealBuilder withDrink(string drink) {
+        this.drink = drink
+        return this
+    }
+
+    public MealBuilder withSide(string side) {
+        this.side = side
+        return this
+    }
+
+    public Meal build() {
+        return Meal(this.main, this.drink, this.side)
+    }
+}
+
+class MealDirector {
+    public constructor() {
+    }
+
+    public Meal kidsMeal(MealBuilder builder) {
+        return builder.withMain("nuggets").withDrink("juice").withSide("fries").build()
+    }
+}
+
+Meal custom = MealBuilder().withMain("burger").withDrink("water").withSide("salad").build()
+print(custom.describe())  # burger|water|salad
+
+Meal kids = MealDirector().kidsMeal(MealBuilder())
+print(kids.describe())  # nuggets|juice|fries

@@ -1,0 +1,34 @@
+# Singleton — one shared instance for a class.
+# Modern note: prefer DI / a composition root in apps; this shows the classic form.
+
+class Logger {
+    private static nullable<Logger> instance = null
+    private int writes
+
+    private constructor() {
+        this.writes = 0
+    }
+
+    public static Logger getInstance() {
+        if (Logger.instance == null) {
+            Logger.instance = Logger()
+        }
+        return Logger.instance
+    }
+
+    public void info(string message) {
+        this.writes = this.writes + 1
+        print("[log] " + message)
+    }
+
+    public int writeCount() {
+        return this.writes
+    }
+}
+
+Logger a = Logger.getInstance()
+Logger b = Logger.getInstance()
+a.info("boot")
+b.info("ready")
+print(a.writeCount())  # 2
+print(b.writeCount())  # 2

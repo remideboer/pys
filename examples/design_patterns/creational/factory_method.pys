@@ -1,0 +1,60 @@
+# Factory Method — subclasses decide which product to create.
+
+interface Document {
+    string render()
+}
+
+class Resume implements Document {
+    public constructor() {
+    }
+
+    public string render() {
+        return "Resume PDF"
+    }
+}
+
+class Report implements Document {
+    public constructor() {
+    }
+
+    public string render() {
+        return "Report PDF"
+    }
+}
+
+abstract class Application {
+    public constructor() {
+    }
+
+    public abstract Document createDocument()
+
+    public string openDocument() {
+        Document doc = this.createDocument()
+        return "opened:" + doc.render()
+    }
+}
+
+class ResumeApp inherits Application {
+    public constructor() {
+        super()
+    }
+
+    public override Document createDocument() {
+        return Resume()
+    }
+}
+
+class ReportApp inherits Application {
+    public constructor() {
+        super()
+    }
+
+    public override Document createDocument() {
+        return Report()
+    }
+}
+
+Application resumeApp = ResumeApp()
+Application reportApp = ReportApp()
+print(resumeApp.openDocument())  # opened:Resume PDF
+print(reportApp.openDocument())  # opened:Report PDF

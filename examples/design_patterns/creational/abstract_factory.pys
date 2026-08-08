@@ -1,0 +1,95 @@
+# Abstract Factory — families of related products without naming concrete classes.
+
+interface Button {
+    string paint()
+}
+
+interface Checkbox {
+    string paint()
+}
+
+class WinButton implements Button {
+    public constructor() {
+    }
+
+    public string paint() {
+        return "win-button"
+    }
+}
+
+class WinCheckbox implements Checkbox {
+    public constructor() {
+    }
+
+    public string paint() {
+        return "win-checkbox"
+    }
+}
+
+class MacButton implements Button {
+    public constructor() {
+    }
+
+    public string paint() {
+        return "mac-button"
+    }
+}
+
+class MacCheckbox implements Checkbox {
+    public constructor() {
+    }
+
+    public string paint() {
+        return "mac-checkbox"
+    }
+}
+
+interface GUIFactory {
+    Button createButton()
+    Checkbox createCheckbox()
+}
+
+class WinFactory implements GUIFactory {
+    public constructor() {
+    }
+
+    public Button createButton() {
+        return WinButton()
+    }
+
+    public Checkbox createCheckbox() {
+        return WinCheckbox()
+    }
+}
+
+class MacFactory implements GUIFactory {
+    public constructor() {
+    }
+
+    public Button createButton() {
+        return MacButton()
+    }
+
+    public Checkbox createCheckbox() {
+        return MacCheckbox()
+    }
+}
+
+class Application {
+    private Button button
+    private Checkbox checkbox
+
+    public constructor(GUIFactory factory) {
+        this.button = factory.createButton()
+        this.checkbox = factory.createCheckbox()
+    }
+
+    public string paint() {
+        return this.button.paint() + "+" + this.checkbox.paint()
+    }
+}
+
+Application win = Application(WinFactory())
+Application mac = Application(MacFactory())
+print(win.paint())  # win-button+win-checkbox
+print(mac.paint())  # mac-button+mac-checkbox

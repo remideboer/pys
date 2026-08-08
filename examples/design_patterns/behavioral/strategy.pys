@@ -1,0 +1,49 @@
+# Strategy — swap algorithms behind a common interface.
+
+abstract class PricingStrategy {
+    public constructor() {
+    }
+
+    public abstract int price(int cents)
+}
+
+class RegularPrice inherits PricingStrategy {
+    public constructor() {
+        super()
+    }
+
+    public override int price(int cents) {
+        return cents
+    }
+}
+
+class MemberPrice inherits PricingStrategy {
+    public constructor() {
+        super()
+    }
+
+    public override int price(int cents) {
+        return cents - 100
+    }
+}
+
+class Cart {
+    private PricingStrategy strategy
+
+    public constructor(PricingStrategy strategy) {
+        this.strategy = strategy
+    }
+
+    public void setStrategy(PricingStrategy strategy) {
+        this.strategy = strategy
+    }
+
+    public int checkout(int cents) {
+        return this.strategy.price(cents)
+    }
+}
+
+Cart cart = Cart(RegularPrice())
+print(cart.checkout(1000))  # 1000
+cart.setStrategy(MemberPrice())
+print(cart.checkout(1000))  # 900

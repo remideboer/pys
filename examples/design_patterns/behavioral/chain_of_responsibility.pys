@@ -1,0 +1,59 @@
+# Chain of Responsibility — pass a request along a chain until one handles it.
+
+abstract class Handler {
+    protected nullable<Handler> next
+
+    public constructor() {
+        this.next = null
+    }
+
+    public void setNext(Handler next) {
+        this.next = next
+    }
+
+    public string handle(string request) {
+        string mine = this.tryHandle(request)
+        if (mine != "") {
+            return mine
+        }
+        if (this.next != null) {
+            return this.next.handle(request)
+        }
+        return "unhandled:" + request
+    }
+
+    public abstract string tryHandle(string request)
+}
+
+class AuthHandler inherits Handler {
+    public constructor() {
+        super()
+    }
+
+    public override string tryHandle(string request) {
+        if (request == "auth") {
+            return "auth-ok"
+        }
+        return ""
+    }
+}
+
+class LogHandler inherits Handler {
+    public constructor() {
+        super()
+    }
+
+    public override string tryHandle(string request) {
+        if (request == "log") {
+            return "log-ok"
+        }
+        return ""
+    }
+}
+
+AuthHandler auth = AuthHandler()
+LogHandler log = LogHandler()
+auth.setNext(log)
+print(auth.handle("auth"))  # auth-ok
+print(auth.handle("log"))  # log-ok
+print(auth.handle("other"))  # unhandled:other

@@ -1,0 +1,67 @@
+# Mediator — colleagues talk through a hub instead of each other.
+
+abstract class ChatMediator {
+    public constructor() {
+    }
+
+    public abstract void send(string fromUser, string message)
+    public abstract void register(User user)
+}
+
+class User {
+    private string name
+    private ChatMediator hub
+    private string lastHeard
+
+    public constructor(string name, ChatMediator hub) {
+        this.name = name
+        this.hub = hub
+        this.lastHeard = ""
+        hub.register(this)
+    }
+
+    public string getName() {
+        return this.name
+    }
+
+    public void say(string message) {
+        this.hub.send(this.name, message)
+    }
+
+    public void receive(string fromUser, string message) {
+        this.lastHeard = fromUser + ":" + message
+    }
+
+    public string heard() {
+        return this.lastHeard
+    }
+}
+
+class ChatRoom inherits ChatMediator {
+    private list<User> users
+
+    public constructor() {
+        super()
+        this.users = []
+    }
+
+    public override void register(User user) {
+        this.users.append(user)
+    }
+
+    public override void send(string fromUser, string message) {
+        loop (User u in this.users) {
+            if (u.getName() != fromUser) {
+                u.receive(fromUser, message)
+            }
+        }
+    }
+}
+
+ChatRoom room = ChatRoom()
+User ada = User("Ada", room)
+User grace = User("Grace", room)
+ada.say("hello")
+print(grace.heard())  # Ada:hello
+grace.say("hi")
+print(ada.heard())  # Grace:hi

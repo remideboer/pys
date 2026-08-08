@@ -1,0 +1,52 @@
+# Template Method — algorithm skeleton in base; subclasses fill steps.
+
+abstract class DataMiner {
+    public constructor() {
+    }
+
+    public string mine(string path) {
+        string raw = this.openFile(path)
+        string parsed = this.parse(raw)
+        return this.analyze(parsed)
+    }
+
+    public abstract string openFile(string path)
+    public abstract string parse(string raw)
+
+    public string analyze(string data) {
+        return "report:" + data
+    }
+}
+
+class CsvMiner inherits DataMiner {
+    public constructor() {
+        super()
+    }
+
+    public override string openFile(string path) {
+        return "csv-bytes:" + path
+    }
+
+    public override string parse(string raw) {
+        return "rows-from(" + raw + ")"
+    }
+}
+
+class PdfMiner inherits DataMiner {
+    public constructor() {
+        super()
+    }
+
+    public override string openFile(string path) {
+        return "pdf-bytes:" + path
+    }
+
+    public override string parse(string raw) {
+        return "text-from(" + raw + ")"
+    }
+}
+
+DataMiner csv = CsvMiner()
+DataMiner pdf = PdfMiner()
+print(csv.mine("a.csv"))  # report:rows-from(csv-bytes:a.csv)
+print(pdf.mine("b.pdf"))  # report:text-from(pdf-bytes:b.pdf)

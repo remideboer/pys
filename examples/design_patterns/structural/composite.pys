@@ -1,0 +1,57 @@
+# Composite — treat individual objects and compositions uniformly.
+
+abstract class Graphic {
+    public constructor() {
+    }
+
+    public abstract string draw()
+}
+
+class Dot inherits Graphic {
+    private int x
+    private int y
+
+    public constructor(int x, int y) {
+        super()
+        this.x = x
+        this.y = y
+    }
+
+    public override string draw() {
+        return "dot(" + str(this.x) + "," + str(this.y) + ")"
+    }
+}
+
+class CompoundGraphic inherits Graphic {
+    private list<Graphic> children
+
+    public constructor() {
+        super()
+        this.children = []
+    }
+
+    public void add(Graphic child) {
+        this.children.append(child)
+    }
+
+    public override string draw() {
+        string out = "group["
+        int i = 0
+        loop (Graphic g in this.children) {
+            if (i > 0) {
+                out = out + ","
+            }
+            out = out + g.draw()
+            i = i + 1
+        }
+        return out + "]"
+    }
+}
+
+CompoundGraphic root = CompoundGraphic()
+root.add(Dot(1, 2))
+root.add(Dot(3, 4))
+CompoundGraphic nested = CompoundGraphic()
+nested.add(Dot(5, 6))
+root.add(nested)
+print(root.draw())  # group[dot(1,2),dot(3,4),group[dot(5,6)]]

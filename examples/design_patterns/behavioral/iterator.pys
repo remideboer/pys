@@ -1,0 +1,61 @@
+# Iterator — sequential access without exposing representation.
+# Language `loop (x in xs)` is sugar for the same idea on built-in collections.
+
+abstract class IntIterator {
+    public constructor() {
+    }
+
+    public abstract bool hasNext()
+    public abstract int next()
+}
+
+class ArrayIntIterator inherits IntIterator {
+    private list<int> data
+    private int index
+
+    public constructor(list<int> data) {
+        super()
+        this.data = data
+        this.index = 0
+    }
+
+    public override bool hasNext() {
+        return this.index < len(this.data)
+    }
+
+    public override int next() {
+        int value = this.data[this.index]
+        this.index = this.index + 1
+        return value
+    }
+}
+
+class IntCollection {
+    private list<int> items
+
+    public constructor() {
+        this.items = []
+    }
+
+    public void add(int value) {
+        this.items.append(value)
+    }
+
+    public IntIterator iterator() {
+        return ArrayIntIterator(this.items)
+    }
+}
+
+IntCollection nums = IntCollection()
+nums.add(10)
+nums.add(20)
+nums.add(30)
+IntIterator it = nums.iterator()
+string out = ""
+loop (it.hasNext()) {
+    if (out != "") {
+        out = out + ","
+    }
+    out = out + str(it.next())
+}
+print(out)  # 10,20,30

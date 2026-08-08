@@ -1,0 +1,56 @@
+# Bridge — decouple abstraction (shape) from implementor (renderer).
+
+abstract class Renderer {
+    public constructor() {
+    }
+
+    public abstract string drawCircle(int radius)
+}
+
+class VectorRenderer inherits Renderer {
+    public constructor() {
+        super()
+    }
+
+    public override string drawCircle(int radius) {
+        return "vector-circle r=" + str(radius)
+    }
+}
+
+class RasterRenderer inherits Renderer {
+    public constructor() {
+        super()
+    }
+
+    public override string drawCircle(int radius) {
+        return "raster-circle r=" + str(radius)
+    }
+}
+
+abstract class Shape {
+    protected Renderer renderer
+
+    public constructor(Renderer renderer) {
+        this.renderer = renderer
+    }
+
+    public abstract string draw()
+}
+
+class Circle inherits Shape {
+    private int radius
+
+    public constructor(Renderer renderer, int radius) {
+        super(renderer)
+        this.radius = radius
+    }
+
+    public override string draw() {
+        return this.renderer.drawCircle(this.radius)
+    }
+}
+
+Shape v = Circle(VectorRenderer(), 3)
+Shape r = Circle(RasterRenderer(), 3)
+print(v.draw())  # vector-circle r=3
+print(r.draw())  # raster-circle r=3

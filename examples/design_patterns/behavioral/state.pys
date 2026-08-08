@@ -1,0 +1,65 @@
+# State — behavior changes with internal state objects.
+
+abstract class PlayerState {
+    public constructor() {
+    }
+
+    public abstract string play(Player player)
+    public abstract string pause(Player player)
+}
+
+class Player {
+    private PlayerState state
+
+    public constructor(PlayerState state) {
+        this.state = state
+    }
+
+    public void changeState(PlayerState state) {
+        this.state = state
+    }
+
+    public string play() {
+        return this.state.play(this)
+    }
+
+    public string pause() {
+        return this.state.pause(this)
+    }
+}
+
+class StoppedState inherits PlayerState {
+    public constructor() {
+        super()
+    }
+
+    public override string play(Player player) {
+        player.changeState(PlayingState())
+        return "start"
+    }
+
+    public override string pause(Player player) {
+        return "already-stopped"
+    }
+}
+
+class PlayingState inherits PlayerState {
+    public constructor() {
+        super()
+    }
+
+    public override string play(Player player) {
+        return "already-playing"
+    }
+
+    public override string pause(Player player) {
+        player.changeState(StoppedState())
+        return "paused"
+    }
+}
+
+Player p = Player(StoppedState())
+print(p.play())  # start
+print(p.play())  # already-playing
+print(p.pause())  # paused
+print(p.pause())  # already-stopped

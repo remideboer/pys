@@ -1,0 +1,65 @@
+# Memento — capture and restore an object's internal state (undo).
+
+class EditorMemento {
+    private string text
+
+    public constructor(string text) {
+        this.text = text
+    }
+
+    public string getText() {
+        return this.text
+    }
+}
+
+class Editor {
+    private string text
+
+    public constructor() {
+        this.text = ""
+    }
+
+    public void type(string chunk) {
+        this.text = this.text + chunk
+    }
+
+    public string content() {
+        return this.text
+    }
+
+    public EditorMemento save() {
+        return EditorMemento(this.text)
+    }
+
+    public void restore(EditorMemento memento) {
+        this.text = memento.getText()
+    }
+}
+
+class History {
+    private list<EditorMemento> stack
+
+    public constructor() {
+        this.stack = []
+    }
+
+    public void push(EditorMemento m) {
+        this.stack.append(m)
+    }
+
+    public EditorMemento pop() {
+        int last = len(this.stack) - 1
+        EditorMemento m = this.stack[last]
+        this.stack = this.stack[0 : last]
+        return m
+    }
+}
+
+Editor ed = Editor()
+History hist = History()
+ed.type("A")
+hist.push(ed.save())
+ed.type("B")
+print(ed.content())  # AB
+ed.restore(hist.pop())
+print(ed.content())  # A

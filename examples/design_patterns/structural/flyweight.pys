@@ -1,0 +1,66 @@
+# Flyweight — share intrinsic state; keep extrinsic state outside.
+
+class TreeType {
+    private string name
+    private string color
+
+    public constructor(string name, string color) {
+        this.name = name
+        this.color = color
+    }
+
+    public string key() {
+        return this.name + "/" + this.color
+    }
+
+    public string draw(int x, int y) {
+        return this.key() + "@" + str(x) + "," + str(y)
+    }
+}
+
+class TreeFactory {
+    private static list<TreeType> cache = []
+
+    public constructor() {
+    }
+
+    public static TreeType getTreeType(string name, string color) {
+        string want = name + "/" + color
+        loop (TreeType t in TreeFactory.cache) {
+            if (t.key() == want) {
+                return t
+            }
+        }
+        TreeType created = TreeType(name, color)
+        TreeFactory.cache.append(created)
+        return created
+    }
+
+    public static int cacheSize() {
+        return len(TreeFactory.cache)
+    }
+}
+
+class Tree {
+    private int x
+    private int y
+    private TreeType typ
+
+    public constructor(int x, int y, TreeType typ) {
+        this.x = x
+        this.y = y
+        this.typ = typ
+    }
+
+    public string draw() {
+        return this.typ.draw(this.x, this.y)
+    }
+}
+
+TreeType oak = TreeFactory.getTreeType("oak", "green")
+TreeType oak2 = TreeFactory.getTreeType("oak", "green")
+Tree a = Tree(1, 2, oak)
+Tree b = Tree(3, 4, oak2)
+print(a.draw())  # oak/green@1,2
+print(b.draw())  # oak/green@3,4
+print(TreeFactory.cacheSize())  # 1

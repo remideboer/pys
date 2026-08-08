@@ -1,0 +1,29 @@
+# Adapter — wrap an incompatible API behind the interface clients expect.
+
+interface MediaPlayer {
+    string play(string fileName)
+}
+
+class LegacyAudioPlayer {
+    public constructor() {
+    }
+
+    public string playMp3(string fileName) {
+        return "mp3:" + fileName
+    }
+}
+
+class AudioAdapter implements MediaPlayer {
+    private LegacyAudioPlayer legacy
+
+    public constructor(LegacyAudioPlayer legacy) {
+        this.legacy = legacy
+    }
+
+    public string play(string fileName) {
+        return this.legacy.playMp3(fileName)
+    }
+}
+
+MediaPlayer player = AudioAdapter(LegacyAudioPlayer())
+print(player.play("song.mp3"))  # mp3:song.mp3
