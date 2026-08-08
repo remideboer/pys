@@ -4,18 +4,18 @@ import Http11, HttpRequest from http11
 
 package class ConnHandler {
     private Http11 http
-    private var router
+    private object router
     private float idleTimeoutSec
     private float writeTimeoutSec
 
-    public ConnHandler(Http11 http, var router, float idleTimeoutSec, float writeTimeoutSec) {
+    public ConnHandler(Http11 http, object router, float idleTimeoutSec, float writeTimeoutSec) {
         this.http = http
         this.router = router
         this.idleTimeoutSec = idleTimeoutSec
         this.writeTimeoutSec = writeTimeoutSec
     }
 
-    public void serveOne(var conn) {
+    public void serveOne(conn) {
         conn.settimeout(this.idleTimeoutSec)
         bool open = true
         loop (open) {

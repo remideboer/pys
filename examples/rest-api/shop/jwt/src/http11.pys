@@ -129,11 +129,11 @@ package class Http11 {
         return req
     }
 
-    public void write(var conn, HttpResponse resp, bool keepAlive) {
+    public void write(conn, HttpResponse resp, bool keepAlive) {
         conn.sendall(resp.wire(keepAlive).encode("utf-8"))
     }
 
-    public string readRaw(var conn, float timeoutSec) {
+    public string readRaw(conn, float timeoutSec) {
         string data = ""
         var empty = []
         int contentLength = -1

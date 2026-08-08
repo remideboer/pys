@@ -464,7 +464,7 @@
         },
         {
           "name": "meta.typed.declaration.pys",
-          "match": "\\b(?:((?:result|nullable)\\s*<[^>\\n]+>|int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
+          "match": "\\b(?:((?:result|nullable)\\s*<[^>\\n]+>|int|float|char|string|bool|object|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.type.pys"
@@ -503,7 +503,7 @@
       "patterns": [
         {
           "name": "storage.type.pys",
-          "match": "\\b(?:var|int|float|char|bool|str|string|void|list|dict|tuple|set|result|nullable)\\b"
+          "match": "\\b(?:var|int|float|char|bool|str|string|void|object|list|dict|tuple|set|result|nullable)\\b"
         }
       ]
     },

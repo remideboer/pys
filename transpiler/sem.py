@@ -633,7 +633,7 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         "lambda",
         "result",
         "nullable",
-        "var",
+        "object",
     }
     if not base or base in primitives:
         return True
@@ -771,8 +771,8 @@ def _is_assignable_type(
 ) -> bool:
     if actual == declared:
         return True
-    # `var` is the dynamic escape hatch for foreign/driver values (e.g. SQL cells).
-    if declared == "var":
+    # `object` is the opaque foreign-value type (ADR-025); anything may assign in.
+    if declared == "object":
         return True
     declared_inner = _nullable_inner(declared)
     actual_inner = _nullable_inner(actual)

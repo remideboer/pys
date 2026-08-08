@@ -385,7 +385,7 @@ Required mapping behavior:
 The current teaching helper in `examples/database/db.pys`:
 
 ```pys
-public string cellStr(var value) {
+public string cellStr(value) {
     if (value == null) {
         return ""
     }
@@ -394,9 +394,11 @@ public string cellStr(var value) {
 ```
 
 is explicitly pre-behavior to remove. It collapses two database states and can
-silently change query/update behavior. A nullable-aware mapper returns
-`nullable<string>` and preserves `null`; a mapper for a `NOT NULL` column must
-reject a violated database contract rather than invent a value.
+silently change query/update behavior. (Parameter type omitted — ADR-025 —
+instead of the old illegal `var value` type-position form.) A nullable-aware
+mapper returns `nullable<string>` and preserves `null`; a mapper for a
+`NOT NULL` column must reject a violated database contract rather than invent
+a value.
 
 ### 15. Runtime representation
 

@@ -43,7 +43,7 @@ package class HttpResponse {
         return out
     }
 
-    public var payloadBytes() {
+    public object payloadBytes() {
         return this.body.encode("latin-1")
     }
 }
@@ -89,12 +89,12 @@ package class Http11 {
         return HttpRequest(method, path, "", keepAlive)
     }
 
-    public void write(var conn, HttpResponse resp, bool keepAlive) {
+    public void write(conn, HttpResponse resp, bool keepAlive) {
         conn.sendall(resp.wire(keepAlive).encode("utf-8"))
         conn.sendall(resp.payloadBytes())
     }
 
-    public string readRaw(var conn, float timeoutSec) {
+    public string readRaw(conn, float timeoutSec) {
         string data = ""
         var empty = []
         loop (true) {

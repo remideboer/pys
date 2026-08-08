@@ -121,12 +121,12 @@ package class Http11 {
         return HttpRequest(method, path, body, correlationId, keepAlive)
     }
 
-    public void write(var conn, HttpResponse resp, bool keepAlive) {
+    public void write(conn, HttpResponse resp, bool keepAlive) {
         conn.sendall(resp.wire(keepAlive).encode("utf-8"))
     }
 
     # Read until headers complete, then finish Content-Length body if present.
-    public string readRaw(var conn, float timeoutSec) {
+    public string readRaw(conn, float timeoutSec) {
         string data = ""
         var empty = []
         int contentLength = -1

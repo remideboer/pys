@@ -5,7 +5,7 @@ import time
 import threading
 
 package class MockDownstream {
-    private var lock
+    private object lock
     private int calls
     private int failNext
     private int resetNext

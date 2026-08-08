@@ -252,13 +252,13 @@ def test_sql_null_and_empty_string_remain_distinct(
 ) -> None:
     """Scenarios F/G: SQL NULL ↔ PYS null; empty string stays present."""
     py = transpile(
-        "function nullable<string> cellNullableStr(var value) {\n"
+        "function nullable<string> cellNullableStr(value) {\n"
         "    if (value == null) {\n"
         "        return null\n"
         "    }\n"
         "    return str(value)\n"
         "}\n"
-        "function string cellStr(var value) {\n"
+        "function string cellStr(value) {\n"
         "    if (value == null) {\n"
         '        return \"__contract_violation__\"\n'
         "    }\n"

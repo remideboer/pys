@@ -24,6 +24,18 @@ Rule of thumb: reach for `fix` when the value should not change; use
 `var` or a typed binding when it must; use `const` for true constants
 like limits and configuration numbers.
 
+`var` is only a **declaration** (`var name = …`). It is not a type: you
+cannot write it as a return type, parameter type, field type, or inside
+`list<…>`. For foreign or opaque values (for example a socket), use the
+type `object`, or omit a parameter type at that boundary — see
+[LANGUAGE.md](../docs/LANGUAGE.md).
+
+```pys
+# Illegal — var is not a type here
+# public var peek() { return 1 }
+# function void f(var x) { }
+```
+
 ```pys
 const int MAX_RETRIES = 3
 fix string mode = "demo"

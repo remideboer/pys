@@ -4,7 +4,7 @@
 import ssl
 
 package class TlsTerminator {
-    public var context
+    public object context
     public bool enabled
 
     public TlsTerminator(bool enabled, string certFile, string keyFile) {
@@ -18,7 +18,7 @@ package class TlsTerminator {
         }
     }
 
-    public var wrap(var conn) {
+    public object wrap(conn) {
         if (!this.enabled) {
             return conn
         }

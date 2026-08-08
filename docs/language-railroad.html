@@ -911,9 +911,9 @@
     {
       id: 'primitive_type',
       title: 'primitive_type',
-      ebnf: '"int"|"float"|"char"|"string"|"bool"|"byte"|"nibble"|"int16"|"int32"|"int64"|"dword" ;',
+      ebnf: '"int"|"float"|"char"|"string"|"bool"|"object"|"byte"|"nibble"|"int16"|"int32"|"int64"|"dword" ;',
       node: Choice(
-        T('int'), T('float'), T('char'), T('string'), T('bool'),
+        T('int'), T('float'), T('char'), T('string'), T('bool'), T('object'),
         T('byte'), T('nibble'), T('int16'), T('int32'), T('int64'), T('dword')
       )
     },

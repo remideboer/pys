@@ -68,6 +68,7 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-022](ADR-022-optional-terminators-grammar.md) | Optional `;`, C-for `;`, comma enums, multi-label switch | Accepted |
 | [ADR-023](ADR-023-explicit-nullability.md) | Explicit nullability and SQL `NULL` fidelity | Accepted |
 | [ADR-024](ADR-024-base-display-builtins.md) | Base display builtins (`toBin` / `toHex` / `toOct`) | Accepted |
+| [ADR-025](ADR-025-var-declaration-only.md) | `var` declaration-only; `object` for opaque foreign values | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
 

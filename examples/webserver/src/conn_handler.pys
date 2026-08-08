@@ -7,14 +7,14 @@ import Http2Server from http2
 package class ConnHandler {
     private Http11 http
     private Http2Server http2
-    private var router
+    private object router
     private float idleTimeoutSec
     private float writeTimeoutSec
 
     public ConnHandler(
         Http11 http,
         Http2Server http2,
-        var router,
+        object router,
         float idleTimeoutSec,
         float writeTimeoutSec
     ) {
@@ -25,7 +25,7 @@ package class ConnHandler {
         this.writeTimeoutSec = writeTimeoutSec
     }
 
-    public void serveOne(var conn) {
+    public void serveOne(conn) {
         string alpn = ""
         if (hasattr(conn, "selected_alpn_protocol")) {
             var selected = conn.selected_alpn_protocol()
@@ -41,7 +41,7 @@ package class ConnHandler {
         conn.close()
     }
 
-    public void serveHttp11(var conn) {
+    public void serveHttp11(conn) {
         # FR6 read/idle timeout on the socket; write deadline applied before send.
         conn.settimeout(this.idleTimeoutSec)
         bool open = true

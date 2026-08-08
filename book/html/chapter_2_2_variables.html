@@ -155,6 +155,14 @@
 <p>Rule of thumb: reach for <code>fix</code> when the value should not change; use
 <code>var</code> or a typed binding when it must; use <code>const</code> for true constants
 like limits and configuration numbers.</p>
+<p><code>var</code> is only a <strong>declaration</strong> (<code>var name = …</code>). It is not a type: you
+cannot write it as a return type, parameter type, field type, or inside
+<code>list&lt;…&gt;</code>. For foreign or opaque values (for example a socket), use the
+type <code>object</code>, or omit a parameter type at that boundary — see
+<a href="https://github.com/remideboer/pys/blob/main/docs/LANGUAGE.md">LANGUAGE.md</a>.</p>
+<pre><code class="language-pys"><span class="tok-comment"># Illegal — var is not a type here</span>
+<span class="tok-comment"># public var peek() { return 1 }</span>
+<span class="tok-comment"># function void f(var x) { }</span></code></pre>
 <pre><code class="language-pys"><span class="tok-mod">const</span> <span class="tok-type">int</span> <span class="tok-typename">MAX_RETRIES</span> <span class="tok-op">=</span> <span class="tok-number">3</span>
 <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">mode</span> <span class="tok-op">=</span> <span class="tok-string">&quot;</span><span class="tok-string">demo</span><span class="tok-string">&quot;</span>
 <span class="tok-mod">var</span> <span class="tok-ident">attempt</span> <span class="tok-op">=</span> <span class="tok-number">0</span>

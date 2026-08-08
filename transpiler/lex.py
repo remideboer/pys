@@ -94,6 +94,7 @@ KEYWORDS = frozenset(
         "char",
         "string",
         "bool",
+        "object",
         "byte",
         "nibble",
         "int16",

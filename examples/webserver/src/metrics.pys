@@ -4,7 +4,7 @@
 import threading
 
 package class Metrics {
-    private var lock
+    private object lock
     private int requests
     private int errors
     private int queueFull

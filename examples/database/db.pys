@@ -27,7 +27,7 @@ package class ShopDatabase {
         this.conn.close()
     }
 
-    public nullable<string> cellNullableStr(var value) {
+    public nullable<string> cellNullableStr(value) {
         if (value == null) {
             return null
         }
@@ -35,7 +35,7 @@ package class ShopDatabase {
         return s
     }
 
-    public string cellStr(var value) {
+    public string cellStr(value) {
         if (value == null) {
             # NOT NULL column returned SQL NULL — never invent "" / 0.
             sys.exit("Database contract violation: expected a non-null string cell.")
@@ -44,17 +44,17 @@ package class ShopDatabase {
         return s
     }
 
-    public bool cellBool(var value) {
+    public bool cellBool(value) {
         bool flag = int(this.cellStr(value)) == 1
         return flag
     }
 
-    public float cellFloat(var value) {
+    public float cellFloat(value) {
         float n = float(this.cellStr(value))
         return n
     }
 
-    public int cellInt(var value) {
+    public int cellInt(value) {
         int n = int(this.cellStr(value))
         return n
     }

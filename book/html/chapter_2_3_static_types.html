@@ -149,11 +149,15 @@
 <td><code>char</code></td>
 <td><code>'A'</code></td>
 </tr>
+<tr>
+<td><code>object</code></td>
+<td>opaque / foreign value</td>
+</tr>
 </tbody>
 </table>
 <p>Prefer an explicit type on the left when teaching or when the initializer
 is unclear. Use <code>var</code> when the right-hand side already makes the type
-obvious.</p>
+obvious (<code>var</code> is a declaration form, not a type name).</p>
 <h2>Casts</h2>
 <pre><code class="language-pys"><span class="tok-type">float</span> <span class="tok-ident">speed</span> <span class="tok-op">=</span> <span class="tok-number">12.9</span>
 <span class="tok-type">int</span> <span class="tok-ident">whole</span> <span class="tok-op">=</span> (<span class="tok-type">int</span>) <span class="tok-ident">speed</span>

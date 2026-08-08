@@ -64,7 +64,9 @@ print greeting
 ## 2. Static typing and declarations
 
 Every value has a type. Prefer an explicit type on the left-hand side; use `var`
-only when the initializer makes the type obvious.
+only for a **local or script-top declaration** when the initializer makes the
+type obvious. `var` is **not** a type — it cannot appear as a return type,
+parameter type, field type, or generic argument ([ADR-025](adr/ADR-025-var-declaration-only.md)).
 
 ### Primitive types
 
@@ -80,6 +82,7 @@ only when the initializer makes the type obvious.
 | `char` | `'A'` (single character) |
 | `string` | `"hello"` or `'hello'` |
 | `bool` | `true` / `false` |
+| `object` | opaque foreign or dynamically shaped value (sockets, locks, driver cells); anything may assign into `object` |
 | `nullable<T>` | may hold a `T` value or the literal `null` (absence) |
 | `null` | absence literal for `nullable<T>` only (Python `None` at runtime) |
 
@@ -138,9 +141,28 @@ fix int locked = x + MAX     # assign once from an expression, then locked
 Rules:
 
 1. Typed name: `type name = expression`
-2. `var` — type must be inferable from the initializer
+2. `var` — **declaration form only** (`var name = expression`); type must be
+   inferable from the initializer. Legal at script/module top and inside
+   function/method bodies. **Illegal** as a return type, parameter type, field
+   type, or generic argument (use an explicit type, omit a parameter type, or
+   use `object` for foreign values).
 3. `const` — fixed at compile time; no reassignment
 4. `fix` — evaluated once, then immutable
+
+```pys
+# Good
+var count = 0
+object cell = row[0]          # foreign / opaque
+function void serve(conn) {   # omitted param type at a foreign boundary
+    print(conn)
+}
+
+# Illegal
+# public var lookup(dict c, string e) { ... }
+# function int f(var x) { return 1 }
+# private var q
+# list<var> bad = []
+```
 
 #### One declaration, one name
 

@@ -40,6 +40,7 @@ _PRIMITIVES = {
     "char",
     "string",
     "bool",
+    "object",
     "byte",
     "nibble",
     "int16",

@@ -7,7 +7,7 @@ import threading
 import ServerConfig from config
 
 package class CircuitBreaker {
-    private var lock
+    private object lock
     private int state
     private int failures
     private int halfSuccesses

@@ -15,12 +15,12 @@ package class JwtService {
         this.ttlSec = ttlSec
     }
 
-    private string b64url(var raw) {
+    private string b64url(raw) {
         string s = base64.urlsafe_b64encode(raw).decode("utf-8")
         return s.replace("=", "")
     }
 
-    private var b64urlDecode(string s) {
+    private object b64urlDecode(string s) {
         string pad = s
         int rem = len(pad) % 4
         if (rem == 2) {

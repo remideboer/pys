@@ -76,6 +76,7 @@ _TYPES = frozenset(
         "string",
         "bool",
         "void",
+        "object",
         "byte",
         "nibble",
         "int16",
@@ -1002,10 +1003,33 @@ def _looks_like_typed_name(p: _Tok) -> bool:
     return p.peek(2).kind == TokenKind.LPAREN
 
 
+def _reject_var_as_type(
+    tok: Token,
+    *,
+    suggested_fix: str | None = None,
+) -> None:
+    """`var` is declaration-form only (ADR-025); never a type name."""
+    raise FatalParseError(
+        "`var` is only for local declarations (`var name = expr`). "
+        "It cannot be used as a type.",
+        tok.line,
+        tok.column,
+        code="pys.var-as-type",
+        tips=[
+            "Use `object` for foreign or opaque values.",
+            "Omit the parameter type at a foreign boundary (e.g. `serve(conn)`).",
+            "Write an explicit type when known (e.g. `Router`, `string`).",
+        ],
+        suggested_fix=suggested_fix,
+    )
+
+
 def _parse_type_name(p: _Tok) -> str:
     """Parse `Type` or `Type<Arg, Nested<T>>` type references."""
     base_tok = p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
     base = base_tok.text
+    if base == "var":
+        _reject_var_as_type(base_tok, suggested_fix="object")
     if not p.at(TokenKind.LT):
         if base == "nullable":
             raise FatalParseError(
@@ -1180,7 +1204,10 @@ def _parse_param(p: _Tok) -> tuple[str, str]:
         if t1.kind == TokenKind.LT:
             type_name = _parse_type_name(p)
         elif t1.kind == TokenKind.LBRACK:
-            type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+            type_tok = p.eat(TokenKind.KEYWORD, TokenKind.IDENT)
+            if type_tok.text == "var":
+                _reject_var_as_type(type_tok, suggested_fix=None)
+            type_name = type_tok.text
             p.eat(TokenKind.LBRACK)
             p.eat(TokenKind.RBRACK)
             type_name += "[]"
@@ -1190,7 +1217,11 @@ def _parse_param(p: _Tok) -> tuple[str, str]:
             and p.peek(2).kind in {TokenKind.COMMA, TokenKind.RPAREN}
         ):
             # TYPE name ,/)  — typed param
-            type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
+            type_tok = p.eat(TokenKind.KEYWORD, TokenKind.IDENT)
+            if type_tok.text == "var":
+                # Prefer omitting the type at foreign boundaries.
+                _reject_var_as_type(type_tok, suggested_fix=t1.text)
+            type_name = type_tok.text
         elif t0.text in _TYPES and t1.kind in {TokenKind.IDENT, TokenKind.KEYWORD}:
             type_name = p.eat(TokenKind.KEYWORD, TokenKind.IDENT).text
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text

@@ -21,7 +21,7 @@ package class TemplateEngine {
         return html.escape(value, quote=true)
     }
 
-    public bool isTruthy(var value) {
+    public bool isTruthy(value) {
         if (value == null) {
             return false
         }
@@ -41,7 +41,7 @@ package class TemplateEngine {
         return true
     }
 
-    public var lookup(dict context, string expr) {
+    public object lookup(dict context, string expr) {
         string e = expr.strip()
         var parts = e.split(".")
         if (!(parts[0] in context)) {
@@ -102,7 +102,7 @@ package class TemplateEngine {
         return out
     }
 
-    public var matchEnd(string text, int bodyStart, string openWord, string endWord) {
+    public object matchEnd(string text, int bodyStart, string openWord, string endWord) {
         int i = bodyStart
         int depth = 1
         string openPat = re.escape(this.tagOpen()) + "\\s*" + openWord + "\\b"
@@ -133,7 +133,7 @@ package class TemplateEngine {
         return null
     }
 
-    public dict childContext(dict parent, string name, var value) {
+    public dict childContext(dict parent, string name, value) {
         dict child = dict(parent)
         child[name] = value
         return child

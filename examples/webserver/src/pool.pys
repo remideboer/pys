@@ -5,7 +5,7 @@ import time
 import threading
 
 package class DownstreamPool {
-    private var lock
+    private object lock
     private int busy
     private int waiting
     private int capacity

@@ -14,7 +14,7 @@ package class JsonUtil {
         return this.encode(d)
     }
 
-    public string encode(var value) {
+    public string encode(value) {
         return json.dumps(value)
     }
 

@@ -9,10 +9,11 @@ Common primitives:
 | `string` | `"hello"` |
 | `bool` | `true` / `false` |
 | `char` | `'A'` |
+| `object` | opaque / foreign value |
 
 Prefer an explicit type on the left when teaching or when the initializer
 is unclear. Use `var` when the right-hand side already makes the type
-obvious.
+obvious (`var` is a declaration form, not a type name).
 
 ## Casts
 

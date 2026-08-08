@@ -91,9 +91,10 @@ member_access    = "public" | "private" | "protected" | "module" ;
 
 (* ------------------------- Types ------------------------- *)
 
-primitive_type   = "int" | "float" | "char" | "string" | "bool"
+primitive_type   = "int" | "float" | "char" | "string" | "bool" | "object"
                  | "byte" | "nibble" | "int16" | "int32" | "int64" | "dword" ;
-(* Width aliases are unsigned ranges on int (see LANGUAGE.md); emit as Python int. *)
+(* Width aliases are unsigned ranges on int (see LANGUAGE.md); emit as Python int.
+   `object` is the opaque foreign-value type (ADR-025). `var` is NOT a type. *)
 
 array_type       = primitive_type , "[" , [ integer ] , "]" ;
 
@@ -178,6 +179,8 @@ return_type      = type_name | "void" ;
 
 parameter_list   = parameter , { "," , parameter } ;
 parameter        = [ type_name ] , identifier ;
+(* Parameter types may be omitted at foreign boundaries. `var` is not a type
+   (ADR-025); use `object` or omit the type. *)
 
 (* ------------------------- Classes ------------------------- *)
 

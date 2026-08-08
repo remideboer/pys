@@ -32,7 +32,7 @@ package abstract class OrderLineRepository {
 }
 
 package class InMemoryProductRepository inherits ProductRepository {
-    private var lock
+    private object lock
     private dict byId
     private int nextId
 
@@ -109,7 +109,7 @@ package class InMemoryProductRepository inherits ProductRepository {
 }
 
 package class InMemoryOrderRepository inherits OrderRepository {
-    private var lock
+    private object lock
     private dict byId
     private int nextId
     private OrderLineRepository lines
@@ -186,7 +186,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
 }
 
 package class InMemoryOrderLineRepository inherits OrderLineRepository {
-    private var lock
+    private object lock
     private dict byKey
     private dict nextLine
 

@@ -5,7 +5,7 @@
 import queue
 
 package class ConnQueue {
-    private var q
+    private object q
     private int maxPending
 
     # maxPending <= 0 → unbounded (e2e / default teaching servers).
@@ -18,12 +18,12 @@ package class ConnQueue {
         }
     }
 
-    public void putConn(var conn) {
+    public void putConn(conn) {
         this.q.put(conn)
     }
 
     # Non-blocking capacity check (single acceptor producer → safe vs race).
-    public bool tryPutConn(var conn) {
+    public bool tryPutConn(conn) {
         if (this.maxPending > 0 && this.q.qsize() >= this.maxPending) {
             return false
         }
@@ -35,7 +35,7 @@ package class ConnQueue {
         return this.q.qsize()
     }
 
-    public var takeConn() {
+    public object takeConn() {
         return this.q.get()
     }
 

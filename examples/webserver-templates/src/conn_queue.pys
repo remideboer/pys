@@ -3,17 +3,17 @@
 import queue
 
 package class ConnQueue {
-    private var q
+    private object q
 
     public ConnQueue() {
         this.q = queue.Queue()
     }
 
-    public void putConn(var conn) {
+    public void putConn(conn) {
         this.q.put(conn)
     }
 
-    public var takeConn() {
+    public object takeConn() {
         return this.q.get()
     }
 

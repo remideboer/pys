@@ -16,9 +16,10 @@ fix int locked = n + MAX
 ## Rules (procedural)
 
 1. Typed name: `type name = expression`  
-2. `var` — type comes from the initializer (must be inferable)  
+2. `var` — declaration form only (`var name = expression`); type comes from the initializer (must be inferable). Not a return/param/field type.  
 3. `const` — compile-time constant; do not reassign  
 4. `fix` — assign once from an expression, then locked  
+5. Foreign/opaque values → type `object`, or omit a parameter type at that boundary  
 
 ## Not here
 

@@ -22,7 +22,7 @@ package class RetryPolicy {
     private CircuitBreaker breaker
     private IdempotencyTable idem
     private int retryAttemptsTotal
-    private var lock
+    private object lock
 
     public RetryPolicy(ServerConfig cfg, CircuitBreaker breaker, IdempotencyTable idem) {
         this.cfg = cfg
@@ -118,7 +118,7 @@ package class RetryPolicy {
 
     # handlerBudgetSec: remaining wall time for the handler (FR6); skip retry sleep if exhausted.
     # Prefer executeOnPool when a DownstreamPool is involved (FR8).
-    public string execute(string method, string path, var call, float handlerBudgetSec) {
+    public string execute(string method, string path, call, float handlerBudgetSec) {
         bool canRetry = this.cfg.retriesEnabled && this.idem.mayRetry(method, path)
         float started = time.monotonic()
         int attempt = 0
