@@ -5,6 +5,7 @@ Software* (Gamma, Helm, Johnson, Vlissides, 1994), implemented as **pure OO**
 runnable `.pys` files. Folder layout follows the three GoF categories.
 
 Background: [Wikipedia — Design Patterns](https://en.wikipedia.org/wiki/Design_Patterns).
+Concurrency catalog: [Wikipedia — Concurrency pattern](https://en.wikipedia.org/wiki/Concurrency_pattern).
 
 Each pattern also has a companion `[name].md` with intent, explanation, classic
 and demo Mermaid UML, and real-world use cases.
@@ -59,6 +60,35 @@ print lines are marked with `# …` comments.
 | Strategy | [strategy.pys](behavioral/strategy.pys) | [strategy.md](behavioral/strategy.md) |
 | Template Method | [template_method.pys](behavioral/template_method.pys) | [template_method.md](behavioral/template_method.md) |
 | Visitor | [visitor.pys](behavioral/visitor.pys) | [visitor.md](behavioral/visitor.md) |
+
+## Concurrency
+
+Runnable demos use only `tasks` / `task` / `await` / `shared` / `atomic`
+([CONCURRENCY.md](../../docs/CONCURRENCY.md)). No `import threading`.
+
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Active object | [active_object.pys](concurrency/active_object.pys) | [active_object.md](concurrency/active_object.md) |
+| Balking | [balking.pys](concurrency/balking.pys) | [balking.md](concurrency/balking.md) |
+| Double-checked locking | [double_checked_locking.pys](concurrency/double_checked_locking.pys) | [double_checked_locking.md](concurrency/double_checked_locking.md) (CAS, no mutex) |
+| Scheduler | [scheduler.pys](concurrency/scheduler.pys) | [scheduler.md](concurrency/scheduler.md) |
+
+### Out of language today
+
+Wikipedia’s Examples list also names patterns that need locks, wait/notify, TLS,
+a reusable barrier, or a demux API. They are **documented here only** — no fake
+demos (including no “await N tasks” stand-in for Barrier):
+
+| Pattern | Why skipped |
+|---------|-------------|
+| Barrier | Needs a reusable multi-party barrier / arrive-and-wait; `await` fan-in is structured join, not this pattern |
+| Guarded suspension | Needs wait/notify or a condition variable |
+| Monitor object | Needs mutual exclusion on methods |
+| Readers–writer lock | Needs an RW lock |
+| Thread-local storage | No TLS in PYS |
+| Thread pool | Emitter uses a pool; PYS cannot define/size one |
+| Reactor | No selector / demux API |
+| Nuclear reaction | Niche; needs the same missing primitives |
 
 ## Modern notes
 

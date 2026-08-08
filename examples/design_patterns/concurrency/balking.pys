@@ -1,0 +1,45 @@
+# Balking — execute only when the object is ready; otherwise return immediately.
+
+class WashingMachine {
+    private bool washing
+
+    public constructor() {
+        this.washing = false
+    }
+
+    public bool wash(string load) {
+        if (this.washing) {
+            print("balk:" + load)
+            return false
+        }
+        this.washing = true
+        print("wash:" + load)
+        this.washing = false
+        return true
+    }
+}
+
+WashingMachine m = WashingMachine()
+print(m.wash("towels"))
+print(m.wash("shirts"))
+
+# Concurrent callers: first CAS wins and holds; others balk (no mutex/monitor).
+atomic int busy = 0
+atomic int balks = 0
+
+function void tryCritical(string tag) {
+    if (!busy.compareAndSet(0, 1)) {
+        balks += 1
+        print("balk:" + tag)
+        return
+    }
+    print("work:" + tag)
+}
+
+tasks {
+    task { tryCritical("A") }
+    task { tryCritical("B") }
+    task { tryCritical("C") }
+    task { tryCritical("D") }
+}
+print(balks)

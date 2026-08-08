@@ -1,0 +1,29 @@
+# Double-checked locking — lazy init with a fast path + CAS (no mutex).
+# Honest note: PYS has no lock; atomic compareAndSet replaces the locked slow path.
+
+atomic int config = -1
+
+function int getConfig() {
+    int snap = config.get()
+    if (snap >= 0) {
+        return snap
+    }
+    int computed = 42
+    if (config.compareAndSet(-1, computed)) {
+        print("init")
+        return computed
+    }
+    return config.get()
+}
+
+tasks {
+    task {
+        print(getConfig())
+    }
+    task {
+        print(getConfig())
+    }
+    task {
+        print(getConfig())
+    }
+}

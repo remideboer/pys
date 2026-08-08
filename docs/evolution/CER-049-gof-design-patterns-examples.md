@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-08 |
-| Commits | `75f419c` (demos); _(companion markdown)_ |
+| Commits | `75f419c` (GoF demos); `2f3b505` (GoF markdown); _(concurrency patterns)_ |
 | Scope | `examples/design_patterns/**`; `tests/test_design_patterns.py` |
 
 ## Context
@@ -44,8 +44,27 @@ README tables link Code + Notes. Wikipedia pattern articles linked from each fil
 
 **Evidence:** `examples/design_patterns/**/*.md` co-located with demos.
 
+### 3. Concurrency patterns (Wikipedia Examples, option B)
+
+**Pre-behavior:** Only GoF creational/structural/behavioral demos.
+
+**Why it hurt:** Students had no map from the Wikipedia concurrency catalog to
+what PYS can express with `tasks` / `await` / `shared` / `atomic` only.
+
+**Post-behavior:** Four runnable demos under `concurrency/` (active object,
+balking, double-checked locking via CAS, scheduler) with companion `.md`
+files. README lists eight Wikipedia Examples as **out of language** (barrier,
+guarded suspension, monitor, RW lock, TLS, thread pool, reactor, nuclear
+reaction) — no `import threading` workarounds and no await-fan-in stand-in for
+Barrier.
+
+**Evidence:** `tests/test_design_patterns.py` asserts four `concurrency/*.pys`
+transpile; README Out-of-language table.
+
 ## Trade-offs
 
 - One file per pattern (not multi-module packages) for runnable teaching
   density.
 - Book chapters for patterns deferred — examples-only increment.
+- Concurrency demos stay inside the existing language contract (ADR-013 /
+  CONCURRENCY.md); lock/CV/TLS patterns are documented, not faked.

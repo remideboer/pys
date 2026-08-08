@@ -1,0 +1,43 @@
+# Scheduler — order and dispatch requests through one scheduler object.
+
+class Job {
+    private string name
+
+    public constructor(string name) {
+        this.name = name
+    }
+
+    public string label() {
+        return this.name
+    }
+}
+
+class Scheduler {
+    private list<Job> pending
+
+    public constructor() {
+        this.pending = []
+    }
+
+    public void schedule(Job job) {
+        this.pending.append(job)
+    }
+
+    public void dispatchAll() {
+        loop (Job job in this.pending) {
+            print("run:" + job.label())
+        }
+        this.pending = []
+    }
+}
+
+Scheduler sched = Scheduler()
+sched.schedule(Job("backup"))
+sched.schedule(Job("report"))
+sched.schedule(Job("cleanup"))
+
+tasks {
+    task {
+        sched.dispatchAll()
+    }
+}

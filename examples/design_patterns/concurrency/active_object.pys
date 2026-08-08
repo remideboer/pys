@@ -1,0 +1,47 @@
+# Active object — clients enqueue method requests; a servant executes them.
+
+interface MethodRequest {
+    execute()
+}
+
+class PrintRequest implements MethodRequest {
+    private string message
+
+    public constructor(string message) {
+        this.message = message
+    }
+
+    public execute() {
+        print("servant:" + this.message)
+    }
+}
+
+class ActiveEngine {
+    private list<MethodRequest> queue
+
+    public constructor() {
+        this.queue = []
+    }
+
+    public void say(string message) {
+        this.queue.append(PrintRequest(message))
+    }
+
+    public void pump() {
+        loop (MethodRequest req in this.queue) {
+            req.execute()
+        }
+        this.queue = []
+    }
+}
+
+ActiveEngine engine = ActiveEngine()
+engine.say("hello")
+engine.say("world")
+
+# Servant runs in its own task (no condition-wait; known queued work).
+tasks {
+    task {
+        engine.pump()
+    }
+}
