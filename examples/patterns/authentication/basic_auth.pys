@@ -1,0 +1,48 @@
+# HTTP Basic authentication — verify username + password (teaching form).
+# Real HTTP sends Base64("user:pass") in Authorization: Basic …; we skip transport.
+
+interface UserStore {
+    nullable<string> passwordOf(string username)
+}
+
+class MemoryUserStore implements UserStore {
+    private dict passwords
+
+    public constructor() {
+        dict empty = dict()
+        empty["ada"] = "pass"
+        this.passwords = empty
+    }
+
+    public nullable<string> passwordOf(string username) {
+        dict m = this.passwords
+        if (username in m) {
+            return m[username]
+        }
+        return null
+    }
+}
+
+class BasicAuthenticator {
+    private UserStore users
+
+    public constructor(UserStore users) {
+        this.users = users
+    }
+
+    public nullable<string> authenticate(string username, string password) {
+        nullable<string> expected = this.users.passwordOf(username)
+        if (expected == null) {
+            return null
+        }
+        if (expected != password) {
+            return null
+        }
+        return username
+    }
+}
+
+BasicAuthenticator basic = BasicAuthenticator(MemoryUserStore())
+print(basic.authenticate("ada", "pass"))  # ada
+print(basic.authenticate("ada", "wrong") == null)  # true
+print(basic.authenticate("nobody", "x") == null)  # true

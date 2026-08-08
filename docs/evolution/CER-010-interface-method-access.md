@@ -56,7 +56,7 @@ allowed `return_type` = `type_name | void`.
 
 **Post-behavior:** Interface signatures use the same return-type lookahead as
 class/trait methods (nominal types, generics, trailing `[]`). Examples:
-`examples/design_patterns/creational/abstract_factory.pys`.
+`examples/patterns/design/creational/abstract_factory.pys`.
 
 **Teaching / IDE:** `book/chapter_4_2_interfaces.md` (§ Return types on the
 socket); hover + `interface` snippet in `pys-language/` mention nominal returns.
@@ -74,7 +74,7 @@ rationale was obsolete after §2.
 
 **Post-behavior:** Those ports are `interface`; implementors use `implements`.
 README updated. Legitimate abstracts with shared code unchanged
-(`examples/abstract_classes.pys`, design_patterns template bases).
+(`examples/abstract_classes.pys`, patterns template bases).
 
 **Evidence:** transpile of converted `repositories.pys` / `mappers.pys` modules.
 

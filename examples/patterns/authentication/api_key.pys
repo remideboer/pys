@@ -1,0 +1,36 @@
+# API key authentication — request presents a pre-shared key.
+
+interface ApiKeyValidator {
+    bool isValid(string key)
+}
+
+class FixedApiKeyValidator implements ApiKeyValidator {
+    private string expected
+
+    public constructor(string expected) {
+        this.expected = expected
+    }
+
+    public bool isValid(string key) {
+        return key == this.expected
+    }
+}
+
+class ApiGateway {
+    private ApiKeyValidator keys
+
+    public constructor(ApiKeyValidator keys) {
+        this.keys = keys
+    }
+
+    public string handle(string apiKey, string path) {
+        if (!this.keys.isValid(apiKey)) {
+            return "deny:" + path
+        }
+        return "ok:" + path
+    }
+}
+
+ApiGateway api = ApiGateway(FixedApiKeyValidator("secret-key"))
+print(api.handle("secret-key", "/products"))  # ok:/products
+print(api.handle("wrong", "/products"))  # deny:/products

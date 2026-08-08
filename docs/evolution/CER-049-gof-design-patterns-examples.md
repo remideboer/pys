@@ -1,83 +1,71 @@
-# CER-049: GoF design-pattern teaching examples
+# CER-049: Pattern teaching examples
 
 | | |
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-08 |
-| Commits | `75f419c` (GoF demos); `2f3b505` (GoF markdown); _(concurrency patterns)_ |
-| Scope | `examples/design_patterns/**`; `tests/test_design_patterns.py` |
+| Commits | (patterns tree; see git history) |
+| Scope | `examples/patterns/**`; `tests/test_patterns.py` |
 
 ## Context
 
-Students need runnable, **pure OO** references for the classic Gang of Four
-catalog (creational / structural / behavioral), aligned with PYS features
-(`abstract`, `interface`, `static`, `open`/`override`) and the default OO
-layered Cursor rule — not procedural `dict`/`object` sketches.
+Students need runnable, **pure OO** references for classic and common patterns,
+aligned with PYS features and the OO layered Cursor rule — not procedural
+`dict`/`object` sketches.
 
 ## Entries
 
-### 1. Twenty-three demos under category folders
+### 1. Twenty-three GoF demos
 
-**Pre-behavior:** No `examples/design_patterns/` corpus.
+**Pre-behavior:** No patterns corpus.
 
-**Why it hurt:** Patterns were only named in prose; no greppable PYS that
-shows roles, composition, and expected output.
+**Post-behavior:** One `.pys` per GoF pattern under
+`examples/patterns/design/{creational,structural,behavioral}/` (originally
+`examples/design_patterns/…`); companion markdown; isolated `pys.toml`;
+transpile gate. Nominal interface returns — see CER-010 §2.
 
-**Post-behavior:** One self-contained `.pys` per GoF pattern under
-`creational/`, `structural/`, `behavioral/`; root README with index and modern
-caveats (Singleton vs DI, Interpreter scope); isolated `pys.toml`; transpile
-gate `tests/test_design_patterns.py`. Interface method signatures accept nominal
-return types (`Button createButton()`) — see CER-010 §2.
+**Evidence:** `python -m pytest -q tests/test_patterns.py`.
 
-**Evidence:** `python -m pytest -q tests/test_design_patterns.py`.
+### 2. Companion markdown per runnable pattern
 
-### 2. Companion markdown per pattern
-
-**Pre-behavior:** Only a root README index; no per-pattern intent / UML / use-case notes.
-
-**Why it hurt:** Students could run demos but had no local map from GoF roles to
-the concrete types in each `.pys`, or pointers to real-world uses.
-
-**Post-behavior:** One `[pattern-name].md` beside each `.pys` (intent, explanation,
-classic Mermaid UML, demo-specific UML, real-world use cases, run line). Root
-README tables link Code + Notes. Wikipedia pattern articles linked from each file.
-
-**Evidence:** `examples/design_patterns/**/*.md` co-located with demos.
+**Post-behavior:** `[pattern-name].md` beside each `.pys` (intent, UML, use cases,
+run line). Root README indexes Code + Notes.
 
 ### 3. Concurrency patterns (Wikipedia Examples, option B)
 
-**Pre-behavior:** Only GoF creational/structural/behavioral demos.
-
-**Why it hurt:** Students had no map from the Wikipedia concurrency catalog to
-what PYS can express with `tasks` / `await` / `shared` / `atomic` only.
-
-**Post-behavior:** Four runnable demos under `concurrency/` (active object,
-balking, double-checked locking via CAS, scheduler) with companion `.md`
-files. README lists eight Wikipedia Examples as **out of language** (barrier,
-guarded suspension, monitor, RW lock, TLS, thread pool, reactor, nuclear
-reaction) — no `import threading` workarounds and no await-fan-in stand-in for
-Barrier.
-
-**Evidence:** `tests/test_design_patterns.py` asserts four `concurrency/*.pys`
-transpile; README Out-of-language table.
+**Post-behavior:** Four runnable demos under `concurrency/`; out-of-language
+table for Barrier / monitor / TLS / etc.
 
 ### 4. Dependency Injection (general)
 
-**Pre-behavior:** Singleton README/comments pointed at DI without a runnable demo.
+**Post-behavior:** `general/dependency_injection.pys`; Singleton cross-links.
 
-**Why it hurt:** Students saw “prefer DI” but had no OO constructor-injection
-example next to the classic Singleton.
+### 5. Tree rename + categories (2026-08-08)
 
-**Post-behavior:** `general/dependency_injection.pys` (+ `.md`) shows constructor
-injection of a `Logger` into `OrderService` with an explicit composition root;
-Singleton cross-links to it. Consensus name: **Dependency Injection** (not GoF).
+**Pre-behavior:** Folder named `examples/design_patterns/` with GoF categories at
+the root plus `concurrency/` / `general/`.
 
-**Evidence:** transpile gate covers `general/*.pys`.
+**Post-behavior:** Renamed to **`examples/patterns/`**. GoF lives under
+`design/`. Added `authentication/` (runnable), plus stub-only
+`architectural/`, `messaging/`, `reactive/`. Gate: `tests/test_patterns.py`.
+
+### 6. Authentication patterns
+
+**Post-behavior:** Four pure-PYS demos — session-based, token-based (opaque;
+JWT shop linked), API key, HTTP Basic — with companion `.md`. Stubs:
+`oauth2.md`, `mtls.md`.
+
+**Evidence:** `tests/test_patterns.py` asserts four `authentication/*.pys`.
+
+### 7. Architectural / messaging / reactive stubs
+
+**Post-behavior:** Markdown stubs marked **Status: stub — implement later**
+(MVC, MVVM, MVP, hexagonal, layered, event-driven, publish–subscribe, CQRS,
+reactive). No fake `.pys`.
 
 ## Trade-offs
 
-- One file per pattern (not multi-module packages) for runnable teaching
-  density.
-- Book chapters for patterns deferred — examples-only increment.
-- Concurrency demos stay inside the existing language contract (ADR-013 /
-  CONCURRENCY.md); lock/CV/TLS patterns are documented, not faked.
+- One file per runnable pattern for teaching density.
+- Book chapters for patterns deferred.
+- Stubs document intent without claiming an implementation.
+- Concurrency stays inside ADR-013 / CONCURRENCY.md.

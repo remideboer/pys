@@ -1,0 +1,78 @@
+# Session-based authentication — opaque session id after login; lookup on each request.
+
+interface UserStore {
+    nullable<string> passwordOf(string username)
+}
+
+class MemoryUserStore implements UserStore {
+    private dict passwords
+
+    public constructor() {
+        dict empty = dict()
+        empty["ada"] = "pass"
+        this.passwords = empty
+    }
+
+    public nullable<string> passwordOf(string username) {
+        dict m = this.passwords
+        if (username in m) {
+            return m[username]
+        }
+        return null
+    }
+}
+
+class SessionService {
+    private UserStore users
+    private dict sessions
+    private int nextId
+
+    public constructor(UserStore users) {
+        this.users = users
+        dict empty = dict()
+        this.sessions = empty
+        this.nextId = 1
+    }
+
+    public nullable<string> login(string username, string password) {
+        nullable<string> expected = this.users.passwordOf(username)
+        if (expected == null) {
+            return null
+        }
+        if (expected != password) {
+            return null
+        }
+        string sid = "s" + str(this.nextId)
+        this.nextId = this.nextId + 1
+        dict m = this.sessions
+        m[sid] = username
+        this.sessions = m
+        return sid
+    }
+
+    public nullable<string> userFor(string sessionId) {
+        dict m = this.sessions
+        if (sessionId in m) {
+            return m[sessionId]
+        }
+        return null
+    }
+
+    public void logout(string sessionId) {
+        dict m = this.sessions
+        if (sessionId in m) {
+            m.pop(sessionId)
+            this.sessions = m
+        }
+    }
+}
+
+SessionService auth = SessionService(MemoryUserStore())
+nullable<string> sid = auth.login("ada", "pass")
+print(sid != null)  # true
+if (sid != null) {
+    print(auth.userFor(sid))  # ada
+    auth.logout(sid)
+    print(auth.userFor(sid))  # null
+}
+print(auth.login("ada", "wrong") == null)  # true

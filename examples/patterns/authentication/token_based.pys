@@ -1,0 +1,69 @@
+# Token-based authentication — opaque bearer token after login (not full JWT).
+# Full HS256 JWT HTTP demo: examples/rest-api/shop/jwt/
+
+interface UserStore {
+    nullable<string> passwordOf(string username)
+}
+
+class MemoryUserStore implements UserStore {
+    private dict passwords
+
+    public constructor() {
+        dict empty = dict()
+        empty["ada"] = "pass"
+        this.passwords = empty
+    }
+
+    public nullable<string> passwordOf(string username) {
+        dict m = this.passwords
+        if (username in m) {
+            return m[username]
+        }
+        return null
+    }
+}
+
+class TokenService {
+    private UserStore users
+    private dict tokens
+    private int nextId
+
+    public constructor(UserStore users) {
+        this.users = users
+        dict empty = dict()
+        this.tokens = empty
+        this.nextId = 1
+    }
+
+    public nullable<string> issue(string username, string password) {
+        nullable<string> expected = this.users.passwordOf(username)
+        if (expected == null) {
+            return null
+        }
+        if (expected != password) {
+            return null
+        }
+        string token = "tok-" + str(this.nextId)
+        this.nextId = this.nextId + 1
+        dict m = this.tokens
+        m[token] = username
+        this.tokens = m
+        return token
+    }
+
+    public nullable<string> authenticate(string bearerToken) {
+        dict m = this.tokens
+        if (bearerToken in m) {
+            return m[bearerToken]
+        }
+        return null
+    }
+}
+
+TokenService tokens = TokenService(MemoryUserStore())
+nullable<string> tok = tokens.issue("ada", "pass")
+print(tok != null)  # true
+if (tok != null) {
+    print(tokens.authenticate(tok))  # ada
+}
+print(tokens.authenticate("tok-missing") == null)  # true
