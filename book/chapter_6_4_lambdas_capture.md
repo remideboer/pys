@@ -6,6 +6,35 @@ read-only unless they were declared `shared` or `atomic`.
 Loop variables are immutable **per iteration** — each lambda created in a
 loop gets that iteration’s value.
 
+<figure class="concept-diagram" role="img" aria-label="Each loop iteration snapshots i into its own lambda">
+  <div class="diagram-flow" style="min-width:34rem">
+    <div class="diagram-box"><strong>i = 0</strong><span>snapshot</span></div>
+    <div class="diagram-box"><strong>i = 1</strong><span>snapshot</span></div>
+    <div class="diagram-box"><strong>i = 2</strong><span>snapshot</span></div>
+  </div>
+  <div class="diagram-stack" style="margin-top:0.75rem">
+    <div class="diagram-arrow" aria-hidden="true">↓ three lambdas</div>
+    <div class="diagram-grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+        <strong>x + 0</strong>
+        <span>→ 10</span>
+      </div>
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+        <strong>x + 1</strong>
+        <span>→ 11</span>
+      </div>
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+        <strong>x + 2</strong>
+        <span>→ 12</span>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Not one shared late-bound <code>i</code> — each lambda keeps the value from
+    its creation iteration.
+  </figcaption>
+</figure>
+
 > **Sidebar — why this rule exists**
 >
 > In Python, a list of `lambda: i` built in a loop often prints the *last*

@@ -136,6 +136,22 @@
     <main>
 <h1>9.1. Writing a first test</h1>
 <p>Suppose production code offers a pure function:</p>
+<figure class="concept-diagram" role="img" aria-label="Arrange act assert flow for a first test">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box"><strong>Arrange</strong><span>inputs / setup</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Act</strong>
+      <span>call addCents</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Assert</strong><span>OK or FAIL</span></div>
+  </div>
+  <figcaption>
+    Same three beats every time: set up, call the API, check the result.
+  </figcaption>
+</figure>
+
 <pre><code class="language-pys"><span class="tok-comment"># billing.pys</span>
 <span class="tok-mod">package</span> <span class="tok-kw">function</span> <span class="tok-type">int</span> <span class="tok-ident">addCents</span>(<span class="tok-type">int</span> <span class="tok-ident">balance</span>, <span class="tok-type">int</span> <span class="tok-ident">delta</span>) {
     <span class="tok-kw">return</span> <span class="tok-ident">balance</span> <span class="tok-op">+</span> <span class="tok-ident">delta</span>

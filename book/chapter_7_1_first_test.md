@@ -2,6 +2,22 @@
 
 Suppose production code offers a pure function:
 
+<figure class="concept-diagram" role="img" aria-label="Arrange act assert flow for a first test">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box"><strong>Arrange</strong><span>inputs / setup</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Act</strong>
+      <span>call addCents</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Assert</strong><span>OK or FAIL</span></div>
+  </div>
+  <figcaption>
+    Same three beats every time: set up, call the API, check the result.
+  </figcaption>
+</figure>
+
 ```pys
 # billing.pys
 package function int addCents(int balance, int delta) {

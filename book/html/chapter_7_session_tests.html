@@ -139,6 +139,18 @@
 tests are ordinary <code>.pys</code> programs that set up data, call your API, and
 <code>print</code> (or fail loudly) when something is wrong — often living under a
 <code>tests/</code> tree next to <code>src/</code> via <code>pys.toml</code> source roots.</p>
+<figure class="concept-diagram" role="img" aria-label="Session 6 map from first test through TDD to source roots">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>9.1 First test</strong><span>Arrange · Act · Assert</span></div>
+    <div class="diagram-box"><strong>9.2 TDD</strong><span>Red · Green · Refactor</span></div>
+    <div class="diagram-box"><strong>9.3 Source roots</strong><span>src/ · tests/ · same package</span></div>
+  </div>
+  <figcaption>
+    Learn a repeatable check, then flip the order, then place files so
+    packages stay honest.
+  </figcaption>
+</figure>
+
 <ol>
 <li><a href="chapter_7_1_first_test.html">Writing a first test</a></li>
 <li><a href="chapter_7_2_tdd.html">Better PYS with TDD</a></li>

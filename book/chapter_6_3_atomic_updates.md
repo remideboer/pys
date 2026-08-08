@@ -3,6 +3,22 @@
 `atomic` marks a cell whose `+=` / `-=` / `++` / `--` updates are
 **indivisible**. It also implies shared capture for tasks.
 
+<figure class="concept-diagram" role="img" aria-label="shared read-modify-write can race versus atomic indivisible plus-equals">
+  <div class="diagram-grid-2">
+    <div class="diagram-box is-warn" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>shared</strong>
+      <span>read · add · write can interleave</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>atomic</strong>
+      <span>+= is one indivisible step</span>
+    </div>
+  </div>
+  <figcaption>
+    Visibility alone is not enough — atomics make the update itself safe.
+  </figcaption>
+</figure>
+
 > **Sidebar — `get` / `compareAndSet`**
 >
 > Beyond `+=`, atomics expose `get()` and `compareAndSet(expected, new)`.

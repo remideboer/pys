@@ -12,6 +12,23 @@ Use this as a pocket card:
 | Immutable interchangeable value (money, color) | `data` |
 | Row with a stable key (customer id) | `entity` |
 
+<figure class="concept-diagram" role="img" aria-label="Behavior types versus value bags when choosing a construct">
+  <div class="diagram-grid-2">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Behavior / types</strong>
+      <span>class · interface · abstract · trait</span>
+    </div>
+    <div class="diagram-box">
+      <strong>Value bags</strong>
+      <span>struct · data · entity</span>
+    </div>
+  </div>
+  <figcaption>
+    Ask first: do I need behavior and a type story, or a field bundle with a
+    clear equality rule?
+  </figcaption>
+</figure>
+
 > **Sidebar — what “VO ceremony” meant**
 >
 > In [Structs, data, and entity](chapter_4_5_structs_data_entity.md), **VO** means *value object*
@@ -31,6 +48,23 @@ Use this as a pocket card:
 
 Do **not** write an `abstract class` that only lists abstract methods and an
 empty constructor — that is an interface. Prefer:
+
+<figure class="concept-diagram" role="img" aria-label="Abstract class with only abstract methods should be an interface instead">
+  <div class="diagram-grid-2">
+    <div class="diagram-box is-warn" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Avoid</strong>
+      <span>abstract class · only abstract methods · empty ctor</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Prefer</strong>
+      <span>interface Loadable { … }</span>
+    </div>
+  </div>
+  <figcaption>
+    A socket with no shared gears is an interface — not a hollow abstract
+    class.
+  </figcaption>
+</figure>
 
 ```pys
 interface Loadable {

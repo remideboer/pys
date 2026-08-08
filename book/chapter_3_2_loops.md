@@ -2,6 +2,21 @@
 
 Three shapes:
 
+<figure class="concept-diagram" role="img" aria-label="Three loop shapes: C-style counter, while condition, foreach binder">
+  <div class="diagram-grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="diagram-box"><strong>C-style</strong><span>init · test · step</span></div>
+    <div class="diagram-box"><strong>while-style</strong><span>test · body mutates</span></div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>foreach</strong>
+      <span>binder in collection</span>
+    </div>
+  </div>
+  <figcaption>
+    Same keyword <code>loop</code>, three jobs: count, wait for a condition, or
+    walk a collection.
+  </figcaption>
+</figure>
+
 ```pys
 # C-style
 loop (int i = 0; i < 3; i++) {
@@ -112,6 +127,23 @@ eventually changes the values needed to make the condition false.
 
 `break` stops the loop **immediately**. Use it when you have found what you
 were looking for and further passes would waste work.
+
+<figure class="concept-diagram" role="img" aria-label="break exits the loop; continue skips to next iteration">
+  <div class="diagram-grid-2">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>break</strong>
+      <span>leave the loop entirely</span>
+    </div>
+    <div class="diagram-box">
+      <strong>continue</strong>
+      <span>skip to next iteration</span>
+    </div>
+  </div>
+  <figcaption>
+    Exit vs skip one pass — both change control without rewriting the loop
+    header.
+  </figcaption>
+</figure>
 
 ```pys
 list<string> names = ["Ada", "Tom", "Lin", "Sam"]

@@ -138,6 +138,18 @@
 <p>PYS has <strong>no</strong> Rust-style ownership/borrow checker. Concurrency is
 structured around <code>tasks</code> / <code>task</code> / <code>await</code>, with explicit <code>shared</code> and
 <code>atomic</code> when tasks must mutate outer state.</p>
+<figure class="concept-diagram" role="img" aria-label="Session 5 map from tasks through shared atomic to capture">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>8.1 tasks / await</strong><span>join · DAG pipelines</span></div>
+    <div class="diagram-box"><strong>8.2 shared</strong><span>visible mutation across tasks</span></div>
+    <div class="diagram-box"><strong>8.3 atomic</strong><span>indivisible +=</span></div>
+    <div class="diagram-box"><strong>8.4 capture</strong><span>snapshot by value</span></div>
+  </div>
+  <figcaption>
+    Structure first, then say when mutation crosses a task boundary.
+  </figcaption>
+</figure>
+
 <p>Read the deep dive any time: <a href="https://github.com/remideboer/pys/blob/main/docs/CONCURRENCY.md"><code>docs/CONCURRENCY.md</code></a>.</p>
 <ol>
 <li><a href="chapter_6_1_tasks_await.html">tasks, task, and await</a></li>

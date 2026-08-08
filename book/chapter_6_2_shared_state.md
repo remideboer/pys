@@ -4,6 +4,18 @@ Outer locals are **read-only** inside a task unless marked `shared` (or
 `atomic`). `shared` is **visibility** for mutation across tasks — it does
 not by itself make updates race-free.
 
+<figure class="concept-diagram" role="img" aria-label="Two tasks both reach the same shared hits cell">
+  <div class="diagram-threads">
+    <div class="diagram-box"><strong>task</strong><span>hits = hits + 1</span></div>
+    <div class="diagram-box diagram-shared"><strong>shared hits</strong><span>one mutable cell</span></div>
+    <div class="diagram-box"><strong>task</strong><span>hits = hits + 1</span></div>
+  </div>
+  <figcaption>
+    Both flows can see and write the same name — visibility granted; races
+    still possible without atomics.
+  </figcaption>
+</figure>
+
 ```pys
 shared int hits = 0
 

@@ -158,6 +158,35 @@ def test_session_10_pattern_chapters_include_concept_diagrams() -> None:
     ).read_text(encoding="utf-8")
 
 
+def test_core_sessions_include_concept_diagrams() -> None:
+    """Sessions 3–7 mental-model chapters (diagram rollout) keep dual coding."""
+    pages = [
+        "chapter_3_session_control_flow.html",
+        "chapter_3_1_control_flow.html",
+        "chapter_3_2_loops.html",
+        "chapter_3_3_arrays_and_lists.html",
+        "chapter_4_5_structs_data_entity.html",
+        "chapter_4_6_choosing_construct.html",
+        "chapter_5_session_functions_lambdas.html",
+        "chapter_5_1_functions_return.html",
+        "chapter_5_2_lambdas.html",
+        "chapter_5_3_passing_functions.html",
+        "chapter_6_session_concurrency.html",
+        "chapter_6_1_tasks_await.html",
+        "chapter_6_2_shared_state.html",
+        "chapter_6_3_atomic_updates.html",
+        "chapter_6_4_lambdas_capture.html",
+        "chapter_7_session_tests.html",
+        "chapter_7_1_first_test.html",
+        "chapter_7_2_tdd.html",
+        "chapter_7_3_packages_source_roots.html",
+    ]
+    for name in pages:
+        html = (BOOK / "html" / name).read_text(encoding="utf-8")
+        assert 'class="concept-diagram"' in html, f"{name} missing concept-diagram"
+        assert "<figcaption>" in html, f"{name} missing figcaption"
+
+
 def test_gui_intro_mermaid_is_rendered_as_div_not_code_fence() -> None:
     gui = (BOOK / "html" / "gui_intro.html").read_text(encoding="utf-8")
     assert 'class="language-mermaid"' not in gui

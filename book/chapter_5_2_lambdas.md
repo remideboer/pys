@@ -5,6 +5,23 @@ right**: `lambda<int -> bool>` means “one `int` in, `bool` out”.
 Sugar `lambda<int>` (or explicit `lambda<-> int>`) means no parameters,
 returns `int`.
 
+<figure class="concept-diagram" role="img" aria-label="Lambda value typed as lambda int to bool then called later">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>lambda&lt;int → bool&gt;</strong>
+      <span>n =&gt; n % 2 == 0</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">bind</div>
+    <div class="diagram-box"><strong>isEven</strong><span>a value you can call later</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>isEven(4)</strong><span>True</span></div>
+  </div>
+  <figcaption>
+    The type tag is part of the value story: bind once, call when you need
+    the answer.
+  </figcaption>
+</figure>
+
 ```pys
 lambda<int -> bool> isEven = n => n % 2 == 0
 print(isEven(4))

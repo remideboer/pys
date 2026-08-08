@@ -2,6 +2,24 @@
 
 Three ways to bundle fields without “full” class identity semantics.
 
+<figure class="concept-diagram" role="img" aria-label="Three value bundles: struct bag, data value object, entity with identity key">
+  <div class="diagram-grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="diagram-box"><strong>struct</strong><span>field bag · copy · field ==</span></div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>data</strong>
+      <span>immutable VO · all-field ==</span>
+    </div>
+    <div class="diagram-box diagram-layer-edge" style="border-style:dashed;border-width:2px;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>entity</strong>
+      <span>identity(...) key · id ==</span>
+    </div>
+  </div>
+  <figcaption>
+    Three bundles, three equality stories — pick the story, not only the
+    keyword.
+  </figcaption>
+</figure>
+
 ## `struct` — identity-free value bag
 
 Fields only (no methods). Copy on assign; `==` compares fields.
@@ -72,6 +90,41 @@ True
 Equality uses only `identity(...)` fields (must be `fix`). Two customers
 with the same id are the same customer even if the name changed — that is
 *identity* equality, opposite of `data`’s all-fields value equality.
+
+<figure class="concept-diagram" role="img" aria-label="data Money equal when all fields match versus entity Customer equal when only id matches">
+  <div class="memory-compare">
+    <div class="concept-diagram" style="margin:0;max-width:18rem">
+      <div class="diagram-stack">
+        <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+          <strong>data Money</strong>
+          <span>10000 · USD</span>
+        </div>
+        <div class="diagram-arrow" aria-hidden="true">==</div>
+        <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+          <strong>data Money</strong>
+          <span>10000 · USD</span>
+        </div>
+        <div class="diagram-box" style="margin-top:0.4rem"><strong>all fields</strong><span>True</span></div>
+      </div>
+    </div>
+    <div class="memory-compare-arrow" aria-hidden="true">vs</div>
+    <div class="concept-diagram" style="margin:0;max-width:18rem">
+      <div class="diagram-stack">
+        <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+          <strong>Customer 7</strong>
+          <span>Ana</span>
+        </div>
+        <div class="diagram-arrow" aria-hidden="true">==</div>
+        <div class="diagram-box"><strong>Customer 7</strong><span>Ana B.</span></div>
+        <div class="diagram-box" style="margin-top:0.4rem"><strong>identity only</strong><span>True — name ignored</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Same field values make <code>data</code> equal. Same id makes an
+    <code>entity</code> equal — even when other fields differ.
+  </figcaption>
+</figure>
 
 > **Sidebar — why a language keyword?**
 >

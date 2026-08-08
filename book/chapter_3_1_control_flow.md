@@ -4,6 +4,22 @@
 
 Conditions use parentheses; bodies use braces:
 
+<figure class="concept-diagram" role="img" aria-label="Condition branches to then path or else path">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box"><strong>condition</strong><span>x &lt; y ?</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↘ true</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>then</strong>
+      <span>print “x is less…”</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↙ false</div>
+    <div class="diagram-box diagram-outside"><strong>else / else if</strong><span>other path</span></div>
+  </div>
+  <figcaption>
+    One question, then pick a path — only one branch body runs.
+  </figcaption>
+</figure>
+
 ```pys
 int x = 5
 int y = 8

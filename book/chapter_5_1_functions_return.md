@@ -2,6 +2,23 @@
 
 Return type sits after `function`:
 
+<figure class="concept-diagram" role="img" aria-label="Function multiply takes ints a and b and returns int product to the caller">
+  <div class="diagram-flow" style="min-width:28rem">
+    <div class="diagram-box"><strong>a · b</strong><span>inputs</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>multiply</strong>
+      <span>return a * b</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>int out</strong><span>value to caller</span></div>
+  </div>
+  <figcaption>
+    Unlike a void print-only gear, a return type hands a value back into the
+    caller’s expression.
+  </figcaption>
+</figure>
+
 ```pys
 function int multiply(int a, int b) {
     return a * b

@@ -113,6 +113,16 @@ teaching simplification. Vocabulary in `chapter_9_8_prompting_ai.md`.
 **Evidence:** `python book/build_html.py`; Session 10 concept-diagram gate on
 `chapter_9_1_app_shape.html`.
 
+### 11. Concept-diagram chrome across Sessions 3–7
+
+**Post-behavior:** Beginner book chapters for control flow, arrays (contiguous
+start+offset memory), `struct`/`data`/`entity`, choosing constructs,
+functions/lambdas, concurrency, and tests include Session-10-style
+`concept-diagram` figures (dual coding). Gate:
+`test_core_sessions_include_concept_diagrams` in `tests/test_book_links.py`.
+
+**Evidence:** `python book/build_html.py`; `python -m pytest -q tests/test_book_links.py`.
+
 ## Trade-offs
 
 - One file per runnable pattern for teaching density.

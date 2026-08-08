@@ -136,6 +136,34 @@
     <main>
 <h1>4.3. Arrays and lists</h1>
 <h2>Arrays</h2>
+<p>An array is a <strong>fixed consecutive block</strong> of slots in memory. You reach an
+element by <strong>start address + offset</strong> (the index). Index <code>0</code> is the first
+slot; <code>numbers[2]</code> means “two steps past the start.”</p>
+<figure class="concept-diagram" role="img" aria-label="Array numbers as five consecutive memory slots addressed by start plus offset">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>numbers</strong>
+      <span>start of a fixed block</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↓ consecutive slots</div>
+    <div class="diagram-slot-row">
+      <div class="diagram-slot is-full"><span style="display:block;font-size:0.75rem;color:var(--muted)">[0]</span>1</div>
+      <div class="diagram-slot is-full"><span style="display:block;font-size:0.75rem;color:var(--muted)">[1]</span>2</div>
+      <div class="diagram-slot is-full"><span style="display:block;font-size:0.75rem;color:var(--muted)">[2]</span>3</div>
+      <div class="diagram-slot is-full"><span style="display:block;font-size:0.75rem;color:var(--muted)">[3]</span>4</div>
+      <div class="diagram-slot is-full"><span style="display:block;font-size:0.75rem;color:var(--muted)">[4]</span>5</div>
+    </div>
+    <div class="diagram-box" style="margin-top:0.5rem">
+      <strong>address</strong>
+      <span>start + offset · e.g. numbers[2] → start + 2</span>
+    </div>
+  </div>
+  <figcaption>
+    One block, no gaps: the index is the offset from the start, not a search
+    key.
+  </figcaption>
+</figure>
+
 <pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">numbers</span> <span class="tok-op">=</span> [<span class="tok-number">1</span>, <span class="tok-number">2</span>, <span class="tok-number">3</span>, <span class="tok-number">4</span>, <span class="tok-number">5</span>]
 <span class="tok-builtin">print</span>(<span class="tok-ident">numbers</span>[<span class="tok-number">0</span>])
 <span class="tok-builtin">print</span>(<span class="tok-ident">numbers</span>[<span class="tok-number">1</span>])
@@ -166,8 +194,8 @@ learning; revisit slices when you need a sub-range.</p>
 <p>Output:</p>
 <pre><code class="language-text">4
 </code></pre>
-<p>Prefer <code>list&lt;T&gt;</code> for growable sequences; prefer <code>T[]</code> when teaching
-array-shaped memory.</p>
+<p>Prefer <code>list&lt;T&gt;</code> for growable sequences; prefer <code>T[]</code> when you mean a
+<strong>fixed consecutive</strong> block addressed by start + offset (array-shaped memory).</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Build <code>int[]</code> with five values. Print the middle element and a slice of

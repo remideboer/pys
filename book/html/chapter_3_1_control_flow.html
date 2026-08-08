@@ -137,6 +137,22 @@
 <h1>4.1. Control flow</h1>
 <h2><code>if</code> / <code>else if</code> / <code>else</code></h2>
 <p>Conditions use parentheses; bodies use braces:</p>
+<figure class="concept-diagram" role="img" aria-label="Condition branches to then path or else path">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box"><strong>condition</strong><span>x &lt; y ?</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↘ true</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>then</strong>
+      <span>print “x is less…”</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↙ false</div>
+    <div class="diagram-box diagram-outside"><strong>else / else if</strong><span>other path</span></div>
+  </div>
+  <figcaption>
+    One question, then pick a path — only one branch body runs.
+  </figcaption>
+</figure>
+
 <pre><code class="language-pys"><span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-op">=</span> <span class="tok-number">5</span>
 <span class="tok-type">int</span> <span class="tok-ident">y</span> <span class="tok-op">=</span> <span class="tok-number">8</span>
 

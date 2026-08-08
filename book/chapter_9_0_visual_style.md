@@ -3,6 +3,8 @@
 Session 10 uses the same **concept diagrams** as earlier chapters: plain boxes,
 arrows, and shared borders — not UML class soup. The goal is to match how people
 already think about software (*inside* vs *outside*, *ports*, *paths*, *machines*).
+Sessions 3–7 reuse this chrome for control flow, functions, concurrency, and
+tests.
 
 ### Metaphors we reuse
 
