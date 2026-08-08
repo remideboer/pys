@@ -10,6 +10,9 @@ bundled** in the VSIX — students do not `pip install` this repo.
 - Snippets for functions, classes, loops, results, nullable values, `inherits`, and interpolation
 - Keyword / type completions and hover hints
 - Go to Definition / **Find Usages** (editor context menu on the identifier under the cursor)
+  - Optional: settings → **PYS: Navigate Library Sources** (`pys.navigateLibrarySources`)
+    to F12 into Python files from the locked `pys.deps` env (trusted workspace only;
+    off by default — ADR-001)
 - Language / file icons for `.pys`
 - Markdown ` ```pys ` fences: editor + preview highlighting
 - **Run** and **Debug** using the bundled transpiler

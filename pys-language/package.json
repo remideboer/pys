@@ -58,6 +58,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show current variable values inline in the .pys editor while debugging (IntelliJ-style)."
+        },
+        "pys.navigateLibrarySources": {
+          "type": "boolean",
+          "default": false,
+          "description": "Go to Definition may open Python sources from the locked pys.deps environment (imports library packages). Off by default (ADR-001). Requires a trusted workspace."
         }
       }
     },

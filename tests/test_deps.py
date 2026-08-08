@@ -854,6 +854,78 @@ def test_navigate_to_module_and_function(tmp_path: Path, monkeypatch: pytest.Mon
     assert connect["line"] == 1
 
 
+def test_navigate_library_sources_cli_opt_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Default symbol lookup stays fail-closed; --library-sources opts in (ADR-001)."""
+    import json
+
+    from transpiler.ide import main as ide_main
+
+    site = tmp_path / "site"
+    pkg = site / "demo"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        "def ping():\n"
+        "    return 1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
+    main = tmp_path / "main.pys"
+    main.write_text("import demo\nint x = 1\n", encoding="utf-8")
+
+    assert ide_main([str(main), "demo.ping"]) == 0
+    off = json.loads(capsys.readouterr().out)
+    assert off["ok"] is False
+    assert off["location"] is None
+    assert off.get("library_sources") is False
+
+    assert ide_main([str(main), "demo.ping", "--library-sources"]) == 0
+    on = json.loads(capsys.readouterr().out)
+    assert on["ok"] is True
+    assert on["library_sources"] is True
+    assert on["location"] is not None
+    assert on["location"]["kind"] == "function"
+    assert on["location"]["file"].replace("\\", "/").endswith("demo/__init__.py")
+
+
+def test_navigate_param_attr_into_library(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Typed params participate in ``recv.attr`` library navigation (e.g. request.json)."""
+    from transpiler.ide import analyze_file, lookup_symbol
+
+    site = tmp_path / "site"
+    pkg = site / "web"
+    pkg.mkdir(parents=True)
+    (pkg / "__init__.py").write_text(
+        "class Request:\n"
+        "    def json(self):\n"
+        "        return {}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
+    main = tmp_path / "body.pys"
+    main.write_text(
+        "import Request from web\n"
+        "\n"
+        "package function object readJson(Request request) {\n"
+        "    return request.json()\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    off = analyze_file(main, allow_runtime_introspection=False)
+    assert lookup_symbol(off, "request.json") is None
+
+    on = analyze_file(main, allow_runtime_introspection=True)
+    assert on["variable_types"].get("request") == "Request"
+    loc = lookup_symbol(on, "request.json")
+    assert loc is not None
+    assert loc["kind"] == "function"
+    assert loc["file"].replace("\\", "/").endswith("web/__init__.py")
+    assert loc["line"] == 2
+
+
 def test_navigate_to_instance_method(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from transpiler.ide import analyze_file, lookup_symbol
 

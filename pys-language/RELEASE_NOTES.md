@@ -17,7 +17,10 @@ Trunk-based extension release. Tag: `extension-v0.0.81`.
   ([ADR-029](../docs/adr/ADR-029-static-members.md)).
 - **IDE** — keyword highlight, hover, completions, indent-on-enter, and
   snippets for constructor / open / override / closed class / static;
-  entity and trait-`uses` snippets updated to `constructor`.
+  entity and trait-`uses` snippets updated to `constructor`; higher-contrast
+  decorator scopes; optional **Navigate Library Sources**
+  (`pys.navigateLibrarySources`) for Go to Definition into locked `pys.deps`
+  Python (trusted workspace; off by default).
 - **Bundled transpiler** — includes the language changes above (plus prior
   `var`-as-type / `object` work from 0.0.80).
 

@@ -46,7 +46,10 @@ touching the matching CER/ADR is incomplete.
 
 ## Anti-devolution examples (unless a new record supersedes them)
 
-- IDE helpers: `python -I`, bundled path, no workspace `PYTHONPATH`
+- IDE helpers: `python -I`, bundled path, no workspace `PYTHONPATH`;
+  Go to Definition into locked `pys.deps` only via opt-in
+  `pys.navigateLibrarySources` + `--library-sources` (trusted workspace);
+  diagnostics stay fail-closed
 - Analysis/transpile: no pip-install / no third-party import for typing by default
 - `PYS_WORKSPACE_ROOT` → realpath containment; no `interpreter.path` in `pys.deps`.
   When the env is unset, deps discovery also stops at the nearest `pys.toml`

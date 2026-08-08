@@ -311,6 +311,34 @@ Refuse Run/Debug until the workspace is trusted. Complements helper isolation
 
 ---
 
+## 10. Opt-in navigate into locked `pys.deps`
+
+**Symbols:** `pys.navigateLibrarySources` (extension setting); `transpiler.ide`
+CLI `--library-sources`; DefinitionProvider in `extension.js`.
+
+### Pre-behavior
+
+Go to Definition never imported locked library packages, so F12 on
+`Request` / `anyio.from_thread.run` returned nothing even when `pys.lock` sites
+were known.
+
+### Post-behavior
+
+- Default unchanged: diagnostics and symbol lookup fail closed (no third-party
+  import).
+- When `pys.navigateLibrarySources` is **true** and the workspace is **trusted**,
+  DefinitionProvider appends `--library-sources` so that one lookup may
+  `allow_runtime_introspection=True` against hashed site paths only.
+- Typed function/method parameters are bound into analysis `variable_types` so
+  `request.json`-style attributes resolve to the library member when navigation
+  is enabled.
+- Save/open analysis never receives the flag.
+
+**Evidence:** `tests/test_deps.py::test_navigate_library_sources_cli_opt_in`,
+`tests/test_deps.py::test_navigate_param_attr_into_library`.
+
+---
+
 ## Trade-offs
 
 - **Typing fidelity vs safety:** IDE analysis may know less about third-party

@@ -14,7 +14,10 @@ from typing import Any
 from .ast_nodes import (
     AssignStmt,
     Call,
+    ClassDef,
+    EntityDef,
     ForEachStmt,
+    FunctionDef,
     Identifier,
     ImportStmt,
     Member,
@@ -344,7 +347,53 @@ def _collect_hints_and_types(
                         }
                     )
 
+    _bind_callable_params(
+        tree,
+        resolver=resolver,
+        site_paths=site_paths,
+        variable_types=variable_types,
+        validated_types=validated_types,
+        type_definitions=type_definitions,
+    )
     return variable_types, collection_element_types, hints, validated_types, type_definitions
+
+
+def _bind_callable_params(
+    tree: Module,
+    *,
+    resolver: ImportResolver,
+    site_paths: list[Path],
+    variable_types: dict[str, str],
+    validated_types: set[str],
+    type_definitions: dict[str, tuple[Path, int, int]],
+) -> None:
+    """Map typed function/method parameters into ``variable_types`` for attr navigation.
+
+    Enables Go to Definition on ``request.json`` when ``request`` is a ``Request``
+    parameter (library navigate / runtime introspection). Duplicate names keep the
+    last binding — good enough when params share the same library type.
+    """
+
+    def bind(params: list[str], param_types: list[str]) -> None:
+        for i, name in enumerate(params):
+            if i >= len(param_types) or not param_types[i]:
+                continue
+            ptype = param_types[i]
+            variable_types[name] = ptype
+            _register_type(
+                ptype,
+                resolver=resolver,
+                site_paths=site_paths,
+                validated_types=validated_types,
+                type_definitions=type_definitions,
+            )
+
+    for stmt in tree.body:
+        if isinstance(stmt, FunctionDef):
+            bind(stmt.params, stmt.param_types)
+        elif isinstance(stmt, (ClassDef, EntityDef)):
+            for m in stmt.methods:
+                bind(m.params, m.param_types)
 
 
 def analyze_file(
@@ -757,6 +806,7 @@ def main(argv: list[str] | None = None) -> int:
                     "ok": False,
                     "message": (
                         "Usage: python -m transpiler.ide <file.pys> [symbol] "
+                        "[--library-sources] "
                         "| <file.pys> --usages <symbol> [--line N --column N] "
                         "| --refactor-plan <op> <file.pys> ..."
                     ),
@@ -765,17 +815,25 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
     path = Path(argv[0])
-    if len(argv) >= 3 and argv[1] == "--usages":
-        symbol = argv[2]
+    rest = list(argv[1:])
+    allow_library_sources = False
+    filtered: list[str] = []
+    for arg in rest:
+        if arg == "--library-sources":
+            allow_library_sources = True
+        else:
+            filtered.append(arg)
+    if len(filtered) >= 2 and filtered[0] == "--usages":
+        symbol = filtered[1]
         line = column = None
-        rest = argv[3:]
+        rest_flags = filtered[2:]
         i = 0
-        while i < len(rest):
-            if rest[i] == "--line" and i + 1 < len(rest):
-                line = int(rest[i + 1])
+        while i < len(rest_flags):
+            if rest_flags[i] == "--line" and i + 1 < len(rest_flags):
+                line = int(rest_flags[i + 1])
                 i += 2
-            elif rest[i] == "--column" and i + 1 < len(rest):
-                column = int(rest[i + 1])
+            elif rest_flags[i] == "--column" and i + 1 < len(rest_flags):
+                column = int(rest_flags[i + 1])
                 i += 2
             else:
                 i += 1
@@ -791,12 +849,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     try:
-        result = analyze_file(path)
+        # Diagnostics (no symbol) stay fail-closed. Symbol lookup may opt into
+        # locked pys.deps imports via --library-sources (ADR-001).
+        result = analyze_file(
+            path,
+            allow_runtime_introspection=bool(allow_library_sources and filtered),
+        )
     except Exception as exc:
         print(json.dumps({"ok": False, "error": {"message": f"{type(exc).__name__}: {exc}"}, "validated_types": [], "symbols": {}}))
         return 1
-    if len(argv) >= 2:
-        symbol = argv[1]
+    if filtered:
+        symbol = filtered[0]
         loc = lookup_symbol(result, symbol)
         print(
             json.dumps(
@@ -806,13 +869,14 @@ def main(argv: list[str] | None = None) -> int:
                     "location": loc,
                     "types": result.get("variable_types"),
                     "validated_types": result.get("validated_types"),
+                    "library_sources": allow_library_sources,
                 }
             )
         )
     else:
         public = {k: v for k, v in result.items() if not k.startswith("_")}
         print(json.dumps(public))
-    return 0 if result.get("ok") or len(argv) >= 2 else 1
+    return 0 if result.get("ok") or bool(filtered) else 1
 
 
 def _cli_refactor_plan(argv: list[str]) -> int:

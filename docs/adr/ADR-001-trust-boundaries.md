@@ -25,6 +25,12 @@ surface.
    from a hashed lock and use runtime introspection.
 3. **Project files must not choose the interpreter binary** (`interpreter.path`
    rejected); the operator chooses Python by how they invoke the tool.
+4. **Opt-in Go to Definition into locked `pys.deps`:** extension setting
+   `pys.navigateLibrarySources` (default **false**) may pass
+   `--library-sources` on **symbol lookup only**, so F12 can open Python
+   sources from the hashed env. Diagnostics / save analysis stay fail-closed.
+   Requires a trusted workspace. Does not enable analysis-time imports for
+   squiggles.
 
 ## Consequences
 
@@ -32,6 +38,8 @@ surface.
 - Contributors must not “fix” IDE features by restoring workspace `PYTHONPATH`
   or analysis-time imports without superseding this ADR and CER-001.
 - Extension packaging must keep shipping a bundled transpiler for helpers.
+- Library navigation is a deliberate privilege (setting + workspace trust), not
+  the default edit path.
 
 ## Rejected alternatives
 

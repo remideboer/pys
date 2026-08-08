@@ -80,6 +80,12 @@ test('extension manifest exposes entrypoint command and result language support'
   assert.match(extension, /'constructor'/);
   assert.match(extension, /'static'/);
   assert.match(extension, /Class-wide member/);
+  assert.match(extension, /navigateLibrarySources/);
+  assert.match(extension, /--library-sources/);
+  assert.equal(
+    manifest.contributes.configuration.properties['pys.navigateLibrarySources'].default,
+    false,
+  );
 
   const notes = fs.readFileSync(
     path.join(extensionRoot, 'RELEASE_NOTES.md'),

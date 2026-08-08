@@ -661,11 +661,17 @@ function activate(context) {
     }
     const workspacePath = workspace.uri.fsPath;
     const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const extra = [symbol];
+    // Opt-in: resolve into locked pys.deps Python (ADR-001). Diagnostics stay fail-closed.
+    const navigateLibs = vscode.workspace.getConfiguration('pys').get('navigateLibrarySources', false);
+    if (navigateLibs && vscode.workspace.isTrusted) {
+      extra.push('--library-sources');
+    }
     const spec = buildWorkspaceIdeProcessSpec(
       context.extensionPath,
       workspacePath,
       document.uri.fsPath,
-      [symbol],
+      extra,
     );
     if (!spec) {
       return null;
