@@ -486,6 +486,35 @@ def _demo_lock(config, package: LockedPackage) -> DepsLock:
     )
 
 
+def test_lock_declares_transitive_lock_packages(tmp_path: Path) -> None:
+    """Analysis recognizes transitive lock entries (e.g. anyio) without install."""
+    from transpiler.deps import lock_declares_module, write_lock
+
+    deps_path = tmp_path / "pys.deps"
+    deps_path.write_text(
+        "[dependencies]\n\tfastapi\n\t\tversion: 0.115.6\n",
+        encoding="utf-8",
+    )
+    config = load_deps(deps_path, stop_at=tmp_path)
+    assert config is not None
+    lock = DepsLock(
+        deps_fingerprint=deps_fingerprint(config),
+        python=f"{sys.version_info.major}.{sys.version_info.minor}",
+        platform=sysconfig.get_platform(),
+        index_url=DEFAULT_INDEX_URL,
+        packages=(
+            LockedPackage("fastapi", "0.115.6", "https://example.invalid/f.whl", "a" * 64),
+            LockedPackage("anyio", "4.14.2", "https://example.invalid/a.whl", "b" * 64),
+        ),
+    )
+    write_lock(lock, tmp_path / "pys.lock")
+    main = tmp_path / "main.pys"
+    main.write_text("import anyio\n", encoding="utf-8")
+    assert lock_declares_module(main, "anyio") is True
+    assert lock_declares_module(main, "fastapi") is True
+    assert lock_declares_module(main, "missingpkg") is False
+
+
 def test_lock_serialization_is_deterministic(tmp_path: Path) -> None:
     deps_path = tmp_path / "pys.deps"
     deps_path.write_text(

@@ -30,11 +30,24 @@ def test_example_entities_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     assert run_source(ENTITIES_EXAMPLE) == 0
 
 
-def test_example_database_shop_transpiles() -> None:
+def test_example_database_shop_transpiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """MySQL shop console must compile (run needs a live `shop` database)."""
     from transpiler.transpiler import transpile_with_modules
 
     assert SHOP_APP.is_file()
+    # examples/database has pys.toml but no lock — stub the connector so CI
+    # compile does not need a live deps env (CER-001 §4 / §7).
+    site = tmp_path / "site"
+    (site / "mysql" / "connector").mkdir(parents=True)
+    (site / "mysql" / "__init__.py").write_text("", encoding="utf-8")
+    (site / "mysql" / "connector" / "__init__.py").write_text("", encoding="utf-8")
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(SHOP_APP.parent))
+    monkeypatch.setattr(
+        "transpiler.imports.ImportResolver._deps_paths",
+        lambda self: [site],
+    )
     modules = transpile_with_modules(SHOP_APP)
     assert set(modules) >= {
         "shop_app",

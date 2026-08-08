@@ -100,6 +100,7 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
         "2",
         "1",
         "9",
+        "2",  # IdCounter.getTotal() after two constructions (static field)
     ]
 
     index = (BOOK / "html" / "index.html").read_text(encoding="utf-8")

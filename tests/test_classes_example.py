@@ -49,4 +49,7 @@ def test_example_classes_emit_and_output() -> None:
         "unit#42",
         "Car plate=UNKNOWN model=Unnamed",
         "Car plate=ABC-1 model=Roadster",
+        "2",
+        "98",
+        "False",
     ]

@@ -621,8 +621,20 @@ def validate_lock(lock: DepsLock, config: DepsConfig, build: str = "run") -> Non
             )
 
 
+def _package_name_covers_module(package_name: str, module_top: str) -> bool:
+    """True when a PyPI package name plausibly provides ``module_top``."""
+    package = _normalize_package_dir(package_name)
+    return package == module_top or package.startswith(module_top + "-")
+
+
 def lock_declares_module(start: Path, module_ref: str, build: str = "run") -> bool:
-    """Recognize a locked dependency without importing or installing it."""
+    """Recognize a locked dependency without importing or installing it.
+
+    Matches direct ``pys.deps`` pins and transitive packages listed in
+    ``pys.lock`` (e.g. ``anyio`` pulled in by FastAPI) so analysis/transpile
+    can accept imports when the lock env is not installed yet — including on
+    CI where the committed lock may target another platform.
+    """
     try:
         config = load_deps(start)
         if config is None:
@@ -635,8 +647,10 @@ def lock_declares_module(start: Path, module_ref: str, build: str = "run") -> bo
 
     top = _normalize_package_dir(module_ref.split(".", 1)[0])
     for dep in _require_pinned_dependencies(config, build):
-        package = _normalize_package_dir(dep.name)
-        if package == top or package.startswith(top + "-"):
+        if _package_name_covers_module(dep.name, top):
+            return True
+    for package in lock.packages:
+        if _package_name_covers_module(package.name, top):
             return True
     return False
 

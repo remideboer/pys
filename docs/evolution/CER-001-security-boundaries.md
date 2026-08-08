@@ -253,10 +253,14 @@ types. Package top-level code ran as a side effect of opening a file.
 | `run_source` | Yes (from lock) | Yes |
 
 External imports can still be *recognized* from the lock without loading the
-module. Library member checks stay fail-open on types when introspection is off
-(no false hard error that forces an unsafe import).
+module — both direct ``pys.deps`` pins and transitive packages listed in
+``pys.lock`` (so e.g. ``import anyio`` works under a FastAPI lock on CI without
+installing a possibly wrong-platform wheel env). Library member checks stay
+fail-open on types when introspection is off (no false hard error that forces
+an unsafe import).
 
 **Evidence:** `test_import_resolver_does_not_install_on_validate`,
+`test_lock_declares_transitive_lock_packages`,
 `test_static_analysis_does_not_execute_cached_dependency`,
 `test_import_module_from_sites_rejects_workspace_shadow`
 

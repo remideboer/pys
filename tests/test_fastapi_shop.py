@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import os
 from pathlib import Path
 
 import pytest
@@ -17,9 +16,11 @@ MAIN = SHOP / "src" / "main.pys"
 SMOKE = SHOP / "tests" / "smoke_live.pys"
 
 
-def test_fastapi_shop_main_transpiles() -> None:
+def test_fastapi_shop_main_transpiles(monkeypatch: pytest.MonkeyPatch) -> None:
     assert MAIN.is_file()
-    os.environ[WORKSPACE_ROOT_ENV] = str(SHOP.resolve())
+    # Bound workspace only for this test — never leave PYS_WORKSPACE_ROOT set
+    # (raw os.environ leaks poison later tmp_path / example transpile tests on CI).
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(SHOP.resolve()))
     modules = transpile_with_modules(MAIN)
     assert "main" in modules
     assert "routes_meta" in modules
@@ -56,6 +57,6 @@ def _mysql_reachable() -> bool:
 
 
 @pytest.mark.skipif(not _mysql_reachable(), reason="MySQL shop DB not available (CI)")
-def test_fastapi_shop_live_smoke() -> None:
-    os.environ[WORKSPACE_ROOT_ENV] = str(SHOP.resolve())
+def test_fastapi_shop_live_smoke(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(SHOP.resolve()))
     assert run_source(SMOKE) == 0
