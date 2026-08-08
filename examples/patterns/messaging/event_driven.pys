@@ -1,0 +1,46 @@
+# Event-driven — components react to events instead of calling each other.
+
+interface EventHandler {
+    handle(string eventType, string payload)
+}
+
+class AuditHandler implements EventHandler {
+    public constructor() {
+    }
+
+    public handle(string eventType, string payload) {
+        print("audit:" + eventType + ":" + payload)
+    }
+}
+
+class NotifyHandler implements EventHandler {
+    public constructor() {
+    }
+
+    public handle(string eventType, string payload) {
+        print("notify:" + eventType + ":" + payload)
+    }
+}
+
+class EventBus {
+    private list<EventHandler> handlers
+
+    public constructor() {
+        this.handlers = []
+    }
+
+    public void subscribe(EventHandler handler) {
+        this.handlers.append(handler)
+    }
+
+    public void publish(string eventType, string payload) {
+        loop (EventHandler h in this.handlers) {
+            h.handle(eventType, payload)
+        }
+    }
+}
+
+EventBus bus = EventBus()
+bus.subscribe(AuditHandler())
+bus.subscribe(NotifyHandler())
+bus.publish("OrderPlaced", "O-1")

@@ -1,0 +1,51 @@
+# MVC — Model holds state; View displays; Controller handles input.
+
+class CounterModel {
+    private int value
+
+    public constructor() {
+        this.value = 0
+    }
+
+    public int get() {
+        return this.value
+    }
+
+    public void add(int delta) {
+        this.value = this.value + delta
+    }
+}
+
+class CounterView {
+    public constructor() {
+    }
+
+    public void show(int value) {
+        print("view:" + str(value))
+    }
+}
+
+class CounterController {
+    private CounterModel model
+    private CounterView view
+
+    public constructor(CounterModel model, CounterView view) {
+        this.model = model
+        this.view = view
+    }
+
+    public void onPlus() {
+        this.model.add(1)
+        this.view.show(this.model.get())
+    }
+
+    public void onMinus() {
+        this.model.add(-1)
+        this.view.show(this.model.get())
+    }
+}
+
+CounterController ui = CounterController(CounterModel(), CounterView())
+ui.onPlus()
+ui.onPlus()
+ui.onMinus()

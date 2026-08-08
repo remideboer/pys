@@ -8,16 +8,12 @@ Runnable **pure OO** `.pys` demos plus markdown notes. Layout:
 | [`concurrency/`](concurrency/) | Concurrency patterns expressible in PYS today |
 | [`general/`](general/) | Cross-cutting OO (e.g. Dependency Injection) |
 | [`authentication/`](authentication/) | Common authentication patterns |
-| [`architectural/`](architectural/) | App structure — mostly **stubs** |
-| [`messaging/`](messaging/) | Event-driven / pub-sub at scale — **stubs** |
-| [`reactive/`](reactive/) | Reactive streams — **stub** |
-
-Background: [Wikipedia — Design Patterns](https://en.wikipedia.org/wiki/Design_Patterns) ·
-[Concurrency pattern](https://en.wikipedia.org/wiki/Concurrency_pattern) ·
-[Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection).
+| [`architectural/`](architectural/) | MVC / MVP / MVVM / hexagonal / layered |
+| [`messaging/`](messaging/) | Event-driven / pub-sub / CQRS |
+| [`reactive/`](reactive/) | Teaching push streams |
 
 Companion `[name].md` files include intent, UML, use cases, and a run line.
-Stubs are markdown only (**Status: stub — implement later**) — no fake `.pys`.
+OAuth2 / mTLS remain **stubs** (need IdP / TLS — not faked in-process).
 
 ## Run
 
@@ -119,29 +115,29 @@ Pure OO teaching demos (no network). Full HTTP JWT shop:
 | [OAuth 2.0](authentication/oauth2.md) | Needs external IdP / redirects |
 | [mTLS](authentication/mtls.md) | Needs TLS client certificates |
 
-## Architectural (stubs)
+## Architectural
 
-| Pattern | Notes |
-|---------|-------|
-| [MVC](architectural/mvc.md) | Model–View–Controller |
-| [MVVM](architectural/mvvm.md) | Model–View–ViewModel |
-| [MVP](architectural/mvp.md) | Model–View–Presenter |
-| [Hexagonal](architectural/hexagonal.md) | Ports and adapters |
-| [Layered](architectural/layered.md) | Living refs: shop / database examples |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| MVC | [mvc.pys](architectural/mvc.pys) | [md](architectural/mvc.md) |
+| MVP | [mvp.pys](architectural/mvp.pys) | [md](architectural/mvp.md) |
+| MVVM | [mvvm.pys](architectural/mvvm.pys) | [md](architectural/mvvm.md) |
+| Hexagonal | [hexagonal.pys](architectural/hexagonal.pys) | [md](architectural/hexagonal.md) |
+| Layered | [layered.pys](architectural/layered.pys) | [md](architectural/layered.md) |
 
-## Messaging (stubs)
+## Messaging
 
-| Pattern | Notes |
-|---------|-------|
-| [Event-driven](messaging/event_driven.md) | Architecture-scale events |
-| [Publish–subscribe](messaging/publish_subscribe.md) | Brokers; see also design Observer |
-| [CQRS](messaging/cqrs.md) | Command Query Responsibility Segregation |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Event-driven | [event_driven.pys](messaging/event_driven.pys) | [md](messaging/event_driven.md) |
+| Publish–subscribe | [publish_subscribe.pys](messaging/publish_subscribe.pys) | [md](messaging/publish_subscribe.md) |
+| CQRS | [cqrs.pys](messaging/cqrs.pys) | [md](messaging/cqrs.md) |
 
-## Reactive (stubs)
+## Reactive
 
-| Pattern | Notes |
-|---------|-------|
-| [Reactive](reactive/reactive.md) | Observable streams; not the same as `tasks`/`await` |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Reactive (teaching) | [reactive.pys](reactive/reactive.pys) | [md](reactive/reactive.md) — push streams, not ReactiveX |
 
 ## Modern notes
 

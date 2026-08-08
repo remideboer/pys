@@ -57,15 +57,19 @@ JWT shop linked), API key, HTTP Basic — with companion `.md`. Stubs:
 
 **Evidence:** `tests/test_patterns.py` asserts four `authentication/*.pys`.
 
-### 7. Architectural / messaging / reactive stubs
+### 7. Architectural / messaging / reactive demos
 
-**Post-behavior:** Markdown stubs marked **Status: stub — implement later**
-(MVC, MVVM, MVP, hexagonal, layered, event-driven, publish–subscribe, CQRS,
-reactive). No fake `.pys`.
+**Pre-behavior:** Markdown stubs only.
+
+**Post-behavior:** Runnable OO demos for MVC, MVP, MVVM, hexagonal, layered,
+event-driven, publish–subscribe, CQRS, and a teaching reactive push-stream
+(honest note: not ReactiveX). OAuth2 / mTLS remain stubs (need IdP / TLS).
+
+**Evidence:** `tests/test_patterns.py` folder counts; companion `.md` files.
 
 ## Trade-offs
 
 - One file per runnable pattern for teaching density.
 - Book chapters for patterns deferred.
-- Stubs document intent without claiming an implementation.
+- Stubs only where language/platform blocks honesty (OAuth2, mTLS).
 - Concurrency stays inside ADR-013 / CONCURRENCY.md.

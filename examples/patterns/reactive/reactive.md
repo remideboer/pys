@@ -1,17 +1,50 @@
-# Reactive programming
+# Reactive (teaching push streams)
 
 **Category:** Reactive  
-**Status: stub — implement later**
-
+**Demo:** [reactive.pys](reactive.pys)  
 **Wikipedia:** [Reactive programming](https://en.wikipedia.org/wiki/Reactive_programming)
 
 ## Intent
 
-Build push-based data streams (Observables) with operators for map/filter/merge
-and backpressure.
+Push values to subscribers over time (`onNext` / `onComplete`).
 
-## Why stubbed
+## Explanation
 
-PYS `tasks` / `await` / `shared` / `atomic` teach structured concurrency — not a
-ReactiveX-style stream library. A dedicated reactive demo needs language or
-library support first.
+`IntStream` is a tiny Observable stand-in. **Honest note:** PYS has no ReactiveX
+operators or backpressure; `tasks`/`await` are structured concurrency, not this
+library model. This demo teaches the push-subscription idea only.
+
+## Classic structure (UML)
+
+```mermaid
+classDiagram
+    class Observable
+    class Observer {
+        <<interface>>
+    }
+    Observable o-- Observer
+```
+
+## This demo
+
+```mermaid
+classDiagram
+    class IntStream
+    class Observer {
+        <<interface>>
+    }
+    class PrintObserver
+    IntStream o-- Observer
+    Observer <|.. PrintObserver
+```
+
+## Real-world use cases
+
+- UI event streams / Rx libraries.
+- Sensor telemetry pipelines.
+
+## Run
+
+```text
+python -m transpiler run examples/patterns/reactive/reactive.pys
+```

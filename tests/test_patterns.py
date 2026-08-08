@@ -19,6 +19,12 @@ def test_patterns_pys_transpile() -> None:
     assert len(general) == 1, "expected dependency_injection under general/"
     authentication = [p for p in paths if "authentication" in p.parts]
     assert len(authentication) == 4, "expected four authentication pattern demos"
+    architectural = [p for p in paths if "architectural" in p.parts]
+    assert len(architectural) == 5, "expected five architectural pattern demos"
+    messaging = [p for p in paths if "messaging" in p.parts]
+    assert len(messaging) == 3, "expected three messaging pattern demos"
+    reactive = [p for p in paths if "reactive" in p.parts]
+    assert len(reactive) == 1, "expected reactive demo"
     for path in paths:
         try:
             out = transpile(path.read_text(encoding="utf-8"))

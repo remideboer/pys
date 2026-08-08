@@ -1,0 +1,78 @@
+# CQRS — separate write (command) model from read (query) model.
+
+class OrderWriteModel {
+    private dict orders
+
+    public constructor() {
+        dict empty = dict()
+        this.orders = empty
+    }
+
+    public void create(string id, string status) {
+        dict m = this.orders
+        m[id] = status
+        this.orders = m
+    }
+
+    public void setStatus(string id, string status) {
+        dict m = this.orders
+        m[id] = status
+        this.orders = m
+    }
+
+    public nullable<string> statusOf(string id) {
+        dict m = this.orders
+        if (id in m) {
+            return m[id]
+        }
+        return null
+    }
+}
+
+class OrderReadModel {
+    private dict summaries
+
+    public constructor() {
+        dict empty = dict()
+        this.summaries = empty
+    }
+
+    public void project(string id, string status) {
+        dict m = this.summaries
+        m[id] = "summary:" + id + ":" + status
+        this.summaries = m
+    }
+
+    public nullable<string> get(string id) {
+        dict m = this.summaries
+        if (id in m) {
+            return m[id]
+        }
+        return null
+    }
+}
+
+class CreateOrderCommand {
+    private OrderWriteModel writes
+    private OrderReadModel reads
+
+    public constructor(OrderWriteModel writes, OrderReadModel reads) {
+        this.writes = writes
+        this.reads = reads
+    }
+
+    public void execute(string id) {
+        this.writes.create(id, "new")
+        nullable<string> st = this.writes.statusOf(id)
+        if (st != null) {
+            this.reads.project(id, st)
+        }
+    }
+}
+
+OrderWriteModel writes = OrderWriteModel()
+OrderReadModel reads = OrderReadModel()
+CreateOrderCommand create = CreateOrderCommand(writes, reads)
+create.execute("O-9")
+print(reads.get("O-9"))  # summary:O-9:new
+print(writes.statusOf("O-9"))  # new

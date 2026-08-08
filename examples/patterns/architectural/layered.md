@@ -1,18 +1,50 @@
 # Layered architecture
 
 **Category:** Architectural  
-**Status: stub — implement later** (as a standalone pattern demo)
-
+**Demo:** [layered.pys](layered.pys)  
 **Wikipedia:** [Multitier architecture](https://en.wikipedia.org/wiki/Multitier_architecture)
 
 ## Intent
 
-Organize code in layers (presentation → application → domain → infrastructure)
-with dependencies pointing inward/downward.
+Organize code so outer layers (UI) depend on inner ones (application / domain),
+not the reverse.
 
-## Living references
+## Explanation
 
-- [`examples/database/`](../../database/) — menus / GUI → repositories → mappers → DB  
-- [`examples/rest-api/shop/`](../../rest-api/shop/) — HTTP → APIs → repositories  
+`CheckoutUi` → `CheckoutApp` → `PricingService` / `Money`. Full shops under
+[`examples/database/`](../../database/) and [`examples/rest-api/shop/`](../../rest-api/shop/).
 
-A short single-file pattern sketch may be added later; prefer those folders today.
+## Classic structure (UML)
+
+```mermaid
+classDiagram
+    class Presentation
+    class Application
+    class Domain
+    Presentation --> Application
+    Application --> Domain
+```
+
+## This demo
+
+```mermaid
+classDiagram
+    class CheckoutUi
+    class CheckoutApp
+    class PricingService
+    class Money
+    CheckoutUi --> CheckoutApp
+    CheckoutApp --> PricingService
+    PricingService --> Money
+```
+
+## Real-world use cases
+
+- Classic enterprise n-tier apps.
+- Teaching dependency direction before full hexagonal ports.
+
+## Run
+
+```text
+python -m transpiler run examples/patterns/architectural/layered.pys
+```

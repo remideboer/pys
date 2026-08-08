@@ -1,0 +1,55 @@
+# Publish–subscribe — publishers emit on topics; subscribers filter by topic.
+
+interface Subscriber {
+    onMessage(string topic, string body)
+}
+
+class ConsoleSubscriber implements Subscriber {
+    private string name
+
+    public constructor(string name) {
+        this.name = name
+    }
+
+    public onMessage(string topic, string body) {
+        print(this.name + ":" + topic + ":" + body)
+    }
+}
+
+class TopicBroker {
+    private dict topics
+
+    public constructor() {
+        dict empty = dict()
+        this.topics = empty
+    }
+
+    public void subscribe(string topic, Subscriber sub) {
+        dict m = this.topics
+        list<Subscriber> xs = []
+        if (topic in m) {
+            xs = m[topic]
+        }
+        xs.append(sub)
+        m[topic] = xs
+        this.topics = m
+    }
+
+    public void publish(string topic, string body) {
+        dict m = this.topics
+        if (!(topic in m)) {
+            return
+        }
+        list<Subscriber> xs = m[topic]
+        loop (Subscriber s in xs) {
+            s.onMessage(topic, body)
+        }
+    }
+}
+
+TopicBroker broker = TopicBroker()
+broker.subscribe("orders", ConsoleSubscriber("A"))
+broker.subscribe("orders", ConsoleSubscriber("B"))
+broker.subscribe("inventory", ConsoleSubscriber("C"))
+broker.publish("orders", "O-1")
+broker.publish("inventory", "low")

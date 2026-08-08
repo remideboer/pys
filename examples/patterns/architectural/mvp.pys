@@ -1,0 +1,55 @@
+# MVP — Presenter talks to a passive View interface; Model stays domain-only.
+
+interface CounterView {
+    show(int value)
+}
+
+class ConsoleCounterView implements CounterView {
+    public constructor() {
+    }
+
+    public show(int value) {
+        print("view:" + str(value))
+    }
+}
+
+class CounterModel {
+    private int value
+
+    public constructor() {
+        this.value = 0
+    }
+
+    public int get() {
+        return this.value
+    }
+
+    public void add(int delta) {
+        this.value = this.value + delta
+    }
+}
+
+class CounterPresenter {
+    private CounterModel model
+    private CounterView view
+
+    public constructor(CounterModel model, CounterView view) {
+        this.model = model
+        this.view = view
+    }
+
+    public void plus() {
+        this.model.add(1)
+        this.view.show(this.model.get())
+    }
+
+    public void minus() {
+        this.model.add(-1)
+        this.view.show(this.model.get())
+    }
+}
+
+CounterPresenter p = CounterPresenter(CounterModel(), ConsoleCounterView())
+p.plus()
+p.plus()
+p.minus()

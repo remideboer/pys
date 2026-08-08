@@ -1,0 +1,54 @@
+# Reactive (teaching) — push values to subscribers; not a full ReactiveX library.
+# Honest note: PYS has no Observable operators / backpressure; this shows the idea.
+
+interface Observer {
+    onNext(int value)
+    onComplete()
+}
+
+class PrintObserver implements Observer {
+    private string label
+
+    public constructor(string label) {
+        this.label = label
+    }
+
+    public onNext(int value) {
+        print(this.label + ":" + str(value))
+    }
+
+    public onComplete() {
+        print(this.label + ":done")
+    }
+}
+
+class IntStream {
+    private list<Observer> observers
+
+    public constructor() {
+        this.observers = []
+    }
+
+    public void subscribe(Observer observer) {
+        this.observers.append(observer)
+    }
+
+    public void emit(int value) {
+        loop (Observer o in this.observers) {
+            o.onNext(value)
+        }
+    }
+
+    public void complete() {
+        loop (Observer o in this.observers) {
+            o.onComplete()
+        }
+    }
+}
+
+IntStream nums = IntStream()
+nums.subscribe(PrintObserver("A"))
+nums.subscribe(PrintObserver("B"))
+nums.emit(1)
+nums.emit(2)
+nums.complete()

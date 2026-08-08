@@ -1,0 +1,50 @@
+# Layered — presentation → application → domain → infrastructure (dependencies down).
+
+class Money {
+    private int cents
+
+    public constructor(int cents) {
+        this.cents = cents
+    }
+
+    public int amount() {
+        return this.cents
+    }
+}
+
+class PricingService {
+    public constructor() {
+    }
+
+    public Money discount(Money price) {
+        return Money(price.amount() - 100)
+    }
+}
+
+class CheckoutApp {
+    private PricingService pricing
+
+    public constructor(PricingService pricing) {
+        this.pricing = pricing
+    }
+
+    public int total(int cents) {
+        Money priced = this.pricing.discount(Money(cents))
+        return priced.amount()
+    }
+}
+
+class CheckoutUi {
+    private CheckoutApp app
+
+    public constructor(CheckoutApp app) {
+        this.app = app
+    }
+
+    public void checkout(int cents) {
+        print("ui:" + str(this.app.total(cents)))
+    }
+}
+
+CheckoutUi ui = CheckoutUi(CheckoutApp(PricingService()))
+ui.checkout(1000)  # ui:900

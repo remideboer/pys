@@ -1,0 +1,68 @@
+# MVVM — ViewModel exposes state for the View; View never touches the Model.
+
+class CounterModel {
+    private int value
+
+    public constructor() {
+        this.value = 0
+    }
+
+    public int get() {
+        return this.value
+    }
+
+    public void add(int delta) {
+        this.value = this.value + delta
+    }
+}
+
+class CounterViewModel {
+    private CounterModel model
+    private int display
+
+    public constructor(CounterModel model) {
+        this.model = model
+        this.display = model.get()
+    }
+
+    public int displayValue() {
+        return this.display
+    }
+
+    public void plusCommand() {
+        this.model.add(1)
+        this.display = this.model.get()
+    }
+
+    public void minusCommand() {
+        this.model.add(-1)
+        this.display = this.model.get()
+    }
+}
+
+class CounterView {
+    private CounterViewModel vm
+
+    public constructor(CounterViewModel vm) {
+        this.vm = vm
+    }
+
+    public void render() {
+        print("bound:" + str(this.vm.displayValue()))
+    }
+
+    public void clickPlus() {
+        this.vm.plusCommand()
+        this.render()
+    }
+
+    public void clickMinus() {
+        this.vm.minusCommand()
+        this.render()
+    }
+}
+
+CounterView view = CounterView(CounterViewModel(CounterModel()))
+view.clickPlus()
+view.clickPlus()
+view.clickMinus()

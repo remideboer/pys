@@ -1,0 +1,48 @@
+# Hexagonal — domain at the center; drive through ports; adapters at the edge.
+
+interface OrderRepository {
+    save(string orderId)
+    nullable<string> load(string orderId)
+}
+
+class InMemoryOrderRepository implements OrderRepository {
+    private dict rows
+
+    public constructor() {
+        dict empty = dict()
+        this.rows = empty
+    }
+
+    public save(string orderId) {
+        dict m = this.rows
+        m[orderId] = orderId
+        this.rows = m
+    }
+
+    public nullable<string> load(string orderId) {
+        dict m = this.rows
+        if (orderId in m) {
+            return m[orderId]
+        }
+        return null
+    }
+}
+
+class PlaceOrder {
+    private OrderRepository orders
+
+    public constructor(OrderRepository orders) {
+        this.orders = orders
+    }
+
+    public string run(string orderId) {
+        this.orders.save(orderId)
+        return "placed:" + orderId
+    }
+}
+
+# Adapter at the edge (console) → application → port → adapter (memory).
+InMemoryOrderRepository repo = InMemoryOrderRepository()
+PlaceOrder useCase = PlaceOrder(repo)
+print(useCase.run("O-1"))  # placed:O-1
+print(repo.load("O-1"))  # O-1
