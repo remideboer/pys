@@ -1,4 +1,6 @@
-# Repository — collection-like port for aggregate persistence (not a bare dict).
+# Repository — collection-like port for one Aggregate (root id).
+# Teaching demo uses a single-entity Aggregate (Order) for brevity.
+# Book §10.1 Aggregate: cluster / root / why repositories care.
 # Living system: examples/rest-api/shop/*/src/repositories.pys
 
 entity Order identity(orderId) {

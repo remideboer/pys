@@ -41,7 +41,7 @@ syntax but skip the shared vocabulary of systems.
 
 <figure class="concept-diagram" role="img" aria-label="Vocabulary clusters for app shape auth resilience tests and data">
   <div class="diagram-grid-2">
-    <div class="diagram-box"><strong>App shape</strong><span>Repository · UoW · Multitier · DTO/ACL · DI</span></div>
+    <div class="diagram-box"><strong>App shape</strong><span>Aggregate · Repository · UoW · Multitier · DTO/ACL · DI</span></div>
     <div class="diagram-box"><strong>Auth</strong><span>AuthN/Z · RBAC · ACL · ABAC</span></div>
     <div class="diagram-box"><strong>Resilience</strong><span>Retry · Timeout · Breaker · Idempotency</span></div>
     <div class="diagram-box"><strong>Tests</strong><span>Dummy→Mock · Mother · Builder</span></div>
@@ -51,7 +51,7 @@ syntax but skip the shared vocabulary of systems.
   </figcaption>
 </figure>
 
-**App shape:** Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  
+**App shape:** Aggregate / aggregate root, Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  
 
 **Auth:** Authentication vs Authorization, RBAC, ACL, ABAC  
 
@@ -73,6 +73,8 @@ syntax but skip the shared vocabulary of systems.
 |------------|---------|
 | CQRS vs Event sourcing | Split models vs event log; often paired |
 | Repository vs Unit of Work | Persistence API vs transaction batch |
+| entity vs Aggregate | PYS identity type vs consistency cluster / root |
+| Aggregate vs Repository | What belongs together vs the persistence port |
 | DI vs Service Locator | Constructor supply vs hidden lookup |
 | Mock vs Fake | Expectation spy vs working mini-impl |
 | AuthN vs AuthZ | Identity vs permission |

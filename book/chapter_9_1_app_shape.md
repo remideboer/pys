@@ -1,7 +1,9 @@
 # 10.1. App shape — Repository, Unit of Work, service layer, DTO / ACL
 
 Your program needs a clear **inside** (domain + use-cases) and **outside**
-(HTTP, SQL, legacy systems). Four names keep that boundary honest.
+(HTTP, SQL, legacy systems). First learn what an **Aggregate** is, then four
+pattern names that keep the boundary honest: Repository, Unit of Work, service
+layer, and DTO / ACL.
 
 <figure class="concept-diagram" role="img" aria-label="Layers from domain core through application and ports to outside adapters">
   <div class="diagram-layers">
@@ -28,11 +30,141 @@ Your program needs a clear **inside** (domain + use-cases) and **outside**
   </figcaption>
 </figure>
 
+## Aggregate
+
+Before you can say “repository for one aggregate,” you need the word
+**Aggregate** itself. It is **design vocabulary** (Domain-Driven Design), not a
+PYS keyword. You already know [`entity`](chapter_4_5_structs_data_entity.md) —
+a type with a stable identity key. An Aggregate is a **cluster** of domain
+objects that must stay consistent together.
+
+| Term | Means |
+|------|--------|
+| **`entity`** | PYS construct: identity equality via `identity(...)` |
+| **Aggregate** | Design boundary: root + parts loaded / changed / saved as one unit |
+| **Aggregate root** | The entry object outsiders talk to (usually one root entity) |
+
+Classic shop picture: **`Order`** is the root; **line items** live inside the
+same boundary. You do not invent a separate write API for each line when the
+order’s rules (totals, status, stock) need the whole cluster.
+
+<figure class="concept-diagram" role="img" aria-label="Dashed aggregate boundary around Order root and line items">
+  <div class="diagram-boundary">
+    <strong>Order aggregate</strong>
+    <span>one consistency cluster</span>
+    <div class="diagram-stack" style="margin-top:0.6rem;width:100%">
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+        <strong>Order (root)</strong>
+        <span>id · status · rules</span>
+      </div>
+      <div class="diagram-arrow" aria-hidden="true">contains</div>
+      <div class="diagram-box"><strong>OrderLine …</strong><span>parts · no separate write port</span></div>
+    </div>
+  </div>
+  <figcaption>
+    Outside code addresses the root. Parts move with the root on load and
+    save — that is the aggregate boundary.
+  </figcaption>
+</figure>
+
+<figure class="concept-diagram" role="img" aria-label="entity keyword versus aggregate design cluster">
+  <div class="diagram-grid-2">
+    <div class="diagram-box">
+      <strong>entity (language)</strong>
+      <span>Customer · Order · one type, one id</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Aggregate (design)</strong>
+      <span>Order + lines as one unit</span>
+    </div>
+  </div>
+  <figcaption>
+    An Aggregate often has a root <code>entity</code>, but the Aggregate is the
+    <em>boundary</em>, not the keyword.
+  </figcaption>
+</figure>
+
+### Sketch — root owns its parts
+
+```pys
+data OrderLine {
+    string sku
+    int qty
+}
+
+entity Order identity(orderId) {
+    private fix string orderId
+    private list<OrderLine> lines
+
+    public constructor(string orderId) {
+        this.orderId = orderId
+        list<OrderLine> empty = []
+        this.lines = empty
+    }
+
+    public void addLine(string sku, int qty) {
+        list<OrderLine> xs = this.lines
+        xs.append(OrderLine(sku, qty))
+        this.lines = xs
+    }
+
+    public int lineCount() {
+        return len(this.lines)
+    }
+}
+
+Order o = Order("O-1")
+o.addLine("BG-1", 2)
+o.addLine("BG-2", 1)
+print(o.lineCount())
+```
+
+**Output:**
+
+```text
+2
+```
+
+Lines are reached through `Order`. A repository (next section) would
+`save` / `findById` this **root** — meaning the cluster, not a lone table row.
+
+### Why repositories care
+
+- Prefer **one repository per aggregate type** (e.g. `OrderRepository`), keyed
+  by the **root id**.
+- `save(order)` / `findById(id)` mean load or persist the **whole** cluster your
+  rules need.
+- A teaching demo may show a single-entity Aggregate for brevity
+  ([`repository.pys`](../examples/patterns/persistence/repository.pys)); living
+  shops under [`examples/rest-api/shop/`](../examples/rest-api/shop/) model
+  orders and lines — use Aggregate vocabulary even when the demo is thin.
+
+### Non-golden note
+
+Updating a line item **in isolation** while totals or status live on the order
+breaks the boundary. **Unit of Work** (later) batches a *transaction*;
+**Aggregate** answers *what belongs together* inside that transaction.
+
+### Prompt dialogue
+
+> **You:** Treat `Order` as the aggregate root; line items are parts of that
+> Aggregate. Persist through `OrderRepository` by order id — do not expose a
+> separate write service for lines that bypasses order rules.
+>
+> **Not:** “Every table gets its own repository and the handler updates lines
+> directly.”
+
+### Exercise
+
+> Is `entity Customer` automatically an Aggregate? (Answer: it can be a
+> one-object Aggregate, but Aggregate names the *consistency boundary*; the
+> keyword alone does not.)
+
 ## Repository
 
-A **Repository** is a port that looks like a collection for one aggregate:
-`save`, `findById`. Application code depends on the interface; an adapter talks
-to memory or MySQL.
+A **Repository** is a port that looks like a collection for **one Aggregate**
+(usually addressed by the aggregate root’s id): `save`, `findById`. Application
+code depends on the interface; an adapter talks to memory or MySQL.
 
 <figure class="concept-diagram" role="img" aria-label="Caller uses OrderRepository socket; InMemoryOrderRepository machine wires the socket">
   <div class="diagram-stack">

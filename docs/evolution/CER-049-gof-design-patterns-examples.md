@@ -102,6 +102,17 @@ Vocabulary + strong prompt in `chapter_9_8_prompting_ai.md`.
 `tests/test_book_links.py` Session 10 concept-diagram list includes
 `chapter_9_1a_multitier.html`.
 
+### 10. Aggregate vocabulary before Repository (book §10.1)
+
+**Post-behavior:** `chapter_9_1_app_shape.md` teaches **Aggregate** /
+aggregate root / `entity` contrast before the Repository section, with
+concept-diagrams and a root+lines sketch. Companion
+`examples/patterns/persistence/repository.md` notes the single-entity
+teaching simplification. Vocabulary in `chapter_9_8_prompting_ai.md`.
+
+**Evidence:** `python book/build_html.py`; Session 10 concept-diagram gate on
+`chapter_9_1_app_shape.html`.
+
 ## Trade-offs
 
 - One file per runnable pattern for teaching density.

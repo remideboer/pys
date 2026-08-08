@@ -136,7 +136,9 @@
     <main>
 <h1>10.1. App shape — Repository, Unit of Work, service layer, DTO / ACL</h1>
 <p>Your program needs a clear <strong>inside</strong> (domain + use-cases) and <strong>outside</strong>
-(HTTP, SQL, legacy systems). Four names keep that boundary honest.</p>
+(HTTP, SQL, legacy systems). First learn what an <strong>Aggregate</strong> is, then four
+pattern names that keep the boundary honest: Repository, Unit of Work, service
+layer, and DTO / ACL.</p>
 <figure class="concept-diagram" role="img" aria-label="Layers from domain core through application and ports to outside adapters">
   <div class="diagram-layers">
     <div class="diagram-layer diagram-layer-core">
@@ -162,10 +164,142 @@
   </figcaption>
 </figure>
 
+<h2>Aggregate</h2>
+<p>Before you can say “repository for one aggregate,” you need the word
+<strong>Aggregate</strong> itself. It is <strong>design vocabulary</strong> (Domain-Driven Design), not a
+PYS keyword. You already know <a href="chapter_4_5_structs_data_entity.html"><code>entity</code></a> —
+a type with a stable identity key. An Aggregate is a <strong>cluster</strong> of domain
+objects that must stay consistent together.</p>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>entity</code></strong></td>
+<td>PYS construct: identity equality via <code>identity(...)</code></td>
+</tr>
+<tr>
+<td><strong>Aggregate</strong></td>
+<td>Design boundary: root + parts loaded / changed / saved as one unit</td>
+</tr>
+<tr>
+<td><strong>Aggregate root</strong></td>
+<td>The entry object outsiders talk to (usually one root entity)</td>
+</tr>
+</tbody>
+</table>
+<p>Classic shop picture: <strong><code>Order</code></strong> is the root; <strong>line items</strong> live inside the
+same boundary. You do not invent a separate write API for each line when the
+order’s rules (totals, status, stock) need the whole cluster.</p>
+<figure class="concept-diagram" role="img" aria-label="Dashed aggregate boundary around Order root and line items">
+  <div class="diagram-boundary">
+    <strong>Order aggregate</strong>
+    <span>one consistency cluster</span>
+    <div class="diagram-stack" style="margin-top:0.6rem;width:100%">
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+        <strong>Order (root)</strong>
+        <span>id · status · rules</span>
+      </div>
+      <div class="diagram-arrow" aria-hidden="true">contains</div>
+      <div class="diagram-box"><strong>OrderLine …</strong><span>parts · no separate write port</span></div>
+    </div>
+  </div>
+  <figcaption>
+    Outside code addresses the root. Parts move with the root on load and
+    save — that is the aggregate boundary.
+  </figcaption>
+</figure>
+
+<figure class="concept-diagram" role="img" aria-label="entity keyword versus aggregate design cluster">
+  <div class="diagram-grid-2">
+    <div class="diagram-box">
+      <strong>entity (language)</strong>
+      <span>Customer · Order · one type, one id</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Aggregate (design)</strong>
+      <span>Order + lines as one unit</span>
+    </div>
+  </div>
+  <figcaption>
+    An Aggregate often has a root <code>entity</code>, but the Aggregate is the
+    <em>boundary</em>, not the keyword.
+  </figcaption>
+</figure>
+
+<h3>Sketch — root owns its parts</h3>
+<pre><code class="language-pys"><span class="tok-kw">data</span> <span class="tok-typename">OrderLine</span> {
+    <span class="tok-type">string</span> <span class="tok-ident">sku</span>
+    <span class="tok-type">int</span> <span class="tok-ident">qty</span>
+}
+
+<span class="tok-kw">entity</span> <span class="tok-typename">Order</span> <span class="tok-kw">identity</span>(<span class="tok-ident">orderId</span>) {
+    <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">orderId</span>
+    <span class="tok-mod">private</span> <span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-typename">OrderLine</span><span class="tok-op">&gt;</span> <span class="tok-ident">lines</span>
+
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">orderId</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-ident">orderId</span> <span class="tok-op">=</span> <span class="tok-ident">orderId</span>
+        <span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-typename">OrderLine</span><span class="tok-op">&gt;</span> <span class="tok-ident">empty</span> <span class="tok-op">=</span> []
+        <span class="tok-kw">this</span>.<span class="tok-ident">lines</span> <span class="tok-op">=</span> <span class="tok-ident">empty</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">void</span> <span class="tok-ident">addLine</span>(<span class="tok-type">string</span> <span class="tok-ident">sku</span>, <span class="tok-type">int</span> <span class="tok-ident">qty</span>) {
+        <span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-typename">OrderLine</span><span class="tok-op">&gt;</span> <span class="tok-ident">xs</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">lines</span>
+        <span class="tok-ident">xs</span>.<span class="tok-ident">append</span>(<span class="tok-typename">OrderLine</span>(<span class="tok-ident">sku</span>, <span class="tok-ident">qty</span>))
+        <span class="tok-kw">this</span>.<span class="tok-ident">lines</span> <span class="tok-op">=</span> <span class="tok-ident">xs</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">int</span> <span class="tok-ident">lineCount</span>() {
+        <span class="tok-kw">return</span> <span class="tok-builtin">len</span>(<span class="tok-kw">this</span>.<span class="tok-ident">lines</span>)
+    }
+}
+
+<span class="tok-typename">Order</span> <span class="tok-ident">o</span> <span class="tok-op">=</span> <span class="tok-typename">Order</span>(<span class="tok-string">&quot;</span><span class="tok-string">O-1</span><span class="tok-string">&quot;</span>)
+<span class="tok-ident">o</span>.<span class="tok-ident">addLine</span>(<span class="tok-string">&quot;</span><span class="tok-string">BG-1</span><span class="tok-string">&quot;</span>, <span class="tok-number">2</span>)
+<span class="tok-ident">o</span>.<span class="tok-ident">addLine</span>(<span class="tok-string">&quot;</span><span class="tok-string">BG-2</span><span class="tok-string">&quot;</span>, <span class="tok-number">1</span>)
+<span class="tok-builtin">print</span>(<span class="tok-ident">o</span>.<span class="tok-ident">lineCount</span>())</code></pre>
+<p><strong>Output:</strong></p>
+<pre><code class="language-text">2
+</code></pre>
+<p>Lines are reached through <code>Order</code>. A repository (next section) would
+<code>save</code> / <code>findById</code> this <strong>root</strong> — meaning the cluster, not a lone table row.</p>
+<h3>Why repositories care</h3>
+<ul>
+<li>Prefer <strong>one repository per aggregate type</strong> (e.g. <code>OrderRepository</code>), keyed
+  by the <strong>root id</strong>.</li>
+<li><code>save(order)</code> / <code>findById(id)</code> mean load or persist the <strong>whole</strong> cluster your
+  rules need.</li>
+<li>A teaching demo may show a single-entity Aggregate for brevity
+  (<a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/repository.pys"><code>repository.pys</code></a>); living
+  shops under <a href="https://github.com/remideboer/pys/tree/main/examples/rest-api/shop"><code>examples/rest-api/shop/</code></a> model
+  orders and lines — use Aggregate vocabulary even when the demo is thin.</li>
+</ul>
+<h3>Non-golden note</h3>
+<p>Updating a line item <strong>in isolation</strong> while totals or status live on the order
+breaks the boundary. <strong>Unit of Work</strong> (later) batches a <em>transaction</em>;
+<strong>Aggregate</strong> answers <em>what belongs together</em> inside that transaction.</p>
+<h3>Prompt dialogue</h3>
+<blockquote>
+<p><strong>You:</strong> Treat <code>Order</code> as the aggregate root; line items are parts of that
+Aggregate. Persist through <code>OrderRepository</code> by order id — do not expose a
+separate write service for lines that bypasses order rules.</p>
+<p><strong>Not:</strong> “Every table gets its own repository and the handler updates lines
+directly.”</p>
+</blockquote>
+<h3>Exercise</h3>
+<blockquote>
+<p>Is <code>entity Customer</code> automatically an Aggregate? (Answer: it can be a
+one-object Aggregate, but Aggregate names the <em>consistency boundary</em>; the
+keyword alone does not.)</p>
+</blockquote>
 <h2>Repository</h2>
-<p>A <strong>Repository</strong> is a port that looks like a collection for one aggregate:
-<code>save</code>, <code>findById</code>. Application code depends on the interface; an adapter talks
-to memory or MySQL.</p>
+<p>A <strong>Repository</strong> is a port that looks like a collection for <strong>one Aggregate</strong>
+(usually addressed by the aggregate root’s id): <code>save</code>, <code>findById</code>. Application
+code depends on the interface; an adapter talks to memory or MySQL.</p>
 <figure class="concept-diagram" role="img" aria-label="Caller uses OrderRepository socket; InMemoryOrderRepository machine wires the socket">
   <div class="diagram-stack">
     <div class="diagram-box"><strong>PlaceOrderService</strong><span>caller · depends on the socket</span></div>

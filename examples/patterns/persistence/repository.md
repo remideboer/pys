@@ -7,8 +7,13 @@
 
 ## Intent
 
-Give the domain a **collection-like port** for loading and saving aggregates, so
-application code does not talk to SQL, files, or raw `dict` maps directly.
+Give the domain a **collection-like port** for loading and saving one
+**Aggregate** (usually by aggregate-root id), so application code does not talk
+to SQL, files, or raw `dict` maps directly.
+
+Book: [§10.1 Aggregate](../../../book/chapter_9_1_app_shape.md) — Aggregate ≠
+`entity` keyword; this demo’s `Order` is a **single-entity** Aggregate for
+brevity (shops often include line items inside the same boundary).
 
 ## Explanation
 
@@ -44,7 +49,8 @@ use-case takes the repository in its constructor. Provide an in-memory adapter.�
 **Not this:** “Just keep orders in a global dict inside the HTTP handler.”
 
 **Confusion to avoid:** Repository ≠ Unit of Work (UoW coordinates a transaction;
-the repository is the persistence API).
+the repository is the persistence API). Aggregate ≠ entity keyword (see book
+§10.1). Aggregate ≠ Repository (cluster vs port).
 
 ## Run
 

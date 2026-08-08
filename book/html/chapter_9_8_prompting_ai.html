@@ -195,7 +195,7 @@ not only the feature.</p>
 <h2>Vocabulary checklist (keep near your IDE)</h2>
 <figure class="concept-diagram" role="img" aria-label="Vocabulary clusters for app shape auth resilience tests and data">
   <div class="diagram-grid-2">
-    <div class="diagram-box"><strong>App shape</strong><span>Repository · UoW · Multitier · DTO/ACL · DI</span></div>
+    <div class="diagram-box"><strong>App shape</strong><span>Aggregate · Repository · UoW · Multitier · DTO/ACL · DI</span></div>
     <div class="diagram-box"><strong>Auth</strong><span>AuthN/Z · RBAC · ACL · ABAC</span></div>
     <div class="diagram-box"><strong>Resilience</strong><span>Retry · Timeout · Breaker · Idempotency</span></div>
     <div class="diagram-box"><strong>Tests</strong><span>Dummy→Mock · Mother · Builder</span></div>
@@ -205,7 +205,7 @@ not only the feature.</p>
   </figcaption>
 </figure>
 
-<p><strong>App shape:</strong> Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  </p>
+<p><strong>App shape:</strong> Aggregate / aggregate root, Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  </p>
 <p><strong>Auth:</strong> Authentication vs Authorization, RBAC, ACL, ABAC  </p>
 <p><strong>Resilience:</strong> Retry, Timeout, Circuit breaker, Bulkhead, Fallback, Rate limit, Idempotency  </p>
 <p><strong>Integration:</strong> Pub-sub, CQRS, Event sourcing, Outbox, Saga, Request–reply  </p>
