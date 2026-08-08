@@ -56,25 +56,25 @@ const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'lambda', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'closed', 'open', 'override', 'constructor',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'closed', 'open', 'override', 'constructor', 'static',
   'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ];
 
 const PYS_TYPES = [
-  'int', 'float', 'char', 'string', 'bool', 'void',
+  'int', 'float', 'char', 'string', 'bool', 'void', 'object',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
-  'result', 'nullable',
+  'list', 'dict', 'tuple', 'set', 'result', 'nullable',
 ];
 
 const PYS_MD_KEYWORDS = new Set([
   'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'lambda', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'closed', 'open', 'override', 'constructor',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'closed', 'open', 'override', 'constructor', 'static',
   'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ]);
 const PYS_MD_TYPES = new Set([
-  'int', 'float', 'char', 'string', 'bool', 'void',
+  'int', 'float', 'char', 'string', 'bool', 'void', 'object',
   'byte', 'nibble', 'int16', 'int32', 'int64', 'dword',
   'list', 'dict', 'tuple', 'set', 'result', 'nullable',
 ]);
@@ -581,6 +581,7 @@ function activate(context) {
         open: 'Marks a method as an overridable extension point: `public open string speak()`. Subclasses plug in with `override`.',
         override: 'Plugs into an ancestor `open` or abstract method (or root `toString`/`equals`/`hashCode`): `public override string speak()`. Use `override closed` to seal the chain.',
         constructor: 'Explicit constructor: `public constructor(...) { ... }` (not the type name). Use `this(...)` to chain overloads and `super(...)` for the parent.',
+        static: 'Class-wide member: `public static int total = 0` / `public static int getTotal()`. No `this` inside static methods; cannot combine with open/override. Access as `ClassName.member`.',
         abstract: 'Abstract class or method: `abstract class Shape { public abstract float area() }`.\nConcrete subclasses must `override` every abstract method. Cannot write `closed abstract`. Do not instantiate an abstract class.',
         void: 'No return value: `public void add(string item) { … }` or `public abstract void add(string item)`.\nA `void` method must not `return expr` (bare `return` is ok).',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',

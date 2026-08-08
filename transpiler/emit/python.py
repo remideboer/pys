@@ -1190,7 +1190,13 @@ class _Emitter:
             self._emit(indent, f"def {name}({params}):")
             self._emit(indent + 1, "pass")
             return
-        if m.is_constructor:
+        if getattr(m, "is_static", False):
+            self._emit(indent, "@staticmethod")
+            params = ", ".join(m.params)
+            self._emit(indent, f"def {name}({params}):")
+            if m.return_type and m.return_type != "void" and emit_name is None:
+                self.fn_return_types[m.name] = m.return_type
+        elif m.is_constructor:
             parts = ["self"]
             for i, pname in enumerate(m.params):
                 ptype = m.param_types[i] if i < len(m.param_types) else ""

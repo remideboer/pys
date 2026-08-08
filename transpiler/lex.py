@@ -65,6 +65,7 @@ KEYWORDS = frozenset(
         "override",
         "abstract",
         "constructor",
+        "static",
         "void",
         "trait",
         "uses",

@@ -212,6 +212,14 @@ def _parse_method_extension(p: "_Tok") -> str | None:
     return None
 
 
+def _parse_static_kw(p: "_Tok") -> bool:
+    """Optional ``static`` after visibility (ADR-029)."""
+    if p.at_kw("static"):
+        p.eat_kw("static")
+        return True
+    return False
+
+
 _PACKRAT_FAIL = object()
 
 
@@ -2005,7 +2013,8 @@ def _parse_class(
                 p.cur().line,
                 p.cur().column,
             )
-        # const field: access const primitive name = expr
+        is_static = _parse_static_kw(p)
+        # const field: access [static] const primitive name = expr
         if p.at_kw("const"):
             if member_decorators:
                 raise FatalParseError(
@@ -2040,11 +2049,12 @@ def _parse_class(
                     type_name=type_name,
                     name=fname,
                     is_const=True,
+                    is_static=is_static,
                     default=default,
                 )
             )
             continue
-        # fix field: access fix type name [= expr]
+        # fix field: access [static] fix type name [= expr]
         if p.at_kw("fix"):
             if member_decorators:
                 raise FatalParseError(
@@ -2089,13 +2099,22 @@ def _parse_class(
                     type_name=type_name,
                     name=fname,
                     is_fix=True,
+                    is_static=is_static,
                     default=default,
                 )
             )
             continue
-        # Abstract method: access [open] abstract ReturnType name(params) — no body.
+        # Abstract method: access [static?] [open] abstract … — static abstract illegal
         extension = _parse_method_extension(p)
         if p.at_kw("abstract"):
+            if is_static:
+                raise FatalParseError(
+                    "Abstract methods cannot be `static` — they need an instance "
+                    "to override (ADR-029).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.static-abstract",
+                )
             p.eat_kw("abstract")
             if extension in {"closed", "override", "override_closed"}:
                 raise FatalParseError(
@@ -2164,6 +2183,13 @@ def _parse_class(
                     member_sp.column,
                     code="pys.ctor-extension",
                 )
+        if is_static and p.at_kw("constructor"):
+            raise FatalParseError(
+                "Constructors cannot be `static` (ADR-029).",
+                member_sp.line,
+                member_sp.column,
+                code="pys.static-ctor",
+            )
         if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
             p.eat_kw("constructor")
             _require_member_phase(
@@ -2233,6 +2259,21 @@ def _parse_class(
                     type_name += "[]"
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         if p.at(TokenKind.LPAREN):
+            if is_static and extension in {"open", "override", "override_closed"}:
+                raise FatalParseError(
+                    "`static` cannot combine with open/override — polymorphism "
+                    "needs an instance to dispatch (ADR-029).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.static-extension",
+                    tips=[
+                        "Remove `open`/`override`, or make the method an instance method.",
+                    ],
+                )
+            if is_static and extension == "closed":
+                # Redundant closed is allowed on instance methods; on static it is noise
+                # but not polymorphism — treat like standalone closed (ok / ignore).
+                pass
             _require_member_phase(
                 p,
                 phase,
@@ -2258,7 +2299,8 @@ def _parse_class(
                     param_types=[t for t, _ in params],
                     body=body,
                     return_type=type_name,
-                    extension=extension,
+                    extension=None if is_static else extension,
+                    is_static=is_static,
                     decorators=list(member_decorators),
                 )
             )
@@ -2294,6 +2336,7 @@ def _parse_class(
                     access=access,
                     type_name=type_name,
                     name=mname,
+                    is_static=is_static,
                     default=default,
                 )
             )

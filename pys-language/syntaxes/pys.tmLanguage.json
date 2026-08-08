@@ -7,8 +7,7 @@
       "include": "#comments"
     },
     {
-      "name": "punctuation.definition.decorator.pys",
-      "match": "@(?=[A-Za-z_])"
+      "include": "#decorators"
     },
     {
       "include": "#strings"
@@ -46,6 +45,57 @@
     }
   ],
   "repository": {
+    "decorators": {
+      "patterns": [
+        {
+          "name": "meta.function.decorator.pys",
+          "begin": "(@)((?:[A-Za-z_]\\w*\\s*\\.\\s*)*[A-Za-z_]\\w*)\\s*(\\()",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.decorator.pys"
+            },
+            "2": {
+              "name": "entity.name.function.decorator.pys"
+            },
+            "3": {
+              "name": "punctuation.definition.parameters.begin.bracket.round.pys"
+            }
+          },
+          "end": "\\)",
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.parameters.end.bracket.round.pys"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#strings"
+            },
+            {
+              "include": "#numbers"
+            },
+            {
+              "include": "#constants"
+            },
+            {
+              "include": "#identifiers"
+            }
+          ]
+        },
+        {
+          "name": "meta.function.decorator.pys",
+          "match": "(@)((?:[A-Za-z_]\\w*\\s*\\.\\s*)*[A-Za-z_]\\w*)\\b",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.decorator.pys"
+            },
+            "2": {
+              "name": "entity.name.function.decorator.pys"
+            }
+          }
+        }
+      ]
+    },
     "comments": {
       "patterns": [
         {
@@ -487,7 +537,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const|fix|closed|open|override|abstract|constructor|shared|atomic)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|fix|closed|open|override|abstract|constructor|static|shared|atomic)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",

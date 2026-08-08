@@ -725,12 +725,66 @@
       )
     },
     {
+      id: 'class_body',
+      title: 'class_body',
+      ebnf: '"{" { const_field_decl } { fix_field_decl } { field_decl } { constructor_decl } { method_decl | abstract_method_decl } "}" ;',
+      node: Seq(
+        T('{'),
+        Star(N('const_field_decl')),
+        Star(N('fix_field_decl')),
+        Star(N('field_decl')),
+        Star(N('constructor_decl')),
+        Star(Choice(N('method_decl'), N('abstract_method_decl'))),
+        T('}')
+      )
+    },
+    {
+      id: 'const_field_decl',
+      title: 'const_field_decl',
+      ebnf: 'member_access [ "static" ] "const" primitive_type identifier "=" expression ;',
+      node: Seq(
+        N('member_access'),
+        Opt(T('static')),
+        T('const'),
+        N('primitive_type'),
+        N('identifier'),
+        T('='),
+        N('expression')
+      )
+    },
+    {
+      id: 'fix_field_decl',
+      title: 'fix_field_decl',
+      ebnf: 'member_access [ "static" ] "fix" type_name identifier [ "=" expression ] ;',
+      node: Seq(
+        N('member_access'),
+        Opt(T('static')),
+        T('fix'),
+        N('type_name'),
+        N('identifier'),
+        Opt(Seq(T('='), N('expression')))
+      )
+    },
+    {
+      id: 'field_decl',
+      title: 'field_decl',
+      ebnf: 'member_access [ "static" ] type_name identifier [ "=" expression ] ;',
+      node: Seq(
+        N('member_access'),
+        Opt(T('static')),
+        N('type_name'),
+        N('identifier'),
+        Opt(Seq(T('='), N('expression')))
+      )
+    },
+    {
       id: 'method_decl',
       title: 'method_decl',
-      ebnf: '{ decorator } member_access [ method_extension_modifier ] [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      ebnf: '{ decorator } member_access [ "static" ] [ method_extension_modifier ] [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
       node: Seq(
         Star(N('decorator')),
         N('member_access'),
+        Opt(T('static')),
         Opt(N('method_extension_modifier')),
         Opt(N('return_type')),
         N('identifier'),

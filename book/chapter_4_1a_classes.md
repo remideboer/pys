@@ -49,8 +49,13 @@ Breakdown:
 
 - `class Counter { … }` — blueprint for a machine whose purpose is
   counting.
-- Fields (`DEFAULT_STEP`, `label`, `value`) — **state** that purpose
-  needs; lives with each object.
+- Fields (`label`, `value`) — **per-instance state** that purpose needs;
+  lives with each object.
+- `public const DEFAULT_STEP` — a **class-wide** constant (one value for the
+  type, not a drawer on each object). Read it as `Counter.DEFAULT_STEP`.
+  Optional `static` on fields/methods marks the same class-wide idea for
+  mutable helpers; see [Processes, calls, and memory](under_the_hood_memory.md)
+  (*Class-wide vs per-instance*).
 - `public constructor(...)` — the **constructor** (see below): assembles one
   object and fills its drawers.
 - Methods (`bump`, `getValue`) — **parts with a job** in that machine;

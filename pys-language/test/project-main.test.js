@@ -44,7 +44,7 @@ test('extension manifest exposes entrypoint command and result language support'
     fs.readFileSync(path.join(extensionRoot, 'package.json'), 'utf8'),
   );
   const commands = manifest.contributes.commands.map((entry) => entry.command);
-  assert.equal(manifest.version, '0.0.80');
+  assert.equal(manifest.version, '0.0.81');
   assert.ok(commands.includes('pys.setAsEntrypoint'));
 
   const grammar = fs.readFileSync(
@@ -58,6 +58,10 @@ test('extension manifest exposes entrypoint command and result language support'
   assert.match(grammar, /\binput\b/);
   assert.match(grammar, /toBin/);
   assert.match(grammar, /toHex/);
+  assert.match(grammar, /\bconstructor\b/);
+  assert.match(grammar, /\bstatic\b/);
+  assert.match(grammar, /\bopen\b/);
+  assert.match(grammar, /\boverride\b/);
 
   const extension = fs.readFileSync(
     path.join(extensionRoot, 'extension.js'),
@@ -66,9 +70,22 @@ test('extension manifest exposes entrypoint command and result language support'
   assert.match(extension, /diagnostic\.code === 'pys\.entrypoint-conflict'/);
   assert.match(extension, /Set this file as entrypoint/);
   assert.match(grammar, /punctuation\.definition\.decorator\.pys/);
+  assert.match(grammar, /entity\.name\.function\.decorator\.pys/);
+  assert.match(grammar, /meta\.function\.decorator\.pys/);
   assert.match(extension, /pys\.var-as-type/);
   assert.match(extension, /Replace `var` with `object`/);
   assert.match(extension, /Make type nullable/);
   assert.match(extension, /Surround with null check/);
   assert.match(extension, /'nullable'/);
+  assert.match(extension, /'constructor'/);
+  assert.match(extension, /'static'/);
+  assert.match(extension, /Class-wide member/);
+
+  const notes = fs.readFileSync(
+    path.join(extensionRoot, 'RELEASE_NOTES.md'),
+    'utf8',
+  );
+  assert.match(notes, /0\.0\.81/);
+  assert.match(notes, /constructor/);
+  assert.match(notes, /static/);
 });

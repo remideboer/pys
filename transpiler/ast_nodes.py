@@ -396,6 +396,7 @@ class FieldDecl(Node):
     name: str = ""
     is_fix: bool = False
     is_const: bool = False
+    is_static: bool = False
     default: Expr | None = None
     name_span: Span | None = None
 
@@ -471,6 +472,7 @@ class MethodDef(Node):
     body: Block | None = None
     is_constructor: bool = False
     is_abstract: bool = False
+    is_static: bool = False
     return_type: str = ""
     # ADR-028: None | "open" | "override" | "override_closed" | "closed"
     extension: str | None = None

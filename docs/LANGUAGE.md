@@ -690,10 +690,15 @@ Rules:
    subclasses plug in with `override` or `override closed`. Abstract methods
    are implicitly open sockets. An implicit root provides `toString` /
    `equals` / `hashCode`. See [ADR-028](adr/ADR-028-open-override-closed.md).
-9. `abstract` marks a class that cannot be instantiated and may declare
+9. Optional `static` after visibility marks **class-wide** fields and methods
+   (one shared cell / no instance). Static methods cannot use `this`, and
+   cannot combine with `open`/`override`. Access as `ClassName.member`.
+   See [ADR-029](adr/ADR-029-static-members.md).
+10. `abstract` marks a class that cannot be instantiated and may declare
    body-less `abstract` methods; mutually exclusive with `closed`
-10. Optional type parameters: `class Pair<T, U> { … }`
-11. See `examples/classes.pys` for fields, constructors, `inherits`, `open`/`override`, and `closed`
+11. Optional type parameters: `class Pair<T, U> { … }`
+12. See `examples/classes.pys` for fields, constructors, `inherits`,
+    `open`/`override`, `closed`, and `static`
 
 ### Abstract classes
 
@@ -1290,7 +1295,7 @@ For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
 | `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` / `atomic` guide |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
 | `examples/main.pys` | Dense feature showcase (not the curriculum path) |
-| `examples/classes.pys` | Classes: fields, ctors, inherits, open/override, closed |
+| `examples/classes.pys` | Classes: fields, ctors, inherits, open/override, closed, static |
 | `examples/interfaces.pys` | Interfaces + implements (vehicle domain) |
 | `examples/abstract_classes.pys` | Abstract classes / template method |
 | `examples/concurrency/` | Concurrency showcase (`main.pys` offline; `http/http_main.pys` live HTTPS package) |

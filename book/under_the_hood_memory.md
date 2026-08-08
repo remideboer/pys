@@ -174,6 +174,42 @@ Likewise:
 Choose among them for those language meanings, not because you are guessing a
 stack or heap address.
 
+### Class-wide vs per-instance: `static`
+
+A normal field lives **on each instance**. A `static` field is **one cell for
+the whole class** — shared by every object of that type (and reachable without
+an instance). A `static` method has **no `this`**: it belongs to the class,
+not to one object.
+
+```pys
+class IdCounter {
+    public static int total = 0
+
+    public constructor() {
+        IdCounter.total = IdCounter.total + 1
+    }
+
+    public static int getTotal() {
+        return IdCounter.total
+    }
+}
+
+IdCounter a = IdCounter()
+IdCounter b = IdCounter()
+print(IdCounter.getTotal())
+```
+
+Output:
+
+```text
+2
+```
+
+Both constructors bumped the **same** `IdCounter.total`. Writing `this` inside
+`getTotal` is a compile error — there is no instance. Prefer
+`ClassName.member` for static access. (C#, Java, and JavaScript use the same
+keyword for this idea.)
+
 ## A process can contain several threads
 
 A process owns an address space. A **thread** is one flow of execution inside
@@ -219,9 +255,10 @@ overflow is not a recoverable `result<T,E>` business error.
 
 > Without running code, explain why `secondCounter.increment()` changes what
 > `firstCounter.current()` returns, while changing `secondPoint.x` does not
-> change `firstPoint.x`. Then name the resource exhausted by uncontrolled
-> recursion and the concurrency problem prevented by a suitable atomic
-> update.
+> change `firstPoint.x`. Then explain why two `IdCounter()` calls share one
+> `IdCounter.total`, and why a `static` method cannot use `this`. Finally,
+> name the resource exhausted by uncontrolled recursion and the concurrency
+> problem prevented by a suitable atomic update.
 
 ---
 

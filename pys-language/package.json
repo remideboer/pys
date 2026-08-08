@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.80",
+  "version": "0.0.81",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -58,6 +58,55 @@
           "type": "boolean",
           "default": true,
           "description": "Show current variable values inline in the .pys editor while debugging (IntelliJ-style)."
+        }
+      }
+    },
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "[*Dark*]": {
+          "textMateRules": [
+            {
+              "scope": [
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#FF79C6",
+                "fontStyle": "bold"
+              }
+            }
+          ]
+        },
+        "[*Light*]": {
+          "textMateRules": [
+            {
+              "scope": [
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#9A1B6B",
+                "fontStyle": "bold"
+              }
+            }
+          ]
+        },
+        "[*HighContrast*]": {
+          "textMateRules": [
+            {
+              "scope": [
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#FFFF00",
+                "fontStyle": "bold"
+              }
+            }
+          ]
         }
       }
     },

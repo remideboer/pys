@@ -159,8 +159,13 @@ get a new <em>object</em> — its own running copy of the machine.</p>
 <ul>
 <li><code>class Counter { … }</code> — blueprint for a machine whose purpose is
   counting.</li>
-<li>Fields (<code>DEFAULT_STEP</code>, <code>label</code>, <code>value</code>) — <strong>state</strong> that purpose
-  needs; lives with each object.</li>
+<li>Fields (<code>label</code>, <code>value</code>) — <strong>per-instance state</strong> that purpose needs;
+  lives with each object.</li>
+<li><code>public const DEFAULT_STEP</code> — a <strong>class-wide</strong> constant (one value for the
+  type, not a drawer on each object). Read it as <code>Counter.DEFAULT_STEP</code>.
+  Optional <code>static</code> on fields/methods marks the same class-wide idea for
+  mutable helpers; see <a href="under_the_hood_memory.html">Processes, calls, and memory</a>
+  (<em>Class-wide vs per-instance</em>).</li>
 <li><code>public constructor(...)</code> — the <strong>constructor</strong> (see below): assembles one
   object and fills its drawers.</li>
 <li>Methods (<code>bump</code>, <code>getValue</code>) — <strong>parts with a job</strong> in that machine;

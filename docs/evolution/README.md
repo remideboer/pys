@@ -81,5 +81,6 @@ Each record then uses:
 | [CER-044](CER-044-fastapi-shop-library-test.md) | FastAPI shop library-test (field research) | Library / examples |
 | [CER-045](CER-045-constructor-keyword.md) | Explicit `constructor` keyword | Language |
 | [CER-046](CER-046-open-override-closed.md) | `open` / `override` / `closed` extension points | Language |
+| [CER-047](CER-047-static-members.md) | Class `static` members | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

@@ -180,6 +180,66 @@
     ],
     "description": "PYS class with constructor and method"
   },
+  "Static method": {
+    "prefix": "static",
+    "body": [
+      "public static ${1:int} ${2:name}(${3}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS static (class-wide) method — no this"
+  },
+  "Static field": {
+    "prefix": "staticfield",
+    "body": [
+      "public static ${1|int,string,float,bool|} ${2:name} = ${3:0}"
+    ],
+    "description": "PYS static (class-wide) field"
+  },
+  "Open method": {
+    "prefix": "open",
+    "body": [
+      "public open ${1|string,int,bool,void,float|} ${2:name}(${3}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS open (overridable) method"
+  },
+  "Override method": {
+    "prefix": "override",
+    "body": [
+      "public override ${1|string,int,bool,void,float|} ${2:name}(${3}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS override of an open/abstract/root method"
+  },
+  "Override closed method": {
+    "prefix": "overrideclosed",
+    "body": [
+      "public override closed ${1|string,int,bool,void,float|} ${2:name}(${3}) {",
+      "\t${0}",
+      "}"
+    ],
+    "description": "PYS override that seals further subclassing of this method"
+  },
+  "Closed class": {
+    "prefix": "closed",
+    "body": [
+      "closed class ${1:Name} {",
+      "\tprivate ${2|string,int,float,bool|} ${3:field}",
+      "",
+      "\tpublic constructor(${2} ${3:field}) {",
+      "\t\tthis.${3:field} = ${3:field}",
+      "\t}",
+      "",
+      "\tpublic ${4:action}() {",
+      "\t\t${0}",
+      "\t}",
+      "}"
+    ],
+    "description": "PYS closed class (no further inherits)"
+  },
   "Abstract class": {
     "prefix": "abstract",
     "body": [
@@ -238,7 +298,7 @@
       "\tprivate fix ${4|int,string|} ${3:id}",
       "\tpublic ${5|string,int|} ${6:field}",
       "",
-      "\tpublic ${2:Name}(${4|int,string|} ${3:id}, ${5|string,int|} ${6:field}) {",
+      "\tpublic constructor(${4|int,string|} ${3:id}, ${5|string,int|} ${6:field}) {",
       "\t\tthis.${3:id} = ${3:id}",
       "\t\tthis.${6:field} = ${6:field}",
       "\t}",
@@ -299,7 +359,7 @@
       "class ${1:Name} uses ${2:Trait}(${3:req}: ${4:hostMember}) {",
       "\tprivate ${5|string,int|} ${4:hostMember}",
       "",
-      "\tpublic ${1:Name}(${5} ${4}) {",
+      "\tpublic constructor(${5} ${4}) {",
       "\t\tthis.${4} = ${4}",
       "\t}",
       "\t${0}",
@@ -325,12 +385,12 @@
       "\t\tsuper(${4:args})",
       "\t}",
       "",
-      "\tpublic ${5:action}() {",
+      "\tpublic override ${5|string,int,bool,void,float|} ${6:action}(${7}) {",
       "\t\t${0}",
       "\t}",
       "}"
     ],
-    "description": "PYS subclass using inherits"
+    "description": "PYS subclass using inherits (override plug-in ready)"
   },
   "Interface": {
     "prefix": "interface",

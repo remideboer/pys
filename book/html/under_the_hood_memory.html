@@ -263,6 +263,33 @@ Likewise:</p>
 </ul>
 <p>Choose among them for those language meanings, not because you are guessing a
 stack or heap address.</p>
+<h3>Class-wide vs per-instance: <code>static</code></h3>
+<p>A normal field lives <strong>on each instance</strong>. A <code>static</code> field is <strong>one cell for
+the whole class</strong> — shared by every object of that type (and reachable without
+an instance). A <code>static</code> method has <strong>no <code>this</code></strong>: it belongs to the class,
+not to one object.</p>
+<pre><code class="language-pys"><span class="tok-kw">class</span> <span class="tok-typename">IdCounter</span> {
+    <span class="tok-mod">public</span> <span class="tok-ident">static</span> <span class="tok-type">int</span> <span class="tok-ident">total</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
+
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
+        <span class="tok-typename">IdCounter</span>.<span class="tok-ident">total</span> <span class="tok-op">=</span> <span class="tok-typename">IdCounter</span>.<span class="tok-ident">total</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-ident">static</span> <span class="tok-type">int</span> <span class="tok-ident">getTotal</span>() {
+        <span class="tok-kw">return</span> <span class="tok-typename">IdCounter</span>.<span class="tok-ident">total</span>
+    }
+}
+
+<span class="tok-typename">IdCounter</span> <span class="tok-ident">a</span> <span class="tok-op">=</span> <span class="tok-typename">IdCounter</span>()
+<span class="tok-typename">IdCounter</span> <span class="tok-ident">b</span> <span class="tok-op">=</span> <span class="tok-typename">IdCounter</span>()
+<span class="tok-builtin">print</span>(<span class="tok-typename">IdCounter</span>.<span class="tok-ident">getTotal</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">2
+</code></pre>
+<p>Both constructors bumped the <strong>same</strong> <code>IdCounter.total</code>. Writing <code>this</code> inside
+<code>getTotal</code> is a compile error — there is no instance. Prefer
+<code>ClassName.member</code> for static access. (C#, Java, and JavaScript use the same
+keyword for this idea.)</p>
 <h2>A process can contain several threads</h2>
 <p>A process owns an address space. A <strong>thread</strong> is one flow of execution inside
 that process. Each thread has its own instruction position and call stack, but
@@ -304,9 +331,10 @@ overflow is not a recoverable <code>result&lt;T,E&gt;</code> business error.</p>
 <blockquote>
 <p>Without running code, explain why <code>secondCounter.increment()</code> changes what
 <code>firstCounter.current()</code> returns, while changing <code>secondPoint.x</code> does not
-change <code>firstPoint.x</code>. Then name the resource exhausted by uncontrolled
-recursion and the concurrency problem prevented by a suitable atomic
-update.</p>
+change <code>firstPoint.x</code>. Then explain why two <code>IdCounter()</code> calls share one
+<code>IdCounter.total</code>, and why a <code>static</code> method cannot use <code>this</code>. Finally,
+name the resource exhausted by uncontrolled recursion and the concurrency
+problem prevented by a suitable atomic update.</p>
 </blockquote>
 <hr />
 <p><a href="under_the_hood_entrypoint.html">Previous: From source file to running process</a> · <a href="exercises_contact_book.html">Next: Exercise — Contact book</a></p>

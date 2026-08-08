@@ -80,6 +80,9 @@ touching the matching CER/ADR is incomplete.
 - Extension points (ADR-028 / CER-046): methods closed by default; `open` /
   `override` / `override closed`; class-level `closed` (not `sealed`);
   implicit root `toString`/`equals`/`hashCode` for override attachment only
+- Static members (ADR-029 / CER-047): `static` on class fields/methods; no
+  `this` in static methods; incompatible with `open`/`override`; `static const`
+  allowed but redundant; emit `@staticmethod`
 - Interface methods (CER-010): no access modifier on signatures (always
   public/abstract); reject `public`/`private`/… inside `interface` bodies;
   implementing class methods still need `public`

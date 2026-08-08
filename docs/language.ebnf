@@ -217,17 +217,20 @@ class_body       = "{" ,
 (* Kind order is grammar-level (parse FatalParseError). Visibility is
    unordered within a section. See ADR-015 / LANGUAGE § Enforced member ordering. *)
 
-const_field_decl = member_access , "const" , primitive_type , identifier ,
+const_field_decl = member_access , [ "static" ] , "const" , primitive_type , identifier ,
                    "=" , expression ;
-fix_field_decl   = member_access , "fix" , type_name , identifier ,
+fix_field_decl   = member_access , [ "static" ] , "fix" , type_name , identifier ,
                    [ "=" , expression ] ;
-field_decl       = member_access , type_name , identifier ,
+field_decl       = member_access , [ "static" ] , type_name , identifier ,
                    [ "=" , expression ] ;
-(* field_decl is mutable only; const / fix occupy earlier sections. *)
+(* field_decl is mutable only; const / fix occupy earlier sections.
+   Optional static = class-wide storage (ADR-029); static const is allowed but redundant. *)
 
-method_decl      = { decorator } , member_access , [ method_extension_modifier ] ,
+method_decl      = { decorator } , member_access , [ "static" ] ,
+                   [ method_extension_modifier ] ,
                    [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
+(* static methods have no this; static cannot combine with open/override (ADR-029). *)
 
 method_extension_modifier = "open"
                           | "override" , [ "closed" ]
@@ -597,7 +600,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class struct data entity identity enum interface implements inherits super closed open override abstract constructor
+  function func return class struct data entity identity enum interface implements inherits super closed open override abstract constructor static
   trait uses requires void lambda
   import from all var const fix print pass break continue switch case default
   this and or not xor shift

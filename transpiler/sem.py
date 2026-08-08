@@ -250,6 +250,7 @@ def analyze(
     _check_traits(module.body, types=types)
     _check_abstract_classes(module.body)
     _check_open_override_closed(module.body)
+    _check_static_members(module.body)
     _check_explicit_this_fields(module.body)
     _check_fix_ctor_assignment(module.body)
     _check_interfaces(module.body)
@@ -3439,6 +3440,8 @@ def _check_open_override_closed(body: list[Any]) -> None:
         for m in cls.methods:
             if m.is_constructor:
                 continue
+            if getattr(m, "is_static", False):
+                continue  # ADR-029: static is not an override axis
             mline = m.span.line if m.span else line
             mcol = m.span.column if m.span else 1
             ext = m.extension
@@ -3578,10 +3581,144 @@ def _host_instance_fields(cls: ClassDef, classes: dict[str, ClassDef]) -> dict[s
     while current and current.name not in seen:
         seen.add(current.name)
         for f in current.fields:
+            if getattr(f, "is_static", False):
+                continue
             fields.setdefault(f.name, f.access or "public")
         parent = _class_parent_name(current, classes)
         current = classes.get(parent) if parent else None
     return fields
+
+
+def _expr_uses_this(expr: Expr | None) -> bool:
+    """True if expression refers to the instance receiver (`this` / `self`)."""
+    if expr is None:
+        return False
+    if isinstance(expr, Identifier):
+        return expr.name in {"this", "self"}
+    if isinstance(expr, Member):
+        return _expr_uses_this(expr.object)
+    if isinstance(expr, Call):
+        if _expr_uses_this(expr.callee):
+            return True
+        for a in expr.args:
+            if isinstance(a, KeywordArg):
+                if _expr_uses_this(a.value):
+                    return True
+            elif _expr_uses_this(a):
+                return True
+        return False
+    for attr in (
+        "left",
+        "right",
+        "operand",
+        "value",
+        "expr",
+        "cond",
+        "object",
+        "index",
+        "subject",
+        "body",
+    ):
+        child = getattr(expr, attr, None)
+        if isinstance(child, Expr) and _expr_uses_this(child):
+            return True
+    for attr in ("elements", "items", "cases", "args"):
+        seq = getattr(expr, attr, None)
+        if isinstance(seq, list):
+            for item in seq:
+                if isinstance(item, Expr) and _expr_uses_this(item):
+                    return True
+                if hasattr(item, "value") and isinstance(item.value, Expr):
+                    if _expr_uses_this(item.value):
+                        return True
+    return False
+
+
+def _stmts_use_this(stmts: list[Any]) -> bool:
+    for stmt in stmts:
+        if isinstance(stmt, AssignStmt):
+            root = stmt.name.split(".", 1)[0].split("[", 1)[0]
+            if root in {"this", "self"}:
+                return True
+            if _expr_uses_this(stmt.value):
+                return True
+        elif isinstance(stmt, AugAssignStmt):
+            root = stmt.name.split(".", 1)[0].split("[", 1)[0]
+            if root in {"this", "self"}:
+                return True
+            if _expr_uses_this(stmt.value):
+                return True
+        elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt)):
+            if _expr_uses_this(
+                getattr(stmt, "value", None) or getattr(stmt, "expr", None)
+            ):
+                return True
+        elif isinstance(stmt, IfStmt):
+            if _expr_uses_this(stmt.cond):
+                return True
+            if stmt.then_body and _stmts_use_this(stmt.then_body.statements):
+                return True
+            if stmt.else_body and _stmts_use_this(stmt.else_body.statements):
+                return True
+        elif isinstance(stmt, Block):
+            if _stmts_use_this(stmt.statements):
+                return True
+        elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+            for attr in ("cond", "iterable", "start", "end", "step"):
+                child = getattr(stmt, attr, None)
+                if isinstance(child, Expr) and _expr_uses_this(child):
+                    return True
+            if stmt.body and _stmts_use_this(stmt.body.statements):
+                return True
+        elif isinstance(stmt, SwitchStmt):
+            if _expr_uses_this(stmt.subject):
+                return True
+            for case in stmt.cases:
+                if case.body and _stmts_use_this(case.body.statements):
+                    return True
+    return False
+
+
+def _check_static_members(body: list[Any]) -> None:
+    """ADR-029: static methods cannot use this; static ≠ open/override."""
+    classes = _class_map(body)
+    tip = (
+        'See "Processes, threads, and memory" for the class-wide vs. '
+        "per-instance distinction this reflects."
+    )
+    msg = (
+        "'this' is not available inside a static method — a static "
+        "member belongs to the class itself, not to any one instance. "
+        + tip
+    )
+    for cls in classes.values():
+        for m in cls.methods:
+            if not getattr(m, "is_static", False):
+                continue
+            mline = m.span.line if m.span else (cls.span.line if cls.span else 1)
+            mcol = m.span.column if m.span else 1
+            ext = m.extension
+            if ext in {"open", "override", "override_closed"}:
+                _transpile_error(
+                    f"`static` cannot combine with {ext.replace('_', ' ')} — "
+                    "polymorphism needs an instance to dispatch (ADR-029).",
+                    mline,
+                    mcol,
+                    m.name,
+                    code="pys.static-extension",
+                    tips=[
+                        "Remove `open`/`override`, or make the method an instance method.",
+                    ],
+                )
+            if m.body and _stmts_use_this(m.body.statements):
+                _transpile_error(
+                    msg,
+                    mline,
+                    mcol,
+                    m.name,
+                    code="pys.static-this",
+                    tips=[tip],
+                )
 
 
 def _check_explicit_this_fields(body: list[Any]) -> None:
@@ -3792,6 +3929,8 @@ def _check_explicit_this_fields(body: list[Any]) -> None:
         for m in cls.methods:
             if not m.body:
                 continue
+            if getattr(m, "is_static", False):
+                continue  # ADR-029: no instance fields / this in static methods
             locals_ = set(m.params) | {"this", "self"}
             walk_stmts(
                 m.body.statements,
@@ -3885,7 +4024,7 @@ def _check_fix_ctor_assignment(body: list[Any]) -> None:
         return {
             f.name
             for f in owner.fields
-            if f.is_fix and f.default is None
+            if f.is_fix and f.default is None and not getattr(f, "is_static", False)
         }
 
     def check_owner(

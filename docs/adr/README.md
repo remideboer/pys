@@ -72,6 +72,7 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-026](ADR-026-library-decorators.md) | Library decorator application (`@expr`) | Accepted |
 | [ADR-027](ADR-027-constructor-keyword.md) | Explicit `constructor` keyword | Accepted |
 | [ADR-028](ADR-028-open-override-closed.md) | Extension points `open` / `override` / `closed` | Accepted |
+| [ADR-029](ADR-029-static-members.md) | Class `static` members | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
 

@@ -1,4 +1,5 @@
-# Classes in general: fields, constructors, visibility, inherits, open/override, closed.
+# Classes in general: fields, constructors, visibility, inherits, open/override,
+# closed, and static (class-wide) members.
 # For interfaces see examples/interfaces.pys; for abstract classes see
 # examples/abstract_classes.pys; for traits see examples/traits.pys.
 
@@ -127,3 +128,28 @@ Car defaultCar = Car()
 print(defaultCar.toString())  # Car plate=UNKNOWN model=Unnamed
 Car named = Car("ABC-1", "Roadster")
 print(named.toString())  # Car plate=ABC-1 model=Roadster
+
+# --- static: class-wide storage and helpers (no this) ---
+# One shared cell for the whole class; access as ClassName.member.
+class TicketCounter {
+    public static const int CAPACITY = 100
+    public static int sold = 0
+
+    public constructor() {
+        TicketCounter.sold = TicketCounter.sold + 1
+    }
+
+    public static int remaining() {
+        return TicketCounter.CAPACITY - TicketCounter.sold
+    }
+
+    public static bool isFull() {
+        return TicketCounter.sold >= TicketCounter.CAPACITY
+    }
+}
+
+TicketCounter t1 = TicketCounter()
+TicketCounter t2 = TicketCounter()
+print(TicketCounter.sold)  # 2
+print(TicketCounter.remaining())  # 98
+print(TicketCounter.isFull())  # false
