@@ -3,8 +3,9 @@
 import APIRouter, Request from fastapi
 import security from state
 import readJson from json_body
+import Account from models
 
-object appRouter = APIRouter(tags=["meta"])
+APIRouter appRouter = APIRouter(tags=["meta"])
 
 @appRouter.get("/health")
 function dict health() {
@@ -15,32 +16,32 @@ function dict health() {
 
 @appRouter.post("/api/login")
 function object login(Request request) {
-    object body = readJson(request)
+    dict body = readJson(request)
     if (!("username" in body) || !("password" in body)) {
         return security().badRequest("username and password required")
     }
     string username = str(body["username"])
     string password = str(body["password"])
-    nullable<dict> accountN = security().findAccount(username)
+    nullable<Account> accountN = security().findAccount(username)
     if (accountN == null) {
         return security().unauthorized("invalid credentials")
     }
-    dict account = accountN
-    if (account["active"] == false) {
+    Account account = accountN
+    if (account.active == false) {
         return security().unauthorized("account inactive")
     }
-    if (!security().verifyPassword(password, str(account["passwordHash"]))) {
+    if (!security().verifyPassword(password, account.passwordHash)) {
         return security().unauthorized("invalid credentials")
     }
     string token = security().issueToken(account)
     dict out = dict()
     out["accessToken"] = token
     out["tokenType"] = "Bearer"
-    out["username"] = account["username"]
-    out["role"] = account["role"]
+    out["username"] = account.username
+    out["role"] = account.role
     return out
 }
 
-package function object metaRouter() {
+package function APIRouter metaRouter() {
     return appRouter
 }

@@ -10,7 +10,7 @@ import productsRouter from routes_products
 import ordersRouter from routes_orders
 import accountsRouter from routes_accounts
 
-package function object createApp() {
+package function FastAPI createApp() {
     ServerConfig cfg = ServerConfig()
     ShopDatabase db = ShopDatabase(cfg.dbHost, cfg.dbUser, cfg.dbPassword, cfg.dbName)
     Security sec = Security(cfg, db)

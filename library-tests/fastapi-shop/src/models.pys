@@ -1,0 +1,192 @@
+# Domain entities for the shared shop schema (aligned with examples/rest-api/shop).
+# identity(...) keys are fix; JSON views live in views.pys (never leak passwordHash).
+
+package entity Product identity(productId) {
+    protected fix int productId
+    public string sku
+    public string name
+    public float unitPrice
+    public bool active
+    public string createdAt
+
+    public constructor(
+        int productId,
+        string sku,
+        string name,
+        float unitPrice,
+        bool active,
+        string createdAt
+    ) {
+        this.productId = productId
+        this.sku = sku
+        this.name = name
+        this.unitPrice = unitPrice
+        this.active = active
+        this.createdAt = createdAt
+    }
+
+    public int id() {
+        return this.productId
+    }
+}
+
+package entity Account identity(accountId) {
+    protected fix int accountId
+    public string username
+    public string passwordHash
+    public string displayName
+    public string email
+    public string role
+    public bool active
+
+    public constructor(
+        int accountId,
+        string username,
+        string passwordHash,
+        string displayName,
+        string email,
+        string role,
+        bool active
+    ) {
+        this.accountId = accountId
+        this.username = username
+        this.passwordHash = passwordHash
+        this.displayName = displayName
+        this.email = email
+        this.role = role
+        this.active = active
+    }
+
+    public int id() {
+        return this.accountId
+    }
+}
+
+package entity AccountAddress identity(addressId) {
+    protected fix int addressId
+    public string kind
+    public string street
+    public string houseNumber
+    public string postalCode
+    public string city
+    public string country
+
+    public constructor(
+        int addressId,
+        string kind,
+        string street,
+        string houseNumber,
+        string postalCode,
+        string city,
+        string country
+    ) {
+        this.addressId = addressId
+        this.kind = kind
+        this.street = street
+        this.houseNumber = houseNumber
+        this.postalCode = postalCode
+        this.city = city
+        this.country = country
+    }
+
+    public int id() {
+        return this.addressId
+    }
+}
+
+package entity PaymentMethod identity(paymentMethodId) {
+    protected fix int paymentMethodId
+    public string methodType
+    public string label
+    public nullable<string> iban
+    public nullable<string> cardBrand
+    public nullable<string> cardLast4
+    public nullable<int> expMonth
+    public nullable<int> expYear
+    public bool isDefault
+
+    public constructor(
+        int paymentMethodId,
+        string methodType,
+        string label,
+        nullable<string> iban,
+        nullable<string> cardBrand,
+        nullable<string> cardLast4,
+        nullable<int> expMonth,
+        nullable<int> expYear,
+        bool isDefault
+    ) {
+        this.paymentMethodId = paymentMethodId
+        this.methodType = methodType
+        this.label = label
+        this.iban = iban
+        this.cardBrand = cardBrand
+        this.cardLast4 = cardLast4
+        this.expMonth = expMonth
+        this.expYear = expYear
+        this.isDefault = isDefault
+    }
+
+    public int id() {
+        return this.paymentMethodId
+    }
+}
+
+package entity Order identity(orderId) {
+    protected fix int orderId
+    public string placedAt
+    public string status
+    public nullable<string> customerRef
+    public nullable<int> accountId
+
+    public constructor(
+        int orderId,
+        string placedAt,
+        string status,
+        nullable<string> customerRef,
+        nullable<int> accountId
+    ) {
+        this.orderId = orderId
+        this.placedAt = placedAt
+        this.status = status
+        this.customerRef = customerRef
+        this.accountId = accountId
+    }
+
+    public int id() {
+        return this.orderId
+    }
+}
+
+package entity OrderLine identity(orderId, lineNumber) {
+    protected fix int orderId
+    protected fix int lineNumber
+    public int productId
+    public string skuSnapshot
+    public float unitPrice
+    public int quantity
+
+    public constructor(
+        int orderId,
+        int lineNumber,
+        int productId,
+        string skuSnapshot,
+        float unitPrice,
+        int quantity
+    ) {
+        this.orderId = orderId
+        this.lineNumber = lineNumber
+        this.productId = productId
+        this.skuSnapshot = skuSnapshot
+        this.unitPrice = unitPrice
+        this.quantity = quantity
+    }
+
+    public int id() {
+        return this.orderId
+    }
+
+    public int lineKey() {
+        return this.lineNumber
+    }
+}

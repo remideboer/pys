@@ -11,6 +11,7 @@ import Request from fastapi
 import JSONResponse from fastapi.responses
 import ServerConfig from config
 import ShopDatabase from db
+import Account from models
 
 package class Security {
     private string secret
@@ -41,41 +42,41 @@ package class Security {
         return base64.urlsafe_b64decode(pad.encode("utf-8"))
     }
 
-    public nullable<dict> findAccount(string username) {
-        object cur = this.db.cursor()
+    public nullable<Account> findAccount(string username) {
+        MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT account_id, username, password_hash, display_name, email, role, active "
             + "FROM account WHERE username=%s",
             (username,)
         )
-        object row = cur.fetchone()
+        nullable<tuple> row = cur.fetchone()
         cur.close()
         if (row == null) {
             return null
         }
-        dict out = dict()
-        out["accountId"] = this.db.cellInt(row[0])
-        out["username"] = this.db.cellStr(row[1])
-        out["passwordHash"] = this.db.cellStr(row[2])
-        out["displayName"] = this.db.cellStr(row[3])
-        out["email"] = this.db.cellStr(row[4])
-        out["role"] = this.db.cellStr(row[5])
-        out["active"] = this.db.cellBool(row[6])
-        return out
+        return Account(
+            this.db.cellInt(row[0]),
+            this.db.cellStr(row[1]),
+            this.db.cellStr(row[2]),
+            this.db.cellStr(row[3]),
+            this.db.cellStr(row[4]),
+            this.db.cellStr(row[5]),
+            this.db.cellBool(row[6])
+        )
     }
 
     public bool verifyPassword(string plain, string passwordHash) {
         return bcrypt.checkpw(plain.encode("utf-8"), passwordHash.encode("utf-8"))
     }
 
-    public string issueToken(dict account) {
+    public string issueToken(Account account) {
         dict header = dict()
         header["alg"] = "HS256"
         header["typ"] = "JWT"
         dict payload = dict()
-        payload["sub"] = account["username"]
-        payload["uid"] = account["accountId"]
-        payload["role"] = account["role"]
+        payload["sub"] = account.username
+        payload["uid"] = account.id()
+        payload["role"] = account.role
         payload["iat"] = (int)(time.time())
         payload["exp"] = (int)(time.time()) + this.ttlSec
         string h = this.b64url(json.dumps(header, separators=(",", ":")).encode("utf-8"))
@@ -110,7 +111,7 @@ package class Security {
         return payload
     }
 
-    # null = unauthorized; otherwise JWT payload dict
+    # null = unauthorized; otherwise JWT payload dict (claims bag)
     public nullable<dict> requireUser(Request request) {
         string header = str(request.headers.get("authorization", ""))
         string lower = header.lower()
@@ -121,19 +122,19 @@ package class Security {
         return this.decodeToken(token)
     }
 
-    public object unauthorized(string detail) {
+    public JSONResponse unauthorized(string detail) {
         dict body = dict()
         body["detail"] = detail
         return JSONResponse(status_code=401, content=body)
     }
 
-    public object notFound(string detail) {
+    public JSONResponse notFound(string detail) {
         dict body = dict()
         body["detail"] = detail
         return JSONResponse(status_code=404, content=body)
     }
 
-    public object badRequest(string detail) {
+    public JSONResponse badRequest(string detail) {
         dict body = dict()
         body["detail"] = detail
         return JSONResponse(status_code=400, content=body)

@@ -57,6 +57,11 @@ Passwords use **bcrypt** against `account.password_hash`.
 - JSON bodies are read with `Request` + `anyio.from_thread.run(request.json)` ([`json_body.pys`](src/json_body.pys)) because PYS has no default parameter values for `Body()`.
 - Emit keeps PascalCase param annotations (`Request`) so FastAPI can inject them.
 - Module wiring uses a dict holder ([`state.pys`](src/state.pys)) — plain module reassignment inside `bind` would be Python locals without `global`.
+- Typing mirrors the teaching MySQL shop: `MySQLConnection` / `MySQLCursor`, domain
+  `entity` types ([`models.pys`](src/models.pys)), tuple→entity mappers, and
+  entity→dict views for the FastAPI JSON edge. Prefer those over `object` /
+  bare `dict` rows (`object` stays for true foreign unions such as
+  `dict | JSONResponse` route returns and JWT decode bytes).
 
 ## Curl sketch
 
@@ -73,7 +78,10 @@ curl -s -X POST http://127.0.0.1:8093/api/products -H "Authorization: Bearer TOK
 | File | Role |
 |------|------|
 | `src/main.pys` | FastAPI app + uvicorn |
+| `src/models.pys` | Domain entities (`Product`, `Account`, …) |
+| `src/mappers.pys` | SQL tuple → entity |
+| `src/views.pys` | Entity → JSON dict (no password hashes) |
 | `src/routes_*.pys` | `@router.get` / `.post` / … |
 | `src/security.pys` | bcrypt + JWT |
-| `src/db.pys` | MySQL session |
+| `src/db.pys` | `ShopDatabase` (`MySQLCursor`) |
 | `pys.deps` | fastapi, uvicorn, mysql-connector, bcrypt, httpx |

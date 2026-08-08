@@ -1,57 +1,58 @@
 # Product CRUD — GET open; writes require Bearer JWT.
+# Domain: Product entity; HTTP JSON via productToDict (dict | JSONResponse at edge).
 
 import APIRouter, Request from fastapi
 import database, security from state
 import withParam from paths
 import readJson from json_body
+import ShopDatabase from db
+import Product from models
+import productFromRow from mappers
+import productToDict from views
 
-object appRouter = APIRouter(tags=["products"])
+APIRouter appRouter = APIRouter(tags=["products"])
 string PRODUCT_ONE = withParam("/api/products/", "product_id")
 
-function dict productRow(object row, object db) {
-    dict out = dict()
-    out["productId"] = db.cellInt(row[0])
-    out["sku"] = db.cellStr(row[1])
-    out["name"] = db.cellStr(row[2])
-    out["unitPrice"] = db.cellFloat(row[3])
-    out["active"] = db.cellBool(row[4])
-    return out
-}
-
-function object loadProduct(int productId) {
-    object db = database()
-    object cur = db.cursor()
+function nullable<Product> loadProduct(int productId) {
+    ShopDatabase db = database()
+    MySQLCursor cur = db.cursor()
     cur.execute(
-        "SELECT product_id, sku, name, unit_price, active FROM product WHERE product_id=%s",
+        "SELECT product_id, sku, name, unit_price, active, created_at "
+        + "FROM product WHERE product_id=%s",
         (productId,)
     )
-    object row = cur.fetchone()
+    nullable<tuple> row = cur.fetchone()
     cur.close()
     if (row == null) {
-        return security().notFound("product not found")
+        return null
     }
-    return productRow(row, db)
+    return productFromRow(row, db)
 }
 
 @appRouter.get("/api/products")
 function list listProducts() {
-    object db = database()
-    object cur = db.cursor()
+    ShopDatabase db = database()
+    MySQLCursor cur = db.cursor()
     cur.execute(
-        "SELECT product_id, sku, name, unit_price, active FROM product ORDER BY product_id"
+        "SELECT product_id, sku, name, unit_price, active, created_at "
+        + "FROM product ORDER BY product_id"
     )
-    list rows = cur.fetchall()
+    list<tuple> rows = cur.fetchall()
     cur.close()
     list out = []
-    loop (row in rows) {
-        out.append(productRow(row, db))
+    loop (tuple row in rows) {
+        out.append(productToDict(productFromRow(row, db)))
     }
     return out
 }
 
 @appRouter.get(PRODUCT_ONE)
 function object getProduct(int product_id) {
-    return loadProduct(product_id)
+    nullable<Product> found = loadProduct(product_id)
+    if (found == null) {
+        return security().notFound("product not found")
+    }
+    return productToDict(found)
 }
 
 @appRouter.post("/api/products")
@@ -60,7 +61,7 @@ function object createProduct(Request request) {
     if (user == null) {
         return security().unauthorized("bearer token required")
     }
-    object body = readJson(request)
+    dict body = readJson(request)
     if (!("sku" in body) || !("name" in body) || !("unitPrice" in body)) {
         return security().badRequest("sku, name, unitPrice required")
     }
@@ -70,8 +71,8 @@ function object createProduct(Request request) {
     if (sku == "" || name == "") {
         return security().badRequest("sku and name must be non-empty")
     }
-    object db = database()
-    object cur = db.cursor()
+    ShopDatabase db = database()
+    MySQLCursor cur = db.cursor()
     cur.execute(
         "INSERT INTO product (sku, name, unit_price, active) VALUES (%s, %s, %s, 1)",
         (sku, name, unitPrice)
@@ -79,7 +80,11 @@ function object createProduct(Request request) {
     db.commit()
     int newId = int(cur.lastrowid)
     cur.close()
-    return loadProduct(newId)
+    nullable<Product> created = loadProduct(newId)
+    if (created == null) {
+        return security().notFound("product not found after insert")
+    }
+    return productToDict(created)
 }
 
 @appRouter.put(PRODUCT_ONE)
@@ -88,16 +93,16 @@ function object updateProduct(int product_id, Request request) {
     if (user == null) {
         return security().unauthorized("bearer token required")
     }
-    object body = readJson(request)
-    object existing = loadProduct(product_id)
-    if (hasattr(existing, "status_code")) {
-        return existing
+    dict body = readJson(request)
+    nullable<Product> existing = loadProduct(product_id)
+    if (existing == null) {
+        return security().notFound("product not found")
     }
-    dict row = existing
-    string sku = str(row["sku"])
-    string name = str(row["name"])
-    float unitPrice = (float)(row["unitPrice"])
-    bool active = (bool)(row["active"])
+    Product row = existing
+    string sku = row.sku
+    string name = row.name
+    float unitPrice = row.unitPrice
+    bool active = row.active
     if ("sku" in body) {
         sku = str(body["sku"])
     }
@@ -110,15 +115,19 @@ function object updateProduct(int product_id, Request request) {
     if ("active" in body) {
         active = (bool)(body["active"])
     }
-    object db = database()
-    object cur = db.cursor()
+    ShopDatabase db = database()
+    MySQLCursor cur = db.cursor()
     cur.execute(
         "UPDATE product SET sku=%s, name=%s, unit_price=%s, active=%s WHERE product_id=%s",
         (sku, name, unitPrice, (int)(active), product_id)
     )
     db.commit()
     cur.close()
-    return loadProduct(product_id)
+    nullable<Product> updated = loadProduct(product_id)
+    if (updated == null) {
+        return security().notFound("product not found")
+    }
+    return productToDict(updated)
 }
 
 @appRouter.delete(PRODUCT_ONE)
@@ -127,12 +136,12 @@ function object deleteProduct(int product_id, Request request) {
     if (user == null) {
         return security().unauthorized("bearer token required")
     }
-    object existing = loadProduct(product_id)
-    if (hasattr(existing, "status_code")) {
-        return existing
+    nullable<Product> existing = loadProduct(product_id)
+    if (existing == null) {
+        return security().notFound("product not found")
     }
-    object db = database()
-    object cur = db.cursor()
+    ShopDatabase db = database()
+    MySQLCursor cur = db.cursor()
     cur.execute("DELETE FROM product WHERE product_id=%s", (product_id,))
     db.commit()
     cur.close()
@@ -142,6 +151,6 @@ function object deleteProduct(int product_id, Request request) {
     return out
 }
 
-package function object productsRouter() {
+package function APIRouter productsRouter() {
     return appRouter
 }

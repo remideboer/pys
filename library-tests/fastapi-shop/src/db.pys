@@ -1,10 +1,10 @@
-# MySQL session for FastAPI field research (shared shop schema).
+# Infrastructure: MySQL session + row cell helpers (same contract as teaching shop).
 
 import sys
 import mysql.connector
 
 package class ShopDatabase {
-    private object conn
+    private MySQLConnection conn
 
     public constructor(string host, string user, string password, string database) {
         this.conn = mysql.connector.connect(
@@ -15,7 +15,7 @@ package class ShopDatabase {
         )
     }
 
-    public object cursor() {
+    public MySQLCursor cursor() {
         return this.conn.cursor()
     }
 

@@ -1,10 +1,11 @@
 # Live MySQL smoke for FastAPI shop (library-tests). Password: Welcome1!
 
 import createApp from app_factory
+import FastAPI from fastapi
 import TestClient from fastapi.testclient
 
-object app = createApp()
-object client = TestClient(app)
+FastAPI app = createApp()
+TestClient client = TestClient(app)
 
 object health = client.get("/health")
 print("health=" + str(health.status_code))

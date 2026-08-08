@@ -1,0 +1,100 @@
+# Tuple ↔ entity mapping (Fowler data mapper, thin — no abstract ports here).
+
+import Product, Account, AccountAddress, PaymentMethod, Order, OrderLine from models
+import ShopDatabase from db
+
+package function Product productFromRow(tuple row, ShopDatabase db) {
+    return Product(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        db.cellStr(row[2]),
+        db.cellFloat(row[3]),
+        db.cellBool(row[4]),
+        db.cellStr(row[5])
+    )
+}
+
+package function Account accountFromRow(tuple row, ShopDatabase db) {
+    return Account(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        db.cellStr(row[2]),
+        db.cellStr(row[3]),
+        db.cellStr(row[4]),
+        db.cellStr(row[5]),
+        db.cellBool(row[6])
+    )
+}
+
+# Public account SELECT omits password_hash (columns 0..5).
+package function Account accountPublicFromRow(tuple row, ShopDatabase db) {
+    return Account(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        "",
+        db.cellStr(row[2]),
+        db.cellStr(row[3]),
+        db.cellStr(row[4]),
+        db.cellBool(row[5])
+    )
+}
+
+package function AccountAddress addressFromRow(tuple row, ShopDatabase db) {
+    return AccountAddress(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        db.cellStr(row[2]),
+        db.cellStr(row[3]),
+        db.cellStr(row[4]),
+        db.cellStr(row[5]),
+        db.cellStr(row[6])
+    )
+}
+
+package function PaymentMethod paymentFromRow(tuple row, ShopDatabase db) {
+    nullable<int> expMonth = null
+    nullable<int> expYear = null
+    if (row[6] != null) {
+        expMonth = db.cellInt(row[6])
+    }
+    if (row[7] != null) {
+        expYear = db.cellInt(row[7])
+    }
+    return PaymentMethod(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        db.cellStr(row[2]),
+        db.cellNullableStr(row[3]),
+        db.cellNullableStr(row[4]),
+        db.cellNullableStr(row[5]),
+        expMonth,
+        expYear,
+        db.cellBool(row[8])
+    )
+}
+
+package function Order orderFromRow(tuple row, ShopDatabase db) {
+    nullable<int> accountId = null
+    nullable<string> acc = db.cellNullableStr(row[4])
+    if (acc != null) {
+        accountId = int(acc)
+    }
+    return Order(
+        db.cellInt(row[0]),
+        db.cellStr(row[1]),
+        db.cellStr(row[2]),
+        db.cellNullableStr(row[3]),
+        accountId
+    )
+}
+
+package function OrderLine lineFromRow(tuple row, ShopDatabase db) {
+    return OrderLine(
+        db.cellInt(row[0]),
+        db.cellInt(row[1]),
+        db.cellInt(row[2]),
+        db.cellStr(row[3]),
+        db.cellFloat(row[4]),
+        db.cellInt(row[5])
+    )
+}

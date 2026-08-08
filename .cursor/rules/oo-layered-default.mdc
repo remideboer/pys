@@ -1,0 +1,41 @@
+---
+description: Default to full OO, SOLID, and layered modularity unless procedural is explicitly requested
+alwaysApply: true
+---
+
+# Default: OO + SOLID + layered design
+
+Unless the user **explicitly** asks for procedural style (scripts, linear demos,
+“keep it flat”, teaching a pre-OO chapter), prefer **full object orientation**,
+**SOLID**, and **modular layered** structure.
+
+## Default shape
+
+| Layer | Owns |
+| --- | --- |
+| Domain | `entity` / `data` / `class` with real types — not bare `dict` / `object` rows |
+| Mapping / ports | tuple↔entity, repository/mapper boundaries |
+| Application / API | thin handlers; convert domain → DTO/dict only at the edge |
+| Infrastructure | DB, HTTP clients, drivers typed (`MySQLCursor`, `ShopDatabase`, …) |
+
+- Prefer named types over `object` (ADR-025: `object` is a **last resort** for true foreign/opaque values).
+- Prefer methods and small modules with one reason to change over god-files of free functions that pass untyped bags around.
+- Mirror existing layered examples in-repo when present (e.g. teaching `examples/rest-api/shop/mysql` vs lazy `dict` mappers).
+
+## When procedural is OK
+
+Only if the user says so, or the artifact is clearly a one-shot script / early
+book chapter that has not taught classes yet. Do not “simplify” a layered
+design back into procedural `object`/`dict` glue without that signal.
+
+## Anti-patterns
+
+```text
+❌ function dict productRow(object row, object db) { … }
+❌ public object cursor() { return this.conn.cursor() }
+❌ hasattr(existing, "status_code") to mix entity and HTTP error
+
+✅ Product productFromRow(tuple row, ShopDatabase db)
+✅ public MySQLCursor cursor()
+✅ nullable<Product> load…; JSONResponse only at the HTTP error edge
+```

@@ -2,8 +2,10 @@
 # OpenAPI UI: http://127.0.0.1:8093/docs
 
 import uvicorn
+import FastAPI from fastapi
 import createApp, listenConfig from app_factory
+import ServerConfig from config
 
-object app = createApp()
-object cfg = listenConfig()
+FastAPI app = createApp()
+ServerConfig cfg = listenConfig()
 uvicorn.run(app, host=cfg.listenHost, port=cfg.listenPort)

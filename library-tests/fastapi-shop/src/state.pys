@@ -1,25 +1,29 @@
-# Module-level wiring set by main before uvicorn starts.
-# Use a dict holder so bind() can mutate without Python `global`.
+# Module-level wiring set by createApp before uvicorn starts.
+# Dict holder so bind() can mutate without Python `global`.
+
+import ServerConfig from config
+import ShopDatabase from db
+import Security from security
 
 dict HOLDER = dict()
 HOLDER["db"] = null
 HOLDER["sec"] = null
 HOLDER["cfg"] = null
 
-package function void bind(object cfg, object db, object sec) {
+package function void bind(ServerConfig cfg, ShopDatabase db, Security sec) {
     HOLDER["cfg"] = cfg
     HOLDER["db"] = db
     HOLDER["sec"] = sec
 }
 
-package function object database() {
+package function ShopDatabase database() {
     return HOLDER["db"]
 }
 
-package function object security() {
+package function Security security() {
     return HOLDER["sec"]
 }
 
-package function object config() {
+package function ServerConfig config() {
     return HOLDER["cfg"]
 }

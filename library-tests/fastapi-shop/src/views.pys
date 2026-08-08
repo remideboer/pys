@@ -1,0 +1,72 @@
+# FastAPI JSON boundary: entities → dict (passwordHash never included).
+
+import Product, Account, AccountAddress, PaymentMethod, Order, OrderLine from models
+
+package function dict productToDict(Product p) {
+    dict d = dict()
+    d["productId"] = p.id()
+    d["sku"] = p.sku
+    d["name"] = p.name
+    d["unitPrice"] = p.unitPrice
+    d["active"] = p.active
+    d["createdAt"] = p.createdAt
+    return d
+}
+
+package function dict accountToPublicDict(Account a) {
+    dict d = dict()
+    d["accountId"] = a.id()
+    d["username"] = a.username
+    d["displayName"] = a.displayName
+    d["email"] = a.email
+    d["role"] = a.role
+    d["active"] = a.active
+    return d
+}
+
+package function dict addressToDict(AccountAddress a) {
+    dict d = dict()
+    d["addressId"] = a.id()
+    d["kind"] = a.kind
+    d["street"] = a.street
+    d["houseNumber"] = a.houseNumber
+    d["postalCode"] = a.postalCode
+    d["city"] = a.city
+    d["country"] = a.country
+    return d
+}
+
+package function dict paymentToDict(PaymentMethod p) {
+    dict d = dict()
+    d["paymentMethodId"] = p.id()
+    d["methodType"] = p.methodType
+    d["label"] = p.label
+    d["iban"] = p.iban
+    d["cardBrand"] = p.cardBrand
+    d["cardLast4"] = p.cardLast4
+    d["expMonth"] = p.expMonth
+    d["expYear"] = p.expYear
+    d["isDefault"] = p.isDefault
+    return d
+}
+
+package function dict orderToDict(Order o) {
+    dict d = dict()
+    d["orderId"] = o.id()
+    d["placedAt"] = o.placedAt
+    d["status"] = o.status
+    d["customerRef"] = o.customerRef
+    d["accountId"] = o.accountId
+    return d
+}
+
+package function dict lineToDict(OrderLine line) {
+    dict d = dict()
+    d["orderId"] = line.id()
+    d["lineNumber"] = line.lineKey()
+    d["productId"] = line.productId
+    d["skuSnapshot"] = line.skuSnapshot
+    d["unitPrice"] = line.unitPrice
+    d["quantity"] = line.quantity
+    return d
+}

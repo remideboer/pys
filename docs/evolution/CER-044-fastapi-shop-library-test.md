@@ -44,6 +44,20 @@ to end against the shared shop schema (accounts + NL address/payment seed).
   nullable `order.account_id`; multicultural NL seed (password `Welcome1!`);
   SQL copies synced under rest-api mysql/jwt. Teaching jwt auth unchanged.
 
+### 4. Strict typing (no lazy `object` rows)
+
+- **Pre-behavior:** Routes mapped SQL rows into bare `dict` via
+  `productRow(object row, object db)`; `ShopDatabase.cursor()` returned
+  `object`; state accessors returned `object`.
+- **Why it hurt:** Field research drifted from the teaching MySQL shop’s OO
+  contract (`MySQLCursor`, `entity Product`, mappers) and hid shape errors.
+- **Post-behavior:** `MySQLConnection` / `MySQLCursor`; domain entities in
+  `models.pys`; `mappers.pys` + `views.pys`; typed `state` / `Security` /
+  routers. Route handlers may still return `object` where FastAPI needs
+  `dict | JSONResponse`. JWT payload remains `dict` (claims bag); `b64urlDecode`
+  stays `object` (bytes).
+- **Evidence:** `tests/test_fastapi_shop.py::test_fastapi_shop_main_transpiles`.
+
 ## Trade-offs
 
 - Not a student example; teaching REST stays hand-rolled HTTP.
