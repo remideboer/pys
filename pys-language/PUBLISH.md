@@ -32,10 +32,18 @@ zip and VSIX.
 
 ## Release a new version (DoD)
 
-1. On `main`, with CI green:
+1. On `main`:
    - Bump `"version"` in [`package.json`](package.json) (and lockfile if needed).
    - Rewrite [`RELEASE_NOTES.md`](RELEASE_NOTES.md) for **that** version (must
-     contain the version string — the publish workflow fails otherwise).
+     contain the version string — the publish workflow and `npm test` check
+     that). Per-version **highlights** only; do not force old feature names into
+     every notes rewrite (grammar / `extension.js` tests own lasting keywords).
+   - Run local CI before push/tag:
+
+```text
+python tools/local_ci.py
+```
+
 2. Commit and push to `main`. Wait for the Extension CI workflow to pass.
 3. Tag and push from the same tip of `main` (tag **must** match the version):
 

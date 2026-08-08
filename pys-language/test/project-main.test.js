@@ -92,8 +92,7 @@ test('extension manifest exposes entrypoint command and result language support'
     'utf8',
   );
   // Notes must name the current package.json version (publish workflow check).
+  // Do not require forever-keywords here — per-version highlights change.
   const versionLiteral = manifest.version.replace(/\./g, '\\.');
   assert.match(notes, new RegExp(versionLiteral));
-  assert.match(notes, /constructor/);
-  assert.match(notes, /static/);
 });
