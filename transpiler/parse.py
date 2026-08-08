@@ -1311,12 +1311,28 @@ def _parse_interface(p: _Tok, visibility: str = "") -> InterfaceDef:
                 p.cur().column,
                 code="pys.interface-access",
                 tips=[
-                    "Write `name(...)` or `int name(...)` inside the interface "
+                    "Write `name(...)` or `Type name(...)` inside the interface "
                     "(no access modifier)."
                 ],
             )
-        if p.cur().text in _TYPES and p.peek(1).kind != TokenKind.LPAREN:
-            p.eat(TokenKind.KEYWORD, TokenKind.IDENT)
+        # Optional return type: builtin, void, or nominal (`Button create()`),
+        # including generics / trailing `[]`. Disambiguate from bare `name(`.
+        if p.cur().text in _TYPES or p.at_kw("void") or (
+            p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and (
+                p.peek(1).kind == TokenKind.LBRACK
+                or p.peek(1).kind == TokenKind.LT
+                or (
+                    p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+                    and p.peek(1).kind != TokenKind.LPAREN
+                )
+            )
+        ):
+            if p.peek(1).kind != TokenKind.LPAREN:
+                _parse_type_name(p)
+                if p.at(TokenKind.LBRACK):
+                    p.eat(TokenKind.LBRACK)
+                    p.eat(TokenKind.RBRACK)
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat(TokenKind.LPAREN)
         arity = 0

@@ -14,7 +14,9 @@ or even which machine is plugged in.
 
 Omit access modifiers on the interface signatures — they are always
 public and abstract. Omit a return type when the method returns nothing
-(same rule as classes: `void` is allowed but not required).
+(same rule as classes: `void` is allowed but not required). When a method
+returns a value, write the type before the name — builtins (`int`,
+`string`, …) **or** another type you defined (`Button`, `Shape`, …).
 
 ```pys
 interface Greeter {
@@ -52,6 +54,54 @@ Same cable both times: `g` is a `Greeter`, and `g.greet("Ada")` is the
 only shape the caller cares about. First the quiet machine is plugged in;
 then the loud one. The socket stayed the same — only the wiring behind it
 changed.
+
+### Return types on the socket
+
+Openings may name **what comes out** of the socket — including a type that
+is itself another interface. The factory below promises a `Button`; callers
+only need `GUIFactory`, not `WinFactory`.
+
+```pys
+interface Button {
+    string label()
+}
+
+interface GUIFactory {
+    Button createButton()
+}
+
+class OkButton implements Button {
+    public constructor() {
+    }
+
+    public string label() {
+        return "OK"
+    }
+}
+
+class WinFactory implements GUIFactory {
+    public constructor() {
+    }
+
+    public Button createButton() {
+        return OkButton()
+    }
+}
+
+GUIFactory factory = WinFactory()
+Button b = factory.createButton()
+print(b.label())
+```
+
+Output:
+
+```text
+OK
+```
+
+If you only needed a builtin result, write that the same way:
+`int capacity()` on the interface and `public int capacity() { … }` on the
+class.
 
 <figure class="concept-diagram" role="img" aria-label="Greeter socket with two implementing machines side by side; caller cable connects only to the socket">
   <div class="iface-choice">
@@ -140,6 +190,9 @@ the interface listed that opening; the class made it real.
 > Add `farewell(string name)` to the interface and implement it on
 > **both** `ConsoleGreeter` and `LoudGreeter`. Call each through a
 > `Greeter` variable.
+>
+> Stretch: add `string motto()` to `Greeter` (a builtin return) and print
+> each greeter’s motto through the same `Greeter` cable.
 
 ---
 

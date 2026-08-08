@@ -396,10 +396,10 @@
     "prefix": "interface",
     "body": [
       "interface ${1:Name} {",
-      "\t${2:action}(${3})",
+      "\t${2:int }${3:action}(${4})",
       "}"
     ],
-    "description": "PYS interface method signatures (always public; no access modifier)"
+    "description": "PYS interface method signatures (always public; optional return — builtin or nominal type before the name; no access modifier)"
   },
   "Class implements": {
     "prefix": "implements",

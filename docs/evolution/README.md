@@ -44,7 +44,7 @@ Each record then uses:
 | [CER-007](CER-007-switch-stmt-and-expr.md) | Switch statement and expression | Language |
 | [CER-008](CER-008-traits.md) | Traits composition (`uses` / `requires`) | Language |
 | [CER-009](CER-009-abstract-classes.md) | Abstract classes (`abstract` / `void`) | Language |
-| [CER-010](CER-010-interface-method-access.md) | Interface methods omit access modifiers | Language |
+| [CER-010](CER-010-interface-method-access.md) | Interface methods: no access mods; nominal returns | Language |
 | [CER-011](CER-011-data-and-entity.md) | `data` value objects and `entity` identity types | Language |
 | [CER-012](CER-012-lambdas.md) | Lambdas with by-value capture | Language |
 | [CER-013](CER-013-atomic.md) | Atomic qualifier (implies shared) | Language |

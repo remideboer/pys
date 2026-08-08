@@ -646,7 +646,15 @@ package interface Drivable {
     move()
     stop()
 }
+
+package interface GUIFactory {
+    Button createButton()
+    Checkbox createCheckbox()
+}
 ```
+
+Return types may be builtins (`int`, `string`, …), `void`, or **nominal** types
+(`Button`, `list<string>`, …) — same `return_type` production as elsewhere.
 
 ### Classes
 

@@ -550,7 +550,7 @@ function activate(context) {
         loop: 'C-style: `loop (int i = 0, i < n, i++) { ... }`\nWhile-style: `loop (condition) { ... }`',
         function: 'Top-level function: `function name(args) { ... }`\nTyped: `function int name(args) { return 0 }`',
         var: 'Type-inferred variable: `var name = value`\nThe inferred type is fixed; later assignments must match.',
-        interface: 'Abstract type: `interface Name { action() }` or `interface Name { int capacity() }`.\nMethods are always public/abstract — omit access modifiers. No bodies; implementing classes use `public`.',
+        interface: 'Abstract type: `interface Name { action() }`, `interface Name { int capacity() }`, or a nominal return `interface Factory { Button createButton() }`.\nMethods are always public/abstract — omit access modifiers. No bodies; implementing classes use `public`.',
         implements: 'Class implements interface(s): `class Car implements Startable { ... }`',
         class: 'Class: `class Name { ... }`\nInheritance: `class Child inherits Parent { ... }`\nInterfaces: `class Name implements Iface { ... }`',
         struct: 'Value type (fields only): `package struct Damage { int amount }`\nConstruct with `Damage(20)` / `Damage(amount=20)`. Fields are always public; use `global`/`package`/`module` on the struct. Copied on assign/call.',

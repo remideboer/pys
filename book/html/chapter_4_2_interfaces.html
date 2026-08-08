@@ -132,7 +132,9 @@ through the socket. The caller does not need to know how the insides work,
 or even which machine is plugged in.</p>
 <p>Omit access modifiers on the interface signatures — they are always
 public and abstract. Omit a return type when the method returns nothing
-(same rule as classes: <code>void</code> is allowed but not required).</p>
+(same rule as classes: <code>void</code> is allowed but not required). When a method
+returns a value, write the type before the name — builtins (<code>int</code>,
+<code>string</code>, …) <strong>or</strong> another type you defined (<code>Button</code>, <code>Shape</code>, …).</p>
 <pre><code class="language-pys"><span class="tok-kw">interface</span> <span class="tok-typename">Greeter</span> {
     <span class="tok-ident">greet</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>)
 }
@@ -162,6 +164,45 @@ HEY Ada!!!
 only shape the caller cares about. First the quiet machine is plugged in;
 then the loud one. The socket stayed the same — only the wiring behind it
 changed.</p>
+<h3>Return types on the socket</h3>
+<p>Openings may name <strong>what comes out</strong> of the socket — including a type that
+is itself another interface. The factory below promises a <code>Button</code>; callers
+only need <code>GUIFactory</code>, not <code>WinFactory</code>.</p>
+<pre><code class="language-pys"><span class="tok-kw">interface</span> <span class="tok-typename">Button</span> {
+    <span class="tok-type">string</span> <span class="tok-ident">label</span>()
+}
+
+<span class="tok-kw">interface</span> <span class="tok-typename">GUIFactory</span> {
+    <span class="tok-typename">Button</span> <span class="tok-ident">createButton</span>()
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">OkButton</span> <span class="tok-kw">implements</span> <span class="tok-typename">Button</span> {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">label</span>() {
+        <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">OK</span><span class="tok-string">&quot;</span>
+    }
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">WinFactory</span> <span class="tok-kw">implements</span> <span class="tok-typename">GUIFactory</span> {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
+    }
+
+    <span class="tok-mod">public</span> <span class="tok-typename">Button</span> <span class="tok-ident">createButton</span>() {
+        <span class="tok-kw">return</span> <span class="tok-typename">OkButton</span>()
+    }
+}
+
+<span class="tok-typename">GUIFactory</span> <span class="tok-ident">factory</span> <span class="tok-op">=</span> <span class="tok-typename">WinFactory</span>()
+<span class="tok-typename">Button</span> <span class="tok-ident">b</span> <span class="tok-op">=</span> <span class="tok-ident">factory</span>.<span class="tok-ident">createButton</span>()
+<span class="tok-builtin">print</span>(<span class="tok-ident">b</span>.<span class="tok-ident">label</span>())</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">OK
+</code></pre>
+<p>If you only needed a builtin result, write that the same way:
+<code>int capacity()</code> on the interface and <code>public int capacity() { … }</code> on the
+class.</p>
 <figure class="concept-diagram" role="img" aria-label="Greeter socket with two implementing machines side by side; caller cable connects only to the socket">
   <div class="iface-choice">
     <div class="iface-caller">
@@ -248,6 +289,8 @@ the interface listed that opening; the class made it real.</p>
 <p>Add <code>farewell(string name)</code> to the interface and implement it on
 <strong>both</strong> <code>ConsoleGreeter</code> and <code>LoudGreeter</code>. Call each through a
 <code>Greeter</code> variable.</p>
+<p>Stretch: add <code>string motto()</code> to <code>Greeter</code> (a builtin return) and print
+each greeter’s motto through the same <code>Greeter</code> cable.</p>
 </blockquote>
 <hr />
 <p><a href="chapter_4_1b_inheriting_classes.html">Previous: Inheritance and subclasses</a> · <a href="chapter_4_3_abstract_classes.html">Next: Abstract classes</a></p>
