@@ -17,15 +17,15 @@ class ConsoleSubscriber implements Subscriber {
 }
 
 class TopicBroker {
-    private dict topics
+    private dict<string, list<Subscriber>> topics
 
     public constructor() {
-        dict empty = dict()
+        dict<string, list<Subscriber>> empty = dict()
         this.topics = empty
     }
 
     public void subscribe(string topic, Subscriber sub) {
-        dict m = this.topics
+        dict<string, list<Subscriber>> m = this.topics
         list<Subscriber> xs = []
         if (topic in m) {
             xs = m[topic]
@@ -36,7 +36,7 @@ class TopicBroker {
     }
 
     public void publish(string topic, string body) {
-        dict m = this.topics
+        dict<string, list<Subscriber>> m = this.topics
         if (!(topic in m)) {
             return
         }

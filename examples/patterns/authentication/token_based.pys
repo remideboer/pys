@@ -6,16 +6,16 @@ interface UserStore {
 }
 
 class MemoryUserStore implements UserStore {
-    private dict passwords
+    private dict<string, string> passwords
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         empty["ada"] = "pass"
         this.passwords = empty
     }
 
     public nullable<string> passwordOf(string username) {
-        dict m = this.passwords
+        dict<string, string> m = this.passwords
         if (username in m) {
             return m[username]
         }
@@ -25,12 +25,12 @@ class MemoryUserStore implements UserStore {
 
 class TokenService {
     private UserStore users
-    private dict tokens
+    private dict<string, string> tokens
     private int nextId
 
     public constructor(UserStore users) {
         this.users = users
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.tokens = empty
         this.nextId = 1
     }
@@ -45,14 +45,14 @@ class TokenService {
         }
         string token = "tok-" + str(this.nextId)
         this.nextId = this.nextId + 1
-        dict m = this.tokens
+        dict<string, string> m = this.tokens
         m[token] = username
         this.tokens = m
         return token
     }
 
     public nullable<string> authenticate(string bearerToken) {
-        dict m = this.tokens
+        dict<string, string> m = this.tokens
         if (bearerToken in m) {
             return m[bearerToken]
         }

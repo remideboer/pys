@@ -6,16 +6,16 @@ interface UserStore {
 }
 
 class MemoryUserStore implements UserStore {
-    private dict passwords
+    private dict<string, string> passwords
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         empty["ada"] = "pass"
         this.passwords = empty
     }
 
     public nullable<string> passwordOf(string username) {
-        dict m = this.passwords
+        dict<string, string> m = this.passwords
         if (username in m) {
             return m[username]
         }

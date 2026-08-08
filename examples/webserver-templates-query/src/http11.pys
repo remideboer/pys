@@ -10,7 +10,7 @@ package class HttpRequest {
     public string body
     public bool keepAlive
     public string queryRaw
-    public dict query
+    public dict<string, string> query
 
     public constructor(string method, string path, string body, bool keepAlive) {
         this.method = method
@@ -18,14 +18,14 @@ package class HttpRequest {
         this.body = body
         this.keepAlive = keepAlive
         this.queryRaw = ""
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.query = empty
     }
 
     public string queryGet(string key, string defaultValue) {
-        dict q = this.query
+        dict<string, string> q = this.query
         if (key in q) {
-            return str(q[key])
+            return q[key]
         }
         return defaultValue
     }

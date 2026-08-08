@@ -5,16 +5,16 @@ interface UserStore {
 }
 
 class MemoryUserStore implements UserStore {
-    private dict passwords
+    private dict<string, string> passwords
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         empty["ada"] = "pass"
         this.passwords = empty
     }
 
     public nullable<string> passwordOf(string username) {
-        dict m = this.passwords
+        dict<string, string> m = this.passwords
         if (username in m) {
             return m[username]
         }
@@ -24,12 +24,12 @@ class MemoryUserStore implements UserStore {
 
 class SessionService {
     private UserStore users
-    private dict sessions
+    private dict<string, string> sessions
     private int nextId
 
     public constructor(UserStore users) {
         this.users = users
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.sessions = empty
         this.nextId = 1
     }
@@ -44,14 +44,14 @@ class SessionService {
         }
         string sid = "s" + str(this.nextId)
         this.nextId = this.nextId + 1
-        dict m = this.sessions
+        dict<string, string> m = this.sessions
         m[sid] = username
         this.sessions = m
         return sid
     }
 
     public nullable<string> userFor(string sessionId) {
-        dict m = this.sessions
+        dict<string, string> m = this.sessions
         if (sessionId in m) {
             return m[sessionId]
         }
@@ -59,7 +59,7 @@ class SessionService {
     }
 
     public void logout(string sessionId) {
-        dict m = this.sessions
+        dict<string, string> m = this.sessions
         if (sessionId in m) {
             m.pop(sessionId)
             this.sessions = m

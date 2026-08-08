@@ -2,7 +2,7 @@
 
 import urllib.parse
 
-package function dict parseQuery(string raw) {
+package function dict<string, string> parseQuery(string raw) {
     if (raw == "") {
         return dict()
     }

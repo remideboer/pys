@@ -9,12 +9,12 @@ import JwtService from jwt_service
 package class AuthService {
     private JwtService jwt
     private JsonUtil json
-    private dict passwords
+    private dict<string, string> passwords
 
     public constructor(JwtService jwt, JsonUtil json) {
         this.jwt = jwt
         this.json = json
-        dict pw = dict()
+        dict<string, string> pw = dict()
         pw["admin"] = "admin123"
         pw["clerk"] = "clerk123"
         this.passwords = pw
@@ -31,12 +31,12 @@ package class AuthService {
         }
         string user = str(body["username"])
         string password = str(body["password"])
-        dict pw = this.passwords
-        if (!(user in pw) || str(pw[user]) != password) {
+        dict<string, string> pw = this.passwords
+        if (!(user in pw) || pw[user] != password) {
             return HttpResponse(401, "Unauthorized", this.json.errorBody("invalid credentials"))
         }
         string token = this.jwt.issue(user)
-        dict out = dict()
+        dict<string, string> out = dict()
         out["accessToken"] = token
         out["tokenType"] = "Bearer"
         out["username"] = user

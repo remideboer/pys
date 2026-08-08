@@ -15,12 +15,12 @@ function void assertTrue(string name, bool cond) {
 
 print("=== template query ===")
 
-dict q = parseQuery("name=Ada+Lovelace&vip=1&title=Hi")
+dict<string, string> q = parseQuery("name=Ada+Lovelace&vip=1&title=Hi")
 assertTrue("name decoded", q["name"] == "Ada Lovelace")
 assertTrue("vip", q["vip"] == "1")
 assertTrue("title", q["title"] == "Hi")
 
-dict empty = parseQuery("")
+dict<string, string> empty = parseQuery("")
 assertTrue("empty query", len(empty) == 0)
 
 Http11 http = Http11()

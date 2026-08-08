@@ -6,21 +6,21 @@ interface OrderRepository {
 }
 
 class InMemoryOrderRepository implements OrderRepository {
-    private dict rows
+    private dict<string, string> rows
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.rows = empty
     }
 
     public save(string orderId) {
-        dict m = this.rows
+        dict<string, string> m = this.rows
         m[orderId] = orderId
         this.rows = m
     }
 
     public nullable<string> load(string orderId) {
-        dict m = this.rows
+        dict<string, string> m = this.rows
         if (orderId in m) {
             return m[orderId]
         }

@@ -1,27 +1,27 @@
 # CQRS — separate write (command) model from read (query) model.
 
 class OrderWriteModel {
-    private dict orders
+    private dict<string, string> orders
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.orders = empty
     }
 
     public void create(string id, string status) {
-        dict m = this.orders
+        dict<string, string> m = this.orders
         m[id] = status
         this.orders = m
     }
 
     public void setStatus(string id, string status) {
-        dict m = this.orders
+        dict<string, string> m = this.orders
         m[id] = status
         this.orders = m
     }
 
     public nullable<string> statusOf(string id) {
-        dict m = this.orders
+        dict<string, string> m = this.orders
         if (id in m) {
             return m[id]
         }
@@ -30,21 +30,21 @@ class OrderWriteModel {
 }
 
 class OrderReadModel {
-    private dict summaries
+    private dict<string, string> summaries
 
     public constructor() {
-        dict empty = dict()
+        dict<string, string> empty = dict()
         this.summaries = empty
     }
 
     public void project(string id, string status) {
-        dict m = this.summaries
+        dict<string, string> m = this.summaries
         m[id] = "summary:" + id + ":" + status
         this.summaries = m
     }
 
     public nullable<string> get(string id) {
-        dict m = this.summaries
+        dict<string, string> m = this.summaries
         if (id in m) {
             return m[id]
         }
