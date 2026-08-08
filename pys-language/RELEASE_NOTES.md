@@ -1,24 +1,22 @@
-# PYS Language Support 0.0.84
+# PYS Language Support 0.0.85
 
-Trunk-based extension release. Tag: `extension-v0.0.84`.
-
-Republish of 0.0.83 after a pinned extension test still expected `0.0.81`.
-The manifest test now checks that `RELEASE_NOTES.md` names the current
-`package.json` version instead of a hard-coded string.
+Trunk-based extension release. Tag: `extension-v0.0.85`.
 
 ## Highlights
 
-Same language/IDE surface as 0.0.81+:
-
-- **`constructor`**, **`open` / `override` / `closed`**, **`static`**
-- Optional **Navigate Library Sources** (`pys.navigateLibrarySources`)
-- Bundled transpiler with transitive `pys.lock` recognition and CI-safe
-  MySQL shop transpile stubs
+- **Named call arguments** for functions, methods, and class constructors:
+  all-positional **or** all-named — mixing is a compile error (CER-048).
+  Example: `greet(times=2, name="Ada")`.
+- **Generic constructors** no longer false-fail when call-site type args are
+  erased (`Pair<Car, Truck>(car, truck)` compiles again).
+- Contributor note: recurring CI gates documented in
+  `docs/ci-failure-patterns.md` (showcase `examples/main.pys`, lock isolation,
+  book/railroad sync).
 
 ## Install
 
 - **Marketplace** (when published): `ext install remideboer.pys-language`
-- **ELO / offline:** download `pys-student-0.0.84.zip`, unzip, run `install.cmd`
+- **ELO / offline:** download `pys-student-0.0.85.zip`, unzip, run `install.cmd`
   (Windows) or `./install.sh` (macOS/Linux), then reload the editor.
 
 Requires Python 3.10+ on PATH. The pack includes the bundled transpiler.
