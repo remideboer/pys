@@ -19,7 +19,7 @@ class Counter {
     private fix string label
     private int value
 
-    public Counter(string label) {
+    public constructor(string label) {
         this.label = label
         this.value = 0
     }
@@ -51,7 +51,7 @@ Breakdown:
   counting.
 - Fields (`DEFAULT_STEP`, `label`, `value`) — **state** that purpose
   needs; lives with each object.
-- `public Counter(...)` — the **constructor** (see below): assembles one
+- `public constructor(...)` — the **constructor** (see below): assembles one
   object and fills its drawers.
 - Methods (`bump`, `getValue`) — **parts with a job** in that machine;
   call them on an object (`c.bump()`).
@@ -125,15 +125,23 @@ outside world can call `c.bump()` and read `c.getValue()`, but
 The **constructor** is a special part whose job is not the day-to-day
 purpose (counting), but **building** a ready-to-use machine.
 
-- Its **name equals the class name** (`Counter` inside `class Counter`).
+- It is written with the **`constructor` keyword**:
+  `public constructor(...)` (not the class name).
 - Creating an object looks like a call: `Counter("demo")`. That call
   **runs the constructor once**. The parameter (`label`) is material the
   assembly needs — a name plate for this counter.
 - Inside the body, `this.field = …` fills the drawers so the object
   starts in a **valid state** (`value` at `0`, `label` set). Until the
   constructor finishes, the machine is not ready for `bump` / `getValue`.
+  Bare field names are not allowed — always write `this.label`, not
+  `label`, when you mean the field.
 - After creation you use the other channels (`c.bump()`). You rarely call
   the constructor again on the same object — assembly already happened.
+
+| If you already know… | How `constructor` maps |
+| --- | --- |
+| JavaScript | Same word — `constructor(...)` is reserved there too |
+| C# / Java | Drop the keyword; the method is named like the class |
 
 Think of it as the **startup / assembly step** on the factory floor: bolt
 the parts on, set the dials, then hand the finished machine to the caller.
@@ -154,7 +162,7 @@ class Counter {
     private fix string label
     private int value
 
-    public Counter(string label) {
+    public constructor(string label) {
         this.label = label
         this.value = 0
     }
@@ -172,7 +180,7 @@ class ScoreBoard {
     private fix string team
     private Counter goals
 
-    public ScoreBoard(string team) {
+    public constructor(string team) {
         this.team = team
         this.goals = Counter(team + " goals")
     }

@@ -649,7 +649,7 @@ package interface Drivable {
 package class Cart implements Drivable {
     private string id
 
-    public Cart(string id) {
+    public constructor(string id) {
         this.id = id
     }
 
@@ -659,7 +659,7 @@ package class Cart implements Drivable {
 }
 
 package class BigCart inherits Cart {
-    public BigCart(string id) {
+    public constructor(string id) {
         super(id)
     }
 }
@@ -672,7 +672,8 @@ Rules:
    mutable fields → constructors → methods (including `abstract` methods).
    Visibility is unordered within a section. See
    [Enforced member ordering](#enforced-member-ordering).
-3. Constructor name equals the class name
+3. Constructors use the explicit `constructor` keyword:
+   `public constructor(...)` (not the type name). See [ADR-027](adr/ADR-027-constructor-keyword.md).
 4. One superclass via `inherits` (alias `super` in the header); zero or more
    traits via `uses`; one or more interfaces via `implements`
 5. Header order: `inherits` → `uses` → `implements`
@@ -682,11 +683,17 @@ Rules:
    Subclasses may call public members of a **library** parent (for example
    `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
    imported via `pys.deps` / the standard library.
-7. `sealed` may mark a class that should not be subclassed further
-8. `abstract` marks a class that cannot be instantiated and may declare
-   body-less `abstract` methods; mutually exclusive with `sealed`
-9. Optional type parameters: `class Pair<T, U> { … }`
-10. See `examples/classes.pys` for fields, constructors, `inherits`, and `sealed`
+   Instance fields are accessed as `this.name` inside methods/constructors —
+   bare field identifiers are an error.
+7. `closed` may mark a class that should not be subclassed further
+8. Methods are **closed by default**. Mark extension points with `open`;
+   subclasses plug in with `override` or `override closed`. Abstract methods
+   are implicitly open sockets. An implicit root provides `toString` /
+   `equals` / `hashCode`. See [ADR-028](adr/ADR-028-open-override-closed.md).
+9. `abstract` marks a class that cannot be instantiated and may declare
+   body-less `abstract` methods; mutually exclusive with `closed`
+10. Optional type parameters: `class Pair<T, U> { … }`
+11. See `examples/classes.pys` for fields, constructors, `inherits`, `open`/`override`, and `closed`
 
 ### Abstract classes
 
@@ -699,7 +706,7 @@ must implement every inherited abstract method. Direct construction
 abstract class AbstractList {
     protected int size
 
-    public AbstractList() {
+    public constructor() {
         this.size = 0
     }
 
@@ -712,9 +719,9 @@ abstract class AbstractList {
 }
 
 class ArrayListPys inherits AbstractList {
-    public ArrayListPys() { super() }
-    public string get(int index) { return "" }
-    public void add(string item) { this.size = this.size + 1 }
+    public constructor() { super() }
+    public override string get(int index) { return "" }
+    public override void add(string item) { this.size = this.size + 1 }
 }
 ```
 
@@ -727,9 +734,10 @@ See [ADR-010](adr/ADR-010-abstract-classes.md).
 Rules:
 
 1. Abstract methods only inside `abstract class`; need access + `abstract` + return type
-2. `void` means no value: do not `return expr` (bare `return` is fine)
-3. Abstract classes **are** types (unlike traits) — usable for bindings / polymorphism
-4. See `examples/abstract_classes.pys` and JIT [J-abstract](../tutorials/jit/J-abstract.md)
+2. Concrete subclasses must mark implementations `override`
+3. `void` means no value: do not `return expr` (bare `return` is fine)
+4. Abstract classes **are** types (unlike traits) — usable for bindings / polymorphism
+5. See `examples/abstract_classes.pys` and JIT [J-abstract](../tutorials/jit/J-abstract.md)
 
 ### Traits
 
@@ -752,7 +760,7 @@ trait Printable {
 class Product uses Printable {
     private string name
 
-    public Product(string name) {
+    public constructor(string name) {
         this.name = name
     }
 }
@@ -761,7 +769,7 @@ class Product uses Printable {
 class CatalogItem uses Printable(name: title) {
     private string title
 
-    public CatalogItem(string title) {
+    public constructor(string title) {
         this.title = title
     }
 }
@@ -797,7 +805,7 @@ d.start()
 class Pair<T, U> {
     private T first
     private U second
-    public Pair(T first, U second) {
+    public constructor(T first, U second) {
         this.first = first
         this.second = second
     }
@@ -814,7 +822,7 @@ Type arguments are available when constructing (`Pair<Car, Truck>(…)`).
 ### Structs
 
 Structs are **identity-free value types**: fields only, no methods, no
-`inherits` / `super` / `sealed` / `implements`. They compare and copy by value.
+`inherits` / `super` / `closed` / `implements`. They compare and copy by value.
 
 ```pys
 package struct Damage {
@@ -896,7 +904,7 @@ entity Customer identity(customerId) {
     private fix int customerId
     public string name
 
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }
@@ -1258,7 +1266,7 @@ loop (tuple<string, string> row in rows) {
 
 package class Car inherits Vehicle implements Drivable {
     private string color
-    public Car(string make, string model, int year, string color) {
+    public constructor(string make, string model, int year, string color) {
         super(make, model, year)
         this.color = color
     }
@@ -1282,7 +1290,7 @@ For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
 | `docs/CONCURRENCY.md` | `tasks` / `task` / `await` / `shared` / `atomic` guide |
 | `tutorials/` | Distributable learning track (4C/ID, JIT, scaffolding) |
 | `examples/main.pys` | Dense feature showcase (not the curriculum path) |
-| `examples/classes.pys` | Classes: fields, ctors, inherits, sealed |
+| `examples/classes.pys` | Classes: fields, ctors, inherits, open/override, closed |
 | `examples/interfaces.pys` | Interfaces + implements (vehicle domain) |
 | `examples/abstract_classes.pys` | Abstract classes / template method |
 | `examples/concurrency/` | Concurrency showcase (`main.pys` offline; `http/http_main.pys` live HTTPS package) |

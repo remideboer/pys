@@ -79,5 +79,7 @@ Each record then uses:
 | [CER-042](CER-042-var-declaration-only.md) | Ban type-position `var`; formalize `object` | Language |
 | [CER-043](CER-043-library-decorators.md) | Library decorator application | Language |
 | [CER-044](CER-044-fastapi-shop-library-test.md) | FastAPI shop library-test (field research) | Library / examples |
+| [CER-045](CER-045-constructor-keyword.md) | Explicit `constructor` keyword | Language |
+| [CER-046](CER-046-open-override-closed.md) | `open` / `override` / `closed` extension points | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

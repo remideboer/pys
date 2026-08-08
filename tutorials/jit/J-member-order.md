@@ -11,7 +11,7 @@ package class Cart {
     private fix string id
     private int count
 
-    public Cart(string id) {
+    public constructor(string id) {
         this.id = id
         this.count = 0
     }
@@ -37,7 +37,7 @@ entity Customer identity(customerId) {
     private fix int customerId
     public string name
 
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }

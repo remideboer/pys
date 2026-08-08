@@ -131,7 +131,9 @@ product on the shelf until a concrete class fills every open slot.</p>
 <p>Same tools as <a href="chapter_4_1b_inheriting_classes.html">Inheritance and subclasses</a>:
 <code>inherits AbstractList</code> specializes that chassis, and <code>super()</code> runs the
 parent constructor first so inherited fields (like <code>size</code>) are set up.
-Pass arguments inside <code>super(...)</code> when the parent needs them.</p>
+Pass arguments inside <code>super(...)</code> when the parent needs them.
+Concrete subclasses mark each filled slot with <code>override</code> (abstract methods
+are already open sockets — no <code>open</code> needed on the abstract declaration).</p>
 <p><strong>Sidebar — <code>protected</code></strong></p>
 <p><code>protected</code> members are visible inside this class <strong>and</strong> its subclasses,
 but not to unrelated code. Compare: <code>private</code> = this class only;
@@ -140,7 +142,7 @@ but not to unrelated code. Compare: <code>private</code> = this class only;
 <pre><code class="language-pys"><span class="tok-mod">abstract</span> <span class="tok-kw">class</span> <span class="tok-typename">AbstractList</span> {
     <span class="tok-mod">protected</span> <span class="tok-type">int</span> <span class="tok-ident">size</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">AbstractList</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
         <span class="tok-kw">this</span>.<span class="tok-ident">size</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
     }
 
@@ -153,15 +155,15 @@ but not to unrelated code. Compare: <code>private</code> = this class only;
 }
 
 <span class="tok-kw">class</span> <span class="tok-typename">ArrayListPys</span> <span class="tok-kw">inherits</span> <span class="tok-typename">AbstractList</span> {
-    <span class="tok-mod">public</span> <span class="tok-typename">ArrayListPys</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
         <span class="tok-kw">super</span>()
     }
 
-    <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">get</span>(<span class="tok-type">int</span> <span class="tok-ident">index</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">override</span> <span class="tok-type">string</span> <span class="tok-ident">get</span>(<span class="tok-type">int</span> <span class="tok-ident">index</span>) {
         <span class="tok-kw">return</span> <span class="tok-string">&quot;</span><span class="tok-string">&quot;</span>
     }
 
-    <span class="tok-mod">public</span> <span class="tok-type">void</span> <span class="tok-ident">add</span>(<span class="tok-type">string</span> <span class="tok-ident">item</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">override</span> <span class="tok-type">void</span> <span class="tok-ident">add</span>(<span class="tok-type">string</span> <span class="tok-ident">item</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">size</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">size</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
     }
 }
@@ -230,12 +232,12 @@ but not to unrelated code. Compare: <code>private</code> = this class only;
         <div class="cls-section-label">fills the open slots</div>
         <div class="cls-member is-public cls-slot-filled">
           <span class="fn-gear" aria-hidden="true">⚙</span>
-          <code>public string get(...)</code>
+          <code>public override string get(...)</code>
           <span class="cls-note">wired</span>
         </div>
         <div class="cls-member is-public cls-slot-filled">
           <span class="fn-gear" aria-hidden="true">⚙</span>
-          <code>public void add(...)</code>
+          <code>public override void add(...)</code>
           <span class="cls-note">wired</span>
         </div>
       </div>

@@ -56,7 +56,7 @@ const PYS_KEYWORDS = [
   'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'lambda', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'sealed',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'true', 'false', 'null', 'print', 'all', 'closed', 'open', 'override', 'constructor',
   'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ];
 
@@ -70,7 +70,7 @@ const PYS_MD_KEYWORDS = new Set([
   'if', 'else', 'unless', 'switch', 'case', 'default', 'loop', 'function', 'func', 'class', 'struct', 'data', 'entity', 'identity', 'lambda', 'enum', 'interface', 'trait',
   'implements', 'inherits', 'uses', 'requires', 'return', 'import', 'from', 'var', 'break', 'continue',
   'pass', 'public', 'private', 'protected', 'module', 'global', 'package', 'const', 'fix',
-  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'sealed',
+  'this', 'super', 'not', 'and', 'or', 'xor', 'shift', 'print', 'all', 'closed', 'open', 'override', 'constructor',
   'abstract', 'tasks', 'task', 'await', 'shared', 'atomic', 'ok', 'error', 'propagate', 'nullable',
 ]);
 const PYS_MD_TYPES = new Set([
@@ -577,8 +577,11 @@ function activate(context) {
         global: 'Top-level export with global access across the whole project. Use: `global function name(...)` or `global const float PI = ...`.',
         package: 'Top-level export visible only in the same folder. Use: `package function name(...)`.',
         public: 'Visible everywhere. Class methods: `public name(args)` or `public string name(args)`.',
-        sealed: 'Prevents inheritance: `sealed class Ship { ... }`. No class may use `inherits` on a sealed class. Mutually exclusive with `abstract`.',
-        abstract: 'Abstract class or method: `abstract class Shape { public abstract float area() }`.\nConcrete subclasses must implement every abstract method. Cannot write `sealed abstract`. Do not instantiate an abstract class.',
+        closed: 'Prevents inheritance: `closed class Ship { ... }`. No class may use `inherits` on a closed class. Mutually exclusive with `abstract`.',
+        open: 'Marks a method as an overridable extension point: `public open string speak()`. Subclasses plug in with `override`.',
+        override: 'Plugs into an ancestor `open` or abstract method (or root `toString`/`equals`/`hashCode`): `public override string speak()`. Use `override closed` to seal the chain.',
+        constructor: 'Explicit constructor: `public constructor(...) { ... }` (not the type name). Use `this(...)` to chain overloads and `super(...)` for the parent.',
+        abstract: 'Abstract class or method: `abstract class Shape { public abstract float area() }`.\nConcrete subclasses must `override` every abstract method. Cannot write `closed abstract`. Do not instantiate an abstract class.',
         void: 'No return value: `public void add(string item) { … }` or `public abstract void add(string item)`.\nA `void` method must not `return expr` (bare `return` is ok).',
         import: 'Import exports: `import funcs`, `import all from funcs.pys`, or `import name from funcs.pys`.',
         from: 'Used in `import name from module.pys` / `import all from module.pys`.',

@@ -14,6 +14,8 @@ product on the shelf until a concrete class fills every open slot.
 > `inherits AbstractList` specializes that chassis, and `super()` runs the
 > parent constructor first so inherited fields (like `size`) are set up.
 > Pass arguments inside `super(...)` when the parent needs them.
+> Concrete subclasses mark each filled slot with `override` (abstract methods
+> are already open sockets — no `open` needed on the abstract declaration).
 
 > **Sidebar — `protected`**
 >
@@ -25,7 +27,7 @@ product on the shelf until a concrete class fills every open slot.
 abstract class AbstractList {
     protected int size
 
-    public AbstractList() {
+    public constructor() {
         this.size = 0
     }
 
@@ -38,15 +40,15 @@ abstract class AbstractList {
 }
 
 class ArrayListPys inherits AbstractList {
-    public ArrayListPys() {
+    public constructor() {
         super()
     }
 
-    public string get(int index) {
+    public override string get(int index) {
         return ""
     }
 
-    public void add(string item) {
+    public override void add(string item) {
         this.size = this.size + 1
     }
 }
@@ -121,12 +123,12 @@ False
         <div class="cls-section-label">fills the open slots</div>
         <div class="cls-member is-public cls-slot-filled">
           <span class="fn-gear" aria-hidden="true">⚙</span>
-          <code>public string get(...)</code>
+          <code>public override string get(...)</code>
           <span class="cls-note">wired</span>
         </div>
         <div class="cls-member is-public cls-slot-filled">
           <span class="fn-gear" aria-hidden="true">⚙</span>
-          <code>public void add(...)</code>
+          <code>public override void add(...)</code>
           <span class="cls-note">wired</span>
         </div>
       </div>

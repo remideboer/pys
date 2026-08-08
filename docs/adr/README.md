@@ -70,6 +70,8 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-024](ADR-024-base-display-builtins.md) | Base display builtins (`toBin` / `toHex` / `toOct`) | Accepted |
 | [ADR-025](ADR-025-var-declaration-only.md) | `var` declaration-only; `object` for opaque foreign values | Accepted |
 | [ADR-026](ADR-026-library-decorators.md) | Library decorator application (`@expr`) | Accepted |
+| [ADR-027](ADR-027-constructor-keyword.md) | Explicit `constructor` keyword | Accepted |
+| [ADR-028](ADR-028-open-override-closed.md) | Extension points `open` / `override` / `closed` | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
 

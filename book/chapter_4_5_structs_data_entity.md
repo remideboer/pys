@@ -84,7 +84,7 @@ entity Customer identity(customerId) {
     private fix int customerId
     public string name
 
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }

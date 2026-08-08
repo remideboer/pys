@@ -90,7 +90,7 @@ entity Account identity(iban) {
     private fix string iban
     public int balanceCents
 
-    public Account(string iban, int balanceCents) {
+    public constructor(string iban, int balanceCents) {
         this.iban = iban
         this.balanceCents = balanceCents
     }
@@ -407,7 +407,7 @@ class Pair<T, U> {
     private T first
     private U second
 
-    public Pair(T first, U second) {
+    public constructor(T first, U second) {
         this.first = first
         this.second = second
     }

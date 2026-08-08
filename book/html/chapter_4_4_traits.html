@@ -144,7 +144,7 @@ needs sits next to the gears that use it.</p>
 <span class="tok-kw">class</span> <span class="tok-typename">Product</span> <span class="tok-kw">uses</span> <span class="tok-typename">Printable</span> {
     <span class="tok-mod">private</span> <span class="tok-type">string</span> <span class="tok-ident">name</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">Product</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">name</span> <span class="tok-op">=</span> <span class="tok-ident">name</span>
     }
 }
@@ -241,7 +241,7 @@ needs sits next to the gears that use it.</p>
 <span class="tok-kw">class</span> <span class="tok-typename">CatalogItem</span> <span class="tok-kw">uses</span> <span class="tok-typename">Printable</span>(<span class="tok-ident">name</span>: <span class="tok-ident">title</span>) {
     <span class="tok-mod">private</span> <span class="tok-type">string</span> <span class="tok-ident">title</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">CatalogItem</span>(<span class="tok-type">string</span> <span class="tok-ident">title</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">title</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">title</span> <span class="tok-op">=</span> <span class="tok-ident">title</span>
     }
 }
@@ -298,7 +298,7 @@ it. Call <code>TraitName.method(this)</code> to pick a side — or combine both:
 }
 
 <span class="tok-kw">class</span> <span class="tok-typename">Greeter</span> <span class="tok-kw">uses</span> <span class="tok-typename">Loud</span>, <span class="tok-typename">Soft</span> {
-    <span class="tok-mod">public</span> <span class="tok-typename">Greeter</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
     }
 
     <span class="tok-mod">public</span> <span class="tok-type">string</span> <span class="tok-ident">greet</span>() {

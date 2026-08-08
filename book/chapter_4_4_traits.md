@@ -29,7 +29,7 @@ trait Printable {
 class Product uses Printable {
     private string name
 
-    public Product(string name) {
+    public constructor(string name) {
         this.name = name
     }
 }
@@ -135,7 +135,7 @@ trait Printable {
 class CatalogItem uses Printable(name: title) {
     private string title
 
-    public CatalogItem(string title) {
+    public constructor(string title) {
         this.title = title
     }
 }
@@ -202,7 +202,7 @@ trait Soft {
 }
 
 class Greeter uses Loud, Soft {
-    public Greeter() {
+    public constructor() {
     }
 
     public string greet() {

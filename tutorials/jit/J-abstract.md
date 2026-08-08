@@ -4,7 +4,7 @@
 
 ```pys
 abstract class Shape {
-    public Shape() {}
+    public constructor() {}
 
     public abstract float area()
 }
@@ -13,7 +13,7 @@ class Box inherits Shape {
     private float w
     private float h
 
-    public Box(float w, float h) {
+    public constructor(float w, float h) {
         super()
         this.w = w
         this.h = h

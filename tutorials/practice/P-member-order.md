@@ -14,7 +14,7 @@ package class Counter {
     }
     private int n
     public const int LIMIT = 100
-    public Counter() {
+    public constructor() {
         this.n = 0
     }
 }

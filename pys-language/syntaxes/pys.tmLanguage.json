@@ -241,7 +241,7 @@
         },
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:(?:sealed|abstract)\\s+)?class|(?:fix\\s+)?struct|data|entity|enum|interface|trait|const|fix)\\b)"
+          "match": "\\b(global|package|module)(?=\\s+(?:function|func|(?:(?:closed|abstract)\\s+)?class|(?:fix\\s+)?struct|data|entity|enum|interface|trait|const|fix)\\b)"
         },
         {
           "name": "meta.struct.declaration.pys",
@@ -335,7 +335,7 @@
         },
         {
           "name": "meta.class.declaration.pys",
-          "match": "\\b(?:(global|package|module)\\s+)?(?:(sealed|abstract)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:(<)([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)(>))?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(uses)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
+          "match": "\\b(?:(global|package|module)\\s+)?(?:(closed|abstract)\\s+)?(class)\\s+([A-Za-z_]\\w*)(?:(<)([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*)(>))?(?:\\s+(inherits|super)\\s+([A-Za-z_]\\w*))?(?:\\s+(uses)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?(?:\\s+(implements)\\s+([A-Za-z_]\\w*(?:\\s*,\\s*[A-Za-z_]\\w*)*))?",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -487,7 +487,7 @@
       "patterns": [
         {
           "name": "storage.modifier.pys",
-          "match": "\\b(?:public|private|protected|module|global|package|const|fix|sealed|abstract|shared|atomic)\\b"
+          "match": "\\b(?:public|private|protected|module|global|package|const|fix|closed|open|override|abstract|constructor|shared|atomic)\\b"
         },
         {
           "name": "keyword.control.conditional.pys",

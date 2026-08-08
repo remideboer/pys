@@ -119,7 +119,7 @@ copy-on-assignment value behavior:
 class Counter {
     private int value
 
-    public Counter(int value) {
+    public constructor(int value) {
         this.value = value
     }
 

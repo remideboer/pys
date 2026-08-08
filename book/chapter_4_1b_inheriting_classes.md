@@ -21,11 +21,11 @@ Two reasons this matters — both at once:
 class Counter {
     protected int value
 
-    public Counter() {
+    public constructor() {
         this.value = 0
     }
 
-    public bump() {
+    public open bump() {
         this.value = this.value + 1
     }
 
@@ -35,11 +35,11 @@ class Counter {
 }
 
 class TennisCounter inherits Counter {
-    public TennisCounter() {
+    public constructor() {
         super()
     }
 
-    public bump() {
+    public override bump() {
         if (this.value == 0) {
             this.value = 15
         } else if (this.value == 15) {
@@ -84,8 +84,12 @@ Breakdown:
   `value` starts at `0`.
 - `protected int value` — subclasses may touch this drawer; unrelated
   code still cannot.
-- `public bump()` in the subclass **replaces** the parent’s bump gear
-  with the tennis rule. `getValue` is reused as-is.
+- `public open bump()` on the parent — deliberately opens an extension
+  point; subclasses may replace it.
+- `public override bump()` in the subclass **replaces** the parent’s bump gear
+  with the tennis rule. `getValue` is reused as-is. Without `override` (and
+  without `open` on the parent), the transpile fails — methods are closed by
+  default.
 - `Counter either = tennis` — the cable is typed as the general
   machine; the object on the other end is the tennis specialist. Calling
   `either.bump()` still runs the tennis rule.

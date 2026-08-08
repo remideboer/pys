@@ -7,7 +7,7 @@ package interface Drivable {
 
 package class Tug implements Drivable {
     private string name
-    public Tug(string name) {
+    public constructor(string name) {
         this.name = name
     }
     public start() {
@@ -20,7 +20,7 @@ package class Tug implements Drivable {
 
 package class Van implements Drivable {
     private string name
-    public Van(string name) {
+    public constructor(string name) {
         this.name = name
     }
     public start() {

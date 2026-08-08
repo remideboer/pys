@@ -138,11 +138,11 @@ whole chassis.</p>
 <pre><code class="language-pys"><span class="tok-kw">class</span> <span class="tok-typename">Counter</span> {
     <span class="tok-mod">protected</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
         <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
     }
 
-    <span class="tok-mod">public</span> <span class="tok-ident">bump</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">open</span> <span class="tok-ident">bump</span>() {
         <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">+</span> <span class="tok-number">1</span>
     }
 
@@ -152,11 +152,11 @@ whole chassis.</p>
 }
 
 <span class="tok-kw">class</span> <span class="tok-typename">TennisCounter</span> <span class="tok-kw">inherits</span> <span class="tok-typename">Counter</span> {
-    <span class="tok-mod">public</span> <span class="tok-typename">TennisCounter</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>() {
         <span class="tok-kw">super</span>()
     }
 
-    <span class="tok-mod">public</span> <span class="tok-ident">bump</span>() {
+    <span class="tok-mod">public</span> <span class="tok-ident">override</span> <span class="tok-ident">bump</span>() {
         <span class="tok-kw">if</span> (<span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">==</span> <span class="tok-number">0</span>) {
             <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">15</span>
         } <span class="tok-kw">else</span> <span class="tok-kw">if</span> (<span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">==</span> <span class="tok-number">15</span>) {
@@ -195,8 +195,12 @@ whole chassis.</p>
   <code>value</code> starts at <code>0</code>.</li>
 <li><code>protected int value</code> — subclasses may touch this drawer; unrelated
   code still cannot.</li>
-<li><code>public bump()</code> in the subclass <strong>replaces</strong> the parent’s bump gear
-  with the tennis rule. <code>getValue</code> is reused as-is.</li>
+<li><code>public open bump()</code> on the parent — deliberately opens an extension
+  point; subclasses may replace it.</li>
+<li><code>public override bump()</code> in the subclass <strong>replaces</strong> the parent’s bump gear
+  with the tennis rule. <code>getValue</code> is reused as-is. Without <code>override</code> (and
+  without <code>open</code> on the parent), the transpile fails — methods are closed by
+  default.</li>
 <li><code>Counter either = tennis</code> — the cable is typed as the general
   machine; the object on the other end is the tennis specialist. Calling
   <code>either.bump()</code> still runs the tennis rule.</li>

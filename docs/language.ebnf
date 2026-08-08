@@ -188,13 +188,13 @@ parameter        = [ type_name ] , identifier ;
 
 (* ------------------------- Classes ------------------------- *)
 
-class_decl       = { decorator } , [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , identifier ,
+class_decl       = { decorator } , [ top_visibility ] , [ "closed" | "abstract" ] , "class" , identifier ,
                    [ type_params ] ,
                    [ ( "inherits" | "super" ) , identifier ] ,
                    [ "uses" , trait_use , { "," , trait_use } ] ,
                    [ "implements" , identifier , { "," , identifier } ] ,
                    class_body ;
-(* sealed and abstract are mutually exclusive.
+(* closed and abstract are mutually exclusive.
    Resolution order: base class, then trait composition, then interface check.
    Each trait_use may remap requires names onto host members (opt-in). *)
 
@@ -225,19 +225,28 @@ field_decl       = member_access , type_name , identifier ,
                    [ "=" , expression ] ;
 (* field_decl is mutable only; const / fix occupy earlier sections. *)
 
-method_decl      = { decorator } , member_access , [ return_type ] , identifier ,
+method_decl      = { decorator } , member_access , [ method_extension_modifier ] ,
+                   [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
 
-abstract_method_decl = member_access , "abstract" , return_type , identifier ,
-                       "(" , [ parameter_list ] , ")" ;
-(* No block. Only legal inside an abstract class. Abstract methods share
-   the method section (after constructors). *)
+method_extension_modifier = "open"
+                          | "override" , [ "closed" ]
+                          | "closed" ;
+(* No modifier / standalone closed -> not overridable (ADR-028).
+   open -> subclass may override; override -> plugs into open/abstract/root;
+   override closed -> plugs in and seals the chain. *)
 
-constructor_decl = member_access , identifier ,
+abstract_method_decl = member_access , [ "open" ] , "abstract" , return_type , identifier ,
+                       "(" , [ parameter_list ] , ")" ;
+(* No block. Only legal inside an abstract class. Implicitly an open socket;
+   redundant open is allowed; closed/override on abstract is an error.
+   Abstract methods share the method section (after constructors). *)
+
+constructor_decl = { decorator } , member_access , "constructor" ,
                    "(" , [ parameter_list ] , ")" , block ;
 
 (* Class methods MUST use member_access; "function" / "func" inside a class is illegal.
-   Constructor name equals the enclosing class name. *)
+   Constructors use the explicit `constructor` keyword (ADR-027), not the type name. *)
 
 (* ------------------------- Structs ------------------------- *)
 
@@ -588,7 +597,7 @@ legacy_func      = "func" , identifier , "(" , [ parameter_list ] , ")" , ":" ;
   Reserved / significant words:
 
   if else unless loop while for repeat times then do elif
-  function func return class struct data entity identity enum interface implements inherits super sealed abstract
+  function func return class struct data entity identity enum interface implements inherits super closed open override abstract constructor
   trait uses requires void lambda
   import from all var const fix print pass break continue switch case default
   this and or not xor shift

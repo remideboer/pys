@@ -460,11 +460,11 @@
     {
       id: 'class_decl',
       title: 'class_decl',
-      ebnf: '{ decorator } [ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses trait_use {"," trait_use} ] [ implements Id {"," Id} ] class_body ;',
+      ebnf: '{ decorator } [ top_visibility ] [ "closed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses trait_use {"," trait_use} ] [ implements Id {"," Id} ] class_body ;',
       node: Seq(
         Star(N('decorator')),
         Opt(N('top_visibility')),
-        Opt(Choice(T('sealed'), T('abstract'))),
+        Opt(Choice(T('closed'), T('abstract'))),
         T('class'),
         N('identifier'),
         Opt(N('type_params')),
@@ -495,15 +495,40 @@
     {
       id: 'abstract_method_decl',
       title: 'abstract_method_decl',
-      ebnf: 'member_access "abstract" return_type identifier "(" [ parameter_list ] ")" ;',
+      ebnf: 'member_access [ "open" ] "abstract" return_type identifier "(" [ parameter_list ] ")" ;',
       node: Seq(
         N('member_access'),
+        Opt(T('open')),
         T('abstract'),
         N('return_type'),
         N('identifier'),
         T('('),
         Opt(N('parameter_list')),
         T(')')
+      )
+    },
+    {
+      id: 'method_extension_modifier',
+      title: 'method_extension_modifier',
+      ebnf: '"open" | "override" [ "closed" ] | "closed" ;',
+      node: Choice(
+        T('open'),
+        Seq(T('override'), Opt(T('closed'))),
+        T('closed')
+      )
+    },
+    {
+      id: 'constructor_decl',
+      title: 'constructor_decl',
+      ebnf: '{ decorator } member_access "constructor" "(" [ parameter_list ] ")" block ;',
+      node: Seq(
+        Star(N('decorator')),
+        N('member_access'),
+        T('constructor'),
+        T('('),
+        Opt(N('parameter_list')),
+        T(')'),
+        N('block')
       )
     },
     {
@@ -702,10 +727,11 @@
     {
       id: 'method_decl',
       title: 'method_decl',
-      ebnf: '{ decorator } member_access [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      ebnf: '{ decorator } member_access [ method_extension_modifier ] [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
       node: Seq(
         Star(N('decorator')),
         N('member_access'),
+        Opt(N('method_extension_modifier')),
         Opt(N('return_type')),
         N('identifier'),
         T('('),

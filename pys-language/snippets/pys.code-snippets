@@ -169,7 +169,7 @@
       "class ${1:Name} {",
       "\tprivate ${2|string,int,float,bool|} ${3:field}",
       "",
-      "\tpublic ${1:Name}(${2:string} ${3:field}) {",
+      "\tpublic constructor(${2:string} ${3:field}) {",
       "\t\tthis.${3:field} = ${3:field}",
       "\t}",
       "",
@@ -184,7 +184,7 @@
     "prefix": "abstract",
     "body": [
       "abstract class ${1:Name} {",
-      "\tpublic ${1:Name}() {",
+      "\tpublic constructor() {",
       "\t\t${2}",
       "\t}",
       "",
@@ -321,7 +321,7 @@
     "prefix": "inherits",
     "body": [
       "class ${1:Child} inherits ${2:Parent} {",
-      "\tpublic ${1:Child}(${3:args}) {",
+      "\tpublic constructor(${3:args}) {",
       "\t\tsuper(${4:args})",
       "\t}",
       "",
@@ -345,7 +345,7 @@
     "prefix": "implements",
     "body": [
       "class ${1:Name} implements ${2:Interface} {",
-      "\tpublic ${1:Name}() {",
+      "\tpublic constructor() {",
       "\t\t${0}",
       "\t}",
       "",

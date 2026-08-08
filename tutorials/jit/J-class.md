@@ -9,7 +9,7 @@ package interface Drivable {
 
 package class Cart implements Drivable {
     private string id
-    public Cart(string id) {
+    public constructor(string id) {
         this.id = id
     }
     public start() {
@@ -18,7 +18,7 @@ package class Cart implements Drivable {
 }
 
 package class BigCart inherits Cart {
-    public BigCart(string id) {
+    public constructor(string id) {
         super(id)
     }
 }

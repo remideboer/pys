@@ -135,7 +135,7 @@ get a new <em>object</em> — its own running copy of the machine.</p>
     <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">label</span>
     <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>(<span class="tok-type">string</span> <span class="tok-ident">label</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">label</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">label</span> <span class="tok-op">=</span> <span class="tok-ident">label</span>
         <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
     }
@@ -161,7 +161,7 @@ get a new <em>object</em> — its own running copy of the machine.</p>
   counting.</li>
 <li>Fields (<code>DEFAULT_STEP</code>, <code>label</code>, <code>value</code>) — <strong>state</strong> that purpose
   needs; lives with each object.</li>
-<li><code>public Counter(...)</code> — the <strong>constructor</strong> (see below): assembles one
+<li><code>public constructor(...)</code> — the <strong>constructor</strong> (see below): assembles one
   object and fills its drawers.</li>
 <li>Methods (<code>bump</code>, <code>getValue</code>) — <strong>parts with a job</strong> in that machine;
   call them on an object (<code>c.bump()</code>).</li>
@@ -233,16 +233,37 @@ outside world can call <code>c.bump()</code> and read <code>c.getValue()</code>,
 <p>The <strong>constructor</strong> is a special part whose job is not the day-to-day
 purpose (counting), but <strong>building</strong> a ready-to-use machine.</p>
 <ul>
-<li>Its <strong>name equals the class name</strong> (<code>Counter</code> inside <code>class Counter</code>).</li>
+<li>It is written with the <strong><code>constructor</code> keyword</strong>:
+  <code>public constructor(...)</code> (not the class name).</li>
 <li>Creating an object looks like a call: <code>Counter("demo")</code>. That call
   <strong>runs the constructor once</strong>. The parameter (<code>label</code>) is material the
   assembly needs — a name plate for this counter.</li>
 <li>Inside the body, <code>this.field = …</code> fills the drawers so the object
   starts in a <strong>valid state</strong> (<code>value</code> at <code>0</code>, <code>label</code> set). Until the
-  constructor finishes, the machine is not ready for <code>bump</code> / <code>getValue</code>.</li>
+  constructor finishes, the machine is not ready for <code>bump</code> / <code>getValue</code>.
+  Bare field names are not allowed — always write <code>this.label</code>, not
+  <code>label</code>, when you mean the field.</li>
 <li>After creation you use the other channels (<code>c.bump()</code>). You rarely call
   the constructor again on the same object — assembly already happened.</li>
 </ul>
+<table>
+<thead>
+<tr>
+<th>If you already know…</th>
+<th>How <code>constructor</code> maps</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>JavaScript</td>
+<td>Same word — <code>constructor(...)</code> is reserved there too</td>
+</tr>
+<tr>
+<td>C# / Java</td>
+<td>Drop the keyword; the method is named like the class</td>
+</tr>
+</tbody>
+</table>
 <p>Think of it as the <strong>startup / assembly step</strong> on the factory floor: bolt
 the parts on, set the dials, then hand the finished machine to the caller.</p>
 <h2>Machines that work together</h2>
@@ -257,7 +278,7 @@ public channels.</p>
     <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">label</span>
     <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-ident">value</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">Counter</span>(<span class="tok-type">string</span> <span class="tok-ident">label</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">label</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">label</span> <span class="tok-op">=</span> <span class="tok-ident">label</span>
         <span class="tok-kw">this</span>.<span class="tok-ident">value</span> <span class="tok-op">=</span> <span class="tok-number">0</span>
     }
@@ -275,7 +296,7 @@ public channels.</p>
     <span class="tok-mod">private</span> <span class="tok-mod">fix</span> <span class="tok-type">string</span> <span class="tok-ident">team</span>
     <span class="tok-mod">private</span> <span class="tok-typename">Counter</span> <span class="tok-ident">goals</span>
 
-    <span class="tok-mod">public</span> <span class="tok-typename">ScoreBoard</span>(<span class="tok-type">string</span> <span class="tok-ident">team</span>) {
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">string</span> <span class="tok-ident">team</span>) {
         <span class="tok-kw">this</span>.<span class="tok-ident">team</span> <span class="tok-op">=</span> <span class="tok-ident">team</span>
         <span class="tok-kw">this</span>.<span class="tok-ident">goals</span> <span class="tok-op">=</span> <span class="tok-typename">Counter</span>(<span class="tok-ident">team</span> <span class="tok-op">+</span> <span class="tok-string">&quot;</span><span class="tok-string"> goals</span><span class="tok-string">&quot;</span>)
     }

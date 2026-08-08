@@ -29,7 +29,7 @@ bag["amount"] = 21
 ```pys
 class Unit {
     private int health
-    public Unit(int health) {
+    public constructor(int health) {
         this.health = health
     }
     public takeDamage(Damage damage) {
