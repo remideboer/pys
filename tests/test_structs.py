@@ -139,7 +139,7 @@ def test_named_kwargs_on_method() -> None:
     source = """
 class Box {
     private int n
-    public Box(int n) {
+    public constructor(int n) {
         this.n = n
     }
     public set(int n) {
@@ -189,7 +189,7 @@ struct Damage {
 }
 class Unit {
     private int health
-    public Unit(int health) {
+    public constructor(int health) {
         this.health = health
     }
 }

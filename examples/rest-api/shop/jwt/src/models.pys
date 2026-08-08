@@ -9,7 +9,7 @@ package entity Product identity(productId) {
     public bool active
     public string createdAt
 
-    public Product(
+    public constructor(
         int productId,
         string sku,
         string name,
@@ -45,7 +45,7 @@ package entity Order identity(orderId) {
     public string status
     public nullable<string> customerRef
 
-    public Order(
+    public constructor(
         int orderId,
         string placedAt,
         string status,
@@ -81,7 +81,7 @@ package entity OrderLine inherits Order identity(lineNumber) {
     public float unitPrice
     public int quantity
 
-    public OrderLine(
+    public constructor(
         int orderId,
         string placedAt,
         string status,

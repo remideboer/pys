@@ -14,7 +14,7 @@ package class AppContext {
     public OrderApi orders
     public LineApi lines
 
-    public AppContext() {
+    public constructor() {
         this.store = ShopStore()
         this.json = JsonUtil()
         this.products = ProductApi(this.store, this.json)
@@ -26,7 +26,7 @@ package class AppContext {
 package class Router {
     private AppContext ctx
 
-    public Router(AppContext ctx) {
+    public constructor(AppContext ctx) {
         this.ctx = ctx
     }
 

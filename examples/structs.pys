@@ -21,7 +21,7 @@ class Unit {
     private int health
     private int mana
 
-    public Unit(string name, int health, int mana) {
+    public constructor(string name, int health, int mana) {
         this.name = name
         this.health = health
         this.mana = mana

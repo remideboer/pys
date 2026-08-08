@@ -10,7 +10,7 @@ package class AppStore {
     private CollectionBook collection
     private DeckBook decks
 
-    public AppStore(Path dataDir) {
+    public constructor(Path dataDir) {
         this.dataDir = dataDir
         this.catalog = CardCatalog([])
         this.collection = CollectionBook([])

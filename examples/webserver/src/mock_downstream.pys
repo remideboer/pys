@@ -12,7 +12,7 @@ package class MockDownstream {
     private int fatalNext
     private int latencyMs
 
-    public MockDownstream() {
+    public constructor() {
         this.lock = threading.Lock()
         this.calls = 0
         this.failNext = 0
@@ -114,7 +114,7 @@ package class MockCall {
     private MockDownstream mock
     private int budgetMs
 
-    public MockCall(MockDownstream mock, int budgetMs) {
+    public constructor(MockDownstream mock, int budgetMs) {
         this.mock = mock
         this.budgetMs = budgetMs
     }

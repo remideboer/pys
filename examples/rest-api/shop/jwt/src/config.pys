@@ -12,7 +12,7 @@ package class ServerConfig {
     public string jwtSecret
     public int jwtTtlSec
 
-    public ServerConfig() {
+    public constructor() {
         this.listenHost = "127.0.0.1"
         this.listenPort = 8092
         this.idleTimeoutMs = 2000

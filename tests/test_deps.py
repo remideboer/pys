@@ -867,7 +867,7 @@ def test_navigate_to_imported_pys_function(tmp_path: Path) -> None:
         "package class AppStore {\n"
         "    private int ready\n"
         "\n"
-        "    public AppStore() {\n"
+        "    public constructor() {\n"
         "        this.ready = 1\n"
         "    }\n"
         "}\n"

@@ -10,7 +10,7 @@ package class JwtService {
     private string secret
     private int ttlSec
 
-    public JwtService(string secret, int ttlSec) {
+    public constructor(string secret, int ttlSec) {
         this.secret = secret
         this.ttlSec = ttlSec
     }

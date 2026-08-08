@@ -24,7 +24,7 @@ package class RetryPolicy {
     private int retryAttemptsTotal
     private object lock
 
-    public RetryPolicy(ServerConfig cfg, CircuitBreaker breaker, IdempotencyTable idem) {
+    public constructor(ServerConfig cfg, CircuitBreaker breaker, IdempotencyTable idem) {
         this.cfg = cfg
         this.breaker = breaker
         this.idem = idem

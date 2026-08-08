@@ -195,6 +195,23 @@ def _require_member_phase(
     phase[0] = kind
 
 
+def _parse_method_extension(p: "_Tok") -> str | None:
+    """Parse optional ``open`` | ``override`` [``closed``] | ``closed`` (ADR-028)."""
+    if p.at_kw("open"):
+        p.eat_kw("open")
+        return "open"
+    if p.at_kw("override"):
+        p.eat_kw("override")
+        if p.at_kw("closed"):
+            p.eat_kw("closed")
+            return "override_closed"
+        return "override"
+    if p.at_kw("closed"):
+        p.eat_kw("closed")
+        return "closed"
+    return None
+
+
 _PACKRAT_FAIL = object()
 
 
@@ -633,7 +650,7 @@ def _parse_toplevel(p: _Tok):
         vis = p.eat(TokenKind.KEYWORD).text
         if p.at_kw("function"):
             return _parse_function(p, visibility=vis, decorators=decorators)
-        if p.at_kw("sealed", "abstract"):
+        if p.at_kw("sealed", "closed", "abstract"):
             return _parse_class(p, visibility=vis, decorators=decorators)
         if p.at_kw("class"):
             return _parse_class(p, visibility=vis, decorators=decorators)
@@ -664,7 +681,7 @@ def _parse_toplevel(p: _Tok):
         raise ParseError("Expected declaration after visibility", p.cur().line, p.cur().column)
     if p.at_kw("function"):
         return _parse_function(p, decorators=decorators)
-    if p.at_kw("sealed", "abstract"):
+    if p.at_kw("sealed", "closed", "abstract"):
         return _parse_class(p, decorators=decorators)
     if p.at_kw("class"):
         return _parse_class(p, decorators=decorators)
@@ -1325,7 +1342,7 @@ def _parse_struct(
     if type_fix:
         p.eat_kw("fix")
     p.eat_kw("struct")
-    if p.at_kw("sealed", "inherits", "super", "implements"):
+    if p.at_kw("closed", "inherits", "super", "implements"):
         bad = p.cur().text
         raise FatalParseError(
             f"Structs cannot use `{bad}` — they are identity-free value types "
@@ -1342,7 +1359,7 @@ def _parse_struct(
             p.eat(TokenKind.COMMA)
             type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
         p.eat_gt()
-    if p.at_kw("sealed", "inherits", "super", "implements"):
+    if p.at_kw("closed", "inherits", "super", "implements"):
         bad = p.cur().text
         raise FatalParseError(
             f"Structs cannot use `{bad}` — they are identity-free value types "
@@ -1429,7 +1446,7 @@ def _parse_data(p: _Tok, visibility: str = "") -> DataDef:
     """Parse ``[top_visibility] data Name { fields }`` (immutable value object)."""
     sp = p.span()
     p.eat_kw("data")
-    if p.at_kw("inherits", "super", "uses", "implements", "sealed", "identity"):
+    if p.at_kw("inherits", "super", "uses", "implements", "closed", "identity"):
         bad = p.cur().text
         raise FatalParseError(
             f"`data` types cannot use `{bad}` — they are immutable value objects "
@@ -1438,7 +1455,7 @@ def _parse_data(p: _Tok, visibility: str = "") -> DataDef:
             p.cur().column,
         )
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
-    if p.at_kw("inherits", "super", "uses", "implements", "sealed", "identity"):
+    if p.at_kw("inherits", "super", "uses", "implements", "closed", "identity"):
         bad = p.cur().text
         raise FatalParseError(
             f"`data` types cannot use `{bad}` — they are immutable value objects "
@@ -1563,16 +1580,24 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                 p.cur().line,
                 p.cur().column,
             )
-        # constructor
-        if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
+        # constructor (ADR-027) + optional method extension (ADR-028)
+        extension = _parse_method_extension(p)
+        if extension is not None and p.at_kw("constructor"):
+            raise FatalParseError(
+                "Constructors cannot use open/override/closed (ADR-028).",
+                member_sp.line,
+                member_sp.column,
+                code="pys.ctor-extension",
+            )
+        if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
             if not access:
                 raise FatalParseError(
                     "Entity members require an access modifier "
-                    f"(e.g. `public {name}(...)`).",
+                    "(e.g. `public constructor(...)`).",
                     p.cur().line,
                     p.cur().column,
                 )
-            p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            p.eat_kw("constructor")
             _require_member_phase(
                 p,
                 phase,
@@ -1601,6 +1626,17 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                 )
             )
             continue
+        if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
+            raise FatalParseError(
+                f"Constructors must use the `constructor` keyword, not the type name "
+                f"`{name}`. Write `public constructor(...)` instead of `public {name}(...)`.",
+                p.cur().line,
+                p.cur().column,
+                code="pys.constructor-keyword",
+                tips=[
+                    f"Replace `public {name}(` with `public constructor(`.",
+                ],
+            )
         is_fix = False
         if p.at_kw("fix"):
             is_fix = True
@@ -1666,9 +1702,17 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     param_types=[t for t, _ in params],
                     body=body,
                     return_type=type_name,
+                    extension=extension,
                 )
             )
         else:
+            if extension is not None:
+                raise FatalParseError(
+                    "open/override/closed apply to methods, not fields.",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.field-extension",
+                )
             if not access:
                 raise FatalParseError(
                     "Entity fields require an access modifier "
@@ -1874,23 +1918,31 @@ def _parse_class(
     decorators: list | None = None,
 ) -> ClassDef:
     sp = p.span()
-    sealed = False
+    closed = False
     abstract = False
     if p.at_kw("sealed"):
-        sealed = True
-        p.eat_kw("sealed")
+        raise FatalParseError(
+            "Use `closed class` instead of `sealed class` (ADR-028).",
+            p.cur().line,
+            p.cur().column,
+            code="pys.closed-not-sealed",
+            tips=["Replace `sealed` with `closed`."],
+        )
+    if p.at_kw("closed"):
+        closed = True
+        p.eat_kw("closed")
         if p.at_kw("abstract"):
             raise FatalParseError(
-                "`sealed` and `abstract` are mutually exclusive on the same class.",
+                "`closed` and `abstract` are mutually exclusive on the same class.",
                 p.cur().line,
                 p.cur().column,
             )
     elif p.at_kw("abstract"):
         abstract = True
         p.eat_kw("abstract")
-        if p.at_kw("sealed"):
+        if p.at_kw("closed", "sealed"):
             raise FatalParseError(
-                "`sealed` and `abstract` are mutually exclusive on the same class.",
+                "`closed` and `abstract` are mutually exclusive on the same class.",
                 p.cur().line,
                 p.cur().column,
             )
@@ -2041,9 +2093,18 @@ def _parse_class(
                 )
             )
             continue
-        # Abstract method: access abstract ReturnType name(params) — no body.
+        # Abstract method: access [open] abstract ReturnType name(params) — no body.
+        extension = _parse_method_extension(p)
         if p.at_kw("abstract"):
             p.eat_kw("abstract")
+            if extension in {"closed", "override", "override_closed"}:
+                raise FatalParseError(
+                    "Abstract methods cannot be 'closed' or 'override' — they are "
+                    "implicitly open sockets with no implementation yet (ADR-028).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.abstract-extension",
+                )
             if not access:
                 raise FatalParseError(
                     "Abstract methods require an access modifier "
@@ -2088,13 +2149,23 @@ def _parse_class(
                     body=None,
                     is_abstract=True,
                     return_type=ret,
+                    extension=extension or "open",
                     decorators=list(member_decorators),
                 )
             )
             continue
-        # constructor
-        if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
-            p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        # constructor (ADR-027): `public constructor(...)` — not type-name form
+        if extension is not None:
+            # extension was consumed; constructors cannot have open/override
+            if p.at_kw("constructor"):
+                raise FatalParseError(
+                    "Constructors cannot use open/override/closed (ADR-028).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.ctor-extension",
+                )
+        if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
+            p.eat_kw("constructor")
             _require_member_phase(
                 p,
                 phase,
@@ -2124,6 +2195,20 @@ def _parse_class(
                 )
             )
             continue
+        # Reject legacy class-name constructors
+        if p.cur().text == name and p.peek(1).kind == TokenKind.LPAREN:
+            raise FatalParseError(
+                f"Constructors must use the `constructor` keyword, not the type name "
+                f"`{name}`. Write `public constructor(...)` instead of `public {name}(...)`.",
+                p.cur().line,
+                p.cur().column,
+                code="pys.constructor-keyword",
+                tips=[
+                    f"Replace `public {name}(` with `public constructor(`.",
+                    "JavaScript uses `constructor` the same way; C#/Java drop the keyword "
+                    "and reuse the type name.",
+                ],
+            )
         type_name = ""
         if p.cur().text in _TYPES or p.at_kw("void") or (
             p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
@@ -2173,10 +2258,18 @@ def _parse_class(
                     param_types=[t for t, _ in params],
                     body=body,
                     return_type=type_name,
+                    extension=extension,
                     decorators=list(member_decorators),
                 )
             )
         else:
+            if extension is not None:
+                raise FatalParseError(
+                    "open/override/closed apply to methods, not fields.",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.field-extension",
+                )
             if member_decorators:
                 raise FatalParseError(
                     "Decorators may only apply to methods (not fields).",
@@ -2214,7 +2307,8 @@ def _parse_class(
         fields=fields,
         methods=methods,
         visibility=visibility,
-        sealed=sealed,
+        sealed=closed,
+        closed=closed,
         abstract=abstract,
         decorators=list(decorators or []),
     )

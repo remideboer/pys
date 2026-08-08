@@ -275,14 +275,18 @@ def _pys_import_line(stmt: ImportStmt) -> str:
 
 
 def _ctor_chains_to_parent(body: Block | None) -> bool:
-    """True if the constructor already calls ``super(...)`` or ``this(...)``."""
+    """True if the constructor already calls ``super(...)`` or ``this(...)``.
+
+    After parse, ``this`` is rewritten to Identifier ``self``, so sibling
+    chaining is detected as a call to ``self``.
+    """
     if body is None:
         return False
     for stmt in body.statements:
         if not isinstance(stmt, ExprStmt) or not isinstance(stmt.expr, Call):
             continue
         callee = stmt.expr.callee
-        if isinstance(callee, Identifier) and callee.name in {"super", "this"}:
+        if isinstance(callee, Identifier) and callee.name in {"super", "this", "self"}:
             return True
     return False
 
@@ -323,6 +327,7 @@ class _Emitter:
         self.lambda_serial = 0
         self.result_switch_serial = 0
         self._current_function = "<module>"
+        self._in_constructor = False
         self._expr_indent = 0
         self._lambda_rename: dict[str, str] = {}
         self._brace_depth = 0
@@ -1203,7 +1208,9 @@ class _Emitter:
         need_super = inject_super and not _ctor_chains_to_parent(m.body)
         prev_types = dict(self.var_types)
         prev_function = self._current_function
+        prev_in_ctor = self._in_constructor
         self._current_function = name
+        self._in_constructor = bool(m.is_constructor)
         for i, pname in enumerate(m.params):
             if i < len(m.param_types) and m.param_types[i]:
                 self.var_types[pname] = m.param_types[i]
@@ -1218,10 +1225,12 @@ class _Emitter:
                 self._emit(indent + 1, "super().__init__()")
                 if m.body is None or not m.body.statements:
                     self._current_function = prev_function
+                    self._in_constructor = prev_in_ctor
                     self.var_types = prev_types
                     return
             self._block(m.body, indent + 1)
         self._current_function = prev_function
+        self._in_constructor = prev_in_ctor
         self.var_types = prev_types
 
     def _if(self, stmt: IfStmt, indent: int, *, first: bool) -> None:
@@ -1592,6 +1601,14 @@ class _Emitter:
             if isinstance(expr.callee, Identifier) and expr.callee.name == "super":
                 args = ", ".join(self._call_arg(a) for a in expr.args)
                 return f"super().__init__({args})"
+            # this(args) → self.__init__(args) inside constructors (parse rewrites this→self)
+            if (
+                self._in_constructor
+                and isinstance(expr.callee, Identifier)
+                and expr.callee.name == "self"
+            ):
+                args = ", ".join(self._call_arg(a) for a in expr.args)
+                return f"self.__init__({args})"
             args = ", ".join(self._call_arg(a) for a in expr.args)
             return f"{self._expr(expr.callee)}({args})"
         if isinstance(expr, KeywordArg):

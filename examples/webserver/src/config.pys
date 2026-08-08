@@ -33,7 +33,7 @@ package class ServerConfig {
     # FR4: max accepted sockets waiting for a worker (0 = unbounded).
     public int inboundMaxPending
 
-    public ServerConfig() {
+    public constructor() {
         # downstream < handler < client (FR6 / NFR timeout hierarchy)
         this.downstreamTimeoutMs = 100
         this.handlerTimeoutMs = 300

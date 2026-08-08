@@ -2,7 +2,7 @@
 # §5 classification gate — unclassified defaults to Unsafe (no retry).
 
 package class IdempotencyTable {
-    public IdempotencyTable() {
+    public constructor() {
     }
 
     public string retryClassFor(string method, string path) {

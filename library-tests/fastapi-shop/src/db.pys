@@ -6,7 +6,7 @@ import mysql.connector
 package class ShopDatabase {
     private object conn
 
-    public ShopDatabase(string host, string user, string password, string database) {
+    public constructor(string host, string user, string password, string database) {
         this.conn = mysql.connector.connect(
             host=host,
             user=user,

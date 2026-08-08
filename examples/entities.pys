@@ -8,7 +8,7 @@ entity Customer identity(customerId) {
     public string name
     public string email
 
-    public Customer(int customerId, string name, string email) {
+    public constructor(int customerId, string name, string email) {
         this.customerId = customerId
         this.name = name
         this.email = email
@@ -30,7 +30,7 @@ entity Account identity(accountId) {
     private fix int accountId
     public string createdAt
 
-    public Account(int accountId, string createdAt) {
+    public constructor(int accountId, string createdAt) {
         this.accountId = accountId
         this.createdAt = createdAt
     }
@@ -40,7 +40,7 @@ entity User inherits Account {
     public string username
     public string passwordHash
 
-    public User(int accountId, string createdAt, string username, string passwordHash) {
+    public constructor(int accountId, string createdAt, string username, string passwordHash) {
         super(accountId, createdAt)
         this.username = username
         this.passwordHash = passwordHash
@@ -56,7 +56,7 @@ entity Order identity(orderId) {
     private fix int orderId
     public string placedAt
 
-    public Order(int orderId, string placedAt) {
+    public constructor(int orderId, string placedAt) {
         this.orderId = orderId
         this.placedAt = placedAt
     }
@@ -67,7 +67,7 @@ entity OrderLine inherits Order identity(lineNumber) {
     public string productSku
     public int quantity
 
-    public OrderLine(int orderId, string placedAt, int lineNumber, string productSku, int quantity) {
+    public constructor(int orderId, string placedAt, int lineNumber, string productSku, int quantity) {
         super(orderId, placedAt)
         this.lineNumber = lineNumber
         this.productSku = productSku

@@ -107,7 +107,7 @@ entity Customer identity(customerId) {
     private fix int customerId
     public string name
 
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }
@@ -134,7 +134,7 @@ entity Order identity(orderId) {
     private fix int orderId
     public string placedAt
 
-    public Order(int orderId, string placedAt) {
+    public constructor(int orderId, string placedAt) {
         this.orderId = orderId
         this.placedAt = placedAt
     }
@@ -143,7 +143,7 @@ entity OrderLine inherits Order identity(lineNumber) {
     private fix int lineNumber
     public int quantity
 
-    public OrderLine(int orderId, string placedAt, int lineNumber, int quantity) {
+    public constructor(int orderId, string placedAt, int lineNumber, int quantity) {
         super(orderId, placedAt)
         this.lineNumber = lineNumber
         this.quantity = quantity
@@ -167,15 +167,15 @@ print(a == c)
     "source, match",
     [
         (
-            "entity E {\n  private fix int id\n  public E(int id) { this.id = id }\n}\n",
+            "entity E {\n  private fix int id\n  public constructor(int id) { this.id = id }\n}\n",
             r"identity",
         ),
         (
-            "entity E identity(id) {\n  private int id\n  public E(int id) { this.id = id }\n}\n",
+            "entity E identity(id) {\n  private int id\n  public constructor(int id) { this.id = id }\n}\n",
             r"fix",
         ),
         (
-            "entity E identity(missing) {\n  private fix int id\n  public E(int id) { this.id = id }\n}\n",
+            "entity E identity(missing) {\n  private fix int id\n  public constructor(int id) { this.id = id }\n}\n",
             r"identity field",
         ),
         (
@@ -183,17 +183,17 @@ print(a == c)
             r"constructor",
         ),
         (
-            "class C { public C() {} }\n"
+            "class C { public constructor() {} }\n"
             "entity E inherits C identity(id) {\n"
             "  private fix int id\n"
-            "  public E(int id) { this.id = id }\n"
+            "  public constructor(int id) { this.id = id }\n"
             "}\n",
             r"only inherit another entity",
         ),
         (
             "entity E identity(id) {\n"
             "  private fix int id\n"
-            "  public E(int id) { this.id = id }\n"
+            "  public constructor(int id) { this.id = id }\n"
             "  public bool equals(E other) { return true }\n"
             "}\n",
             r"equals",
@@ -219,7 +219,7 @@ entity E identity(id) {
     private fix int id
     public string name
 
-    public E(int id, string name) {
+    public constructor(int id, string name) {
         this.id = id
         this.name = name
     }

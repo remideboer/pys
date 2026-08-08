@@ -5,7 +5,7 @@ package interface Startable {
 package class Car implements Startable {
     private string name
 
-    public Car(string name) {
+    public constructor(string name) {
         this.name = name
     }
 

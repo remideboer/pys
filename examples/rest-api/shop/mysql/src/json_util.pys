@@ -5,7 +5,7 @@ import json
 import Product, Order, OrderLine from models
 
 package class JsonUtil {
-    public JsonUtil() {
+    public constructor() {
     }
 
     public string healthOk() {

@@ -11,7 +11,7 @@ package class TemplateEngine {
     private string LB
     private string RB
 
-    public TemplateEngine(string rootDir) {
+    public constructor(string rootDir) {
         this.root = Path(rootDir).resolve()
         this.LB = chr(123)
         this.RB = chr(125)

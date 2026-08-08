@@ -4,7 +4,7 @@ import StaticFiles from static_files
 package class Router {
     private StaticFiles files
 
-    public Router(StaticFiles files) {
+    public constructor(StaticFiles files) {
         this.files = files
     }
 

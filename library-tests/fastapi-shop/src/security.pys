@@ -17,7 +17,7 @@ package class Security {
     private int ttlSec
     private ShopDatabase db
 
-    public Security(ServerConfig cfg, ShopDatabase db) {
+    public constructor(ServerConfig cfg, ShopDatabase db) {
         this.secret = cfg.jwtSecret
         this.ttlSec = cfg.jwtTtlSec
         this.db = db

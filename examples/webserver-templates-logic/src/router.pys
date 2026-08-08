@@ -4,7 +4,7 @@ import TemplateEngine from template_engine
 package class Router {
     private TemplateEngine engine
 
-    public Router(TemplateEngine engine) {
+    public constructor(TemplateEngine engine) {
         this.engine = engine
     }
 

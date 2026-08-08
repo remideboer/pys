@@ -59,8 +59,12 @@ KEYWORDS = frozenset(
         "implements",
         "inherits",
         "super",
-        "sealed",
+        "sealed",  # rejected: tip to use `closed` (ADR-028)
+        "closed",
+        "open",
+        "override",
         "abstract",
+        "constructor",
         "void",
         "trait",
         "uses",

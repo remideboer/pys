@@ -12,7 +12,7 @@ package class ProductMenu implements Menu {
     private ProductRepository products
     private StdConsole io
 
-    public ProductMenu(ProductRepository products, StdConsole io) {
+    public constructor(ProductRepository products, StdConsole io) {
         this.products = products
         this.io = io
     }
@@ -130,7 +130,7 @@ package class OrderMenu implements Menu {
     private OrderRepository orders
     private StdConsole io
 
-    public OrderMenu(OrderRepository orders, StdConsole io) {
+    public constructor(OrderRepository orders, StdConsole io) {
         this.orders = orders
         this.io = io
     }
@@ -230,7 +230,7 @@ package class OrderLineMenu implements Menu {
     private OrderRepository orders
     private StdConsole io
 
-    public OrderLineMenu(
+    public constructor(
         OrderLineRepository lines,
         ProductRepository products,
         OrderRepository orders,
@@ -359,7 +359,7 @@ package class IdentityDemoMenu implements Menu {
     private ProductRepository products
     private StdConsole io
 
-    public IdentityDemoMenu(ProductRepository products, StdConsole io) {
+    public constructor(ProductRepository products, StdConsole io) {
         this.products = products
         this.io = io
     }
@@ -447,7 +447,7 @@ package class MainMenu implements Menu {
     private Menu demos
     private StdConsole io
 
-    public MainMenu(Menu products, Menu orders, Menu lines, Menu demos, StdConsole io) {
+    public constructor(Menu products, Menu orders, Menu lines, Menu demos, StdConsole io) {
         this.products = products
         this.orders = orders
         this.lines = lines

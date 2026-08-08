@@ -472,6 +472,8 @@ class MethodDef(Node):
     is_constructor: bool = False
     is_abstract: bool = False
     return_type: str = ""
+    # ADR-028: None | "open" | "override" | "override_closed" | "closed"
+    extension: str | None = None
     name_span: Span | None = None
     decorators: list[Expr] = field(default_factory=list)
 
@@ -494,7 +496,8 @@ class ClassDef(Node):
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
     visibility: str = ""
-    sealed: bool = False
+    sealed: bool = False  # legacy alias; prefer `closed`
+    closed: bool = False
     abstract: bool = False
     name_span: Span | None = None
     decorators: list[Expr] = field(default_factory=list)

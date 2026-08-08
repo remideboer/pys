@@ -34,7 +34,7 @@ package class PokemonApp {
     private Entry newDeckEntry
     private list<string> deckNames
 
-    public PokemonApp(AppStore appStore) {
+    public constructor(AppStore appStore) {
         this.appStore = appStore
         this.catalogIds = []
         this.collectionIds = []

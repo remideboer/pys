@@ -5,7 +5,7 @@ package class ServerConfig {
     public int idleTimeoutMs
     public int writeTimeoutMs
 
-    public ServerConfig() {
+    public constructor() {
         this.listenHost = "127.0.0.1"
         this.listenPort = 8103
         this.templatesDir = "templates"

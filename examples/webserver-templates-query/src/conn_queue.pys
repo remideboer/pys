@@ -5,7 +5,7 @@ import queue
 package class ConnQueue {
     private object q
 
-    public ConnQueue() {
+    public constructor() {
         this.q = queue.Queue()
     }
 

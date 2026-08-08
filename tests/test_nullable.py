@@ -198,7 +198,7 @@ def test_nullable_entity_identity_is_rejected() -> None:
     source = (
         "entity Customer identity(customerId) {\n"
         "    private fix nullable<int> customerId\n"
-        "    public Customer(nullable<int> customerId) {\n"
+        "    public constructor(nullable<int> customerId) {\n"
         "        this.customerId = customerId\n"
         "    }\n"
         "}\n"

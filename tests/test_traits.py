@@ -70,7 +70,7 @@ trait T {
     string f() { return this.name }
 }
 class C uses T {
-    public C() {}
+    public constructor() {}
 }
 """,
             r"does not provide 'name'",
@@ -80,7 +80,7 @@ class C uses T {
 trait A { string greet() { return "a" } }
 trait B { string greet() { return "b" } }
 class C uses A, B {
-    public C() {}
+    public constructor() {}
 }
 """,
             r"both define 'greet'|disambiguate",
@@ -91,7 +91,7 @@ trait T {
     string f() { return this.missing }
 }
 class C uses T {
-    public C() {}
+    public constructor() {}
 }
 """,
             r"this\.missing|not declared in `requires`",
@@ -100,7 +100,7 @@ class C uses T {
             """
 trait T { string f() { return "x" } }
 class C implements T {
-    public C() {}
+    public constructor() {}
 }
 """,
             r"is a trait, not an interface",
@@ -129,7 +129,7 @@ trait Printable {
 }
 class Item uses Printable {
     private string name
-    public Item(string name) { this.name = name }
+    public constructor(string name) { this.name = name }
 }
 """,
         encoding="utf-8",
@@ -149,7 +149,7 @@ trait Printable {
 }
 class Klant uses Printable(name: naam) {
     private string naam
-    public Klant(string naam) { this.naam = naam }
+    public constructor(string naam) { this.naam = naam }
 }
 print(Klant("Ada").label())
 """
@@ -181,7 +181,7 @@ class Invoice uses Auditable(owner: billedTo), Discountable(price: unitPrice) {
     private string billedTo
     private string createdAt
     private float unitPrice
-    public Invoice(string billedTo, string createdAt, float unitPrice) {
+    public constructor(string billedTo, string createdAt, float unitPrice) {
         this.billedTo = billedTo
         this.createdAt = createdAt
         this.unitPrice = unitPrice
@@ -214,7 +214,7 @@ trait Printable {
 }
 class C uses Printable(label: naam) {
     private string naam
-    public C(string naam) { this.naam = naam }
+    public constructor(string naam) { this.naam = naam }
 }
 """,
             r"method offered by the trait|cannot be remapped",
@@ -227,7 +227,7 @@ trait Printable {
 }
 class C uses Printable(title: naam) {
     private string naam
-    public C(string naam) { this.naam = naam }
+    public constructor(string naam) { this.naam = naam }
 }
 """,
             r"no requirement named 'title'|did you mean",
@@ -240,7 +240,7 @@ trait Printable {
 }
 class C uses Printable(name: titel) {
     private string naam
-    public C(string naam) { this.naam = naam }
+    public constructor(string naam) { this.naam = naam }
 }
 """,
             r"does not provide 'titel'.*mapped from Printable's 'name'",

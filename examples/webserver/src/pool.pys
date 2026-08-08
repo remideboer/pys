@@ -13,7 +13,7 @@ package class DownstreamPool {
     private int maxWaitMs
     private int acquires
 
-    public DownstreamPool(int capacity, int maxQueue, int maxWaitMs) {
+    public constructor(int capacity, int maxQueue, int maxWaitMs) {
         this.lock = threading.Lock()
         this.busy = 0
         this.waiting = 0

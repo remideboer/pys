@@ -6,7 +6,7 @@ package class Attack {
     private string damage
     private list<string> cost
 
-    public Attack(string name, string damage, list<string> cost) {
+    public constructor(string name, string damage, list<string> cost) {
         this.name = name
         this.damage = damage
         this.cost = cost
@@ -46,7 +46,7 @@ package class Card {
     private list<Attack> attacks
     private string image
 
-    public Card(string id, string name, string category, int hp, list<string> types, string rarity, string setName, string stage, int retreat, list<Attack> attacks, string image) {
+    public constructor(string id, string name, string category, int hp, list<string> types, string rarity, string setName, string stage, int retreat, list<Attack> attacks, string image) {
         this.id = id
         this.name = name
         this.category = category
@@ -146,7 +146,7 @@ package class OwnedEntry {
     private string cardId
     private int quantity
 
-    public OwnedEntry(string cardId, int quantity) {
+    public constructor(string cardId, int quantity) {
         this.cardId = cardId
         this.quantity = quantity
     }
@@ -178,7 +178,7 @@ package class Deck {
     private string name
     private list<OwnedEntry> entries
 
-    public Deck(string name, list<OwnedEntry> entries) {
+    public constructor(string name, list<OwnedEntry> entries) {
         this.name = name
         this.entries = entries
     }
@@ -238,7 +238,7 @@ package class TypeStat {
     private int count
     private int hpSum
 
-    public TypeStat(string typeName) {
+    public constructor(string typeName) {
         this.typeName = typeName
         this.count = 0
         this.hpSum = 0
@@ -278,7 +278,7 @@ package class CardCatalog {
     private list<Card> cards
     private dict<string, Card> byId
 
-    public CardCatalog(list<Card> cards) {
+    public constructor(list<Card> cards) {
         this.cards = cards
         this.byId = dict()
         loop (Card c in cards) {
@@ -305,7 +305,7 @@ package class CardCatalog {
 package class CollectionBook {
     private list<OwnedEntry> owned
 
-    public CollectionBook(list<OwnedEntry> owned) {
+    public constructor(list<OwnedEntry> owned) {
         this.owned = owned
     }
 
@@ -406,7 +406,7 @@ package class CollectionBook {
 package class DeckBook {
     private list<Deck> decks
 
-    public DeckBook(list<Deck> decks) {
+    public constructor(list<Deck> decks) {
         this.decks = decks
     }
 

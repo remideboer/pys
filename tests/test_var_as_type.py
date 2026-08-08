@@ -65,7 +65,7 @@ def test_var_field_rejected() -> None:
 package class C {
     private var q
 
-    public C() {
+    public constructor() {
     }
 }
 """
@@ -90,7 +90,7 @@ def test_object_return_and_field_ok() -> None:
 package class C {
     private object q
 
-    public C() {
+    public constructor() {
         this.q = 1
     }
 

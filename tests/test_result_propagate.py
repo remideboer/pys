@@ -248,7 +248,7 @@ def test_result_method_signature_supports_propagation() -> None:
     analyze(
         parse_program(
             "class Reader {\n"
-            "    public Reader() {\n"
+            "    public constructor() {\n"
             "        print(1)\n"
             "    }\n"
             "    public result<int, string> read() {\n"

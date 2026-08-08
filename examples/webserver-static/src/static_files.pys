@@ -6,7 +6,7 @@ package class StaticFiles {
     private Path root
     private string rootPrefix
 
-    public StaticFiles(string rootDir) {
+    public constructor(string rootDir) {
         this.root = Path(rootDir).resolve()
         this.rootPrefix = str(this.root)
     }

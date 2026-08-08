@@ -27,7 +27,7 @@ package class PokemonQtApp inherits QMainWindow {
     private list<string> deckNames
 
 
-    public PokemonQtApp(AppStore appStore) {
+    public constructor(AppStore appStore) {
         this.appStore = appStore
         this.catalogIds = []
         this.collectionIds = []

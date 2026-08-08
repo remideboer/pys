@@ -8,7 +8,7 @@ package class Bulkheads {
     private DownstreamPool poolA
     private DownstreamPool poolB
 
-    public Bulkheads(ServerConfig cfg) {
+    public constructor(ServerConfig cfg) {
         this.poolA = DownstreamPool(cfg.poolSize, cfg.poolMaxQueue, cfg.poolMaxWaitMs)
         this.poolB = DownstreamPool(cfg.poolBSize, cfg.poolBMaxQueue, cfg.poolBMaxWaitMs)
     }

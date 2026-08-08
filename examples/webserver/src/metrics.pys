@@ -12,7 +12,7 @@ package class Metrics {
     private int inboundFull
     private int active
 
-    public Metrics() {
+    public constructor() {
         this.lock = threading.Lock()
         this.requests = 0
         this.errors = 0

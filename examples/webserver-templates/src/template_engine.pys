@@ -6,7 +6,7 @@ from pathlib import Path
 package class TemplateEngine {
     private Path root
 
-    public TemplateEngine(string rootDir) {
+    public constructor(string rootDir) {
         this.root = Path(rootDir).resolve()
     }
 

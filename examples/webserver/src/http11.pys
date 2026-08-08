@@ -10,7 +10,7 @@ package class HttpRequest {
     public string correlationId
     public bool keepAlive
 
-    public HttpRequest(string method, string path, string body, string correlationId, bool keepAlive) {
+    public constructor(string method, string path, string body, string correlationId, bool keepAlive) {
         this.method = method
         this.path = path
         this.body = body
@@ -25,7 +25,7 @@ package class HttpResponse {
     public string body
     public string rejectReason
 
-    public HttpResponse(int status, string reason, string body, string rejectReason) {
+    public constructor(int status, string reason, string body, string rejectReason) {
         this.status = status
         this.reason = reason
         this.body = body
@@ -51,7 +51,7 @@ package class HttpResponse {
 }
 
 package class Http11 {
-    public Http11() {
+    public constructor() {
     }
 
     public HttpRequest parse(string raw) {

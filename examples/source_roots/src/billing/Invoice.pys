@@ -15,7 +15,7 @@ package class Invoice {
     private int cents
     public string customer
 
-    public Invoice(string customer, int cents) {
+    public constructor(string customer, int cents) {
         this.customer = customer
         this.cents = cents
     }

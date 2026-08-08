@@ -12,7 +12,7 @@ import ProductRepository, OrderRepository, OrderLineRepository from repositories
 package class ColumnTable {
     private Treeview tree
 
-    public ColumnTable(
+    public constructor(
         Frame parent,
         list columns,
         list headings,
@@ -72,7 +72,7 @@ package class ProductPanel {
     private Entry nameEntry
     private Entry priceEntry
 
-    public ProductPanel(Frame parent, ProductRepository products) {
+    public constructor(Frame parent, ProductRepository products) {
         this.products = products
 
         Frame left = ttk.Frame(parent)
@@ -241,7 +241,7 @@ package class OrderPanel {
     private Entry customerEntry
     private Entry statusEntry
 
-    public OrderPanel(Frame parent, OrderRepository orders) {
+    public constructor(Frame parent, OrderRepository orders) {
         this.orders = orders
 
         Frame left = ttk.Frame(parent)
@@ -380,7 +380,7 @@ package class OrderLinePanel {
     private Entry productIdEntry
     private Entry qtyEntry
 
-    public OrderLinePanel(
+    public constructor(
         Frame parent,
         OrderLineRepository lines,
         ProductRepository products,
@@ -585,7 +585,7 @@ package class IdentityDemoPanel {
     private Text output
     private Entry productIdEntry
 
-    public IdentityDemoPanel(Frame parent, ProductRepository products) {
+    public constructor(Frame parent, ProductRepository products) {
         this.products = products
 
         Frame top = ttk.Frame(parent)
@@ -685,7 +685,7 @@ package class ShopGuiApp {
     private OrderLinePanel linePanel
     private IdentityDemoPanel identityPanel
 
-    public ShopGuiApp(
+    public constructor(
         ProductRepository products,
         OrderRepository orders,
         OrderLineRepository lines

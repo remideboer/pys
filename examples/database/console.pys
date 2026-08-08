@@ -8,7 +8,7 @@ package interface Console {
 }
 
 package class StdConsole implements Console {
-    public StdConsole() {
+    public constructor() {
     }
 
     public string readLine(string prompt) {

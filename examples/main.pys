@@ -230,7 +230,7 @@ class Pair<T, U> {
     private T first
     private U second
 
-    public Pair(T first, U second) {
+    public constructor(T first, U second) {
         this.first = first
         this.second = second
     }
@@ -251,7 +251,7 @@ pair.getSecond().move()
 class Box<T> {
     private T[] items
 
-    public Box() {
+    public constructor() {
         this.items = []
     }
 

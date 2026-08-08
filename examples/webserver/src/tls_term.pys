@@ -7,7 +7,7 @@ package class TlsTerminator {
     public object context
     public bool enabled
 
-    public TlsTerminator(bool enabled, string certFile, string keyFile) {
+    public constructor(bool enabled, string certFile, string keyFile) {
         this.enabled = enabled
         this.context = null
         if (enabled) {

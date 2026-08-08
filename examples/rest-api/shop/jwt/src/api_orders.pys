@@ -9,7 +9,7 @@ package class OrderApi {
     private ShopStore store
     private JsonUtil json
 
-    public OrderApi(ShopStore store, JsonUtil json) {
+    public constructor(ShopStore store, JsonUtil json) {
         this.store = store
         this.json = json
     }

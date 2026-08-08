@@ -10,7 +10,7 @@ package class ServerConfig {
     public string dbPassword
     public string dbName
 
-    public ServerConfig() {
+    public constructor() {
         this.listenHost = "127.0.0.1"
         this.listenPort = 8091
         this.idleTimeoutMs = 2000

@@ -11,7 +11,7 @@ package class ShopStore {
     public DefaultOrderLineRepository lines
     public ShopDatabase db
 
-    public ShopStore(string host, string user, string password, string database) {
+    public constructor(string host, string user, string password, string database) {
         this.db = ShopDatabase(host, user, password, database)
         MysqlProductMapper productMapper = MysqlProductMapper(this.db)
         MysqlOrderMapper orderMapper = MysqlOrderMapper(this.db)

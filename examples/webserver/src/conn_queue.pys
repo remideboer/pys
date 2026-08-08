@@ -9,7 +9,7 @@ package class ConnQueue {
     private int maxPending
 
     # maxPending <= 0 → unbounded (e2e / default teaching servers).
-    public ConnQueue(int maxPending) {
+    public constructor(int maxPending) {
         this.maxPending = maxPending
         if (maxPending > 0) {
             this.q = queue.Queue(maxPending)

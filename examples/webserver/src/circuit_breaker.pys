@@ -16,7 +16,7 @@ package class CircuitBreaker {
     private int openMs
     private int halfOpenSuccess
 
-    public CircuitBreaker(ServerConfig cfg) {
+    public constructor(ServerConfig cfg) {
         this.lock = threading.Lock()
         this.state = 0
         this.failures = 0

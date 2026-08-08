@@ -24,7 +24,7 @@ package class AppContext {
     public MockDownstream mockA
     public MockDownstream mockB
 
-    public AppContext(ServerConfig cfg) {
+    public constructor(ServerConfig cfg) {
         this.cfg = cfg
         this.breaker = CircuitBreaker(cfg)
         this.pool = DownstreamPool(cfg.poolSize, cfg.poolMaxQueue, cfg.poolMaxWaitMs)
@@ -40,7 +40,7 @@ package class AppContext {
 package class Router {
     private AppContext ctx
 
-    public Router(AppContext ctx) {
+    public constructor(AppContext ctx) {
         this.ctx = ctx
     }
 

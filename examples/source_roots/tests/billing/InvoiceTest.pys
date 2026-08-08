@@ -11,7 +11,7 @@ print(formatInvoice(inv))  # Ada: 150 cents
 
 # --- What tests must NOT do ---
 # private Invoice.cents is not visible here. If a test "needs" a private field,
-# that is a signal to improve the public API (query method, result object),
+# that is a signal to improve the public constructor(query method, result object),
 # not a gap for a language bypass — see
 # requirements/package_resolution_testing_philosophy.md §§1–2.
 #

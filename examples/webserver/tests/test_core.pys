@@ -16,7 +16,7 @@ package class FakeDownstream {
     private int failRemaining
     private int calls
 
-    public FakeDownstream(int failRemaining) {
+    public constructor(int failRemaining) {
         this.failRemaining = failRemaining
         this.calls = 0
     }
