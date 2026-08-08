@@ -38,10 +38,12 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Command
+    class Command {
+        <<interface>>
+    }
     class WriteCommand
     class Editor
-    Command <|-- WriteCommand
+    Command <|.. WriteCommand
     WriteCommand --> Editor
 ```
 

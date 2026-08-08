@@ -1,28 +1,23 @@
 # Strategy — swap algorithms behind a common interface.
 
-abstract class PricingStrategy {
-    public constructor() {
-    }
-
-    public abstract int price(int cents)
+interface PricingStrategy {
+    int price(int cents)
 }
 
-class RegularPrice inherits PricingStrategy {
+class RegularPrice implements PricingStrategy {
     public constructor() {
-        super()
     }
 
-    public override int price(int cents) {
+    public int price(int cents) {
         return cents
     }
 }
 
-class MemberPrice inherits PricingStrategy {
+class MemberPrice implements PricingStrategy {
     public constructor() {
-        super()
     }
 
-    public override int price(int cents) {
+    public int price(int cents) {
         return cents - 100
     }
 }

@@ -37,13 +37,15 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Notifier
+    class Notifier {
+        <<interface>>
+    }
     class EmailNotifier
     class NotifierDecorator
     class SmsDecorator
     class SlackDecorator
-    Notifier <|-- EmailNotifier
-    Notifier <|-- NotifierDecorator
+    Notifier <|.. EmailNotifier
+    Notifier <|.. NotifierDecorator
     NotifierDecorator --> Notifier
     NotifierDecorator <|-- SmsDecorator
     NotifierDecorator <|-- SlackDecorator

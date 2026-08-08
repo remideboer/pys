@@ -1,11 +1,8 @@
 # State — behavior changes with internal state objects.
 
-abstract class PlayerState {
-    public constructor() {
-    }
-
-    public abstract string play(Player player)
-    public abstract string pause(Player player)
+interface PlayerState {
+    string play(Player player)
+    string pause(Player player)
 }
 
 class Player {
@@ -28,31 +25,29 @@ class Player {
     }
 }
 
-class StoppedState inherits PlayerState {
+class StoppedState implements PlayerState {
     public constructor() {
-        super()
     }
 
-    public override string play(Player player) {
+    public string play(Player player) {
         player.changeState(PlayingState())
         return "start"
     }
 
-    public override string pause(Player player) {
+    public string pause(Player player) {
         return "already-stopped"
     }
 }
 
-class PlayingState inherits PlayerState {
+class PlayingState implements PlayerState {
     public constructor() {
-        super()
     }
 
-    public override string play(Player player) {
+    public string play(Player player) {
         return "already-playing"
     }
 
-    public override string pause(Player player) {
+    public string pause(Player player) {
         player.changeState(StoppedState())
         return "paused"
     }

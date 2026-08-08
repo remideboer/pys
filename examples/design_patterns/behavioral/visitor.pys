@@ -1,26 +1,19 @@
 # Visitor — add operations over an object structure without changing elements.
 
-abstract class ShapeVisitor {
-    public constructor() {
-    }
-
-    public abstract string visitDot(Dot dot)
-    public abstract string visitCircle(Circle circle)
+interface ShapeVisitor {
+    string visitDot(Dot dot)
+    string visitCircle(Circle circle)
 }
 
-abstract class Shape {
-    public constructor() {
-    }
-
-    public abstract string accept(ShapeVisitor visitor)
+interface Shape {
+    string accept(ShapeVisitor visitor)
 }
 
-class Dot inherits Shape {
+class Dot implements Shape {
     private int x
     private int y
 
     public constructor(int x, int y) {
-        super()
         this.x = x
         this.y = y
     }
@@ -33,16 +26,15 @@ class Dot inherits Shape {
         return this.y
     }
 
-    public override string accept(ShapeVisitor visitor) {
+    public string accept(ShapeVisitor visitor) {
         return visitor.visitDot(this)
     }
 }
 
-class Circle inherits Shape {
+class Circle implements Shape {
     private int radius
 
     public constructor(int radius) {
-        super()
         this.radius = radius
     }
 
@@ -50,21 +42,20 @@ class Circle inherits Shape {
         return this.radius
     }
 
-    public override string accept(ShapeVisitor visitor) {
+    public string accept(ShapeVisitor visitor) {
         return visitor.visitCircle(this)
     }
 }
 
-class DescribeVisitor inherits ShapeVisitor {
+class DescribeVisitor implements ShapeVisitor {
     public constructor() {
-        super()
     }
 
-    public override string visitDot(Dot dot) {
+    public string visitDot(Dot dot) {
         return "dot@" + str(dot.getX()) + "," + str(dot.getY())
     }
 
-    public override string visitCircle(Circle circle) {
+    public string visitCircle(Circle circle) {
         return "circle r=" + str(circle.getRadius())
     }
 }

@@ -37,13 +37,15 @@ classDiagram
 classDiagram
     class Shape
     class Circle
-    class Renderer
+    class Renderer {
+        <<interface>>
+    }
     class VectorRenderer
     class RasterRenderer
     Shape --> Renderer
     Shape <|-- Circle
-    Renderer <|-- VectorRenderer
-    Renderer <|-- RasterRenderer
+    Renderer <|.. VectorRenderer
+    Renderer <|.. RasterRenderer
 ```
 
 ## Real-world use cases

@@ -1,11 +1,8 @@
 # Command — encapsulate a request as an object (execute / undo).
 
-abstract class Command {
-    public constructor() {
-    }
-
-    public abstract void execute()
-    public abstract void undo()
+interface Command {
+    execute()
+    undo()
 }
 
 class Editor {
@@ -32,21 +29,20 @@ class Editor {
     }
 }
 
-class WriteCommand inherits Command {
+class WriteCommand implements Command {
     private Editor editor
     private string chunk
 
     public constructor(Editor editor, string chunk) {
-        super()
         this.editor = editor
         this.chunk = chunk
     }
 
-    public override void execute() {
+    public execute() {
         this.editor.write(this.chunk)
     }
 
-    public override void undo() {
+    public undo() {
         this.editor.erase(len(this.chunk))
     }
 }

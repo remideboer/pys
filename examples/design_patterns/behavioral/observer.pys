@@ -1,10 +1,7 @@
 # Observer — subject notifies registered observers of state changes.
 
-abstract class Observer {
-    public constructor() {
-    }
-
-    public abstract void update(string event)
+interface Observer {
+    update(string event)
 }
 
 class NewsAgency {
@@ -32,17 +29,16 @@ class NewsAgency {
     }
 }
 
-class Channel inherits Observer {
+class Channel implements Observer {
     private string name
     private string last
 
     public constructor(string name) {
-        super()
         this.name = name
         this.last = ""
     }
 
-    public override void update(string event) {
+    public update(string event) {
         this.last = this.name + ":" + event
     }
 

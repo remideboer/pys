@@ -1,11 +1,8 @@
 # Mediator — colleagues talk through a hub instead of each other.
 
-abstract class ChatMediator {
-    public constructor() {
-    }
-
-    public abstract void send(string fromUser, string message)
-    public abstract void register(User user)
+interface ChatMediator {
+    send(string fromUser, string message)
+    register(User user)
 }
 
 class User {
@@ -37,19 +34,18 @@ class User {
     }
 }
 
-class ChatRoom inherits ChatMediator {
+class ChatRoom implements ChatMediator {
     private list<User> users
 
     public constructor() {
-        super()
         this.users = []
     }
 
-    public override void register(User user) {
+    public register(User user) {
         this.users.append(user)
     }
 
-    public override void send(string fromUser, string message) {
+    public send(string fromUser, string message) {
         loop (User u in this.users) {
             if (u.getName() != fromUser) {
                 u.receive(fromUser, message)

@@ -1,32 +1,27 @@
 # Composite — treat individual objects and compositions uniformly.
 
-abstract class Graphic {
-    public constructor() {
-    }
-
-    public abstract string draw()
+interface Graphic {
+    string draw()
 }
 
-class Dot inherits Graphic {
+class Dot implements Graphic {
     private int x
     private int y
 
     public constructor(int x, int y) {
-        super()
         this.x = x
         this.y = y
     }
 
-    public override string draw() {
+    public string draw() {
         return "dot(" + str(this.x) + "," + str(this.y) + ")"
     }
 }
 
-class CompoundGraphic inherits Graphic {
+class CompoundGraphic implements Graphic {
     private list<Graphic> children
 
     public constructor() {
-        super()
         this.children = []
     }
 
@@ -34,7 +29,7 @@ class CompoundGraphic inherits Graphic {
         this.children.append(child)
     }
 
-    public override string draw() {
+    public string draw() {
         string out = "group["
         int i = 0
         loop (Graphic g in this.children) {

@@ -1,37 +1,32 @@
 # Proxy — placeholder that controls access to a real subject.
 
-abstract class Image {
-    public constructor() {
-    }
-
-    public abstract string display()
+interface Image {
+    string display()
 }
 
-class RealImage inherits Image {
+class RealImage implements Image {
     private string path
 
     public constructor(string path) {
-        super()
         this.path = path
         print("load:" + path)
     }
 
-    public override string display() {
+    public string display() {
         return "show:" + this.path
     }
 }
 
-class ImageProxy inherits Image {
+class ImageProxy implements Image {
     private string path
     private nullable<RealImage> real
 
     public constructor(string path) {
-        super()
         this.path = path
         this.real = null
     }
 
-    public override string display() {
+    public string display() {
         if (this.real == null) {
             this.real = RealImage(this.path)
         }

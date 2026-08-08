@@ -1,29 +1,25 @@
 # Iterator — sequential access without exposing representation.
 # Language `loop (x in xs)` is sugar for the same idea on built-in collections.
 
-abstract class IntIterator {
-    public constructor() {
-    }
-
-    public abstract bool hasNext()
-    public abstract int next()
+interface IntIterator {
+    bool hasNext()
+    int next()
 }
 
-class ArrayIntIterator inherits IntIterator {
+class ArrayIntIterator implements IntIterator {
     private list<int> data
     private int index
 
     public constructor(list<int> data) {
-        super()
         this.data = data
         this.index = 0
     }
 
-    public override bool hasNext() {
+    public bool hasNext() {
         return this.index < len(this.data)
     }
 
-    public override int next() {
+    public int next() {
         int value = this.data[this.index]
         this.index = this.index + 1
         return value

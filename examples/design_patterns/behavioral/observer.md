@@ -36,9 +36,11 @@ classDiagram
 ```mermaid
 classDiagram
     class NewsAgency
-    class Observer
+    class Observer {
+        <<interface>>
+    }
     class Channel
-    Observer <|-- Channel
+    Observer <|.. Channel
     NewsAgency o-- Observer
 ```
 

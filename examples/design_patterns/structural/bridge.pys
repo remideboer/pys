@@ -1,28 +1,23 @@
 # Bridge — decouple abstraction (shape) from implementor (renderer).
 
-abstract class Renderer {
-    public constructor() {
-    }
-
-    public abstract string drawCircle(int radius)
+interface Renderer {
+    string drawCircle(int radius)
 }
 
-class VectorRenderer inherits Renderer {
+class VectorRenderer implements Renderer {
     public constructor() {
-        super()
     }
 
-    public override string drawCircle(int radius) {
+    public string drawCircle(int radius) {
         return "vector-circle r=" + str(radius)
     }
 }
 
-class RasterRenderer inherits Renderer {
+class RasterRenderer implements Renderer {
     public constructor() {
-        super()
     }
 
-    public override string drawCircle(int radius) {
+    public string drawCircle(int radius) {
         return "raster-circle r=" + str(radius)
     }
 }

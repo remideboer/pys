@@ -35,11 +35,13 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Image
+    class Image {
+        <<interface>>
+    }
     class RealImage
     class ImageProxy
-    Image <|-- RealImage
-    Image <|-- ImageProxy
+    Image <|.. RealImage
+    Image <|.. ImageProxy
     ImageProxy --> RealImage
 ```
 

@@ -32,11 +32,13 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Graphic
+    class Graphic {
+        <<interface>>
+    }
     class Dot
     class CompoundGraphic
-    Graphic <|-- Dot
-    Graphic <|-- CompoundGraphic
+    Graphic <|.. Dot
+    Graphic <|.. CompoundGraphic
     CompoundGraphic o-- Graphic
 ```
 

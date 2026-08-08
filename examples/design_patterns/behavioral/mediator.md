@@ -37,10 +37,12 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class ChatMediator
+    class ChatMediator {
+        <<interface>>
+    }
     class ChatRoom
     class User
-    ChatMediator <|-- ChatRoom
+    ChatMediator <|.. ChatRoom
     User --> ChatMediator
     ChatRoom o-- User
 ```

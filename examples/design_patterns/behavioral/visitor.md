@@ -41,14 +41,18 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class ShapeVisitor
+    class ShapeVisitor {
+        <<interface>>
+    }
     class DescribeVisitor
-    class Shape
+    class Shape {
+        <<interface>>
+    }
     class Dot
     class Circle
-    ShapeVisitor <|-- DescribeVisitor
-    Shape <|-- Dot
-    Shape <|-- Circle
+    ShapeVisitor <|.. DescribeVisitor
+    Shape <|.. Dot
+    Shape <|.. Circle
     Dot ..> ShapeVisitor : accept
     Circle ..> ShapeVisitor : accept
 ```

@@ -39,10 +39,12 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class IntIterator
+    class IntIterator {
+        <<interface>>
+    }
     class ArrayIntIterator
     class IntCollection
-    IntIterator <|-- ArrayIntIterator
+    IntIterator <|.. ArrayIntIterator
     IntCollection --> ArrayIntIterator
     ArrayIntIterator --> IntCollection
 ```

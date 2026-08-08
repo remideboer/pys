@@ -32,13 +32,16 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class Expr
+    class Expr {
+        <<interface>>
+        +eval()
+    }
     class Number
     class Add
     class Mul
-    Expr <|-- Number
-    Expr <|-- Add
-    Expr <|-- Mul
+    Expr <|.. Number
+    Expr <|.. Add
+    Expr <|.. Mul
     Add o-- Expr
     Mul o-- Expr
 ```

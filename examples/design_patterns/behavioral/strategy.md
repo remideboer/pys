@@ -35,12 +35,14 @@ classDiagram
 ```mermaid
 classDiagram
     class Cart
-    class PricingStrategy
+    class PricingStrategy {
+        <<interface>>
+    }
     class RegularPrice
     class MemberPrice
     Cart --> PricingStrategy
-    PricingStrategy <|-- RegularPrice
-    PricingStrategy <|-- MemberPrice
+    PricingStrategy <|.. RegularPrice
+    PricingStrategy <|.. MemberPrice
 ```
 
 ## Real-world use cases

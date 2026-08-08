@@ -34,12 +34,14 @@ classDiagram
 ```mermaid
 classDiagram
     class Player
-    class PlayerState
+    class PlayerState {
+        <<interface>>
+    }
     class StoppedState
     class PlayingState
     Player --> PlayerState
-    PlayerState <|-- StoppedState
-    PlayerState <|-- PlayingState
+    PlayerState <|.. StoppedState
+    PlayerState <|.. PlayingState
 ```
 
 ## Real-world use cases
