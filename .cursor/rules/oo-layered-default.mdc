@@ -9,6 +9,28 @@ Unless the user **explicitly** asks for procedural style (scripts, linear demos,
 “keep it flat”, teaching a pre-OO chapter), prefer **full object orientation**,
 **SOLID**, and **modular layered** structure.
 
+## Self-critique (required)
+
+Before calling teaching examples, pattern demos, or app code “done”, **critically
+review your own design** against PYS philosophy — do not rubber-stamp the first
+shape that compiles.
+
+PYS favors: explicit types and constructs, honest structure in source, program
+to interfaces / compose over inherit when that is the fit, and teaching demos
+that match the **named** pattern or concept — not a near-miss stand-in.
+
+| Check | Fail if… |
+| --- | --- |
+| Construct fit | `abstract class` with only abstract methods and an empty ctor → should be `interface` |
+| Pattern honesty | Demo labeled as pattern X but only shows a different language mechanism (e.g. `await` fan-in called “Barrier”) |
+| Language honesty | Missing primitive (lock, CV, TLS, …) → document out-of-language; do **not** invent a fake or `import threading` workaround |
+| SOLID / roles | One type owns unrelated jobs; clients depend on concretes when an interface is enough |
+| Types | `object` / untyped bags where a named domain type exists |
+
+When review finds a mismatch: **fix it in the same change set** (or move the
+item to an explicit “out of language / deferred” note). Do not leave weak OO
+or misleading pattern demos because they already pass transpile.
+
 ## Default shape
 
 | Layer | Owns |
@@ -34,8 +56,12 @@ design back into procedural `object`/`dict` glue without that signal.
 ❌ function dict productRow(object row, object db) { … }
 ❌ public object cursor() { return this.conn.cursor() }
 ❌ hasattr(existing, "status_code") to mix entity and HTTP error
+❌ abstract class Socket { public constructor() {} public abstract void go() }  // bare interface
+❌ barrier.pys that only awaits three tasks and calls that the Barrier pattern
 
 ✅ Product productFromRow(tuple row, ShopDatabase db)
 ✅ public MySQLCursor cursor()
 ✅ nullable<Product> load…; JSONResponse only at the HTTP error edge
+✅ interface MethodRequest { execute() }
+✅ Out-of-language table when Barrier needs arrive-and-wait PYS does not have
 ```
