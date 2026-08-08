@@ -78,5 +78,6 @@ Each record then uses:
 | [CER-041](CER-041-webserver-templates-query.md) | Template HTTP with query-string binding | Examples |
 | [CER-042](CER-042-var-declaration-only.md) | Ban type-position `var`; formalize `object` | Language |
 | [CER-043](CER-043-library-decorators.md) | Library decorator application | Language |
+| [CER-044](CER-044-fastapi-shop-library-test.md) | FastAPI shop library-test (field research) | Library / examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

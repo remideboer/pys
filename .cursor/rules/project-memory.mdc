@@ -72,10 +72,13 @@ touching the matching CER/ADR is incomplete.
 - Interface methods (CER-010): no access modifier on signatures (always
   public/abstract); reject `public`/`private`/… inside `interface` bodies;
   implementing class methods still need `public`
-- Library decorators (ADR-026 / CER-043): `@expr` may apply to `function` /
-  `class` / methods for **library** callables (e.g. FastAPI). Do **not** use `@`
-  to invent missing PYS constructs (`@alias`, Lombok-style `@Data`) — prefer a
-  real keyword or form. Emit-only `@abstractmethod` stays an implementation detail.
+- Library decorators (ADR-026 / CER-043 / CER-044): `@expr` may apply to
+  `function` / `class` / methods for **library** callables (e.g. FastAPI). Do
+  **not** use `@` to invent missing PYS constructs (`@alias`, Lombok-style
+  `@Data`) — prefer a real keyword or form. Emit-only `@abstractmethod` stays
+  an implementation detail. Emit keeps PascalCase param annotations
+  (`Request`) for framework DI; FastAPI field research lives under
+  `library-tests/fastapi-shop/` (not `examples/`).
 - Int literals / bitwise (ADR-007 / CER-006): `0b`/`0x`/`_`; width aliases are
   unsigned ranges; `and`/`or`/`not` stay logical; rotate deferred
   ([F-001](../../docs/TODO-FUTURE.md#f-001-bitwise-rotate) in `docs/TODO-FUTURE.md`)
