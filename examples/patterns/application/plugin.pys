@@ -1,0 +1,52 @@
+# Plugin — host registers extensions by interface and runs them.
+
+interface ReportPlugin {
+    string name()
+    string render()
+}
+
+class SalesPlugin implements ReportPlugin {
+    public string name() {
+        return "sales"
+    }
+
+    public string render() {
+        return "sales:42"
+    }
+}
+
+class InventoryPlugin implements ReportPlugin {
+    public string name() {
+        return "inventory"
+    }
+
+    public string render() {
+        return "inventory:7"
+    }
+}
+
+class ReportHost {
+    private list<ReportPlugin> plugins
+
+    public constructor() {
+        list<ReportPlugin> empty = []
+        this.plugins = empty
+    }
+
+    public void register(ReportPlugin plugin) {
+        list<ReportPlugin> xs = this.plugins
+        xs.append(plugin)
+        this.plugins = xs
+    }
+
+    public void runAll() {
+        loop (ReportPlugin p in this.plugins) {
+            print(p.name() + "=" + p.render())
+        }
+    }
+}
+
+ReportHost host = ReportHost()
+host.register(SalesPlugin())
+host.register(InventoryPlugin())
+host.runAll()

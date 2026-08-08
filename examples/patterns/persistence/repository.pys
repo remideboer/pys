@@ -1,0 +1,64 @@
+# Repository — collection-like port for aggregate persistence (not a bare dict).
+# Living system: examples/rest-api/shop/*/src/repositories.pys
+
+entity Order identity(orderId) {
+    private fix string orderId
+    public string status
+
+    public constructor(string orderId, string status) {
+        this.orderId = orderId
+        this.status = status
+    }
+
+    public string id() {
+        return this.orderId
+    }
+}
+
+interface OrderRepository {
+    save(Order order)
+    nullable<Order> findById(string orderId)
+}
+
+class InMemoryOrderRepository implements OrderRepository {
+    private dict<string, Order> rows
+
+    public constructor() {
+        dict<string, Order> empty = dict()
+        this.rows = empty
+    }
+
+    public save(Order order) {
+        dict<string, Order> m = this.rows
+        m[order.id()] = order
+        this.rows = m
+    }
+
+    public nullable<Order> findById(string orderId) {
+        dict<string, Order> m = this.rows
+        if (orderId in m) {
+            return m[orderId]
+        }
+        return null
+    }
+}
+
+class PlaceOrderService {
+    private OrderRepository orders
+
+    public constructor(OrderRepository orders) {
+        this.orders = orders
+    }
+
+    public string place(string orderId) {
+        this.orders.save(Order(orderId, "new"))
+        return "placed:" + orderId
+    }
+}
+
+InMemoryOrderRepository repo = InMemoryOrderRepository()
+PlaceOrderService place = PlaceOrderService(repo)
+print(place.place("O-1"))  # placed:O-1
+nullable<Order> found = repo.findById("O-1")
+print(found != null)  # true
+print(repo.findById("missing") == null)  # true

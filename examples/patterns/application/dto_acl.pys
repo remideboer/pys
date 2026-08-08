@@ -1,0 +1,63 @@
+# DTO + Anti-Corruption Layer — translate foreign shapes at the boundary.
+# Domain stays clean; legacy / JSON bags never leak inward.
+
+# Domain value (immutable).
+data Money {
+    int cents
+    string currency
+}
+
+entity CatalogItem identity(sku) {
+    private fix string sku
+    public string title
+    public Money price
+
+    public constructor(string sku, string title, Money price) {
+        this.sku = sku
+        this.title = title
+        this.price = price
+    }
+
+    public string id() {
+        return this.sku
+    }
+}
+
+# Outgoing DTO for an API / UI edge (flat strings — easy to encode).
+data CatalogItemDto {
+    string sku
+    string title
+    string priceLabel
+}
+
+# ACL: map a *foreign* legacy row (weird keys) into the domain.
+class LegacyCatalogAcl {
+    public CatalogItem toDomain(dict<string, string> legacyRow) {
+        string sku = legacyRow["product_code"]
+        string title = legacyRow["descr"]
+        int cents = int(legacyRow["price_cents"])
+        string currency = legacyRow["curr"]
+        return CatalogItem(sku, title, Money(cents, currency))
+    }
+
+    public CatalogItemDto toDto(CatalogItem item) {
+        Money p = item.price
+        string label = str(p.cents) + " " + p.currency
+        return CatalogItemDto(item.id(), item.title, label)
+    }
+}
+
+LegacyCatalogAcl acl = LegacyCatalogAcl()
+dict<string, string> foreign = dict()
+foreign["product_code"] = "BG-001"
+foreign["descr"] = "Catan"
+foreign["price_cents"] = "4599"
+foreign["curr"] = "EUR"
+
+CatalogItem domain = acl.toDomain(foreign)
+CatalogItemDto dto = acl.toDto(domain)
+print(domain.id())  # BG-001
+print(dto.priceLabel)  # 4599 EUR
+
+# Non-golden: missing key would be a caller bug — ACL expects a complete foreign row.
+print(dto.title)  # Catan

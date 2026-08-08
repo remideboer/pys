@@ -1,0 +1,44 @@
+# Retry — repeat a failing operation up to N times (teaching: no sleep/network).
+
+interface UnstableOp {
+    string run()
+}
+
+class FlakyOp implements UnstableOp {
+    private int failsLeft
+
+    public constructor(int failsLeft) {
+        this.failsLeft = failsLeft
+    }
+
+    public string run() {
+        if (this.failsLeft > 0) {
+            this.failsLeft = this.failsLeft - 1
+            return "ERR"
+        }
+        return "OK"
+    }
+}
+
+class Retrier {
+    private int maxAttempts
+
+    public constructor(int maxAttempts) {
+        this.maxAttempts = maxAttempts
+    }
+
+    public string execute(UnstableOp op) {
+        int attempt = 0
+        loop (attempt < this.maxAttempts) {
+            attempt = attempt + 1
+            string result = op.run()
+            if (result != "ERR") {
+                return "ok:" + str(attempt)
+            }
+        }
+        return "failed:" + str(this.maxAttempts)
+    }
+}
+
+print(Retrier(3).execute(FlakyOp(2)))  # ok:3
+print(Retrier(2).execute(FlakyOp(5)))  # failed:2

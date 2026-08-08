@@ -1,0 +1,45 @@
+# Identity Map — same id resolves to the same instance within a session.
+
+class Order {
+    public string orderId
+    public string status
+
+    public constructor(string orderId, string status) {
+        this.orderId = orderId
+        this.status = status
+    }
+}
+
+class IdentityMapSession {
+    private dict<string, Order> identityMap
+    private dict<string, string> db
+
+    public constructor() {
+        dict<string, Order> emptyMap = dict()
+        this.identityMap = emptyMap
+        dict<string, string> rows = dict()
+        rows["O-1"] = "new"
+        this.db = rows
+    }
+
+    public Order get(string orderId) {
+        dict<string, Order> map = this.identityMap
+        if (orderId in map) {
+            print("map-hit:" + orderId)
+            return map[orderId]
+        }
+        dict<string, string> rows = this.db
+        string status = rows[orderId]
+        Order created = Order(orderId, status)
+        map[orderId] = created
+        this.identityMap = map
+        print("map-load:" + orderId)
+        return created
+    }
+}
+
+IdentityMapSession session = IdentityMapSession()
+Order a = session.get("O-1")
+Order b = session.get("O-1")
+a.status = "shipped"
+print(b.status)  # shipped — same instance

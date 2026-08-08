@@ -1,0 +1,71 @@
+# Transactional outbox — domain change + outbox row together; relay drains later.
+
+data OutboxMessage {
+    string id
+    string topic
+    string body
+}
+
+class ShopUnit {
+    private dict<string, string> orders
+    private list<OutboxMessage> outbox
+    private int nextMsg
+
+    public constructor() {
+        dict<string, string> empty = dict()
+        this.orders = empty
+        list<OutboxMessage> msgs = []
+        this.outbox = msgs
+        this.nextMsg = 1
+    }
+
+    public void placeOrder(string orderId) {
+        dict<string, string> m = this.orders
+        m[orderId] = "new"
+        this.orders = m
+        list<OutboxMessage> box = this.outbox
+        string mid = "m" + str(this.nextMsg)
+        this.nextMsg = this.nextMsg + 1
+        box.append(OutboxMessage(mid, "orders", orderId))
+        this.outbox = box
+    }
+
+    public list<OutboxMessage> pending() {
+        return this.outbox
+    }
+
+    public void markPublished(string messageId) {
+        list<OutboxMessage> kept = []
+        loop (OutboxMessage msg in this.outbox) {
+            if (msg.id != messageId) {
+                kept.append(msg)
+            }
+        }
+        this.outbox = kept
+    }
+
+    public bool hasOrder(string orderId) {
+        dict<string, string> m = this.orders
+        return orderId in m
+    }
+}
+
+class OutboxRelay {
+    public int drain(ShopUnit unit) {
+        int n = 0
+        list<OutboxMessage> pending = unit.pending()
+        loop (OutboxMessage msg in pending) {
+            print("publish:" + msg.topic + ":" + msg.body)
+            unit.markPublished(msg.id)
+            n = n + 1
+        }
+        return n
+    }
+}
+
+ShopUnit shop = ShopUnit()
+shop.placeOrder("O-7")
+print(shop.hasOrder("O-7"))  # true
+OutboxRelay relay = OutboxRelay()
+print(relay.drain(shop))  # 1 (and prints publish line)
+print(len(shop.pending()) == 0)  # true

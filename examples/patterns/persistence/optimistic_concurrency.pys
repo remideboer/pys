@@ -1,0 +1,64 @@
+# Optimistic concurrency — version field; stale write rejected.
+
+entity Document identity(docId) {
+    private fix string docId
+    public string body
+    public int version
+
+    public constructor(string docId, string body, int version) {
+        this.docId = docId
+        this.body = body
+        this.version = version
+    }
+
+    public string id() {
+        return this.docId
+    }
+}
+
+class DocumentStore {
+    private dict<string, Document> rows
+
+    public constructor() {
+        dict<string, Document> empty = dict()
+        this.rows = empty
+    }
+
+    public void insert(Document doc) {
+        dict<string, Document> m = this.rows
+        m[doc.id()] = doc
+        this.rows = m
+    }
+
+    public nullable<Document> get(string docId) {
+        dict<string, Document> m = this.rows
+        if (docId in m) {
+            return m[docId]
+        }
+        return null
+    }
+
+    public bool updateIfVersion(string docId, string newBody, int expectedVersion) {
+        dict<string, Document> m = this.rows
+        if (!(docId in m)) {
+            return false
+        }
+        Document cur = m[docId]
+        if (cur.version != expectedVersion) {
+            return false
+        }
+        m[docId] = Document(docId, newBody, expectedVersion + 1)
+        this.rows = m
+        return true
+    }
+}
+
+DocumentStore store = DocumentStore()
+store.insert(Document("D-1", "v0", 0))
+print(store.updateIfVersion("D-1", "v1", 0))  # true
+print(store.updateIfVersion("D-1", "stale", 0))  # false
+nullable<Document> d = store.get("D-1")
+if (d != null) {
+    print(d.body)  # v1
+    print(d.version)  # 1
+}

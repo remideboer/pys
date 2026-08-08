@@ -1,0 +1,37 @@
+# Bulkhead — isolation quota (teaching slots). Not OS thread pools.
+
+class Bulkhead {
+    private int maxSlots
+    private int used
+
+    public constructor(int maxSlots) {
+        this.maxSlots = maxSlots
+        this.used = 0
+    }
+
+    public bool tryEnter() {
+        if (this.used >= this.maxSlots) {
+            return false
+        }
+        this.used = this.used + 1
+        return true
+    }
+
+    public void leave() {
+        if (this.used > 0) {
+            this.used = this.used - 1
+        }
+    }
+
+    public int inUse() {
+        return this.used
+    }
+}
+
+Bulkhead wall = Bulkhead(2)
+print(wall.tryEnter())  # true
+print(wall.tryEnter())  # true
+print(wall.tryEnter())  # false — quota full
+wall.leave()
+print(wall.tryEnter())  # true
+print(wall.inUse())  # 2

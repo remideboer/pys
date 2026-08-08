@@ -1,0 +1,114 @@
+# Test doubles — Dummy, Stub, Fake, Spy, Mock (one port, five stand-ins).
+
+interface Mailer {
+    void send(string to, string body)
+}
+
+# Dummy: satisfies the type; must never be used.
+class DummyMailer implements Mailer {
+    public void send(string to, string body) {
+        print("dummy-should-not-run")
+    }
+}
+
+# Stub: returns / accepts canned behavior (here: no-op success).
+class StubMailer implements Mailer {
+    public void send(string to, string body) {
+        # intentionally empty
+    }
+}
+
+# Fake: working simplified implementation.
+class FakeMailer implements Mailer {
+    private list<string> outbox
+
+    public constructor() {
+        list<string> empty = []
+        this.outbox = empty
+    }
+
+    public void send(string to, string body) {
+        list<string> xs = this.outbox
+        xs.append(to + ":" + body)
+        this.outbox = xs
+    }
+
+    public int size() {
+        return len(this.outbox)
+    }
+}
+
+# Spy: records calls for later assertions.
+class SpyMailer implements Mailer {
+    private int calls
+
+    public constructor() {
+        this.calls = 0
+    }
+
+    public void send(string to, string body) {
+        this.calls = this.calls + 1
+    }
+
+    public int callCount() {
+        return this.calls
+    }
+}
+
+# Mock: verifies an expectation (fails loudly if unmet).
+class MockMailer implements Mailer {
+    private string expectedTo
+    private bool called
+
+    public constructor(string expectedTo) {
+        this.expectedTo = expectedTo
+        this.called = false
+    }
+
+    public void send(string to, string body) {
+        this.called = true
+        if (to != this.expectedTo) {
+            print("mock-fail:expected " + this.expectedTo + " got " + to)
+        }
+    }
+
+    public void verify() {
+        if (!this.called) {
+            print("mock-fail:never called")
+        } else {
+            print("mock-ok")
+        }
+    }
+}
+
+class Notifier {
+    private Mailer mailer
+
+    public constructor(Mailer mailer) {
+        this.mailer = mailer
+    }
+
+    public void welcome(string user) {
+        this.mailer.send(user, "welcome")
+    }
+}
+
+# Stub: exercise Notifier without side effects.
+Notifier(StubMailer()).welcome("ada")
+print("stub-ok")
+
+# Fake: inspect simplified outbox.
+FakeMailer fake = FakeMailer()
+Notifier(fake).welcome("ada")
+print(fake.size())  # 1
+
+# Spy: count interactions.
+SpyMailer spy = SpyMailer()
+Notifier(spy).welcome("ada")
+Notifier(spy).welcome("bob")
+print(spy.callCount())  # 2
+
+# Mock: verify collaborator expectation.
+MockMailer mock = MockMailer("ada")
+Notifier(mock).welcome("ada")
+mock.verify()  # mock-ok

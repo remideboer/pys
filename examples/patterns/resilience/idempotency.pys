@@ -1,0 +1,26 @@
+# Idempotency — same key yields same result; duplicate command ignored.
+
+class IdempotentCreateOrder {
+    private dict<string, string> results
+
+    public constructor() {
+        dict<string, string> empty = dict()
+        this.results = empty
+    }
+
+    public string execute(string idempotencyKey, string orderId) {
+        dict<string, string> m = this.results
+        if (idempotencyKey in m) {
+            return "replay:" + m[idempotencyKey]
+        }
+        string body = "created:" + orderId
+        m[idempotencyKey] = body
+        this.results = m
+        return body
+    }
+}
+
+IdempotentCreateOrder cmd = IdempotentCreateOrder()
+print(cmd.execute("key-1", "O-1"))  # created:O-1
+print(cmd.execute("key-1", "O-1"))  # replay:created:O-1
+print(cmd.execute("key-2", "O-2"))  # created:O-2

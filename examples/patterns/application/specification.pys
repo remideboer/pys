@@ -1,0 +1,48 @@
+# Specification — composable business rules over a candidate.
+
+data Candidate {
+    string name
+    int age
+    bool active
+}
+
+interface Specification {
+    bool isSatisfiedBy(Candidate c)
+}
+
+class MinAgeSpec implements Specification {
+    private int minAge
+
+    public constructor(int minAge) {
+        this.minAge = minAge
+    }
+
+    public bool isSatisfiedBy(Candidate c) {
+        return c.age >= this.minAge
+    }
+}
+
+class ActiveSpec implements Specification {
+    public bool isSatisfiedBy(Candidate c) {
+        return c.active
+    }
+}
+
+class AndSpec implements Specification {
+    private Specification left
+    private Specification right
+
+    public constructor(Specification left, Specification right) {
+        this.left = left
+        this.right = right
+    }
+
+    public bool isSatisfiedBy(Candidate c) {
+        return this.left.isSatisfiedBy(c) && this.right.isSatisfiedBy(c)
+    }
+}
+
+Specification adultActive = AndSpec(MinAgeSpec(18), ActiveSpec())
+print(adultActive.isSatisfiedBy(Candidate("Ada", 36, true)))  # true
+print(adultActive.isSatisfiedBy(Candidate("Kid", 12, true)))  # false
+print(adultActive.isSatisfiedBy(Candidate("Bob", 40, false)))  # false

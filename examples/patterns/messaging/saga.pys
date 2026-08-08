@@ -1,0 +1,93 @@
+# Saga — multi-step workflow with compensating action on failure.
+
+interface Step {
+    string name()
+    bool run()
+    void compensate()
+}
+
+class ReserveStock implements Step {
+    private bool done
+
+    public constructor() {
+        this.done = false
+    }
+
+    public string name() {
+        return "reserve"
+    }
+
+    public bool run() {
+        this.done = true
+        print("reserve:ok")
+        return true
+    }
+
+    public void compensate() {
+        if (this.done) {
+            print("reserve:undo")
+            this.done = false
+        }
+    }
+}
+
+class ChargeCard implements Step {
+    private bool shouldFail
+    private bool done
+
+    public constructor(bool shouldFail) {
+        this.shouldFail = shouldFail
+        this.done = false
+    }
+
+    public string name() {
+        return "charge"
+    }
+
+    public bool run() {
+        if (this.shouldFail) {
+            print("charge:fail")
+            return false
+        }
+        this.done = true
+        print("charge:ok")
+        return true
+    }
+
+    public void compensate() {
+        if (this.done) {
+            print("charge:undo")
+            this.done = false
+        }
+    }
+}
+
+class OrderSaga {
+    public string execute(list<Step> steps) {
+        list<Step> done = []
+        loop (Step s in steps) {
+            if (!s.run()) {
+                # compensate in reverse
+                int i = len(done) - 1
+                loop (i >= 0) {
+                    done[i].compensate()
+                    i = i - 1
+                }
+                return "aborted:" + s.name()
+            }
+            done.append(s)
+        }
+        return "completed"
+    }
+}
+
+OrderSaga saga = OrderSaga()
+list<Step> happy = []
+happy.append(ReserveStock())
+happy.append(ChargeCard(false))
+print(saga.execute(happy))  # completed
+
+list<Step> sad = []
+sad.append(ReserveStock())
+sad.append(ChargeCard(true))
+print(saga.execute(sad))  # aborted:charge

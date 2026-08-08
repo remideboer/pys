@@ -1,0 +1,58 @@
+# Data Mapper vs Active Record — side-by-side teaching contrast.
+
+# --- Active Record: row object knows how to save itself ---
+class ArProduct {
+    public string sku
+    public string title
+    private dict<string, string> db
+
+    public constructor(string sku, string title, dict<string, string> db) {
+        this.sku = sku
+        this.title = title
+        this.db = db
+    }
+
+    public void save() {
+        dict<string, string> m = this.db
+        m[this.sku] = this.title
+        this.db = m
+    }
+}
+
+# --- Data Mapper: persistence stays outside the domain object ---
+data DmProduct {
+    string sku
+    string title
+}
+
+class ProductMapper {
+    private dict<string, string> db
+
+    public constructor(dict<string, string> db) {
+        this.db = db
+    }
+
+    public void insert(DmProduct product) {
+        dict<string, string> m = this.db
+        m[product.sku] = product.title
+        this.db = m
+    }
+
+    public nullable<string> titleOf(string sku) {
+        dict<string, string> m = this.db
+        if (sku in m) {
+            return m[sku]
+        }
+        return null
+    }
+}
+
+dict<string, string> arDb = dict()
+ArProduct ar = ArProduct("AR-1", "Catan", arDb)
+ar.save()
+print(arDb["AR-1"])  # Catan
+
+dict<string, string> dmDb = dict()
+ProductMapper mapper = ProductMapper(dmDb)
+mapper.insert(DmProduct("DM-1", "Ticket"))
+print(mapper.titleOf("DM-1"))  # Ticket

@@ -1,0 +1,33 @@
+# Rate limiting — fixed-window counter (teaching form).
+
+class FixedWindowRateLimiter {
+    private int limit
+    private int windowId
+    private int count
+
+    public constructor(int limit) {
+        this.limit = limit
+        this.windowId = 0
+        this.count = 0
+    }
+
+    public void advanceWindow() {
+        this.windowId = this.windowId + 1
+        this.count = 0
+    }
+
+    public bool allow() {
+        if (this.count >= this.limit) {
+            return false
+        }
+        this.count = this.count + 1
+        return true
+    }
+}
+
+FixedWindowRateLimiter lim = FixedWindowRateLimiter(2)
+print(lim.allow())  # true
+print(lim.allow())  # true
+print(lim.allow())  # false
+lim.advanceWindow()
+print(lim.allow())  # true

@@ -67,9 +67,33 @@ event-driven, publish–subscribe, CQRS, and a teaching reactive push-stream
 
 **Evidence:** `tests/test_patterns.py` folder counts; companion `.md` files.
 
+### 8. App-shape patterns + book Session 10 (tiers 1–7)
+
+**Post-behavior:** Curriculum fill under `examples/patterns/`:
+
+- `persistence/` — repository, unit_of_work, cache_aside, optimistic_concurrency,
+  data_mapper_vs_active_record, identity_map
+- `application/` — service_layer, dto_acl, pipeline_middleware, specification,
+  null_object, plugin
+- `authorization/` — rbac, acl, abac
+- `resilience/` — retry, timeout, circuit_breaker, bulkhead, fallback,
+  rate_limiting, idempotency
+- `messaging/` — + event_sourcing, outbox, saga, request_reply
+- `testing/` — test_doubles, object_mother, test_data_builder
+- `general/` — + service_locator_antipattern (contrast)
+
+Companion `.md` files include **Prompting an AI**. Beginner book **Session 10**
+(`chapter_9_session_patterns.md` … `chapter_9_8_prompting_ai.md`) after Tests,
+before C#/Java transfer. Gate folder counts in `tests/test_patterns.py`.
+
+**Evidence:** `python -m pytest -q tests/test_patterns.py`;
+`python book/build_html.py`.
+
 ## Trade-offs
 
 - One file per runnable pattern for teaching density.
-- Book chapters for patterns deferred.
+- Book Session 10 teaches system-vocabulary patterns (after Tests); GoF stays
+  under `examples/patterns/design/`.
 - Stubs only where language/platform blocks honesty (OAuth2, mTLS).
+- Resilience/integration demos are synchronous in-process fakes (no sockets).
 - Concurrency stays inside ADR-013 / CONCURRENCY.md.

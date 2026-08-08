@@ -1,0 +1,46 @@
+# Fallback — when primary fails, use a secondary path.
+
+interface PriceSource {
+    nullable<string> priceOf(string sku)
+}
+
+class PrimaryCatalog implements PriceSource {
+    public nullable<string> priceOf(string sku) {
+        if (sku == "BG-001") {
+            return "45.99"
+        }
+        return null
+    }
+}
+
+class CacheFallback implements PriceSource {
+    public nullable<string> priceOf(string sku) {
+        return "stale:" + sku
+    }
+}
+
+class PriceFacade {
+    private PriceSource primary
+    private PriceSource fallback
+
+    public constructor(PriceSource primary, PriceSource fallback) {
+        this.primary = primary
+        this.fallback = fallback
+    }
+
+    public string lookup(string sku) {
+        nullable<string> hit = this.primary.priceOf(sku)
+        if (hit != null) {
+            return hit
+        }
+        nullable<string> fb = this.fallback.priceOf(sku)
+        if (fb != null) {
+            return fb
+        }
+        return "missing"
+    }
+}
+
+PriceFacade prices = PriceFacade(PrimaryCatalog(), CacheFallback())
+print(prices.lookup("BG-001"))  # 45.99
+print(prices.lookup("BG-999"))  # stale:BG-999

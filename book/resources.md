@@ -10,6 +10,8 @@
 - Casing decision: [`docs/pys-casing-convention-advisory.md`](../docs/pys-casing-convention-advisory.md)
 - JIT tutorials: [`tutorials/`](../tutorials/)
 - Runnable examples: [`examples/`](../examples/)
+- Patterns corpus (GoF + architecture / resilience / …): [`examples/patterns/`](../examples/patterns/)
+- Book session: [Patterns you name to build](chapter_9_session_patterns.md)
 
 ## How the computer runs your code
 

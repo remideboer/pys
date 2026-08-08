@@ -1,0 +1,42 @@
+# ACL — access control list: resource id → allowed principals.
+
+class ResourceAcl {
+    private dict<string, list<string>> entries
+
+    public constructor() {
+        dict<string, list<string>> empty = dict()
+        this.entries = empty
+    }
+
+    public void grant(string resourceId, string principal) {
+        dict<string, list<string>> m = this.entries
+        list<string> xs = []
+        if (resourceId in m) {
+            xs = m[resourceId]
+        }
+        xs.append(principal)
+        m[resourceId] = xs
+        this.entries = m
+    }
+
+    public bool canAccess(string resourceId, string principal) {
+        dict<string, list<string>> m = this.entries
+        if (!(resourceId in m)) {
+            return false
+        }
+        list<string> xs = m[resourceId]
+        loop (string p in xs) {
+            if (p == principal) {
+                return true
+            }
+        }
+        return false
+    }
+}
+
+ResourceAcl acl = ResourceAcl()
+acl.grant("order:O-1", "ada")
+acl.grant("order:O-1", "bob")
+print(acl.canAccess("order:O-1", "ada"))  # true
+print(acl.canAccess("order:O-1", "eve"))  # false
+print(acl.canAccess("order:O-2", "ada"))  # false

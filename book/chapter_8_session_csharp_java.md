@@ -12,4 +12,4 @@ sheet.
 
 ---
 
-[Previous: Packages and source roots](chapter_7_3_packages_source_roots.md) · [Next: Types and declarations](chapter_8_1_types_declarations.md)
+[Previous: Prompting an AI](chapter_9_8_prompting_ai.md) · [Next: Types and declarations](chapter_8_1_types_declarations.md)

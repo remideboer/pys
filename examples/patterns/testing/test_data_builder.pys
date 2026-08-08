@@ -1,0 +1,53 @@
+# Test Data Builder — fluent setters for one-off fixture variations.
+
+entity Order identity(orderId) {
+    private fix string orderId
+    public string customer
+    public int totalCents
+
+    public constructor(string orderId, string customer, int totalCents) {
+        this.orderId = orderId
+        this.customer = customer
+        this.totalCents = totalCents
+    }
+
+    public string id() {
+        return this.orderId
+    }
+}
+
+class OrderBuilder {
+    private string orderId
+    private string customer
+    private int totalCents
+
+    public constructor() {
+        this.orderId = "O-1"
+        this.customer = "ada"
+        this.totalCents = 0
+    }
+
+    public OrderBuilder withId(string orderId) {
+        this.orderId = orderId
+        return this
+    }
+
+    public OrderBuilder withCustomer(string customer) {
+        this.customer = customer
+        return this
+    }
+
+    public OrderBuilder withTotalCents(int totalCents) {
+        this.totalCents = totalCents
+        return this
+    }
+
+    public Order build() {
+        return Order(this.orderId, this.customer, this.totalCents)
+    }
+}
+
+Order o = OrderBuilder().withCustomer("bob").withTotalCents(1200).build()
+print(o.customer)  # bob
+print(o.totalCents)  # 1200
+print(OrderBuilder().build().customer)  # ada

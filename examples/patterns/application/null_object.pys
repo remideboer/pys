@@ -1,0 +1,33 @@
+# Null Object — provide a do-nothing implementation instead of null checks.
+
+interface Notifier {
+    void notify(string message)
+}
+
+class ConsoleNotifier implements Notifier {
+    public void notify(string message) {
+        print("notify:" + message)
+    }
+}
+
+class NullNotifier implements Notifier {
+    public void notify(string message) {
+        # intentionally empty
+    }
+}
+
+class Checkout {
+    private Notifier notifier
+
+    public constructor(Notifier notifier) {
+        this.notifier = notifier
+    }
+
+    public void complete(string orderId) {
+        this.notifier.notify("done:" + orderId)
+        print("checkout:" + orderId)
+    }
+}
+
+Checkout(ConsoleNotifier()).complete("O-1")
+Checkout(NullNotifier()).complete("O-2")

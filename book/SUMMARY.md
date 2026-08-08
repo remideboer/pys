@@ -90,23 +90,35 @@
   - [9.2. Better PYS with TDD](chapter_7_2_tdd.md)
   - [9.3. Packages and source roots](chapter_7_3_packages_source_roots.md)
 
-# 10. Session 7 — From PYS to C# and Java
+# 10. Session — Patterns you name to build (and to ask an AI)
+
+- [Session — Patterns you name to build](chapter_9_session_patterns.md)
+  - [10.1. App shape](chapter_9_1_app_shape.md)
+  - [10.2. Authorization](chapter_9_2_authorization.md)
+  - [10.3. Resilience](chapter_9_3_resilience.md)
+  - [10.4. Integration](chapter_9_4_integration.md)
+  - [10.5. Test doubles](chapter_9_5_test_doubles.md)
+  - [10.6. Composable rules](chapter_9_6_composable_rules.md)
+  - [10.7. Data paths](chapter_9_7_data_paths.md)
+  - [10.8. Prompting an AI](chapter_9_8_prompting_ai.md)
+
+# 11. Session 7 — From PYS to C# and Java
 
 - [Session 7 — From PYS to C# and Java](chapter_8_session_csharp_java.md)
-  - [10.1. Types and declarations](chapter_8_1_types_declarations.md)
-  - [10.2. Classes, interfaces, and members](chapter_8_2_classes_interfaces.md)
-  - [10.3. Control flow and collections](chapter_8_3_control_flow_collections.md)
-  - [10.4. What has no direct twin](chapter_8_4_no_direct_twin.md)
+  - [11.1. Types and declarations](chapter_8_1_types_declarations.md)
+  - [11.2. Classes, interfaces, and members](chapter_8_2_classes_interfaces.md)
+  - [11.3. Control flow and collections](chapter_8_3_control_flow_collections.md)
+  - [11.4. What has no direct twin](chapter_8_4_no_direct_twin.md)
 
-# 11. Under the hood (optional)
+# 12. Under the hood (optional)
 
-- [11.1. From source file to running process](under_the_hood_entrypoint.md)
-- [11.2. Processes, calls, and memory](under_the_hood_memory.md)
+- [12.1. From source file to running process](under_the_hood_entrypoint.md)
+- [12.2. Processes, calls, and memory](under_the_hood_memory.md)
 
-# 12. Exercises
+# 13. Exercises
 
 - [Exercise: Contact book](exercises_contact_book.md)
 
-# 13. Resources
+# 14. Resources
 
 - [Resources](resources.md)

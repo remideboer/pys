@@ -59,6 +59,15 @@ classDiagram
 - Desktop apps: a composition root wires UI to domain services.
 - Unit tests: inject fakes/mocks without changing production classes.
 
+## Prompting an AI
+
+**Say this:** “Inject `Logger` into `OrderService` via the constructor. Do not
+look up a global logger.”
+
+**Not this:** “Use a Service Locator / `Services.getLogger()`.”
+
+**Confusion to avoid:** Dependency Injection ≠ Service Locator.
+
 ## Run
 
 ```text

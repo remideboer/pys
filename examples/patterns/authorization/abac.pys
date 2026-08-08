@@ -1,0 +1,29 @@
+# ABAC — attribute-based: decide from attributes, not only roles.
+
+data AccessRequest {
+    string username
+    string action
+    string resourceOwner
+    bool isAdmin
+}
+
+interface Policy {
+    bool permits(AccessRequest req)
+}
+
+class OwnerOrAdminPolicy implements Policy {
+    public bool permits(AccessRequest req) {
+        if (req.isAdmin) {
+            return true
+        }
+        if (req.action == "order:read" || req.action == "order:write") {
+            return req.username == req.resourceOwner
+        }
+        return false
+    }
+}
+
+OwnerOrAdminPolicy policy = OwnerOrAdminPolicy()
+print(policy.permits(AccessRequest("ada", "order:write", "ada", false)))  # true
+print(policy.permits(AccessRequest("bob", "order:write", "ada", false)))  # false
+print(policy.permits(AccessRequest("bob", "order:write", "ada", true)))  # true

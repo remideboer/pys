@@ -1,0 +1,34 @@
+# Object Mother — named factory methods for valid test fixtures.
+
+entity Order identity(orderId) {
+    private fix string orderId
+    public string customer
+    public int totalCents
+
+    public constructor(string orderId, string customer, int totalCents) {
+        this.orderId = orderId
+        this.customer = customer
+        this.totalCents = totalCents
+    }
+
+    public string id() {
+        return this.orderId
+    }
+}
+
+class OrderMother {
+    public Order paidCatan() {
+        return Order("O-catan", "ada", 4599)
+    }
+
+    public Order emptyDraft() {
+        return Order("O-draft", "bob", 0)
+    }
+}
+
+OrderMother mother = OrderMother()
+Order a = mother.paidCatan()
+Order b = mother.emptyDraft()
+print(a.customer)  # ada
+print(a.totalCents)  # 4599
+print(b.totalCents)  # 0

@@ -1,0 +1,73 @@
+# Service layer — application use-case orchestrates ports; no HTTP / UI here.
+
+entity Order identity(orderId) {
+    private fix string orderId
+    public string status
+
+    public constructor(string orderId, string status) {
+        this.orderId = orderId
+        this.status = status
+    }
+
+    public string id() {
+        return this.orderId
+    }
+}
+
+interface OrderRepository {
+    save(Order order)
+    nullable<Order> findById(string orderId)
+}
+
+interface Clock {
+    string now()
+}
+
+class InMemoryOrderRepository implements OrderRepository {
+    private dict<string, Order> rows
+
+    public constructor() {
+        dict<string, Order> empty = dict()
+        this.rows = empty
+    }
+
+    public save(Order order) {
+        dict<string, Order> m = this.rows
+        m[order.id()] = order
+        this.rows = m
+    }
+
+    public nullable<Order> findById(string orderId) {
+        dict<string, Order> m = this.rows
+        if (orderId in m) {
+            return m[orderId]
+        }
+        return null
+    }
+}
+
+class FixedClock implements Clock {
+    public string now() {
+        return "2026-08-08T12:00:00Z"
+    }
+}
+
+# Application service: one use-case method, depends on ports only.
+class CreateOrderService {
+    private OrderRepository orders
+    private Clock clock
+
+    public constructor(OrderRepository orders, Clock clock) {
+        this.orders = orders
+        this.clock = clock
+    }
+
+    public string execute(string orderId) {
+        string stamped = orderId + "@" + this.clock.now()
+        this.orders.save(Order(orderId, "new"))
+        return "created:" + stamped
+    }
+}
+
+CreateOrderService svc = CreateOrderService(InMemoryOrderRepository(), FixedClock())
+print(svc.execute("O-9"))  # created:O-9@2026-08-08T12:00:00Z

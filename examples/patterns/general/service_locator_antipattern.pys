@@ -1,0 +1,59 @@
+# Service Locator — ANTI-PATTERN contrast. Prefer Dependency Injection.
+# Shows hidden global lookup vs constructor injection.
+
+interface Logger {
+    info(string message)
+}
+
+class ConsoleLogger implements Logger {
+    public info(string message) {
+        print("[log] " + message)
+    }
+}
+
+# Anti-pattern: ambient registry (service locator).
+class ServiceRegistry {
+    private nullable<Logger> loggerSlot
+
+    public constructor() {
+        this.loggerSlot = null
+    }
+
+    public void registerLogger(Logger logger) {
+        this.loggerSlot = logger
+    }
+
+    public Logger getLogger() {
+        nullable<Logger> slot = this.loggerSlot
+        if (slot == null) {
+            return ConsoleLogger()
+        }
+        return slot
+    }
+}
+
+# Module-level ambient context — the smell.
+ServiceRegistry SERVICES = ServiceRegistry()
+
+class HiddenOrderService {
+    public void place(string sku) {
+        SERVICES.getLogger().info("hidden:" + sku)
+    }
+}
+
+class InjectedOrderService {
+    private Logger logger
+
+    public constructor(Logger logger) {
+        this.logger = logger
+    }
+
+    public void place(string sku) {
+        this.logger.info("injected:" + sku)
+    }
+}
+
+SERVICES.registerLogger(ConsoleLogger())
+HiddenOrderService().place("BG-001")
+InjectedOrderService(ConsoleLogger()).place("BG-002")
+print("prefer-di")

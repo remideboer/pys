@@ -1,0 +1,56 @@
+# Timeout — logical step budget (teaching). Not OS threads or wall-clock timers.
+
+interface Work {
+    # Returns steps consumed; result in side channel via status string.
+    int doChunk()
+    string status()
+}
+
+class SlowWork implements Work {
+    private int remaining
+    private string state
+
+    public constructor(int remaining) {
+        this.remaining = remaining
+        this.state = "running"
+    }
+
+    public int doChunk() {
+        if (this.remaining <= 0) {
+            this.state = "done"
+            return 0
+        }
+        this.remaining = this.remaining - 1
+        if (this.remaining == 0) {
+            this.state = "done"
+        }
+        return 1
+    }
+
+    public string status() {
+        return this.state
+    }
+}
+
+class BudgetRunner {
+    private int budget
+
+    public constructor(int budget) {
+        this.budget = budget
+    }
+
+    public string run(Work work) {
+        int used = 0
+        loop (work.status() != "done") {
+            int step = work.doChunk()
+            used = used + step
+            if (used > this.budget) {
+                return "timeout:" + str(used)
+            }
+        }
+        return "ok:" + str(used)
+    }
+}
+
+print(BudgetRunner(5).run(SlowWork(3)))  # ok:3
+print(BudgetRunner(2).run(SlowWork(5)))  # timeout:3

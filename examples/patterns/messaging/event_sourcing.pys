@@ -1,0 +1,55 @@
+# Event sourcing — append-only events; fold to current state.
+# Related: messaging/cqrs.pys (separate read/write models).
+
+data OrderEvent {
+    string kind
+    string orderId
+    string detail
+}
+
+class EventStore {
+    private list<OrderEvent> events
+
+    public constructor() {
+        list<OrderEvent> empty = []
+        this.events = empty
+    }
+
+    public void append(OrderEvent event) {
+        list<OrderEvent> xs = this.events
+        xs.append(event)
+        this.events = xs
+    }
+
+    public list<OrderEvent> all() {
+        return this.events
+    }
+}
+
+class OrderProjection {
+    public nullable<string> statusOf(list<OrderEvent> events, string orderId) {
+        nullable<string> status = null
+        loop (OrderEvent e in events) {
+            if (e.orderId != orderId) {
+                continue
+            }
+            if (e.kind == "Created") {
+                status = "new"
+            }
+            if (e.kind == "Shipped") {
+                status = "shipped"
+            }
+            if (e.kind == "Cancelled") {
+                status = "cancelled"
+            }
+        }
+        return status
+    }
+}
+
+EventStore store = EventStore()
+store.append(OrderEvent("Created", "O-1", "ada"))
+store.append(OrderEvent("Shipped", "O-1", "post"))
+OrderProjection proj = OrderProjection()
+print(proj.statusOf(store.all(), "O-1"))  # shipped
+print(proj.statusOf(store.all(), "O-2") == null)  # true

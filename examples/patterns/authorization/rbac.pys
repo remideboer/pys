@@ -1,0 +1,49 @@
+# RBAC — roles grant permissions; authorize by role membership.
+
+interface Authorizer {
+    bool allows(string username, string permission)
+}
+
+class RbacAuthorizer implements Authorizer {
+    private dict<string, string> userRole
+    private dict<string, list<string>> rolePermissions
+
+    public constructor() {
+        dict<string, string> users = dict()
+        users["ada"] = "admin"
+        users["bob"] = "clerk"
+        this.userRole = users
+
+        dict<string, list<string>> roles = dict()
+        list<string> adminPerms = ["order:read", "order:write", "user:admin"]
+        list<string> clerkPerms = ["order:read"]
+        roles["admin"] = adminPerms
+        roles["clerk"] = clerkPerms
+        this.rolePermissions = roles
+    }
+
+    public bool allows(string username, string permission) {
+        dict<string, string> ur = this.userRole
+        if (!(username in ur)) {
+            return false
+        }
+        string role = ur[username]
+        dict<string, list<string>> rp = this.rolePermissions
+        if (!(role in rp)) {
+            return false
+        }
+        list<string> perms = rp[role]
+        loop (string p in perms) {
+            if (p == permission) {
+                return true
+            }
+        }
+        return false
+    }
+}
+
+RbacAuthorizer authz = RbacAuthorizer()
+print(authz.allows("ada", "order:write"))  # true
+print(authz.allows("bob", "order:write"))  # false
+print(authz.allows("bob", "order:read"))  # true
+print(authz.allows("eve", "order:read"))  # false

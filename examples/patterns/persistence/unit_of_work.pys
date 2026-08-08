@@ -1,0 +1,99 @@
+# Unit of Work — track changes in a business transaction; commit or rollback together.
+
+entity Product identity(productId) {
+    private fix string productId
+    public string name
+    public int stock
+
+    public constructor(string productId, string name, int stock) {
+        this.productId = productId
+        this.name = name
+        this.stock = stock
+    }
+
+    public string id() {
+        return this.productId
+    }
+}
+
+interface ProductStore {
+    save(Product product)
+    nullable<Product> get(string productId)
+}
+
+class MemoryProductStore implements ProductStore {
+    private dict<string, Product> rows
+
+    public constructor() {
+        dict<string, Product> empty = dict()
+        this.rows = empty
+    }
+
+    public save(Product product) {
+        dict<string, Product> m = this.rows
+        m[product.id()] = product
+        this.rows = m
+    }
+
+    public nullable<Product> get(string productId) {
+        dict<string, Product> m = this.rows
+        if (productId in m) {
+            return m[productId]
+        }
+        return null
+    }
+}
+
+class UnitOfWork {
+    private ProductStore store
+    private list<Product> pending
+    private bool open
+
+    public constructor(ProductStore store) {
+        this.store = store
+        list<Product> empty = []
+        this.pending = empty
+        this.open = true
+    }
+
+    public void registerNew(Product product) {
+        if (!this.open) {
+            return
+        }
+        list<Product> xs = this.pending
+        xs.append(product)
+        this.pending = xs
+    }
+
+    public void commit() {
+        if (!this.open) {
+            return
+        }
+        loop (Product p in this.pending) {
+            this.store.save(p)
+        }
+        list<Product> empty = []
+        this.pending = empty
+        this.open = false
+    }
+
+    public void rollback() {
+        list<Product> empty = []
+        this.pending = empty
+        this.open = false
+    }
+}
+
+MemoryProductStore store = MemoryProductStore()
+
+# Happy path: register then commit.
+UnitOfWork uow = UnitOfWork(store)
+uow.registerNew(Product("P-1", "Catan", 5))
+uow.commit()
+print(store.get("P-1") != null)  # true
+
+# Failure path: rollback discards pending work.
+UnitOfWork bad = UnitOfWork(store)
+bad.registerNew(Product("P-2", "Ticket", 2))
+bad.rollback()
+print(store.get("P-2") == null)  # true

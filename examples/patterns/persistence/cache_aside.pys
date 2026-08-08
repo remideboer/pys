@@ -1,0 +1,54 @@
+# Cache-aside — read cache; on miss load store, then populate cache.
+
+interface ProductStore {
+    nullable<string> load(string sku)
+}
+
+class MemoryStore implements ProductStore {
+    private dict<string, string> rows
+
+    public constructor() {
+        dict<string, string> m = dict()
+        m["BG-001"] = "Catan"
+        this.rows = m
+    }
+
+    public nullable<string> load(string sku) {
+        dict<string, string> m = this.rows
+        if (sku in m) {
+            return m[sku]
+        }
+        return null
+    }
+}
+
+class CacheAside {
+    private ProductStore store
+    private dict<string, string> cache
+
+    public constructor(ProductStore store) {
+        this.store = store
+        dict<string, string> empty = dict()
+        this.cache = empty
+    }
+
+    public nullable<string> get(string sku) {
+        dict<string, string> c = this.cache
+        if (sku in c) {
+            print("cache-hit:" + sku)
+            return c[sku]
+        }
+        print("cache-miss:" + sku)
+        nullable<string> loaded = this.store.load(sku)
+        if (loaded != null) {
+            c[sku] = loaded
+            this.cache = c
+        }
+        return loaded
+    }
+}
+
+CacheAside catalog = CacheAside(MemoryStore())
+print(catalog.get("BG-001"))  # miss then Catan
+print(catalog.get("BG-001"))  # hit then Catan
+print(catalog.get("NOPE") == null)  # true

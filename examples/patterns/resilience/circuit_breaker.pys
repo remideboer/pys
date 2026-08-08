@@ -1,0 +1,94 @@
+# Circuit breaker — Closed → Open → HalfOpen state machine (in-process).
+
+enum CircuitState {
+    CLOSED,
+    OPEN,
+    HALF_OPEN
+}
+
+interface RemoteCall {
+    string invoke()
+}
+
+class ScriptedRemote implements RemoteCall {
+    private list<string> script
+    private int index
+
+    public constructor(list<string> script) {
+        this.script = script
+        this.index = 0
+    }
+
+    public string invoke() {
+        list<string> xs = this.script
+        if (this.index >= len(xs)) {
+            return "OK"
+        }
+        string item = xs[this.index]
+        this.index = this.index + 1
+        return item
+    }
+}
+
+class CircuitBreaker {
+    private RemoteCall remote
+    private CircuitState state
+    private int failureThreshold
+    private int consecutiveFailures
+    private int coolDownLeft
+    private int coolDownMax
+
+    public constructor(RemoteCall remote, int failureThreshold, int coolDown) {
+        this.remote = remote
+        this.state = CircuitState.CLOSED
+        this.failureThreshold = failureThreshold
+        this.consecutiveFailures = 0
+        this.coolDownLeft = 0
+        this.coolDownMax = coolDown
+    }
+
+    public string call() {
+        if (this.state == CircuitState.OPEN) {
+            if (this.coolDownLeft > 0) {
+                this.coolDownLeft = this.coolDownLeft - 1
+                return "short-circuit"
+            }
+            this.state = CircuitState.HALF_OPEN
+        }
+        string result = this.remote.invoke()
+        if (result == "OK") {
+            this.consecutiveFailures = 0
+            this.state = CircuitState.CLOSED
+            return "ok"
+        }
+        this.consecutiveFailures = this.consecutiveFailures + 1
+        if (this.state == CircuitState.HALF_OPEN || this.consecutiveFailures >= this.failureThreshold) {
+            this.state = CircuitState.OPEN
+            this.coolDownLeft = this.coolDownMax
+        }
+        return "err"
+    }
+
+    public string stateName() {
+        if (this.state == CircuitState.CLOSED) {
+            return "CLOSED"
+        }
+        if (this.state == CircuitState.OPEN) {
+            return "OPEN"
+        }
+        return "HALF_OPEN"
+    }
+}
+
+list<string> script = []
+script.append("ERR")
+script.append("ERR")
+script.append("OK")
+CircuitBreaker br = CircuitBreaker(ScriptedRemote(script), 2, 2)
+print(br.call())  # err
+print(br.call())  # err
+print(br.stateName())  # OPEN
+print(br.call())  # short-circuit
+print(br.call())  # short-circuit
+print(br.call())  # ok (half-open probe)
+print(br.stateName())  # CLOSED

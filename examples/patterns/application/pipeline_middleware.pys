@@ -1,0 +1,47 @@
+# Pipeline / middleware — ordered wrappers around a handler (related: CoR).
+
+interface Handler {
+    string handle(string request)
+}
+
+class AppHandler implements Handler {
+    public string handle(string request) {
+        return "ok:" + request
+    }
+}
+
+class LoggingMiddleware implements Handler {
+    private Handler next
+
+    public constructor(Handler next) {
+        this.next = next
+    }
+
+    public string handle(string request) {
+        print("log:" + request)
+        return this.next.handle(request)
+    }
+}
+
+class AuthMiddleware implements Handler {
+    private Handler next
+    private string token
+
+    public constructor(Handler next, string token) {
+        this.next = next
+        this.token = token
+    }
+
+    public string handle(string request) {
+        if (this.token != "secret") {
+            return "deny"
+        }
+        return this.next.handle(request)
+    }
+}
+
+Handler pipeline = LoggingMiddleware(AuthMiddleware(AppHandler(), "secret"))
+print(pipeline.handle("GET /x"))  # log then ok:GET /x
+
+Handler denied = LoggingMiddleware(AuthMiddleware(AppHandler(), "wrong"))
+print(denied.handle("GET /x"))  # log then deny

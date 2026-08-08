@@ -1,0 +1,49 @@
+# Request–reply — correlation id ties a reply to its request.
+
+data Request {
+    string correlationId
+    string body
+}
+
+data Reply {
+    string correlationId
+    string body
+}
+
+class Replier {
+    public Reply handle(Request req) {
+        return Reply(req.correlationId, "echo:" + req.body)
+    }
+}
+
+class ClientMailbox {
+    private dict<string, string> waiting
+
+    public constructor() {
+        dict<string, string> empty = dict()
+        this.waiting = empty
+    }
+
+    public void expect(string correlationId) {
+        dict<string, string> m = this.waiting
+        m[correlationId] = "pending"
+        this.waiting = m
+    }
+
+    public nullable<string> accept(Reply reply) {
+        dict<string, string> m = this.waiting
+        if (!(reply.correlationId in m)) {
+            return null
+        }
+        m.pop(reply.correlationId)
+        this.waiting = m
+        return reply.body
+    }
+}
+
+ClientMailbox box = ClientMailbox()
+box.expect("c-1")
+Replier server = Replier()
+Reply r = server.handle(Request("c-1", "ping"))
+print(box.accept(r))  # echo:ping
+print(box.accept(Reply("c-unknown", "x")) == null)  # true
