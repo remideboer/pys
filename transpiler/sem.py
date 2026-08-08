@@ -226,8 +226,11 @@ def analyze(
 
     ctor_overloads: dict[str, list[tuple[list[str], list[str]]]] = {}
     method_param_names: dict[tuple[str, str], list[str]] = {}
+    class_type_params: dict[str, set[str]] = {}
     for stmt in module.body:
         if isinstance(stmt, (ClassDef, EntityDef)):
+            if isinstance(stmt, ClassDef) and stmt.type_params:
+                class_type_params[stmt.name] = set(stmt.type_params)
             overs: list[tuple[list[str], list[str]]] = []
             for method in stmt.methods:
                 method_param_names[(stmt.name, method.name)] = list(method.params)
@@ -260,6 +263,7 @@ def analyze(
         function_param_names=function_param_names,
         method_param_names=method_param_names,
         ctor_overloads=ctor_overloads,
+        class_type_params=class_type_params,
         class_names=class_names,
         class_parents=class_parents,
         class_implements=class_implements,
@@ -1125,6 +1129,26 @@ def _nullable_inner(type_name: str | None) -> str | None:
     return args[0]
 
 
+def _type_mentions_param(type_name: str, type_params: set[str]) -> bool:
+    """True when ``type_name`` is (or wraps) an unbound class type parameter."""
+    if not type_params or not type_name:
+        return False
+    t = type_name.strip()
+    if t in type_params:
+        return True
+    while t.endswith("[]"):
+        t = t[:-2].strip()
+        if t in type_params:
+            return True
+    base = _base_type_name(t)
+    if base in type_params:
+        return True
+    for arg in _extract_type_args(t):
+        if _type_mentions_param(arg, type_params):
+            return True
+    return False
+
+
 def _check_nullability(
     module: Module,
     *,
@@ -1134,6 +1158,7 @@ def _check_nullability(
     function_param_names: dict[str, list[str]],
     method_param_names: dict[tuple[str, str], list[str]],
     ctor_overloads: dict[str, list[tuple[list[str], list[str]]]],
+    class_type_params: dict[str, set[str]],
     class_names: set[str],
     class_parents: dict[str, str | None],
     class_implements: dict[str, list[str]],
@@ -1352,6 +1377,19 @@ def _check_nullability(
                     if value is None:
                         continue
                     if idx < len(expected) and expected[idx] and expected[idx] != "var":
+                        open_params: set[str] = set()
+                        if (
+                            isinstance(expr.callee, Identifier)
+                            and expr.callee.name in ctor_overloads
+                        ):
+                            open_params = class_type_params.get(
+                                expr.callee.name, set()
+                            )
+                        if _type_mentions_param(expected[idx], open_params):
+                            # Call-site type args are erased at parse; do not
+                            # compare concrete args against unbound T/U.
+                            walk_expr(value, env, present)
+                            continue
                         actual = expr_type(value, env, present)
                         if actual and not _is_assignable_type(
                             actual,

@@ -497,6 +497,7 @@ class ClassDef(Node):
     uses: list[TraitUse] = field(default_factory=list)  # composition, not bases
     fields: list[FieldDecl] = field(default_factory=list)
     methods: list[MethodDef] = field(default_factory=list)
+    type_params: list[str] = field(default_factory=list)  # class Foo<T, U>
     visibility: str = ""
     sealed: bool = False  # legacy alias; prefer `closed`
     closed: bool = False

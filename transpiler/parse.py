@@ -1956,13 +1956,14 @@ def _parse_class(
             )
     p.eat_kw("class")
     name = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
+    type_params: list[str] = []
     if p.at(TokenKind.LT):
-        # Generic class params are accepted and discarded for Python emit.
+        # Keep names for sem (ctor/method slots); emit still erases generics.
         p.eat(TokenKind.LT)
-        p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+        type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
         while p.at(TokenKind.COMMA):
             p.eat(TokenKind.COMMA)
-            p.eat(TokenKind.IDENT, TokenKind.KEYWORD)
+            type_params.append(p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text)
         p.eat_gt()
     bases: list[str] = []
     parent = ""
@@ -2349,6 +2350,7 @@ def _parse_class(
         uses=uses,
         fields=fields,
         methods=methods,
+        type_params=type_params,
         visibility=visibility,
         sealed=closed,
         closed=closed,

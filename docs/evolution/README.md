@@ -85,3 +85,6 @@ Each record then uses:
 | [CER-048](CER-048-named-call-args.md) | Named call args (no positional+named mix) | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
+
+Recurring CI reds (showcase transpile, `pys.lock` inheritance, extension
+version pins, book/railroad drift): [`../ci-failure-patterns.md`](../ci-failure-patterns.md).

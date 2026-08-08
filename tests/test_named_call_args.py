@@ -122,6 +122,47 @@ def test_class_constructor_rejects_mixed_args() -> None:
         )
 
 
+def test_generic_class_constructor_accepts_concrete_args() -> None:
+    """Call-site type args are erased; unbound T must not reject Car."""
+    py = transpile(
+        "class Car {\n"
+        "    public constructor() {}\n"
+        "}\n"
+        "class Pair<T, U> {\n"
+        "    private T first\n"
+        "    private U second\n"
+        "    public constructor(T first, U second) {\n"
+        "        this.first = first\n"
+        "        this.second = second\n"
+        "    }\n"
+        "}\n"
+        "Car a = Car()\n"
+        "Car b = Car()\n"
+        "Pair<Car, Car> pair = Pair<Car, Car>(a, b)\n"
+    )
+    assert "Pair" in py
+
+
+def test_generic_class_constructor_named_args() -> None:
+    py = transpile(
+        "class Car {\n"
+        "    public constructor() {}\n"
+        "}\n"
+        "class Pair<T, U> {\n"
+        "    private T first\n"
+        "    private U second\n"
+        "    public constructor(T first, U second) {\n"
+        "        this.first = first\n"
+        "        this.second = second\n"
+        "    }\n"
+        "}\n"
+        "Car a = Car()\n"
+        "Car b = Car()\n"
+        "Pair<Car, Car> pair = Pair<Car, Car>(second=b, first=a)\n"
+    )
+    assert "Pair" in py
+
+
 def test_struct_rejects_mixed_positional_and_named() -> None:
     """Structs used to allow positional-then-named; mix is now illegal everywhere."""
     with pytest.raises(TranspileError, match=r"mix|positional.*named|named.*positional"):

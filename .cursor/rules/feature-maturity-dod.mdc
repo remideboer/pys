@@ -10,7 +10,7 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 ## Production-ready means all of these
 
 1. **Core behavior** — Happy path, edge cases, and rejection/error cases match the requirement / BDD scenario.
-2. **Tests** — Unit (and golden/acceptance where the repo uses them); CI green; no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4).
+2. **Tests** — Unit (and golden/acceptance where the repo uses them); CI green; no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4). After sem/call/type changes, run `python -m pytest -q` locally and spot-check `examples/main.pys` / `tests/test_acceptance_examples.py` (see [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md)).
 3. **Tooling surface** — Lexer/parser/sem/emit (as applicable), plus IDE: highlighting, go-to on the symbols users navigate, hover/completions/snippets where the feature introduces keywords or types — at least parity with similar existing features (e.g. class).
 4. **Diagnostics maturity** — When a feature emits diagnostics: **Error** and/or **Warning** as appropriate, actionable **tips**, and **quick fixes** when a `suggested_fix` / edit is available (analyzer JSON + IDE CodeAction). Do not ship a warning-only rule without IDE Warning severity + tip/quick-fix plumbing.
 5. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
