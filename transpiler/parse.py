@@ -628,14 +628,23 @@ def _parse_toplevel(p: _Tok):
         return _parse_from_import(p)
     if p.at_kw("import"):
         return _parse_import(p)
+    decorators = _parse_decorators(p)
     if p.at_kw(*_VIS):
         vis = p.eat(TokenKind.KEYWORD).text
         if p.at_kw("function"):
-            return _parse_function(p, visibility=vis)
+            return _parse_function(p, visibility=vis, decorators=decorators)
         if p.at_kw("sealed", "abstract"):
-            return _parse_class(p, visibility=vis)
+            return _parse_class(p, visibility=vis, decorators=decorators)
         if p.at_kw("class"):
-            return _parse_class(p, visibility=vis)
+            return _parse_class(p, visibility=vis, decorators=decorators)
+        if decorators:
+            raise FatalParseError(
+                "Decorators may only apply to `function`, `class`, or methods.",
+                p.cur().line,
+                p.cur().column,
+                code="pys.decorator-target",
+                tips=["Place `@expr` immediately above a function, class, or method."],
+            )
         if p.at_kw("fix") and p.peek(1).kind == TokenKind.KEYWORD and p.peek(1).text == "struct":
             return _parse_struct(p, visibility=vis, type_fix=True)
         if p.at_kw("struct"):
@@ -654,11 +663,19 @@ def _parse_toplevel(p: _Tok):
             return _parse_decl(p, visibility=vis)
         raise ParseError("Expected declaration after visibility", p.cur().line, p.cur().column)
     if p.at_kw("function"):
-        return _parse_function(p)
+        return _parse_function(p, decorators=decorators)
     if p.at_kw("sealed", "abstract"):
-        return _parse_class(p)
+        return _parse_class(p, decorators=decorators)
     if p.at_kw("class"):
-        return _parse_class(p)
+        return _parse_class(p, decorators=decorators)
+    if decorators:
+        raise FatalParseError(
+            "Decorators may only apply to `function`, `class`, or methods.",
+            p.cur().line,
+            p.cur().column,
+            code="pys.decorator-target",
+            tips=["Place `@expr` immediately above a function, class, or method."],
+        )
     if p.at_kw("fix") and p.peek(1).kind == TokenKind.KEYWORD and p.peek(1).text == "struct":
         return _parse_struct(p, type_fix=True)
     if p.at_kw("struct"):
@@ -1166,7 +1183,24 @@ def _at_generic_typed_decl(p: _Tok) -> bool:
         k += 1
 
 
-def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
+def _parse_decorators(p: _Tok) -> list:
+    """Zero or more `@expr` lines before a function, class, or method (ADR-026)."""
+    from .ast_nodes import Expr
+
+    decos: list[Expr] = []
+    while p.at(TokenKind.AT):
+        p.eat(TokenKind.AT)
+        # Decorator payload is a call/member chain, not a full assignment expr.
+        decos.append(_parse_unary(p))
+    return decos
+
+
+def _parse_function(
+    p: _Tok,
+    visibility: str = "",
+    *,
+    decorators: list | None = None,
+) -> FunctionDef:
     sp = p.span()
     p.eat_kw("function")
     rtype = ""
@@ -1192,6 +1226,7 @@ def _parse_function(p: _Tok, visibility: str = "") -> FunctionDef:
         visibility=visibility,
         return_type=rtype,
         name_span=p.token_span(name_tok),
+        decorators=list(decorators or []),
     )
 
 
@@ -1832,7 +1867,12 @@ def _parse_trait_use(p: _Tok) -> TraitUse:
     return TraitUse(span=sp, name=name, remaps=remaps)
 
 
-def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
+def _parse_class(
+    p: _Tok,
+    visibility: str = "",
+    *,
+    decorators: list | None = None,
+) -> ClassDef:
     sp = p.span()
     sealed = False
     abstract = False
@@ -1894,6 +1934,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         if p.at(TokenKind.COMMENT):
             p.eat(TokenKind.COMMENT)
             continue
+        member_decorators = _parse_decorators(p)
         access = ""
         member_sp = p.span()
         if p.at_kw("public", "private", "protected", "module"):
@@ -1914,6 +1955,13 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             )
         # const field: access const primitive name = expr
         if p.at_kw("const"):
+            if member_decorators:
+                raise FatalParseError(
+                    "Decorators may only apply to methods (not fields).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.decorator-target",
+                )
             if not access:
                 raise FatalParseError(
                     "Class fields require an access modifier "
@@ -1946,6 +1994,13 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
             continue
         # fix field: access fix type name [= expr]
         if p.at_kw("fix"):
+            if member_decorators:
+                raise FatalParseError(
+                    "Decorators may only apply to methods (not fields).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.decorator-target",
+                )
             if not access:
                 raise FatalParseError(
                     "Class fields require an access modifier "
@@ -2033,6 +2088,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                     body=None,
                     is_abstract=True,
                     return_type=ret,
+                    decorators=list(member_decorators),
                 )
             )
             continue
@@ -2064,6 +2120,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                     param_types=[t for t, _ in params],
                     body=body,
                     is_constructor=True,
+                    decorators=list(member_decorators),
                 )
             )
             continue
@@ -2116,9 +2173,17 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
                     param_types=[t for t, _ in params],
                     body=body,
                     return_type=type_name,
+                    decorators=list(member_decorators),
                 )
             )
         else:
+            if member_decorators:
+                raise FatalParseError(
+                    "Decorators may only apply to methods (not fields).",
+                    member_sp.line,
+                    member_sp.column,
+                    code="pys.decorator-target",
+                )
             _require_member_phase(
                 p,
                 phase,
@@ -2151,6 +2216,7 @@ def _parse_class(p: _Tok, visibility: str = "") -> ClassDef:
         visibility=visibility,
         sealed=sealed,
         abstract=abstract,
+        decorators=list(decorators or []),
     )
 
 

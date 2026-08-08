@@ -486,6 +486,26 @@ Rules:
 Inside a **class**, do not write `function` / `func` — methods use member access
 modifiers instead (`public name(…) { … }` or `public void name(…) { … }`).
 
+### Library decorators
+
+PYS allows **applying** library callables with `@` above a `function`, `class`,
+or method ([ADR-026](adr/ADR-026-library-decorators.md)):
+
+```pys
+function object mark(f) {
+    return f
+}
+
+@mark
+function void hello() {
+    print("hi")
+}
+```
+
+Stacked `@expr` lines are allowed. Do **not** invent missing language features
+with `@` (no `@alias`, no Lombok-style `@Data` — use real keywords such as
+`data` / `abstract`). Decorators do not apply to fields or ordinary statements.
+
 ### Explicit absence: `nullable<T>`
 
 Ordinary types are **non-null by default**. Only `nullable<T>` may hold either a

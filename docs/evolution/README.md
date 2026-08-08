@@ -77,5 +77,6 @@ Each record then uses:
 | [CER-040](CER-040-webserver-templates-logic.md) | Template HTTP with if/for | Examples |
 | [CER-041](CER-041-webserver-templates-query.md) | Template HTTP with query-string binding | Examples |
 | [CER-042](CER-042-var-declaration-only.md) | Ban type-position `var`; formalize `object` | Language |
+| [CER-043](CER-043-library-decorators.md) | Library decorator application | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).

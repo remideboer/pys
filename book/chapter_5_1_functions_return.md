@@ -24,6 +24,11 @@ Output:
 Visibility (`package` / `global`) controls imports — see the basics
 structuring chapter.
 
+> **Library decorators.** You may write `@expr` above a `function`, `class`, or
+> method to apply a **library** callable (for example a web framework route).
+> Do not invent new PYS features with `@` — missing language ideas get real
+> keywords instead. See [LANGUAGE.md](../docs/LANGUAGE.md) and ADR-026.
+
 ### Exercise
 
 > Write `function bool isEven(int n)` and print the result for `n = 4` and

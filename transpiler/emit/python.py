@@ -568,6 +568,8 @@ class _Emitter:
         elif isinstance(stmt, ImportStmt):
             self._import(stmt, indent)
         elif isinstance(stmt, FunctionDef):
+            for deco in stmt.decorators:
+                self._emit(indent, f"@{self._expr(deco)}")
             params = ", ".join(stmt.params)
             if stmt.return_type:
                 self.fn_return_types[stmt.name] = stmt.return_type
@@ -1051,6 +1053,8 @@ class _Emitter:
             )
 
     def _class(self, stmt: ClassDef, indent: int) -> None:
+        for deco in stmt.decorators:
+            self._emit(indent, f"@{self._expr(deco)}")
         bases_list = list(stmt.bases)
         if stmt.abstract:
             self.needs_abc = True
@@ -1159,6 +1163,8 @@ class _Emitter:
         emit_name: str | None = None,
     ) -> None:
         name = emit_name or m.name
+        for deco in m.decorators:
+            self._emit(indent, f"@{self._expr(deco)}")
         if m.is_abstract:
             self.needs_abc = True
             self._emit(indent, "@abstractmethod")

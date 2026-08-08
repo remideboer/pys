@@ -23,6 +23,7 @@ class TokenKind(Enum):
     DOT = auto()
     COLON = auto()
     SEMI = auto()
+    AT = auto()
     LT = auto()
     GT = auto()
     NEWLINE = auto()
@@ -170,6 +171,7 @@ _SINGLES: dict[str, TokenKind] = {
     ".": TokenKind.DOT,
     ":": TokenKind.COLON,
     ";": TokenKind.SEMI,
+    "@": TokenKind.AT,
     "<": TokenKind.LT,
     ">": TokenKind.GT,
     "+": TokenKind.OP,

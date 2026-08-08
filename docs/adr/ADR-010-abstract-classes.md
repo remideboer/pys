@@ -46,7 +46,8 @@ Worked teaching shape (requirement): `AbstractList` owns `size` / shared
    leave methods unimplemented.
 6. **Emit**: subclass `ABC`; each abstract method gets `@abstractmethod` +
    `pass`. Constructors allowed; call via `super(...)`.
-7. No `@` in PYS source.
+7. Users do not write `@abstractmethod` in PYS — `abstract` emits it. Library
+   decorator application (`@expr` on methods) is allowed ([ADR-026](ADR-026-library-decorators.md)).
 
 ## Consequences
 

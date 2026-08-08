@@ -166,9 +166,13 @@ atomic_primitive = "int" | "int16" | "int32" | "int64" | "dword" | "bool" ;
 
 (* ------------------------- Functions ------------------------- *)
 
-function_decl    = [ top_visibility ] , "function" , [ return_type ] ,
+decorator        = "@" , expression ;
+(* Library decorator application (ADR-026). Stacked decorators allowed.
+   Not a substitute for missing language constructs (no @alias / @Data). *)
+
+function_decl    = { decorator } , [ top_visibility ] , "function" , [ return_type ] ,
                    identifier , "(" , [ parameter_list ] , ")" , block
-                 | "func" , identifier , "(" , [ parameter_list ] , ")" , block ;
+                 | { decorator } , "func" , identifier , "(" , [ parameter_list ] , ")" , block ;
 
 (* Return type is required when the body contains `return expr`.
    Form:  global function AppStore openStore()
@@ -184,7 +188,7 @@ parameter        = [ type_name ] , identifier ;
 
 (* ------------------------- Classes ------------------------- *)
 
-class_decl       = [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , identifier ,
+class_decl       = { decorator } , [ top_visibility ] , [ "sealed" | "abstract" ] , "class" , identifier ,
                    [ type_params ] ,
                    [ ( "inherits" | "super" ) , identifier ] ,
                    [ "uses" , trait_use , { "," , trait_use } ] ,
@@ -221,7 +225,7 @@ field_decl       = member_access , type_name , identifier ,
                    [ "=" , expression ] ;
 (* field_decl is mutable only; const / fix occupy earlier sections. *)
 
-method_decl      = member_access , [ return_type ] , identifier ,
+method_decl      = { decorator } , member_access , [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
 
 abstract_method_decl = member_access , "abstract" , return_type , identifier ,

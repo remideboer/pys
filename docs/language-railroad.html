@@ -433,11 +433,18 @@
       )
     },
     {
+      id: 'decorator',
+      title: 'decorator',
+      ebnf: '"@" expression ;',
+      node: Seq(T('@'), N('expression'))
+    },
+    {
       id: 'function_decl',
       title: 'function_decl',
-      ebnf: '[ top_visibility ] "function" [ return_type ] identifier "(" [ parameter_list ] ")" block | "func" ...',
+      ebnf: '{ decorator } [ top_visibility ] "function" [ return_type ] identifier "(" [ parameter_list ] ")" block | { decorator } "func" ...',
       node: Choice(
         Seq(
+          Star(N('decorator')),
           Opt(N('top_visibility')),
           T('function'),
           Opt(N('return_type')),
@@ -447,14 +454,15 @@
           T(')'),
           N('block')
         ),
-        Seq(T('func'), N('identifier'), T('('), Opt(N('parameter_list')), T(')'), N('block'))
+        Seq(Star(N('decorator')), T('func'), N('identifier'), T('('), Opt(N('parameter_list')), T(')'), N('block'))
       )
     },
     {
       id: 'class_decl',
       title: 'class_decl',
-      ebnf: '[ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses trait_use {"," trait_use} ] [ implements Id {"," Id} ] class_body ;',
+      ebnf: '{ decorator } [ top_visibility ] [ "sealed" | "abstract" ] "class" identifier [ type_params ] [ inherits/super Id ] [ uses trait_use {"," trait_use} ] [ implements Id {"," Id} ] class_body ;',
       node: Seq(
+        Star(N('decorator')),
         Opt(N('top_visibility')),
         Opt(Choice(T('sealed'), T('abstract'))),
         T('class'),
@@ -694,8 +702,9 @@
     {
       id: 'method_decl',
       title: 'method_decl',
-      ebnf: 'member_access [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      ebnf: '{ decorator } member_access [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
       node: Seq(
+        Star(N('decorator')),
         N('member_access'),
         Opt(N('return_type')),
         N('identifier'),

@@ -38,7 +38,9 @@ anti-examples, production cases, and bibliographic references live in
 3. **Emit**: `data` → `@dataclass(frozen=True)` + struct copy helper;
    `entity` → class + `__eq__` / `__hash__` / `__repr__` on keys + fix-field
    setattr guard.
-4. No `@` in PYS source. ADR-001 boundaries unchanged. ADR-005 unchanged.
+4. No `@` as a substitute for missing language constructs (use real keywords
+   such as `data`). Library decorator application is allowed ([ADR-026](ADR-026-library-decorators.md)).
+   ADR-001 boundaries unchanged. ADR-005 unchanged.
 
 ## Consequences
 

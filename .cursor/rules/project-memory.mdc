@@ -68,14 +68,14 @@ touching the matching CER/ADR is incomplete.
 - Enums stay nominal closed sets (ADR-006 / CER-005): all-or-nothing values; no `@alias` / match until a new record; casing is Warning + IDE quick fix, not a hard error
 - Abstract classes (ADR-010 / CER-009): `sealed` XOR `abstract`; abstract methods
   only in abstract classes (no body); nominal types; emit `ABC`/`@abstractmethod`
-  (Python only — no `@` in PYS source); reject direct instantiate
+  (Python backend — users write `abstract`, not `@abstractmethod`); reject direct instantiate
 - Interface methods (CER-010): no access modifier on signatures (always
   public/abstract); reject `public`/`private`/… inside `interface` bodies;
   implementing class methods still need `public`
-- **No `@` annotations / decorators in PYS.** An `@foo` mark usually means the
-  need was not designed as a language construct. Prefer a real keyword, form,
-  or declaration (e.g. enum aliases → proper syntax later, not `@alias`).
-  Do not grow a decorator surface to paper over missing constructs.
+- Library decorators (ADR-026 / CER-043): `@expr` may apply to `function` /
+  `class` / methods for **library** callables (e.g. FastAPI). Do **not** use `@`
+  to invent missing PYS constructs (`@alias`, Lombok-style `@Data`) — prefer a
+  real keyword or form. Emit-only `@abstractmethod` stays an implementation detail.
 - Int literals / bitwise (ADR-007 / CER-006): `0b`/`0x`/`_`; width aliases are
   unsigned ranges; `and`/`or`/`not` stay logical; rotate deferred
   ([F-001](../../docs/TODO-FUTURE.md#f-001-bitwise-rotate) in `docs/TODO-FUTURE.md`)

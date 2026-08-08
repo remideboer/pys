@@ -386,6 +386,7 @@ class FunctionDef(Node):
     visibility: str = ""
     return_type: str = ""
     name_span: Span | None = None
+    decorators: list[Expr] = field(default_factory=list)
 
 
 @dataclass
@@ -472,6 +473,7 @@ class MethodDef(Node):
     is_abstract: bool = False
     return_type: str = ""
     name_span: Span | None = None
+    decorators: list[Expr] = field(default_factory=list)
 
 
 @dataclass
@@ -495,6 +497,7 @@ class ClassDef(Node):
     sealed: bool = False
     abstract: bool = False
     name_span: Span | None = None
+    decorators: list[Expr] = field(default_factory=list)
 
 
 @dataclass

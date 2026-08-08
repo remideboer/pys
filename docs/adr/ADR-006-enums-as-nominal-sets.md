@@ -21,7 +21,8 @@ strings, and classes. Requirements live in `requirements/enums.pys`.
    mixed forms are errors.
 3. **Homogeneous unique explicit values** (all int or all string); duplicates
    rejected. Alias support, if ever added, must be a **real language construct**
-   — not an `@alias` annotation (PYS does not use `@` decorators).
+   — not an `@alias` annotation (use real syntax later; library `@expr`
+   application is separate — [ADR-026](ADR-026-library-decorators.md)).
 4. **Nominal typing:** `EnumName.MEMBER` only; no call ctor; `.value` for
    underlying interchange; `==` only within the same enum.
 5. **Naming:** non-`SCREAMING_SNAKE_CASE` members emit a **warning** (non-fatal)

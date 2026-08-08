@@ -65,6 +65,7 @@ test('extension manifest exposes entrypoint command and result language support'
   );
   assert.match(extension, /diagnostic\.code === 'pys\.entrypoint-conflict'/);
   assert.match(extension, /Set this file as entrypoint/);
+  assert.match(grammar, /punctuation\.definition\.decorator\.pys/);
   assert.match(extension, /pys\.var-as-type/);
   assert.match(extension, /Replace `var` with `object`/);
   assert.match(extension, /Make type nullable/);

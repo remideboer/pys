@@ -7,6 +7,10 @@
       "include": "#comments"
     },
     {
+      "name": "punctuation.definition.decorator.pys",
+      "match": "@(?=[A-Za-z_])"
+    },
+    {
       "include": "#strings"
     },
     {

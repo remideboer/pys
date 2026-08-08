@@ -135,6 +135,12 @@
 </code></pre>
 <p>Visibility (<code>package</code> / <code>global</code>) controls imports — see the basics
 structuring chapter.</p>
+<blockquote>
+<p><strong>Library decorators.</strong> You may write <code>@expr</code> above a <code>function</code>, <code>class</code>, or
+method to apply a <strong>library</strong> callable (for example a web framework route).
+Do not invent new PYS features with <code>@</code> — missing language ideas get real
+keywords instead. See <a href="https://github.com/remideboer/pys/blob/main/docs/LANGUAGE.md">LANGUAGE.md</a> and ADR-026.</p>
+</blockquote>
 <h3>Exercise</h3>
 <blockquote>
 <p>Write <code>function bool isEven(int n)</code> and print the result for <code>n = 4</code> and
