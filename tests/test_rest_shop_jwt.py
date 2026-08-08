@@ -16,7 +16,10 @@ MAIN = JWT / "src" / "main.pys"
 CRYPTO = JWT / "tests" / "test_jwt_crypto.pys"
 
 
-def test_shop_jwt_main_transpiles() -> None:
+def test_shop_jwt_main_transpiles(
+    mysql_connector_site: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(JWT))
     modules = transpile_with_modules(MAIN)
     assert "main" in modules
     assert "jwt_service" in modules or "JwtService" in modules.get("jwt_service", "")

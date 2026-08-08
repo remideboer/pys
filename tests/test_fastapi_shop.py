@@ -59,4 +59,9 @@ def _mysql_reachable() -> bool:
 @pytest.mark.skipif(not _mysql_reachable(), reason="MySQL shop DB not available (CI)")
 def test_fastapi_shop_live_smoke(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(SHOP.resolve()))
+    # smoke_live.pys is an alternate runner under the silo; bypass [project].main gate.
+    monkeypatch.setattr(
+        "transpiler.project_manifest.resolve_entrypoint",
+        lambda selected: selected.expanduser().resolve(),
+    )
     assert run_source(SMOKE) == 0

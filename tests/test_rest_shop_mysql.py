@@ -5,14 +5,21 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from transpiler.transpiler import transpile_with_modules
+from transpiler.workspace import WORKSPACE_ROOT_ENV
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = ROOT / "examples" / "rest-api" / "shop" / "mysql" / "src" / "main.pys"
+MYSQL = ROOT / "examples" / "rest-api" / "shop" / "mysql"
+MAIN = MYSQL / "src" / "main.pys"
 
 
-def test_shop_mysql_main_transpiles() -> None:
+def test_shop_mysql_main_transpiles(
+    mysql_connector_site: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     assert MAIN.is_file()
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(MYSQL))
     modules = transpile_with_modules(MAIN)
     assert "main" in modules
     assert "store" in modules or "Store" in "\n".join(modules.values()) or "ShopStore" in modules.get(

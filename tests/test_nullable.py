@@ -283,21 +283,13 @@ def test_sql_null_and_empty_string_remain_distinct(
 
 
 def test_shop_database_example_transpiles_with_nullable_contracts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    mysql_connector_site: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from transpiler.transpiler import transpile_with_modules
     from transpiler.workspace import WORKSPACE_ROOT_ENV
 
     shop = Path("examples/database/shop_app.pys").resolve()
-    site = tmp_path / "site"
-    (site / "mysql" / "connector").mkdir(parents=True)
-    (site / "mysql" / "__init__.py").write_text("", encoding="utf-8")
-    (site / "mysql" / "connector" / "__init__.py").write_text("", encoding="utf-8")
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(shop.parent))
-    monkeypatch.setattr(
-        "transpiler.imports.ImportResolver._deps_paths",
-        lambda self: [site],
-    )
     modules = transpile_with_modules(shop)
     assert "ShopGuiApp" in modules["gui"]
     assert "cellNullableStr" in modules["db"]
