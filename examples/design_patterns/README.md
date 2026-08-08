@@ -6,6 +6,9 @@ runnable `.pys` files. Folder layout follows the three GoF categories.
 
 Background: [Wikipedia — Design Patterns](https://en.wikipedia.org/wiki/Design_Patterns).
 
+Each pattern also has a companion `[name].md` with intent, explanation, classic
+and demo Mermaid UML, and real-world use cases.
+
 ## Run
 
 From the repo root (this folder has its own `pys.toml` so runs do not inherit
@@ -21,41 +24,41 @@ print lines are marked with `# …` comments.
 
 ## Creational
 
-| Pattern | File |
-|---------|------|
-| Abstract Factory | [creational/abstract_factory.pys](creational/abstract_factory.pys) |
-| Builder | [creational/builder.pys](creational/builder.pys) |
-| Factory Method | [creational/factory_method.pys](creational/factory_method.pys) |
-| Prototype | [creational/prototype.pys](creational/prototype.pys) |
-| Singleton | [creational/singleton.pys](creational/singleton.pys) |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Abstract Factory | [abstract_factory.pys](creational/abstract_factory.pys) | [abstract_factory.md](creational/abstract_factory.md) |
+| Builder | [builder.pys](creational/builder.pys) | [builder.md](creational/builder.md) |
+| Factory Method | [factory_method.pys](creational/factory_method.pys) | [factory_method.md](creational/factory_method.md) |
+| Prototype | [prototype.pys](creational/prototype.pys) | [prototype.md](creational/prototype.md) |
+| Singleton | [singleton.pys](creational/singleton.pys) | [singleton.md](creational/singleton.md) |
 
 ## Structural
 
-| Pattern | File |
-|---------|------|
-| Adapter | [structural/adapter.pys](structural/adapter.pys) |
-| Bridge | [structural/bridge.pys](structural/bridge.pys) |
-| Composite | [structural/composite.pys](structural/composite.pys) |
-| Decorator | [structural/decorator.pys](structural/decorator.pys) |
-| Facade | [structural/facade.pys](structural/facade.pys) |
-| Flyweight | [structural/flyweight.pys](structural/flyweight.pys) |
-| Proxy | [structural/proxy.pys](structural/proxy.pys) |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Adapter | [adapter.pys](structural/adapter.pys) | [adapter.md](structural/adapter.md) |
+| Bridge | [bridge.pys](structural/bridge.pys) | [bridge.md](structural/bridge.md) |
+| Composite | [composite.pys](structural/composite.pys) | [composite.md](structural/composite.md) |
+| Decorator | [decorator.pys](structural/decorator.pys) | [decorator.md](structural/decorator.md) |
+| Facade | [facade.pys](structural/facade.pys) | [facade.md](structural/facade.md) |
+| Flyweight | [flyweight.pys](structural/flyweight.pys) | [flyweight.md](structural/flyweight.md) |
+| Proxy | [proxy.pys](structural/proxy.pys) | [proxy.md](structural/proxy.md) |
 
 ## Behavioral
 
-| Pattern | File |
-|---------|------|
-| Chain of Responsibility | [behavioral/chain_of_responsibility.pys](behavioral/chain_of_responsibility.pys) |
-| Command | [behavioral/command.pys](behavioral/command.pys) |
-| Interpreter | [behavioral/interpreter.pys](behavioral/interpreter.pys) |
-| Iterator | [behavioral/iterator.pys](behavioral/iterator.pys) |
-| Mediator | [behavioral/mediator.pys](behavioral/mediator.pys) |
-| Memento | [behavioral/memento.pys](behavioral/memento.pys) |
-| Observer | [behavioral/observer.pys](behavioral/observer.pys) |
-| State | [behavioral/state.pys](behavioral/state.pys) |
-| Strategy | [behavioral/strategy.pys](behavioral/strategy.pys) |
-| Template Method | [behavioral/template_method.pys](behavioral/template_method.pys) |
-| Visitor | [behavioral/visitor.pys](behavioral/visitor.pys) |
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Chain of Responsibility | [chain_of_responsibility.pys](behavioral/chain_of_responsibility.pys) | [chain_of_responsibility.md](behavioral/chain_of_responsibility.md) |
+| Command | [command.pys](behavioral/command.pys) | [command.md](behavioral/command.md) |
+| Interpreter | [interpreter.pys](behavioral/interpreter.pys) | [interpreter.md](behavioral/interpreter.md) |
+| Iterator | [iterator.pys](behavioral/iterator.pys) | [iterator.md](behavioral/iterator.md) |
+| Mediator | [mediator.pys](behavioral/mediator.pys) | [mediator.md](behavioral/mediator.md) |
+| Memento | [memento.pys](behavioral/memento.pys) | [memento.md](behavioral/memento.md) |
+| Observer | [observer.pys](behavioral/observer.pys) | [observer.md](behavioral/observer.md) |
+| State | [state.pys](behavioral/state.pys) | [state.md](behavioral/state.md) |
+| Strategy | [strategy.pys](behavioral/strategy.pys) | [strategy.md](behavioral/strategy.md) |
+| Template Method | [template_method.pys](behavioral/template_method.pys) | [template_method.md](behavioral/template_method.md) |
+| Visitor | [visitor.pys](behavioral/visitor.pys) | [visitor.md](behavioral/visitor.md) |
 
 ## Modern notes
 

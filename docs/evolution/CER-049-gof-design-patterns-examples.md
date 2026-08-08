@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-08 |
-| Commits | _(landing)_ |
+| Commits | `75f419c` (demos); _(companion markdown)_ |
 | Scope | `examples/design_patterns/**`; `tests/test_design_patterns.py` |
 
 ## Context
@@ -30,6 +30,19 @@ gate `tests/test_design_patterns.py`. Interface method signatures accept nominal
 return types (`Button createButton()`) — see CER-010 §2.
 
 **Evidence:** `python -m pytest -q tests/test_design_patterns.py`.
+
+### 2. Companion markdown per pattern
+
+**Pre-behavior:** Only a root README index; no per-pattern intent / UML / use-case notes.
+
+**Why it hurt:** Students could run demos but had no local map from GoF roles to
+the concrete types in each `.pys`, or pointers to real-world uses.
+
+**Post-behavior:** One `[pattern-name].md` beside each `.pys` (intent, explanation,
+classic Mermaid UML, demo-specific UML, real-world use cases, run line). Root
+README tables link Code + Notes. Wikipedia pattern articles linked from each file.
+
+**Evidence:** `examples/design_patterns/**/*.md` co-located with demos.
 
 ## Trade-offs
 
