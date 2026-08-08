@@ -1,7 +1,17 @@
 # CI failure patterns (this repo)
 
 Recurring red builds here are usually **local gates we skipped**, not flaky
-infra. Before pushing language / sem / examples / extension changes, run:
+infra. Feature maturity DoD **§12** requires a **considerable ahead-of-time**
+effort to analyse blast radius and prevent CI failures — not push-and-fix.
+
+Before claiming a change set done (and before pushing language / sem /
+examples / book / extension changes), run:
+
+```text
+python -m pytest -q
+```
+
+When extension / highlights / RELEASE_NOTES / publish surface moved:
 
 ```text
 python tools/local_ci.py
@@ -11,6 +21,22 @@ That script fails fast on:
 
 1. `python -m pytest -q`
 2. `npm test` in `pys-language/`
+
+## Ahead-of-time analysis (DoD §12)
+
+Do this **before** calling the work complete — ideally while planning and again
+after the last edit:
+
+1. **Blast radius** — Which suites can break? (full pytest, goldens, acceptance /
+   `main.pys`, book link/order tests, example folder-count gates, npm extension
+   tests, lock/`PYS_WORKSPACE_ROOT`, railroad/EBNF, version/notes pins.)
+2. **Catalog** — Read matching rows below; apply **Prevent** in the same change
+   set (do not wait for CI).
+3. **Grep dependents** — Old paths, `# N.` SUMMARY headings, assert counts,
+   version strings, snapshot names.
+4. **Run the real gate** — Full `pytest -q` (or `local_ci.py`); fix everything
+   here; if a new failure mode appears, **add a row** in this file in the fix
+   commit.
 
 ## Quick local gate (language / sem only)
 
@@ -80,6 +106,20 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Cause | Named-arg / type / decorator rules applied to PYS callables incorrectly, or library kwargs treated as PYS-strict |
 | Prevent | Keep “no mix” / strict binding for **known PYS** callables; allow mixed kwargs for unknown library callees (Tk, FastAPI DI) |
 | Related | CER-048; ADR-026 |
+
+### 7. Book SUMMARY renumber / structural layout drift
+
+| Symptom | `test_book_links.py` / `ValueError: substring not found` for `# N. Under the hood` (or similar); nav order asserts fail |
+| Cause | Inserted or renumbered `book/SUMMARY.md` parts (e.g. new Session 10 Patterns) without updating tests that hard-code `# N. …` headings or relative order |
+| Prevent | Same change set: grep `tests/` (and docs) for old `# N.` / session titles; update asserts; run **`python -m pytest -q`** (full suite), not only `test_patterns.py` / demo gates. Rebuild `book/html/` |
+| Related | Feature maturity DoD §2, §6, §12 |
+
+### 8. Example corpus gate count drift
+
+| Symptom | `test_patterns.py` (or similar) `assert len(folder) == N` fails |
+| Cause | Added/removed `examples/patterns/**/*.pys` without updating folder counts |
+| Prevent | Update gate asserts in the same commit as new demos; run the gate + full pytest before done |
+| Related | CER-049; Feature maturity DoD §12 |
 
 ---
 

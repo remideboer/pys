@@ -7,26 +7,44 @@ alwaysApply: true
 
 For every language, toolchain, IDE, or product feature, the **default goal is a path to full maturity / production-ready**. Do not call a feature “implemented”, “done”, or “complete” until that bar is met (or the user explicitly accepts a narrower scoped increment).
 
+**CI is not the discovery loop.** Recurring red builds here almost always mean a skipped local gate or unfinished follow-through. DoD includes a **considerable, deliberate effort to analyse risk ahead of time and prevent CI failures** — not a narrow fix for the last miss class, and not “push and see.”
+
 ## Production-ready means all of these
 
 1. **Core behavior** — Happy path, edge cases, and rejection/error cases match the requirement / BDD scenario.
-2. **Tests** — Unit (and golden/acceptance where the repo uses them); CI green; no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4). After sem/call/type changes, run `python -m pytest -q` locally and spot-check `examples/main.pys` / `tests/test_acceptance_examples.py` (see [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md)).
+2. **Tests** — Unit (and golden/acceptance where the repo uses them); no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4). After sem/call/type changes, spot-check `examples/main.pys` / `tests/test_acceptance_examples.py`. Evidence of green is **§12** (preemptive CI analysis + full local run), not a narrow demo gate alone. See [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
 3. **Tooling surface** — Lexer/parser/sem/emit (as applicable), plus IDE: highlighting, go-to on the symbols users navigate, hover/completions/snippets where the feature introduces keywords or types — at least parity with similar existing features (e.g. class).
 4. **Diagnostics maturity** — When a feature emits diagnostics: **Error** and/or **Warning** as appropriate, actionable **tips**, and **quick fixes** when a `suggested_fix` / edit is available (analyzer JSON + IDE CodeAction). Do not ship a warning-only rule without IDE Warning severity + tip/quick-fix plumbing.
 5. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
-6. **Beginner book** — When language specs change (grammar, semantics, keywords, diagnostics students see, casing/ordering rules, or runnable patterns), update the beginner book under `book/` so chapters and ` ```pys ` examples stay **syntactically and pedagogically accurate**. Rebuild static HTML (`python book/build_html.py` → `book/html/`) in the **same change set**. Do not claim DoD if the book still teaches pre-behavior or invented syntax.
+6. **Beginner book** — When language specs change (grammar, semantics, keywords, diagnostics students see, casing/ordering rules, or runnable patterns), update the beginner book under `book/` so chapters and ` ```pys ` examples stay **syntactically and pedagogically accurate**. Rebuild static HTML (`python book/build_html.py` → `book/html/`) in the **same change set**. Do not claim DoD if the book still teaches pre-behavior or invented syntax. **Renumbering or inserting `SUMMARY.md` parts requires updating every test/doc that hard-codes section titles or order** (e.g. `tests/test_book_links.py`) in that same set — not in a later “CI fix” commit.
 7. **Teaching completeness (book / tutorials / lessons)** — An instruction, lesson, or tutorial chapter is **not done** until every concept it names is **explained** and illustrated with **good examples** that cover more than the golden/simple path (at least one contrasting or edge situation where it matters). Progressive disclosure: **do not use a concept in examples or exercises before it has been taught** (earlier in the same chapter, or in a prior chapter in `book/SUMMARY.md` order). When you must mention a general programming idea (e.g. string interpolation, modulo, remainder) that is not the chapter’s focus: add a short **sidebar** (about ≤5 lines) in place, **or** if a proper explanation needs more than ~5 lines, point to a dedicated section/document instead of a vague name-drop. Naming `break` / `continue` / `null` / … in one sentence without a runnable example fails this bar. **Every runnable teaching example must show what it produces** next to the code (expected output, sample interactive session, or an explicit “compiles; no output” / “compile error” note) — code alone is not enough.
 8. **Teaching examples** — Feature examples under `examples/` (and requirement worked samples when present) must be **elaborate enough to illustrate all or most aspects and variations** of the feature, not a single minimal happy path. Prefer several short, labeled sections over one opaque blob. Include **enough comments** that a reader can recover the teaching intent (what is being shown, why this form, expected print outcome where useful) without reading the ADR/CER. Runnable snippets in `examples/` and in the beginner book should show **expected output** (or compile-error / no-output) alongside the code, not only the source. When an example still misses a major variation after the feature lands, expand it in the same maturity push (or the immediate follow-up commit), matching the style of `examples/traits.pys` / `examples/switch.pys`. When the feature sits next to a sibling construct students confuse (`data` vs `struct`, `entity` vs `class`, …), the example must **spell out the use-case distinction** in comments and, where helpful, a short contrast snippet — not only the new keyword’s happy path.
 9. **Railroad sync** — `docs/language-railroad.html` stays in sync with `docs/language.ebnf` whenever grammar/features change (same change set; the HTML is the navigable EBNF view, not an optional extra).
 10. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
 11. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
-12. **Extension release (when cutting a tag)** — bump `pys-language/package.json` version and rewrite [`pys-language/RELEASE_NOTES.md`](../../pys-language/RELEASE_NOTES.md) for that version in the **same** change set on `main` (notes must contain the version string; highlights are per-version only). Run `python tools/local_ci.py` before push/tag. Keep trunk green/releasable; tag only `extension-v<version>` from `main` tip. The publish workflow attaches the student zip + VSIX to a GitHub Release with those notes (Marketplace is optional when secrets exist). See [`pys-language/PUBLISH.md`](../../pys-language/PUBLISH.md) and [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
+12. **Preemptive CI analysis (considerable effort — mandatory)** — Before claiming the change set done, perform an explicit **ahead-of-time** pass aimed at preventing CI failures, not only repairing the last known miss class. Treat this as engineering work equal to the feature edit itself.
+
+    **A. Blast-radius map (think before / while coding)**  
+    List what the change can break: transpile corpus, goldens, acceptance/`main.pys`, book SUMMARY order & `test_book_links`, folder/count gates (`test_patterns`, examples root), IDE/`pys-language` npm tests, locks/`PYS_WORKSPACE_ROOT`, railroad/EBNF, publish notes/version pins. Skim [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md) for matching rows and **apply their Prevent steps up front**.
+
+    **B. Dependent hunt (same change set)**  
+    Grep for old paths, `# N.` headings, session titles, assert counts, package versions, snapshot names, and companion HTML. Update every hit now. Structural book/example edits without a dependent hunt fail DoD.
+
+    **C. Run the real local gates**  
+    Default: **`python -m pytest -q`** (full suite) after the feature is otherwise complete — not only the new file’s gate. If extension, highlights, RELEASE_NOTES, or publish surface moved: **`python tools/local_ci.py`**. Fix every failure in this change set.
+
+    **D. Close the loop**  
+    If CI (or full pytest) still surprises you with a new failure mode, add a catalog row to `docs/ci-failure-patterns.md` in the fix commit and strengthen this checklist if a Prevent step was missing. Do not normalize “fix-forward after push.”
+
+13. **Extension release (when cutting a tag)** — bump `pys-language/package.json` version and rewrite [`pys-language/RELEASE_NOTES.md`](../../pys-language/RELEASE_NOTES.md) for that version in the **same** change set on `main` (notes must contain the version string; highlights are per-version only). Run `python tools/local_ci.py` before push/tag. Keep trunk green/releasable; tag only `extension-v<version>` from `main` tip. The publish workflow attaches the student zip + VSIX to a GitHub Release with those notes (Marketplace is optional when secrets exist). See [`pys-language/PUBLISH.md`](../../pys-language/PUBLISH.md) and [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
 
 ## How to work
 
 - Prefer delivering maturity in the same effort as the feature, not a vague follow-up.
 - Incremental commits are fine; **claiming “implemented” is not** until the maturity checklist above is satisfied.
 - When auditing an existing feature, report maturity honestly (what works / what’s missing) before adding more surface area.
+- **Analyse CI risk early** (plan and mid-implementation), not only after demos look good. Prefer preventing a red build over a clever post-hoc patch.
+- After structural or teaching-layout edits, run the **full** `python -m pytest -q`. Fix every failure in the same change set — do not land “feature done” and rely on remote CI to discover drift.
 
 ## Anti-patterns
 
@@ -39,6 +57,12 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 ❌ Using #i{…} / lambda / await in an early chapter before that concept is taught
 ❌ Closing a plan todo as done while listing “optional later” gaps that block teaching use
 ❌ Shipping examples/foo.pys that only demos one happy path while the feature has several forms
-✅ “Implemented” only when language + tests + IDE parity + docs + beginner book (+ HTML) + railroad + CER/ADR + teaching examples (+ CI) are in place
+❌ Book SUMMARY renumbered / new session inserted but tests still assert old “# N. …” headings
+❌ Only ran the narrow gate (e.g. test_patterns.py) and called DoD while full pytest would fail
+❌ “CI will catch it” / fix-forward commits that should have been follow-through in the feature set
+❌ Treating DoD §12 as “remember SUMMARY tests” only — skipping blast-radius analysis for sem, goldens, locks, extension
+❌ Claiming done after a green mental model without `python -m pytest -q` (or local_ci when required)
+✅ “Implemented” only when language + tests + IDE parity + docs + beginner book (+ HTML) + railroad + CER/ADR + teaching examples + preemptive CI analysis + green full local suite are in place
 ✅ Book chapter done only when every named concept is explained + exemplified (incl. non-golden cases) with visible results
+✅ Structural / language / corpus changes include blast-radius map + grepped dependents + green full pytest (local_ci if extension) before done
 ```
