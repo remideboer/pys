@@ -25,10 +25,13 @@ python -m transpiler deps lock library-tests/fastapi-shop/pys.deps
 
 ## Run
 
+From the repo root (no `PYS_WORKSPACE_ROOT` — `pys.toml` bounds the project):
+
 ```text
-set PYS_WORKSPACE_ROOT=library-tests\fastapi-shop
-python -m transpiler run library-tests/fastapi-shop/src/main.pys
+python -m transpiler run library-tests/fastapi-shop
 ```
+
+Or the entry file: `python -m transpiler run library-tests/fastapi-shop/src/main.pys`
 
 - OpenAPI UI: http://127.0.0.1:8093/docs
 - Health: `GET /health`

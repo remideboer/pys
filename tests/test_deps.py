@@ -167,6 +167,29 @@ def test_find_deps_file_respects_env_workspace_root(
     assert find_deps_file(workspace / "main.pys") is None
 
 
+def test_find_deps_file_stops_at_nearest_pys_toml(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Nested pys.toml bounds deps without PYS_WORKSPACE_ROOT (CLI / ADR-017)."""
+    monkeypatch.delenv("PYS_WORKSPACE_ROOT", raising=False)
+    parent = tmp_path / "monorepo"
+    project = parent / "shop"
+    src = project / "src"
+    src.mkdir(parents=True)
+    (parent / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\tparent-only\n",
+        encoding="utf-8",
+    )
+    (project / "pys.toml").write_text(
+        '[project]\nmain = "src/main.pys"\n[source_roots]\nmain = "src"\n',
+        encoding="utf-8",
+    )
+    (src / "main.pys").write_text("print(1)\n", encoding="utf-8")
+    # No local pys.deps — must not climb past pys.toml to the parent lock.
+    assert find_deps_file(src / "main.pys") is None
+    assert load_deps(src / "main.pys") is None
+
+
 def test_run_source_ignores_deps_above_workspace(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

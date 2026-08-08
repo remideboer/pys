@@ -143,9 +143,15 @@ pys.lock targets platform win-amd64, running platform is linux-x86_64.
 
 Extension sets `PYS_WORKSPACE_ROOT`. Deps discovery and run stop at that root.
 
+**CLI / nested projects:** when the env var is unset, the nearest `pys.toml`
+directory is the same stop bound — so a silo with a manifest does not inherit a
+parent `pys.deps` / lock and does not need a manual `set PYS_WORKSPACE_ROOT=…`
+(ADR-017). Explicit `stop_at=` and the env var still win over the manifest.
+
 **Testing rule (do not regress):** any test that `run_source`s an example which
 must not use the repo-root lock must bind the workspace to that example’s
-folder (same pattern as the VS Code Run button for a silo):
+folder (same pattern as the VS Code Run button for a silo), **or** give the
+example its own `pys.toml` so the manifest bound applies:
 
 ```python
 monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(example_path.parent))
@@ -162,6 +168,7 @@ Prefer `transpile` / `compile_pys` when you only need compile success; use
 the workspace if the file sits under a parent that has an unrelated `pys.lock`.
 
 **Evidence:** `test_find_deps_file_stops_at_workspace_root`,
+`test_find_deps_file_stops_at_nearest_pys_toml`,
 `test_run_source_ignores_deps_above_workspace`,
 `ide-process.test.js` (run env carries the variable),
 `test_acceptance_concurrency_runs`, `test_example_structs_runs`

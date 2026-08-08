@@ -78,22 +78,40 @@ def default_repo_root() -> Path:
     return DEFAULT_REPO.resolve()
 
 
-def _workspace_stop_at(explicit: Path | None = None) -> Path | None:
+def _workspace_stop_at(
+    explicit: Path | None = None, *, start: Path | None = None
+) -> Path | None:
+    """Bound upward deps discovery.
+
+    Precedence: explicit ``stop_at`` → ``PYS_WORKSPACE_ROOT`` → nearest
+    ``pys.toml`` project directory (ADR-017). The env var remains what the IDE
+    sets for containment; CLI/run should not require it when a manifest exists.
+    """
     if explicit is not None:
         return explicit.resolve()
     raw = os.environ.get(WORKSPACE_ROOT_ENV)
-    if not raw:
-        return None
-    return Path(raw).expanduser().resolve()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    if start is not None:
+        from .project_manifest import find_manifest
+
+        try:
+            manifest = find_manifest(start)
+        except OSError:
+            manifest = None
+        if manifest is not None:
+            return manifest.parent.resolve()
+    return None
 
 
 def find_deps_file(start: Path, *, stop_at: Path | None = None) -> Path | None:
     """Walk upward from start (file or dir) looking for pys.deps.
 
-    When ``stop_at`` is set (or ``PYS_WORKSPACE_ROOT`` is in the environment),
-    do not honor a ``pys.deps`` above that directory.
+    Discovery stops at ``stop_at``, ``PYS_WORKSPACE_ROOT``, or the nearest
+    ``pys.toml`` project root — whichever applies first — so a nested project
+    cannot inherit a parent lock (CER-001 §4).
     """
-    bound = _workspace_stop_at(stop_at)
+    bound = _workspace_stop_at(stop_at, start=start)
     bound_key = str(bound) if bound is not None else None
     try:
         start_key = str(start.resolve())

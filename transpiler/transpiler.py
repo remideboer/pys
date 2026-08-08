@@ -206,7 +206,6 @@ def run_source(source_path: Path) -> int:
     """Transpile a source file and execute it with the current Python interpreter."""
     from .deps import (
         DepsError,
-        WORKSPACE_ROOT_ENV,
         load_deps,
         prepend_pythonpath,
         resolve_python_executable,
@@ -218,10 +217,9 @@ def run_source(source_path: Path) -> int:
     source_path = resolve_entrypoint(source_path)
     env = dict(os.environ)
     python_exe = sys.executable
-    workspace_value = os.environ.get(WORKSPACE_ROOT_ENV)
-    workspace_root = Path(workspace_value).expanduser().resolve() if workspace_value else None
+    # Deps stop at PYS_WORKSPACE_ROOT or nearest pys.toml (see find_deps_file).
     try:
-        deps_config = load_deps(source_path, stop_at=workspace_root)
+        deps_config = load_deps(source_path)
         if deps_config is not None:
             python_exe = resolve_python_executable(deps_config)
             site_paths = resolve_site_paths(deps_config, build="run", python=python_exe)
