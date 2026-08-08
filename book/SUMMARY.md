@@ -93,7 +93,9 @@
 # 10. Session — Patterns you name to build (and to ask an AI)
 
 - [Session — Patterns you name to build](chapter_9_session_patterns.md)
+  - [10.0. How these diagrams work](chapter_9_0_visual_style.md)
   - [10.1. App shape](chapter_9_1_app_shape.md)
+  - [10.1a. Multitier architecture](chapter_9_1a_multitier.md)
   - [10.2. Authorization](chapter_9_2_authorization.md)
   - [10.3. Resilience](chapter_9_3_resilience.md)
   - [10.4. Integration](chapter_9_4_integration.md)
@@ -122,3 +124,4 @@
 # 14. Resources
 
 - [Resources](resources.md)
+- [Bibliography: visual explanations](bibliography_visual_explanations.md)

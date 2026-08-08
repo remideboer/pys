@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,16 +130,62 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
 <h1>10.1. App shape — Repository, Unit of Work, service layer, DTO / ACL</h1>
 <p>Your program needs a clear <strong>inside</strong> (domain + use-cases) and <strong>outside</strong>
 (HTTP, SQL, legacy systems). Four names keep that boundary honest.</p>
+<figure class="concept-diagram" role="img" aria-label="Layers from domain core through application and ports to outside adapters">
+  <div class="diagram-layers">
+    <div class="diagram-layer diagram-layer-core">
+      <strong>Domain</strong>
+      <span>entities, rules you protect</span>
+    </div>
+    <div class="diagram-layer">
+      <strong>Application service</strong>
+      <span>use-case orchestration</span>
+    </div>
+    <div class="diagram-layer diagram-layer-edge">
+      <strong>Ports</strong>
+      <span>Repository and other interfaces</span>
+    </div>
+    <div class="diagram-layer diagram-outside">
+      <strong>Adapters / outside</strong>
+      <span>memory, MySQL, HTTP, legacy CSV</span>
+    </div>
+  </div>
+  <figcaption>
+    Think container: protect the core; depend inward on ports; leave messy
+    shapes at the edge.
+  </figcaption>
+</figure>
+
 <h2>Repository</h2>
 <p>A <strong>Repository</strong> is a port that looks like a collection for one aggregate:
 <code>save</code>, <code>findById</code>. Application code depends on the interface; an adapter talks
 to memory or MySQL.</p>
+<figure class="concept-diagram" role="img" aria-label="Caller uses OrderRepository socket; InMemoryOrderRepository machine wires the socket">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>PlaceOrderService</strong><span>caller · depends on the socket</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box diagram-layer-edge" style="border-style:dashed;border-width:2px;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>OrderRepository</strong>
+      <span>interface · port · save / findById</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>InMemoryOrderRepository</strong>
+      <span>adapter · real storage behind the port</span>
+    </div>
+  </div>
+  <figcaption>
+    Same socket idea as interfaces: the service holds a fitting cable to the
+    port; swap the adapter without rewriting the use-case.
+  </figcaption>
+</figure>
+
 <pre><code class="language-pys"><span class="tok-kw">interface</span> <span class="tok-typename">OrderRepository</span> {
     <span class="tok-ident">save</span>(<span class="tok-typename">Order</span> <span class="tok-ident">order</span>)
     <span class="tok-kw">nullable</span><span class="tok-op">&lt;</span><span class="tok-typename">Order</span><span class="tok-op">&gt;</span> <span class="tok-ident">findById</span>(<span class="tok-type">string</span> <span class="tok-ident">orderId</span>)
@@ -159,6 +207,25 @@ use-case takes the repository in its constructor.</p>
 <h2>Unit of Work</h2>
 <p>A <strong>Unit of Work</strong> gathers changes during one business transaction, then
 <code>commit()</code> or <code>rollback()</code>.</p>
+<figure class="concept-diagram" role="img" aria-label="Pending tray of products then commit writes them or rollback empties the tray">
+  <div class="diagram-flow" style="min-width:28rem">
+    <div class="diagram-box"><strong>Pending tray</strong><span>registerNew products</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>commit()</strong>
+      <span>write through store</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">or</div>
+    <div class="diagram-box diagram-outside">
+      <strong>rollback()</strong>
+      <span>drop pending work</span>
+    </div>
+  </div>
+  <figcaption>
+    Batch first, then one decision: keep all changes or keep none.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/unit_of_work.pys"><code>unit_of_work.pys</code></a>.</p>
 <p><strong>Output (concept):</strong> first product visible after commit; second missing after
 rollback.</p>
@@ -169,6 +236,22 @@ True
 <h2>Service layer</h2>
 <p>An <strong>application service</strong> (service layer) is a use-case class: orchestrate
 ports, return a result, no HTTP/SQL.</p>
+<figure class="concept-diagram" role="img" aria-label="Thin HTTP edge calls CreateOrderService which uses OrderRepository and Clock ports">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box diagram-outside"><strong>HTTP / CLI</strong><span>thin edge</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>CreateOrderService</strong>
+      <span>use-case</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Ports</strong><span>Repository · Clock</span></div>
+  </div>
+  <figcaption>
+    Controllers stay thin; the named use-case owns the workflow.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/service_layer.pys"><code>service_layer.pys</code></a>.</p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">created:O-9@2026-08-08T12:00:00Z
@@ -179,6 +262,25 @@ ports, return a result, no HTTP/SQL.</p>
   the edge.</li>
 <li><strong>DTO:</strong> flat shape for APIs/UI — not your entity.</li>
 </ul>
+<figure class="concept-diagram" role="img" aria-label="Legacy foreign row crosses dashed ACL boundary into domain CatalogItem then out as DTO">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-outside"><strong>Legacy row</strong><span>product_code · descr · price_cents</span></div>
+    <div class="diagram-boundary">
+      <strong>Anti-Corruption Layer</strong>
+      <span>translate names at the edge</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>CatalogItem (domain)</strong>
+      <span>sku · title · Money</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box"><strong>CatalogItemDto</strong><span>flat transport for API / UI</span></div>
+  </div>
+  <figcaption>
+    Foreign keys never leak past the dashed boundary into domain services.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/dto_acl.pys"><code>dto_acl.pys</code></a>.</p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">BG-001
@@ -194,7 +296,7 @@ Catan
 otherwise nothing is written.” (Answer: Unit of Work, often with a Repository.)</p>
 </blockquote>
 <hr />
-<p><a href="chapter_9_session_patterns.html">Previous: Patterns session</a> · <a href="chapter_9_2_authorization.html">Next: Authorization</a></p>
+<p><a href="chapter_9_0_visual_style.html">Previous: How these diagrams work</a> · <a href="chapter_9_1a_multitier.html">Next: Multitier architecture</a></p>
     </main>
   </div>
 </body>

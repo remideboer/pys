@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3.3. Static types and casts — PYS Development Classes</title>
+  <title>Bibliography — visual explanations (Session 10 diagrams) — PYS Development Classes</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -134,72 +134,56 @@
 </ul>
     </nav>
     <main>
-<h1>3.3. Static types and casts</h1>
-<p>Common primitives:</p>
-<table>
-<thead>
-<tr>
-<th>Type</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>int</code></td>
-<td><code>10</code>, <code>0xFF</code></td>
-</tr>
-<tr>
-<td><code>float</code></td>
-<td><code>3.14</code></td>
-</tr>
-<tr>
-<td><code>string</code></td>
-<td><code>"hello"</code></td>
-</tr>
-<tr>
-<td><code>bool</code></td>
-<td><code>true</code> / <code>false</code></td>
-</tr>
-<tr>
-<td><code>char</code></td>
-<td><code>'A'</code></td>
-</tr>
-<tr>
-<td><code>object</code></td>
-<td>opaque / foreign value</td>
-</tr>
-</tbody>
-</table>
-<p>Prefer an explicit type on the left when teaching or when the initializer
-is unclear. Use <code>var</code> when the right-hand side already makes the type
-obvious (<code>var</code> is a declaration form, not a type name).</p>
-<h2>Casts</h2>
-<pre><code class="language-pys"><span class="tok-type">float</span> <span class="tok-ident">speed</span> <span class="tok-op">=</span> <span class="tok-number">12.9</span>
-<span class="tok-type">int</span> <span class="tok-ident">whole</span> <span class="tok-op">=</span> (<span class="tok-type">int</span>) <span class="tok-ident">speed</span>
-<span class="tok-builtin">print</span>(<span class="tok-ident">whole</span>)</code></pre>
-<p>Output:</p>
-<pre><code class="language-text">12
-</code></pre>
-<p>Casts are explicit on purpose — silent narrowing is a common bug in less
-strict languages.</p>
-<h2>Width aliases</h2>
-<p>Aliases like <code>byte</code>, <code>nibble</code>, and <code>int16</code> teach bit-sized ranges. They
-still emit as Python <code>int</code>, but <strong>out-of-range literals are rejected</strong>.</p>
-<pre><code class="language-pys"><span class="tok-type">byte</span> <span class="tok-ident">flags</span> <span class="tok-op">=</span> <span class="tok-number">0b1011_1101</span>
-<span class="tok-type">nibble</span> <span class="tok-ident">n</span> <span class="tok-op">=</span> <span class="tok-number">0xA</span>
-<span class="tok-type">int16</span> <span class="tok-ident">port</span> <span class="tok-op">=</span> <span class="tok-number">8080</span>
-<span class="tok-builtin">print</span>(<span class="tok-ident">flags</span>)
-<span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
-<span class="tok-builtin">print</span>(<span class="tok-ident">port</span>)
-<span class="tok-comment"># byte tooBig = 300   # does not compile — outside 0..255</span></code></pre>
-<p><em>Compile error if the commented line is uncommented.</em></p>
-<h3>Exercise</h3>
-<blockquote>
-<p>Store <code>9.81</code> as a <code>float</code>, cast to <code>int</code>, and print both with typed
-interpolation (<code>#f{…}</code> and <code>#i{…}</code>).</p>
-</blockquote>
+<h1>Bibliography — visual explanations (Session 10 diagrams)</h1>
+<p>Short teaching bibliography for the diagram rules in
+<a href="chapter_9_0_visual_style.html">How these diagrams work</a>. These are <strong>design
+inputs</strong>, not a literature review.</p>
+<h2>Cognitive / learning science</h2>
+<p><strong>Paivio, A. (1986).</strong> <em>Mental representations: A dual coding approach.</em>
+Oxford University Press.</p>
+<ul>
+<li><strong>Used for:</strong> Pair every figure with prose and a caption that restates the
+  claim (verbal + nonverbal channels).</li>
+</ul>
+<p><strong>Mayer, R. E. (2009).</strong> <em>Multimedia learning</em> (2nd ed.). Cambridge University
+Press.</p>
+<ul>
+<li><strong>Used for:</strong> Coherence (strip decoration), signaling (bold labels / accent
+  “inside”), and spatial contiguity (diagram next to the section it explains).</li>
+</ul>
+<p><strong>Sweller, J. (2011).</strong> Cognitive load theory. In <em>Psychology of learning and
+motivation</em> (Vol. 55). Academic Press.</p>
+<ul>
+<li><strong>Used for:</strong> Cap nodes per figure; one idea per diagram so working memory is
+  not flooded with UML detail.</li>
+</ul>
+<p><strong>Lakoff, G., &amp; Johnson, M. (1980).</strong> <em>Metaphors we live by.</em> University of
+Chicago Press.</p>
+<ul>
+<li><strong>Used for:</strong> Stable metaphors — <em>container</em> (inside/outside), <em>path</em> (flow /
+  pipeline), already established in earlier book chapters (socket, machine).</li>
+</ul>
+<h2>Visual design</h2>
+<p><strong>Tufte, E. R. (2001).</strong> <em>The visual display of quantitative information</em>
+(2nd ed.). Graphics Press.</p>
+<ul>
+<li><strong>Used for:</strong> High data-ink: sparse boxes and arrows; no gradients, glow, or
+  decorative icon clusters.</li>
+</ul>
+<h2>Software metaphor (architecture image)</h2>
+<p><strong>Cockburn, A. (2005).</strong> Hexagonal architecture.
+https://alistair.cockburn.us/hexagonal-architecture/</p>
+<ul>
+<li><strong>Used for:</strong> The <em>ports and adapters</em> “inside protected by a boundary”
+  picture that Session 10 layers diagrams echo (not psychology — complementary
+  domain metaphor).</li>
+</ul>
+<h2>How to read this list</h2>
+<p>If a new Session 10 figure breaks a rule above, fix the figure — do not invent a
+second visual language. Companion Mermaid in <code>examples/patterns/**/*.md</code> may
+stay UML-shaped; the beginner book stays on <code>concept-diagram</code> HTML.</p>
 <hr />
-<p><a href="chapter_2_2_variables.html">Previous: Variables</a> · <a href="chapter_2_4_running_and_checking.html">Next: Running and checking your work</a></p>
+<p><a href="resources.html">Previous: Resources</a> · <a href="index.html">Back to Summary</a></p>
     </main>
   </div>
 </body>

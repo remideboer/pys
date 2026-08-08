@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,6 +130,7 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
@@ -138,6 +141,21 @@ These add the names engineers use for <strong>distributed workflows</strong>.</p
 <h2>Event sourcing</h2>
 <p>Append <strong>events</strong>; fold them to state. Often paired with CQRS — not the same
 thing.</p>
+<figure class="concept-diagram" role="img" aria-label="Append-only event log folded into current status">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>Created O-1</strong><span>append</span></div>
+    <div class="diagram-box"><strong>Shipped O-1</strong><span>append</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓ fold</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>status = shipped</strong>
+      <span>projection · not an overwrite-only column</span>
+    </div>
+  </div>
+  <figcaption>
+    State is derived from the log; do not confuse this with “just CQRS.”
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/messaging/event_sourcing.pys"><code>event_sourcing.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">shipped
@@ -145,6 +163,22 @@ True
 </code></pre>
 <h2>Transactional outbox</h2>
 <p>Write the domain change <strong>and</strong> an outbox row together; a relay publishes later.</p>
+<figure class="concept-diagram" role="img" aria-label="Same unit writes order and outbox then relay publishes">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>placeOrder</strong>
+      <span>orders + outbox row</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Relay</strong><span>drain · publish</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-outside"><strong>Broker / bus</strong><span>outside</span></div>
+  </div>
+  <figcaption>
+    Publish after the write is durable — not mid-transaction hope.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/messaging/outbox.pys"><code>outbox.pys</code></a></p>
 <p><strong>Output (shape):</strong></p>
 <pre><code class="language-text">True
@@ -154,6 +188,21 @@ True
 </code></pre>
 <h2>Saga</h2>
 <p>Multi-step process with <strong>compensations</strong> when a later step fails.</p>
+<figure class="concept-diagram" role="img" aria-label="Reserve then charge; on charge fail compensate reserve">
+  <div class="diagram-stack">
+    <div class="diagram-box"><strong>1. reserve</strong><span>ok</span></div>
+    <div class="diagram-box" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>2. charge</strong>
+      <span>fail</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↓ compensate</div>
+    <div class="diagram-box diagram-outside"><strong>reserve:undo</strong><span>reverse earlier work</span></div>
+  </div>
+  <figcaption>
+    Long workflows undo prior steps instead of pretending one big transaction.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/messaging/saga.pys"><code>saga.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">reserve:ok
@@ -166,6 +215,22 @@ aborted:charge
 </code></pre>
 <h2>Request–reply</h2>
 <p><strong>Correlation id</strong> links a reply to its request.</p>
+<figure class="concept-diagram" role="img" aria-label="Request and reply share correlation id c-1">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box"><strong>Request</strong><span>c-1 · ping</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Replier</strong><span>handle</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Reply</strong>
+      <span>c-1 · echo:ping</span>
+    </div>
+  </div>
+  <figcaption>
+    Without a correlation id, replies cannot find their waiting caller.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/messaging/request_reply.pys"><code>request_reply.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">echo:ping

@@ -11,16 +11,47 @@ syntax but skip the shared vocabulary of systems.
 > Name the **boundary**, the **failure mode**, and the **authz model** —
 > not only the feature.
 
+<figure class="concept-diagram" role="img" aria-label="Weak vague prompt versus strong prompt that names Repository RBAC and idempotency">
+  <div class="diagram-prompt-pair">
+    <div class="diagram-prompt is-weak">
+      <span class="diagram-prompt-label">Weak</span>
+      <strong>“Make a shop API”</strong>
+      <span style="display:block;margin-top:0.35rem;color:var(--muted);font-size:0.9rem">model invents structure</span>
+    </div>
+    <div class="diagram-prompt is-strong">
+      <span class="diagram-prompt-label">Strong</span>
+      <strong>service layer · Repository · RBAC · idempotency</strong>
+      <span style="display:block;margin-top:0.35rem;color:var(--muted);font-size:0.9rem">you steer the design</span>
+    </div>
+  </div>
+  <figcaption>
+    Signaling with pattern names beats a vague feature request.
+  </figcaption>
+</figure>
+
 | Weak prompt | Strong prompt |
 |-------------|---------------|
 | Make a shop API | Use a **service layer** + **Repository** ports; **RBAC** on writes; **idempotency** keys on create-order |
+| Make a three-tier shop | **Multitier**: presentation → application → data access; **layer ≠ tier**; UI free of SQL |
 | Make it reliable | **Retry** (3) inside, **circuit breaker** outside payment; **timeout** budget on HTTP client |
 | Add events | **Transactional outbox** after commit; consumers are **idempotent**; optional **saga** for reserve+charge |
 | Write tests | Inject a **Fake** repository; **Object Mother** for paid orders; assert with a **Spy** on the mailer |
 
 ## Vocabulary checklist (keep near your IDE)
 
-**App shape:** Repository, Unit of Work, service layer, DTO, Anti-Corruption Layer, Dependency Injection  
+<figure class="concept-diagram" role="img" aria-label="Vocabulary clusters for app shape auth resilience tests and data">
+  <div class="diagram-grid-2">
+    <div class="diagram-box"><strong>App shape</strong><span>Repository · UoW · Multitier · DTO/ACL · DI</span></div>
+    <div class="diagram-box"><strong>Auth</strong><span>AuthN/Z · RBAC · ACL · ABAC</span></div>
+    <div class="diagram-box"><strong>Resilience</strong><span>Retry · Timeout · Breaker · Idempotency</span></div>
+    <div class="diagram-box"><strong>Tests</strong><span>Dummy→Mock · Mother · Builder</span></div>
+  </div>
+  <figcaption>
+    Clusters beat a wall of unsorted names — grab the cluster you need.
+  </figcaption>
+</figure>
+
+**App shape:** Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  
 
 **Auth:** Authentication vs Authorization, RBAC, ACL, ABAC  
 
@@ -46,6 +77,8 @@ syntax but skip the shared vocabulary of systems.
 | Mock vs Fake | Expectation spy vs working mini-impl |
 | AuthN vs AuthZ | Identity vs permission |
 | Retry vs Circuit breaker | Re-attempt vs trip open |
+| Multitier vs Hexagonal | Stacked layers vs ports around a core |
+| Layer vs tier | Logical code band vs physical deploy node |
 
 ## Drill 1 — name the boundary
 
@@ -81,11 +114,14 @@ is already JWT; do not re-check passwords in the handler.”
 ## Good full prompt (copy/adapt)
 
 ```text
-Build create-order as an application service (service layer) that depends on
-OrderRepository and Clock via constructor injection (DI).
+Build create-order with a three-tier / multitier shape (presentation →
+application service → data access). Layer ≠ tier: one process is fine for the
+teaching demo; keep UI free of SQL.
 
-Persist through a Repository port; provide an in-memory adapter for tests.
-Use a Unit of Work if stock reservation and order insert must commit together.
+Application service (service layer) depends on OrderRepository and Clock via
+constructor injection (DI). Persist through a Repository port; provide an
+in-memory adapter for tests. Use a Unit of Work if stock reservation and order
+insert must commit together.
 
 Authorize with RBAC: clerk=order:read, admin=order:read+order:write.
 Accept Idempotency-Key: same key returns the same result.
@@ -95,13 +131,16 @@ transactional outbox (do not call the broker inside the DB transaction).
 
 Tests: Fake repository, Object Mother for fixtures, Spy on mailer.
 Prefer Data Mapper style domain objects (not Active Record save() on entities).
-Do not introduce a Service Locator.
+Do not introduce a Service Locator. Multitier ≠ Hexagonal — you may combine
+both (ports at the data edge).
 ```
 
 ## Where to practice
 
 All demos: [`examples/patterns/`](../examples/patterns/README.md).  
-Start from Session hub: [Patterns you name to build](chapter_9_session_patterns.md).
+Start from Session hub: [Patterns you name to build](chapter_9_session_patterns.md).  
+Diagram rules: [How these diagrams work](chapter_9_0_visual_style.md) ·
+[Bibliography](bibliography_visual_explanations.md).
 
 ### Exercise
 

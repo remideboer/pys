@@ -12,6 +12,8 @@
 - Runnable examples: [`examples/`](../examples/)
 - Patterns corpus (GoF + architecture / resilience / …): [`examples/patterns/`](../examples/patterns/)
 - Book session: [Patterns you name to build](chapter_9_session_patterns.md)
+- Diagram style (Session 10): [How these diagrams work](chapter_9_0_visual_style.md)
+- [Bibliography: visual explanations](bibliography_visual_explanations.md)
 
 ## How the computer runs your code
 

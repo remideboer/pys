@@ -169,6 +169,165 @@ main th { background: #efebe3; }
   border: 2px solid var(--accent);
   background: #e5edff;
 }
+/* Session 10 pattern diagrams — layered architecture / boundaries / states */
+.diagram-layers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+.diagram-layer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #aaa397;
+  border-radius: 6px;
+  background: var(--bg);
+  text-align: center;
+}
+.diagram-layer strong { display: block; }
+.diagram-layer span { color: var(--muted); font-size: 0.88rem; }
+.diagram-layer-core {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+}
+.diagram-layer-edge {
+  border-style: dashed;
+  border-color: #8a6d3b;
+  background: #f5ecd8;
+}
+.diagram-outside {
+  border-style: solid;
+  border-color: #aaa397;
+  background: #efebe3;
+  color: var(--muted);
+}
+.diagram-boundary {
+  margin: 0.35rem auto;
+  padding: 0.55rem 0.75rem;
+  border: 2px dashed #8a6d3b;
+  border-radius: 6px;
+  background: #f5ecd8;
+  text-align: center;
+  max-width: 28rem;
+}
+.diagram-boundary strong { display: block; }
+.diagram-boundary span { color: var(--muted); font-size: 0.88rem; }
+.diagram-states {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+.diagram-state {
+  min-width: 5.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #aaa397;
+  border-radius: 999px;
+  background: var(--bg);
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+.diagram-state.is-active {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+  color: var(--accent);
+}
+.diagram-state span {
+  display: block;
+  margin-top: 0.15rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.diagram-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(10rem, 1fr));
+  gap: 0.65rem;
+  max-width: 36rem;
+  margin: 0 auto;
+}
+.diagram-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.45rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+.diagram-slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.diagram-slot {
+  min-width: 3.2rem;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #aaa397;
+  border-radius: 4px;
+  background: var(--bg);
+  text-align: center;
+  font-size: 0.85rem;
+}
+.diagram-slot.is-full {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+}
+.diagram-slot.is-blocked {
+  border-style: dashed;
+  color: var(--muted);
+  background: #efebe3;
+}
+.diagram-prompt-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+.diagram-prompt {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid #aaa397;
+  border-radius: 6px;
+  background: var(--bg);
+}
+.diagram-prompt.is-weak {
+  border-color: #8a6d3b;
+  background: #f5ecd8;
+}
+.diagram-prompt.is-strong {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+}
+.diagram-prompt .diagram-prompt-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.diagram-box.diagram-layer-core,
+.diagram-box.is-core {
+  border: 2px solid var(--accent);
+  background: #e5edff;
+}
+.diagram-box.diagram-layer-edge,
+.diagram-box.is-edge {
+  border-style: dashed;
+  border-width: 2px;
+  border-color: #8a6d3b;
+  background: #f5ecd8;
+}
+.diagram-box.is-warn {
+  border: 2px solid #8a6d3b;
+  background: #f5ecd8;
+}
 .memory-legend {
   display: flex;
   flex-wrap: wrap;

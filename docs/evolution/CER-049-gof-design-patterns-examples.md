@@ -5,7 +5,7 @@
 | Status | Accepted |
 | Date | 2026-08-08 |
 | Commits | (patterns tree; see git history) |
-| Scope | `examples/patterns/**`; `tests/test_patterns.py` |
+| Scope | `examples/patterns/**`; `tests/test_patterns.py`; book Session 10 (`chapter_9_*`) |
 
 ## Context
 
@@ -88,6 +88,19 @@ before C#/Java transfer. Gate folder counts in `tests/test_patterns.py`.
 
 **Evidence:** `python -m pytest -q tests/test_patterns.py`;
 `python book/build_html.py`.
+
+### 9. Multitier book chapter + architectural demo
+
+**Post-behavior:** Session **10.1a** (`chapter_9_1a_multitier.md`) teaches
+Multitier / n-tier / three-tier, **layer ≠ tier**, strict vs relaxed stacking,
+and Multitier ≠ Hexagonal. Runnable OO demo
+`examples/patterns/architectural/multitier.pys` (+ companion `.md`); thin
+`layered.pys` remains the short sibling. Architectural gate count **6**.
+Vocabulary + strong prompt in `chapter_9_8_prompting_ai.md`.
+
+**Evidence:** `tests/test_patterns.py` architectural == 6;
+`tests/test_book_links.py` Session 10 concept-diagram list includes
+`chapter_9_1a_multitier.html`.
 
 ## Trade-offs
 

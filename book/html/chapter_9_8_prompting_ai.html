@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,6 +130,7 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
@@ -141,6 +144,24 @@ syntax but skip the shared vocabulary of systems.</p>
 <p>Name the <strong>boundary</strong>, the <strong>failure mode</strong>, and the <strong>authz model</strong> —
 not only the feature.</p>
 </blockquote>
+<figure class="concept-diagram" role="img" aria-label="Weak vague prompt versus strong prompt that names Repository RBAC and idempotency">
+  <div class="diagram-prompt-pair">
+    <div class="diagram-prompt is-weak">
+      <span class="diagram-prompt-label">Weak</span>
+      <strong>“Make a shop API”</strong>
+      <span style="display:block;margin-top:0.35rem;color:var(--muted);font-size:0.9rem">model invents structure</span>
+    </div>
+    <div class="diagram-prompt is-strong">
+      <span class="diagram-prompt-label">Strong</span>
+      <strong>service layer · Repository · RBAC · idempotency</strong>
+      <span style="display:block;margin-top:0.35rem;color:var(--muted);font-size:0.9rem">you steer the design</span>
+    </div>
+  </div>
+  <figcaption>
+    Signaling with pattern names beats a vague feature request.
+  </figcaption>
+</figure>
+
 <table>
 <thead>
 <tr>
@@ -152,6 +173,10 @@ not only the feature.</p>
 <tr>
 <td>Make a shop API</td>
 <td>Use a <strong>service layer</strong> + <strong>Repository</strong> ports; <strong>RBAC</strong> on writes; <strong>idempotency</strong> keys on create-order</td>
+</tr>
+<tr>
+<td>Make a three-tier shop</td>
+<td><strong>Multitier</strong>: presentation → application → data access; <strong>layer ≠ tier</strong>; UI free of SQL</td>
 </tr>
 <tr>
 <td>Make it reliable</td>
@@ -168,7 +193,19 @@ not only the feature.</p>
 </tbody>
 </table>
 <h2>Vocabulary checklist (keep near your IDE)</h2>
-<p><strong>App shape:</strong> Repository, Unit of Work, service layer, DTO, Anti-Corruption Layer, Dependency Injection  </p>
+<figure class="concept-diagram" role="img" aria-label="Vocabulary clusters for app shape auth resilience tests and data">
+  <div class="diagram-grid-2">
+    <div class="diagram-box"><strong>App shape</strong><span>Repository · UoW · Multitier · DTO/ACL · DI</span></div>
+    <div class="diagram-box"><strong>Auth</strong><span>AuthN/Z · RBAC · ACL · ABAC</span></div>
+    <div class="diagram-box"><strong>Resilience</strong><span>Retry · Timeout · Breaker · Idempotency</span></div>
+    <div class="diagram-box"><strong>Tests</strong><span>Dummy→Mock · Mother · Builder</span></div>
+  </div>
+  <figcaption>
+    Clusters beat a wall of unsorted names — grab the cluster you need.
+  </figcaption>
+</figure>
+
+<p><strong>App shape:</strong> Repository, Unit of Work, service layer, Multitier / three-tier (layer ≠ tier), DTO, Anti-Corruption Layer, Dependency Injection  </p>
 <p><strong>Auth:</strong> Authentication vs Authorization, RBAC, ACL, ABAC  </p>
 <p><strong>Resilience:</strong> Retry, Timeout, Circuit breaker, Bulkhead, Fallback, Rate limit, Idempotency  </p>
 <p><strong>Integration:</strong> Pub-sub, CQRS, Event sourcing, Outbox, Saga, Request–reply  </p>
@@ -209,6 +246,14 @@ not only the feature.</p>
 <td>Retry vs Circuit breaker</td>
 <td>Re-attempt vs trip open</td>
 </tr>
+<tr>
+<td>Multitier vs Hexagonal</td>
+<td>Stacked layers vs ports around a core</td>
+</tr>
+<tr>
+<td>Layer vs tier</td>
+<td>Logical code band vs physical deploy node</td>
+</tr>
 </tbody>
 </table>
 <h2>Drill 1 — name the boundary</h2>
@@ -230,11 +275,14 @@ is already JWT; do not re-check passwords in the handler.”</p>
 <code>paidCatan()</code>. <strong>Spy</strong> on <code>Mailer</code> to assert one welcome mail. No mocks for
 <code>Money</code> values.”</p>
 <h2>Good full prompt (copy/adapt)</h2>
-<pre><code class="language-text">Build create-order as an application service (service layer) that depends on
-OrderRepository and Clock via constructor injection (DI).
+<pre><code class="language-text">Build create-order with a three-tier / multitier shape (presentation →
+application service → data access). Layer ≠ tier: one process is fine for the
+teaching demo; keep UI free of SQL.
 
-Persist through a Repository port; provide an in-memory adapter for tests.
-Use a Unit of Work if stock reservation and order insert must commit together.
+Application service (service layer) depends on OrderRepository and Clock via
+constructor injection (DI). Persist through a Repository port; provide an
+in-memory adapter for tests. Use a Unit of Work if stock reservation and order
+insert must commit together.
 
 Authorize with RBAC: clerk=order:read, admin=order:read+order:write.
 Accept Idempotency-Key: same key returns the same result.
@@ -244,11 +292,14 @@ transactional outbox (do not call the broker inside the DB transaction).
 
 Tests: Fake repository, Object Mother for fixtures, Spy on mailer.
 Prefer Data Mapper style domain objects (not Active Record save() on entities).
-Do not introduce a Service Locator.
+Do not introduce a Service Locator. Multitier ≠ Hexagonal — you may combine
+both (ports at the data edge).
 </code></pre>
 <h2>Where to practice</h2>
 <p>All demos: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/README.md"><code>examples/patterns/</code></a>.<br />
-Start from Session hub: <a href="chapter_9_session_patterns.html">Patterns you name to build</a>.</p>
+Start from Session hub: <a href="chapter_9_session_patterns.html">Patterns you name to build</a>.<br />
+Diagram rules: <a href="chapter_9_0_visual_style.html">How these diagrams work</a> ·
+<a href="bibliography_visual_explanations.html">Bibliography</a>.</p>
 <h3>Exercise</h3>
 <blockquote>
 <p>Rewrite this weak prompt into a strong one: “Add users and security to my

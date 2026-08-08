@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10.1a. Multitier architecture — layers, tiers, and three-tier — PYS Development Classes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc">
+      <h1><a href="index.html">PYS Development Classes</a></h1>
+      <ul>
+<li><a href="preface.html">Preface</a></li>
+</ul>
+<span class="section">1. Preparation</span>
+<ul>
+<li><a href="chapter_1_1_getting_ready.html">1.1. Getting ready</a></li>
+</ul>
+<span class="section">2. Back to the basics</span>
+<ul>
+<li><a href="basics.html">Back to the basics</a></li>
+<li><a href="basics_functions.html">2.1. Functions</a></li>
+<li><a href="basics_input.html">2.2. Processing input</a></li>
+<li><a href="basics_choices.html">2.3. Making choices</a></li>
+<li><a href="basics_data.html">2.4. Data structures</a></li>
+<li><a href="basics_loops.html">2.5. Loops</a></li>
+<li><a href="basics_conversion.html">2.6. Conversion</a></li>
+<li><a href="basics_null.html">2.7. Null and missing values</a></li>
+<li><a href="basics_outcomes.html">2.8. Expressing success and failure</a></li>
+<li><a href="basics_structuring.html">2.9. Structuring code</a></li>
+<li><a href="basics_files.html">2.10. Files</a></li>
+<li><a href="basics_project.html">2.11. A small contact book</a></li>
+<li><a href="basics_spoilers.html">2.12. Spoilers</a></li>
+<li><a href="basics_spoilers_input.html">2.12.1. Processing input</a></li>
+<li><a href="basics_spoilers_structuring.html">2.12.2. Structuring code</a></li>
+<li><a href="basics_spoilers_files.html">2.12.3. Files</a></li>
+</ul>
+<span class="section">3. Session 1 — Types that protect you</span>
+<ul>
+<li><a href="chapter_2_session_types.html">Session 1 — Types that protect you</a></li>
+<li><a href="chapter_2_1_formatting_output.html">3.1. Formatting output</a></li>
+<li><a href="chapter_2_2_variables.html">3.2. Variables: var, fix, and const</a></li>
+<li><a href="chapter_2_3_static_types.html">3.3. Static types and casts</a></li>
+<li><a href="chapter_2_4_running_and_checking.html">3.4. Running and checking your work</a></li>
+</ul>
+<span class="section">4. Session 2 — Control flow and collections</span>
+<ul>
+<li><a href="chapter_3_session_control_flow.html">Session 2 — Control flow and collections</a></li>
+<li><a href="chapter_3_1_control_flow.html">4.1. Control flow</a></li>
+<li><a href="chapter_3_2_loops.html">4.2. Loops</a></li>
+<li><a href="chapter_3_3_arrays_and_lists.html">4.3. Arrays and lists</a></li>
+<li><a href="chapter_3_4_dicts_tuples_sets.html">4.4. Dicts, tuples, and sets</a></li>
+<li><a href="chapter_3_5_enums_and_switch.html">4.5. Enums and switch</a></li>
+</ul>
+<span class="section">5. Session 3 — Objects and composition</span>
+<ul>
+<li><a href="chapter_4_session_objects.html">Session 3 — Objects and composition</a></li>
+<li><a href="chapter_4_1a_classes.html">5.1. Classes and member order</a></li>
+<li><a href="chapter_4_1b_inheriting_classes.html">5.2. Inheritance and subclasses</a></li>
+<li><a href="chapter_4_2_interfaces.html">5.3. Interfaces</a></li>
+<li><a href="chapter_4_3_abstract_classes.html">5.4. Abstract classes</a></li>
+<li><a href="chapter_4_4_traits.html">5.5. Traits</a></li>
+<li><a href="chapter_4_5_structs_data_entity.html">5.6. Structs, data, and entity</a></li>
+<li><a href="chapter_4_6_choosing_construct.html">5.7. Choosing the right construct</a></li>
+</ul>
+<span class="section">6. Session 4 — Functions and lambdas</span>
+<ul>
+<li><a href="chapter_5_session_functions_lambdas.html">Session 4 — Functions and lambdas</a></li>
+<li><a href="chapter_5_1_functions_return.html">6.1. Functions that return values</a></li>
+<li><a href="chapter_5_2_lambdas.html">6.2. Lambdas</a></li>
+<li><a href="chapter_5_3_passing_functions.html">6.3. Passing functions around</a></li>
+</ul>
+<span class="section">7. GUI programming (procedural Tkinter)</span>
+<ul>
+<li><a href="gui_intro.html">7.1. GUI programming with Tkinter — introduction</a></li>
+<li><a href="gui_widgets.html">7.2. Widgets and layout</a></li>
+<li><a href="gui_events.html">7.3. Events and callbacks</a></li>
+<li><a href="gui_project.html">7.4. A small project: temperature converter</a></li>
+<li><a href="gui_ttkbootstrap_intro.html">7.5. Modern styling with ttkbootstrap</a></li>
+<li><a href="gui_ttkbootstrap_widgets.html">7.6. Styled widgets</a></li>
+<li><a href="gui_ttkbootstrap_project.html">7.7. Restyling the temperature converter</a></li>
+</ul>
+<span class="section">8. Session 5 — Doing several things at once</span>
+<ul>
+<li><a href="chapter_6_session_concurrency.html">Session 5 — Doing several things at once</a></li>
+<li><a href="chapter_6_1_tasks_await.html">8.1. tasks, task, and await</a></li>
+<li><a href="chapter_6_2_shared_state.html">8.2. shared state</a></li>
+<li><a href="chapter_6_3_atomic_updates.html">8.3. atomic updates</a></li>
+<li><a href="chapter_6_4_lambdas_capture.html">8.4. Lambdas and capture rules</a></li>
+</ul>
+<span class="section">9. Session 6 — Tests you can trust</span>
+<ul>
+<li><a href="chapter_7_session_tests.html">Session 6 — Tests you can trust</a></li>
+<li><a href="chapter_7_1_first_test.html">9.1. Writing a first test</a></li>
+<li><a href="chapter_7_2_tdd.html">9.2. Better PYS with TDD</a></li>
+<li><a href="chapter_7_3_packages_source_roots.html">9.3. Packages and source roots</a></li>
+</ul>
+<span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
+<ul>
+<li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
+<li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
+<li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
+<li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
+<li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
+<li><a href="chapter_9_5_test_doubles.html">10.5. Test doubles</a></li>
+<li><a href="chapter_9_6_composable_rules.html">10.6. Composable rules</a></li>
+<li><a href="chapter_9_7_data_paths.html">10.7. Data paths</a></li>
+<li><a href="chapter_9_8_prompting_ai.html">10.8. Prompting an AI</a></li>
+</ul>
+<span class="section">11. Session 7 — From PYS to C# and Java</span>
+<ul>
+<li><a href="chapter_8_session_csharp_java.html">Session 7 — From PYS to C# and Java</a></li>
+<li><a href="chapter_8_1_types_declarations.html">11.1. Types and declarations</a></li>
+<li><a href="chapter_8_2_classes_interfaces.html">11.2. Classes, interfaces, and members</a></li>
+<li><a href="chapter_8_3_control_flow_collections.html">11.3. Control flow and collections</a></li>
+<li><a href="chapter_8_4_no_direct_twin.html">11.4. What has no direct twin</a></li>
+</ul>
+<span class="section">12. Under the hood (optional)</span>
+<ul>
+<li><a href="under_the_hood_entrypoint.html">12.1. From source file to running process</a></li>
+<li><a href="under_the_hood_memory.html">12.2. Processes, calls, and memory</a></li>
+</ul>
+<span class="section">13. Exercises</span>
+<ul>
+<li><a href="exercises_contact_book.html">Exercise: Contact book</a></li>
+</ul>
+<span class="section">14. Resources</span>
+<ul>
+<li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
+</ul>
+    </nav>
+    <main>
+<h1>10.1a. Multitier architecture — layers, tiers, and three-tier</h1>
+<p>When you ask an AI for “a three-tier shop,” you are naming <strong>Multitier</strong>
+(also <strong>n-tier</strong>) architecture: separate <strong>presentation</strong>, <strong>application /
+business logic</strong>, and <strong>data access</strong> so each can change without rewriting the
+others.</p>
+<p><a href="https://en.wikipedia.org/wiki/Multitier_architecture">Wikipedia: Multitier architecture</a></p>
+<h2>What Multitier / n-tier is</h2>
+<p><strong>Multitier</strong> means client–server work is split into <strong>tiers of responsibility</strong>.
+The most common form in teaching and industry talk is <strong>three-tier</strong>:</p>
+<ol>
+<li>Presentation (UI / HTTP edge)</li>
+<li>Application / business logic</li>
+<li>Data (persistence)</li>
+</ol>
+<p>Your living shop examples under <a href="https://github.com/remideboer/pys/tree/main/examples/rest-api/shop"><code>examples/rest-api/shop/</code></a>
+often use this stack — sometimes combined with ports (hexagonal).</p>
+<h2>Layer ≠ tier (the key distinction)</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Layer</strong></td>
+<td>Logical grouping of code (UI code, app services, data access)</td>
+</tr>
+<tr>
+<td><strong>Tier</strong></td>
+<td>Physical deploy node (browser, app server, database host)</td>
+</tr>
+</tbody>
+</table>
+<p>One process can host <strong>three layers on one tier</strong>. Teaching demos do that on
+purpose: you learn the <em>stack of responsibilities</em> without running three
+machines.</p>
+<figure class="concept-diagram" role="img" aria-label="Three logical layers stacked inside one physical process tier">
+  <div class="diagram-layers">
+    <div class="diagram-layer diagram-outside">
+      <strong>Presentation layer</strong>
+      <span>console UI / HTTP handlers — no SQL</span>
+    </div>
+    <div class="diagram-layer">
+      <strong>Application / business</strong>
+      <span>use-cases and domain types</span>
+    </div>
+    <div class="diagram-layer diagram-layer-core">
+      <strong>Data access layer</strong>
+      <span>store port + in-memory / DB adapter</span>
+    </div>
+  </div>
+  <figcaption>
+    Three <em>layers</em> in one process = still one <em>tier</em>. Production may
+    put each layer on its own machine later.
+  </figcaption>
+</figure>
+
+<h2>Common logical layers</h2>
+<p>A fuller stack often names four logical bands (top depends downward):</p>
+<figure class="concept-diagram" role="img" aria-label="Presentation over application over domain over data access">
+  <div class="diagram-layers">
+    <div class="diagram-layer diagram-outside">
+      <strong>Presentation</strong>
+      <span>UI, routes, printers</span>
+    </div>
+    <div class="diagram-layer">
+      <strong>Application / service</strong>
+      <span>use-case orchestration</span>
+    </div>
+    <div class="diagram-layer diagram-layer-core">
+      <strong>Business / domain</strong>
+      <span>entities and rules you protect</span>
+    </div>
+    <div class="diagram-layer diagram-layer-edge">
+      <strong>Data access</strong>
+      <span>repositories, SQL, files</span>
+    </div>
+  </div>
+  <figcaption>
+    Outer code may call inward; domain types stay free of UI and SQL details.
+  </figcaption>
+</figure>
+
+<h2>Classic three-tier (and the web mapping)</h2>
+<p>On the web you often hear the same three names mapped to deploy nodes:</p>
+<table>
+<thead>
+<tr>
+<th>Logical (layer)</th>
+<th>Typical web tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Presentation</td>
+<td>Browser / static assets</td>
+</tr>
+<tr>
+<td>Application</td>
+<td>App server (API + use-cases)</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Database host</td>
+</tr>
+</tbody>
+</table>
+<p>This book does <strong>not</strong> implement browsers or multi-server deploy. The runnable
+demo keeps three <strong>logical</strong> layers in one process so the vocabulary stays
+honest and runnable.</p>
+<figure class="concept-diagram" role="img" aria-label="Three-tier boxes presentation application and data">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-outside"><strong>Presentation</strong><span>UI edge</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box"><strong>Application</strong><span>logic / use-cases</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Data</strong>
+      <span>persistence</span>
+    </div>
+  </div>
+  <figcaption>
+    Classic three-tier stack: presentation calls application; application talks
+    to data — not the reverse.
+  </figcaption>
+</figure>
+
+<h2>Strict vs relaxed layering</h2>
+<p><strong>Strict</strong> layering: a layer may call <strong>only the next layer down</strong>
+(presentation → application → data). <strong>Relaxed</strong> layering allows skipping
+(e.g. presentation reading a read-model store) — useful, but easier to tangle.</p>
+<figure class="concept-diagram" role="img" aria-label="Strict dependencies only call the next layer down">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-outside"><strong>Presentation</strong><span>may call ↓</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓ only</div>
+    <div class="diagram-box"><strong>Application</strong><span>may call ↓</span></div>
+    <div class="diagram-arrow" aria-hidden="true">↓ only</div>
+    <div class="diagram-box diagram-layer-edge" style="border-style:dashed;border-width:2px;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Data access</strong>
+      <span>no upward calls</span>
+    </div>
+  </div>
+  <figcaption>
+    Strict: only the next layer down. Skip links are relaxed layering — document
+    them when you allow them.
+  </figcaption>
+</figure>
+
+<h2>Multitier vs hexagonal</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Multitier</th>
+<th>Hexagonal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Picture</td>
+<td>Stacked layers</td>
+<td>Ports around a protected core</td>
+</tr>
+<tr>
+<td>Dependency story</td>
+<td>Outer depends on inner down the stack</td>
+<td>Inside depends on ports; adapters plug in</td>
+</tr>
+<tr>
+<td>Good for</td>
+<td>Naming UI / app / data bands</td>
+<td>Protecting domain from frameworks</td>
+</tr>
+</tbody>
+</table>
+<p>Shops often <strong>combine</strong> both: multitier bands <em>and</em> a Repository port at the
+data edge (<a href="https://github.com/remideboer/pys/blob/main/examples/patterns/architectural/hexagonal.pys"><code>hexagonal.pys</code></a>).</p>
+<figure class="concept-diagram" role="img" aria-label="Stack of layers versus core with ports and outside adapters">
+  <div class="diagram-grid-2">
+    <div class="diagram-box">
+      <strong>Multitier</strong>
+      <span>Presentation → App → Data (stack)</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Hexagonal</strong>
+      <span>Core · ports · adapters outside</span>
+    </div>
+  </div>
+  <figcaption>
+    Different pictures, same goal of honest boundaries. Do not treat the names
+    as synonyms when prompting an AI.
+  </figcaption>
+</figure>
+
+<h3>Prompting an AI</h3>
+<p><strong>Say this:</strong> “Use a <strong>three-tier / multitier</strong> layout: presentation calls an
+application service; the service uses a data-access port. Keep UI free of SQL.
+Remember <strong>layer ≠ tier</strong> — one process is fine for the teaching demo.”</p>
+<p><strong>Not this:</strong> “Put SQL and <code>print</code> in the same handler.” · “Three-tier means
+three Docker containers” (that is deploy tiers, not the logical lesson).</p>
+<p><strong>Confusion to avoid:</strong> Multitier ≠ Hexagonal · Layer ≠ tier · Layered demo
+(<a href="https://github.com/remideboer/pys/blob/main/examples/patterns/architectural/layered.pys"><code>layered.pys</code></a>) is the short
+sibling of Multitier.</p>
+<h2>Runnable demo</h2>
+<p><a href="https://github.com/remideboer/pys/blob/main/examples/patterns/architectural/multitier.pys"><code>examples/patterns/architectural/multitier.pys</code></a></p>
+<pre><code class="language-text">python -m transpiler run examples/patterns/architectural/multitier.pys
+</code></pre>
+<p><strong>Output:</strong></p>
+<pre><code class="language-text">placed:O-1
+status:new
+</code></pre>
+<p><code>OrderConsoleUi</code> (presentation) → <code>OrderApplication</code> (application) →
+<code>OrderStore</code> / <code>InMemoryOrderStore</code> (data access). Domain <code>Order</code> stays free of
+UI and SQL.</p>
+<p>Living shops (same idea at scale): <a href="https://github.com/remideboer/pys/tree/main/examples/rest-api/shop"><code>examples/rest-api/shop/</code></a>.</p>
+<h3>Exercise</h3>
+<blockquote>
+<p>A classmate says “three-tier means we must run three servers.” What do you
+correct? (Answer: they mixed <strong>tier</strong> with <strong>layer</strong>; three logical layers
+can live in one process.)</p>
+</blockquote>
+<hr />
+<p><a href="chapter_9_1_app_shape.html">Previous: App shape</a> · <a href="chapter_9_2_authorization.html">Next: Authorization</a></p>
+    </main>
+  </div>
+</body>
+</html>

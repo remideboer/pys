@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,6 +130,7 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
@@ -135,6 +138,27 @@
 <h2>Pipeline / middleware</h2>
 <p>Wrap a handler in ordered layers (auth, logging). Cousin of Chain of
 Responsibility.</p>
+<figure class="concept-diagram" role="img" aria-label="Request flows through logging and auth middleware to app handler">
+  <div class="diagram-flow" style="min-width:34rem">
+    <div class="diagram-box"><strong>request</strong><span>GET /x</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Logging</strong><span>middleware</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-edge" style="border-style:dashed;border-width:2px;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Auth</strong>
+      <span>allow or deny</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Handler</strong>
+      <span>ok:…</span>
+    </div>
+  </div>
+  <figcaption>
+    Cross-cutting steps wrap the core handler instead of living inside it.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/pipeline_middleware.pys"><code>pipeline_middleware.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">log:GET /x
@@ -144,6 +168,22 @@ deny
 </code></pre>
 <h2>Specification</h2>
 <p>Composable predicates (<code>and</code> / <code>or</code> / <code>not</code>) over a candidate.</p>
+<figure class="concept-diagram" role="img" aria-label="MinAge and Active specs combined with AndSpec">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box"><strong>MinAge(18)</strong><span>spec</span></div>
+    <div class="diagram-arrow" aria-hidden="true">∧</div>
+    <div class="diagram-box"><strong>Active</strong><span>spec</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>AndSpec</strong>
+      <span>one composable rule</span>
+    </div>
+  </div>
+  <figcaption>
+    Small rules combine; avoid one giant if-else of unrelated checks.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/specification.pys"><code>specification.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">True
@@ -152,6 +192,16 @@ False
 </code></pre>
 <h2>Null Object</h2>
 <p>A do-nothing <code>Notifier</code> so callers never branch on null.</p>
+<figure class="concept-diagram" role="img" aria-label="Checkout always has a Notifier; NullNotifier does nothing">
+  <div class="diagram-grid-2">
+    <div class="diagram-box"><strong>ConsoleNotifier</strong><span>prints notify:…</span></div>
+    <div class="diagram-box diagram-outside"><strong>NullNotifier</strong><span>empty body · still a Notifier</span></div>
+  </div>
+  <figcaption>
+    Same socket always plugged — sometimes with a silent machine.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/null_object.pys"><code>null_object.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">notify:done:O-1
@@ -160,6 +210,22 @@ checkout:O-2
 </code></pre>
 <h2>Plugin</h2>
 <p>Host registers implementations of an interface and runs them.</p>
+<figure class="concept-diagram" role="img" aria-label="ReportHost holds registered Sales and Inventory plugins">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>ReportHost</strong>
+      <span>register · runAll</span>
+    </div>
+    <div class="diagram-grid-2">
+      <div class="diagram-box"><strong>SalesPlugin</strong><span>ReportPlugin</span></div>
+      <div class="diagram-box"><strong>InventoryPlugin</strong><span>ReportPlugin</span></div>
+    </div>
+  </div>
+  <figcaption>
+    Extensions plug into a host list instead of a hard-coded switch.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/application/plugin.pys"><code>plugin.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">sales=sales:42
@@ -167,6 +233,22 @@ inventory=inventory:7
 </code></pre>
 <h2>Anti-pattern: Service Locator</h2>
 <p>Hidden global lookup. Prefer <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/general/dependency_injection.pys">Dependency Injection</a>.</p>
+<figure class="concept-diagram" role="img" aria-label="Hidden registry lookup versus constructor injection">
+  <div class="diagram-grid-2">
+    <div class="diagram-box" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Service Locator</strong>
+      <span>hidden SERVICES.getLogger()</span>
+    </div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>DI</strong>
+      <span>constructor(Logger)</span>
+    </div>
+  </div>
+  <figcaption>
+    Prefer the right column — collaborators arrive from outside.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/general/service_locator_antipattern.pys"><code>service_locator_antipattern.pys</code></a></p>
 <h3>Prompt dialogue</h3>
 <blockquote>

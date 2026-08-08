@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,12 +130,29 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
 <h1>10.7. Data paths — cache, versions, mappers, identity</h1>
 <h2>Cache-aside</h2>
 <p>Read cache → miss → load store → populate cache.</p>
+<figure class="concept-diagram" role="img" aria-label="Cache miss loads store then hit returns from cache">
+  <div class="diagram-flow" style="min-width:34rem">
+    <div class="diagram-box"><strong>get(sku)</strong><span>ask cache</span></div>
+    <div class="diagram-arrow" aria-hidden="true">miss</div>
+    <div class="diagram-box diagram-outside"><strong>Store</strong><span>load</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>populate</strong>
+      <span>next call = hit</span>
+    </div>
+  </div>
+  <figcaption>
+    The app owns the cache fill — miss once, then hit.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/cache_aside.pys"><code>cache_aside.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">cache-miss:BG-001
@@ -144,6 +163,22 @@ True
 </code></pre>
 <h2>Optimistic concurrency</h2>
 <p>Carry a <strong>version</strong>; reject stale updates.</p>
+<figure class="concept-diagram" role="img" aria-label="Update succeeds when expected version matches; stale version denied">
+  <div class="diagram-grid-2">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>expectedVersion = 0</strong>
+      <span>matches · write v1</span>
+    </div>
+    <div class="diagram-box" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>expectedVersion = 0 again</strong>
+      <span>stale · reject</span>
+    </div>
+  </div>
+  <figcaption>
+    Last writer does not silently win — versions gate the update.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/optimistic_concurrency.pys"><code>optimistic_concurrency.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">True
@@ -170,6 +205,33 @@ v1
 </tr>
 </tbody>
 </table>
+<figure class="concept-diagram" role="img" aria-label="Active Record saves itself versus Data Mapper outside the domain object">
+  <div class="memory-compare">
+    <div class="concept-diagram" style="margin:0;max-width:18rem">
+      <div class="diagram-stack">
+        <div class="diagram-box" style="border:2px solid #8a6d3b;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+          <strong>ArProduct</strong>
+          <span>save() on itself</span>
+        </div>
+        <div class="diagram-box diagram-outside"><strong>db</strong><span>row knows the store</span></div>
+      </div>
+    </div>
+    <div class="memory-compare-arrow" aria-hidden="true">vs</div>
+    <div class="concept-diagram" style="margin:0;max-width:18rem">
+      <div class="diagram-stack">
+        <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+          <strong>DmProduct</strong>
+          <span>data only</span>
+        </div>
+        <div class="diagram-box"><strong>ProductMapper</strong><span>persistence outside</span></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>
+    Prefer mapper style when you want domain objects free of storage verbs.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/data_mapper_vs_active_record.pys"><code>data_mapper_vs_active_record.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">Catan
@@ -177,6 +239,22 @@ Ticket
 </code></pre>
 <h2>Identity Map</h2>
 <p>Within one session, same id → <strong>same instance</strong>.</p>
+<figure class="concept-diagram" role="img" aria-label="First get loads O-1; second get returns same instance from map">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box"><strong>get("O-1")</strong><span>map-load</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Identity Map</strong>
+      <span>one instance per id</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>get("O-1")</strong><span>map-hit · same object</span></div>
+  </div>
+  <figcaption>
+    Mutating through one reference is visible on the other — same identity.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/persistence/identity_map.pys"><code>identity_map.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">map-load:O-1

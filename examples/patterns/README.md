@@ -131,7 +131,8 @@ Pure OO teaching demos (no network). Full HTTP JWT shop:
 | MVP | [mvp.pys](architectural/mvp.pys) | [md](architectural/mvp.md) |
 | MVVM | [mvvm.pys](architectural/mvvm.pys) | [md](architectural/mvvm.md) |
 | Hexagonal | [hexagonal.pys](architectural/hexagonal.pys) | [md](architectural/hexagonal.md) |
-| Layered | [layered.pys](architectural/layered.pys) | [md](architectural/layered.md) |
+| Layered | [layered.pys](architectural/layered.pys) | [md](architectural/layered.md) — short stack |
+| Multitier | [multitier.pys](architectural/multitier.pys) | [md](architectural/multitier.md) — three-tier / layer≠tier |
 
 ## Persistence
 

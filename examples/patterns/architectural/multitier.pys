@@ -1,0 +1,92 @@
+# Multitier / three-tier — logical layers in ONE process (teaching).
+# Layer ≠ tier: layers are logical; tiers are deploy nodes. This demo is
+# three layers on a single tier.
+# Wikipedia: Multitier architecture. Contrast: hexagonal.pys (ports around core).
+
+entity Order identity(orderId) {
+    private fix string orderId
+    public string status
+
+    public constructor(string orderId, string status) {
+        this.orderId = orderId
+        this.status = status
+    }
+
+    public string id() {
+        return this.orderId
+    }
+}
+
+# --- Data access layer (persistence behind a port) ---
+interface OrderStore {
+    save(Order order)
+    nullable<Order> findById(string orderId)
+}
+
+class InMemoryOrderStore implements OrderStore {
+    private dict<string, Order> rows
+
+    public constructor() {
+        dict<string, Order> empty = dict()
+        this.rows = empty
+    }
+
+    public save(Order order) {
+        dict<string, Order> m = this.rows
+        m[order.id()] = order
+        this.rows = m
+    }
+
+    public nullable<Order> findById(string orderId) {
+        dict<string, Order> m = this.rows
+        if (orderId in m) {
+            return m[orderId]
+        }
+        return null
+    }
+}
+
+# --- Application / business layer (use-case) ---
+class OrderApplication {
+    private OrderStore store
+
+    public constructor(OrderStore store) {
+        this.store = store
+    }
+
+    public string place(string orderId) {
+        this.store.save(Order(orderId, "new"))
+        return "placed:" + orderId
+    }
+
+    public nullable<string> statusOf(string orderId) {
+        nullable<Order> found = this.store.findById(orderId)
+        if (found == null) {
+            return null
+        }
+        return found.status
+    }
+}
+
+# --- Presentation layer (UI / edge — no SQL here) ---
+class OrderConsoleUi {
+    private OrderApplication app
+
+    public constructor(OrderApplication app) {
+        this.app = app
+    }
+
+    public void checkout(string orderId) {
+        print(this.app.place(orderId))
+        nullable<string> st = this.app.statusOf(orderId)
+        if (st != null) {
+            print("status:" + st)
+        }
+    }
+}
+
+# Composition root wires layers top → down.
+OrderConsoleUi ui = OrderConsoleUi(OrderApplication(InMemoryOrderStore()))
+ui.checkout("O-1")
+# placed:O-1
+# status:new

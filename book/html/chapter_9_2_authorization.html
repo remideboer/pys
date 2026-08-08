@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,6 +130,7 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
@@ -135,8 +138,38 @@
 <p><strong>Authentication</strong> answers <em>who are you?</em> (see
 <a href="https://github.com/remideboer/pys/tree/main/examples/patterns/authentication"><code>examples/patterns/authentication/</code></a>).
 <strong>Authorization</strong> answers <em>what may you do?</em></p>
+<figure class="concept-diagram" role="img" aria-label="Fork: AuthN proves identity then AuthZ decides allowed actions">
+  <div class="diagram-flow" style="min-width:28rem">
+    <div class="diagram-box"><strong>AuthN</strong><span>who are you?</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>AuthZ</strong>
+      <span>what may you do?</span>
+    </div>
+  </div>
+  <figcaption>
+    Login proves identity; a separate decision grants or denies the action.
+  </figcaption>
+</figure>
+
 <h2>RBAC (role-based)</h2>
 <p>Users have <strong>roles</strong>; roles have <strong>permissions</strong>.</p>
+<figure class="concept-diagram" role="img" aria-label="User maps to role maps to permissions list">
+  <div class="diagram-flow" style="min-width:30rem">
+    <div class="diagram-box"><strong>User</strong><span>ada</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>Role</strong><span>admin</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Permissions</strong>
+      <span>order:read · order:write</span>
+    </div>
+  </div>
+  <figcaption>
+    Authorize by permission name, not by hard-coded usernames in every handler.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/authorization/rbac.pys"><code>rbac.pys</code></a></p>
 <pre><code class="language-text">python -m transpiler run examples/patterns/authorization/rbac.pys
 </code></pre>
@@ -154,6 +187,20 @@ Authorize with <code>allows(username, permission)</code>.</p>
 </blockquote>
 <h2>ACL (access-control list)</h2>
 <p>A <strong>resource</strong> maps to allowed <strong>principals</strong> (users or groups).</p>
+<figure class="concept-diagram" role="img" aria-label="Resource order O-1 lists principals ada and bob">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Resource order:O-1</strong>
+      <span>one list of who may touch it</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">↓</div>
+    <div class="diagram-box"><strong>Principals</strong><span>ada · bob</span></div>
+  </div>
+  <figcaption>
+    Per-resource membership — different from role-wide permissions.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/authorization/acl.pys"><code>acl.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">True
@@ -162,6 +209,22 @@ False
 </code></pre>
 <h2>ABAC (attribute-based)</h2>
 <p>A <strong>policy</strong> decides from attributes: owner, admin flag, action.</p>
+<figure class="concept-diagram" role="img" aria-label="Attributes feed a policy box that outputs allow or deny">
+  <div class="diagram-flow" style="min-width:32rem">
+    <div class="diagram-box"><strong>Attributes</strong><span>owner · isAdmin · action</span></div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-boundary">
+      <strong>Policy</strong>
+      <span>OwnerOrAdmin</span>
+    </div>
+    <div class="diagram-arrow" aria-hidden="true">→</div>
+    <div class="diagram-box"><strong>allow / deny</strong><span>one decision</span></div>
+  </div>
+  <figcaption>
+    Rules read attributes; useful when “owner or admin” is the real rule.
+  </figcaption>
+</figure>
+
 <p>Demo: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/authorization/abac.pys"><code>abac.pys</code></a></p>
 <p><strong>Output:</strong></p>
 <pre><code class="language-text">True
@@ -201,7 +264,7 @@ True
 fits best? (ABAC, or RBAC plus an ownership check.)</p>
 </blockquote>
 <hr />
-<p><a href="chapter_9_1_app_shape.html">Previous: App shape</a> · <a href="chapter_9_3_resilience.html">Next: Resilience</a></p>
+<p><a href="chapter_9_1a_multitier.html">Previous: Multitier architecture</a> · <a href="chapter_9_3_resilience.html">Next: Resilience</a></p>
     </main>
   </div>
 </body>

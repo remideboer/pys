@@ -99,7 +99,9 @@
 <span class="section">10. Session — Patterns you name to build (and to ask an AI)</span>
 <ul>
 <li><a href="chapter_9_session_patterns.html">Session — Patterns you name to build</a></li>
+<li><a href="chapter_9_0_visual_style.html">10.0. How these diagrams work</a></li>
 <li><a href="chapter_9_1_app_shape.html">10.1. App shape</a></li>
+<li><a href="chapter_9_1a_multitier.html">10.1a. Multitier architecture</a></li>
 <li><a href="chapter_9_2_authorization.html">10.2. Authorization</a></li>
 <li><a href="chapter_9_3_resilience.html">10.3. Resilience</a></li>
 <li><a href="chapter_9_4_integration.html">10.4. Integration</a></li>
@@ -128,12 +130,32 @@
 <span class="section">14. Resources</span>
 <ul>
 <li><a href="resources.html">Resources</a></li>
+<li><a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a></li>
 </ul>
     </nav>
     <main>
 <h1>10.5. Test doubles — Dummy, Stub, Fake, Spy, Mock</h1>
 <p>Session 6 taught TDD. This chapter names the <strong>stand-ins</strong> you inject behind a
 port so tests stay fast and focused.</p>
+<figure class="concept-diagram" role="img" aria-label="Mailer port with five labeled doubles around Notifier">
+  <div class="diagram-stack">
+    <div class="diagram-box diagram-layer-edge" style="border-style:dashed;border-width:2px;background:#f5ecd8;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Mailer (port)</strong>
+      <span>Notifier depends on this socket</span>
+    </div>
+    <div class="diagram-grid-5">
+      <div class="diagram-box"><strong>Dummy</strong><span>must not run</span></div>
+      <div class="diagram-box"><strong>Stub</strong><span>canned / no-op</span></div>
+      <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center"><strong>Fake</strong><span>mini working impl</span></div>
+      <div class="diagram-box"><strong>Spy</strong><span>records calls</span></div>
+      <div class="diagram-box"><strong>Mock</strong><span>checks expect</span></div>
+    </div>
+  </div>
+  <figcaption>
+    One port, five jobs — pick the double that matches what the test needs.
+  </figcaption>
+</figure>
+
 <table>
 <thead>
 <tr>
@@ -178,6 +200,22 @@ mock-ok
 <li><strong>Object Mother:</strong> named methods (<code>paidCatan()</code>) for common valid objects.</li>
 <li><strong>Test Data Builder:</strong> fluent <code>withX</code> for one-off variations.</li>
 </ul>
+<figure class="concept-diagram" role="img" aria-label="Object Mother named recipe versus Builder fluent withX path">
+  <div class="diagram-grid-2">
+    <div class="diagram-box diagram-layer-core" style="border:2px solid var(--accent);background:#e5edff;padding:0.7rem;border-radius:6px;text-align:center">
+      <strong>Object Mother</strong>
+      <span>paidCatan() · named valid fixture</span>
+    </div>
+    <div class="diagram-box">
+      <strong>Test Data Builder</strong>
+      <span>withCustomer · withTotal · build()</span>
+    </div>
+  </div>
+  <figcaption>
+    Mother for the usual case; Builder when one test needs a one-off twist.
+  </figcaption>
+</figure>
+
 <p>Demos: <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/testing/object_mother.pys"><code>object_mother.pys</code></a>,
 <a href="https://github.com/remideboer/pys/blob/main/examples/patterns/testing/test_data_builder.pys"><code>test_data_builder.pys</code></a></p>
 <h3>Prompt dialogue</h3>

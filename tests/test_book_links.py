@@ -124,6 +124,40 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     assert "Shared runtime data" in memory_html
 
 
+def test_session_10_pattern_chapters_include_concept_diagrams() -> None:
+    summary = (BOOK / "SUMMARY.md").read_text(encoding="utf-8")
+    assert "chapter_9_0_visual_style.md" in summary
+    assert "chapter_9_1a_multitier.md" in summary
+    assert "bibliography_visual_explanations.md" in summary
+
+    pages = [
+        "chapter_9_session_patterns.html",
+        "chapter_9_0_visual_style.html",
+        "chapter_9_1_app_shape.html",
+        "chapter_9_1a_multitier.html",
+        "chapter_9_2_authorization.html",
+        "chapter_9_3_resilience.html",
+        "chapter_9_4_integration.html",
+        "chapter_9_5_test_doubles.html",
+        "chapter_9_6_composable_rules.html",
+        "chapter_9_7_data_paths.html",
+        "chapter_9_8_prompting_ai.html",
+    ]
+    for name in pages:
+        html = (BOOK / "html" / name).read_text(encoding="utf-8")
+        assert 'class="concept-diagram"' in html, f"{name} missing concept-diagram"
+        assert "<figcaption>" in html, f"{name} missing figcaption"
+
+    bib = (BOOK / "html" / "bibliography_visual_explanations.html").read_text(
+        encoding="utf-8"
+    )
+    assert "Paivio" in bib
+    assert "Mayer" in bib
+    assert "concept-diagram" in (
+        BOOK / "chapter_9_0_visual_style.md"
+    ).read_text(encoding="utf-8")
+
+
 def test_gui_intro_mermaid_is_rendered_as_div_not_code_fence() -> None:
     gui = (BOOK / "html" / "gui_intro.html").read_text(encoding="utf-8")
     assert 'class="language-mermaid"' not in gui

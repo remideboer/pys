@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3.3. Static types and casts — PYS Development Classes</title>
+  <title>10.0. How these diagrams work — PYS Development Classes</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -134,72 +134,85 @@
 </ul>
     </nav>
     <main>
-<h1>3.3. Static types and casts</h1>
-<p>Common primitives:</p>
+<h1>10.0. How these diagrams work</h1>
+<p>Session 10 uses the same <strong>concept diagrams</strong> as earlier chapters: plain boxes,
+arrows, and shared borders — not UML class soup. The goal is to match how people
+already think about software (<em>inside</em> vs <em>outside</em>, <em>ports</em>, <em>paths</em>, <em>machines</em>).</p>
+<h3>Metaphors we reuse</h3>
 <table>
 <thead>
 <tr>
-<th>Type</th>
-<th>Example</th>
+<th>Metaphor</th>
+<th>You already saw it</th>
+<th>Here it means</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>int</code></td>
-<td><code>10</code>, <code>0xFF</code></td>
+<td>Drawer / label</td>
+<td>Basics memory grid</td>
+<td>A place that holds a value</td>
 </tr>
 <tr>
-<td><code>float</code></td>
-<td><code>3.14</code></td>
+<td>Socket + cable</td>
+<td>Interfaces</td>
+<td>A port / contract the caller depends on</td>
 </tr>
 <tr>
-<td><code>string</code></td>
-<td><code>"hello"</code></td>
+<td>Machine + gears</td>
+<td>Classes</td>
+<td>An implementer with real behavior</td>
 </tr>
 <tr>
-<td><code>bool</code></td>
-<td><code>true</code> / <code>false</code></td>
+<td>Flow arrow</td>
+<td>Entrypoint / under the hood</td>
+<td>Order of steps or dependency direction</td>
 </tr>
 <tr>
-<td><code>char</code></td>
-<td><code>'A'</code></td>
-</tr>
-<tr>
-<td><code>object</code></td>
-<td>opaque / foreign value</td>
+<td>Common region</td>
+<td>—</td>
+<td>Layers that belong together (domain vs adapters)</td>
 </tr>
 </tbody>
 </table>
-<p>Prefer an explicit type on the left when teaching or when the initializer
-is unclear. Use <code>var</code> when the right-hand side already makes the type
-obvious (<code>var</code> is a declaration form, not a type name).</p>
-<h2>Casts</h2>
-<pre><code class="language-pys"><span class="tok-type">float</span> <span class="tok-ident">speed</span> <span class="tok-op">=</span> <span class="tok-number">12.9</span>
-<span class="tok-type">int</span> <span class="tok-ident">whole</span> <span class="tok-op">=</span> (<span class="tok-type">int</span>) <span class="tok-ident">speed</span>
-<span class="tok-builtin">print</span>(<span class="tok-ident">whole</span>)</code></pre>
-<p>Output:</p>
-<pre><code class="language-text">12
-</code></pre>
-<p>Casts are explicit on purpose — silent narrowing is a common bug in less
-strict languages.</p>
-<h2>Width aliases</h2>
-<p>Aliases like <code>byte</code>, <code>nibble</code>, and <code>int16</code> teach bit-sized ranges. They
-still emit as Python <code>int</code>, but <strong>out-of-range literals are rejected</strong>.</p>
-<pre><code class="language-pys"><span class="tok-type">byte</span> <span class="tok-ident">flags</span> <span class="tok-op">=</span> <span class="tok-number">0b1011_1101</span>
-<span class="tok-type">nibble</span> <span class="tok-ident">n</span> <span class="tok-op">=</span> <span class="tok-number">0xA</span>
-<span class="tok-type">int16</span> <span class="tok-ident">port</span> <span class="tok-op">=</span> <span class="tok-number">8080</span>
-<span class="tok-builtin">print</span>(<span class="tok-ident">flags</span>)
-<span class="tok-builtin">print</span>(<span class="tok-ident">n</span>)
-<span class="tok-builtin">print</span>(<span class="tok-ident">port</span>)
-<span class="tok-comment"># byte tooBig = 300   # does not compile — outside 0..255</span></code></pre>
-<p><em>Compile error if the commented line is uncommented.</em></p>
-<h3>Exercise</h3>
-<blockquote>
-<p>Store <code>9.81</code> as a <code>float</code>, cast to <code>int</code>, and print both with typed
-interpolation (<code>#f{…}</code> and <code>#i{…}</code>).</p>
-</blockquote>
+<h3>Rules (keep diagrams teachable)</h3>
+<ol>
+<li><strong>One idea per figure</strong> — if you need two claims, use two figures.</li>
+<li><strong>Labels on the boxes</strong> — do not force the reader to decode a legend first.</li>
+<li><strong>Caption restates the claim</strong> — dual coding: picture + words.</li>
+<li><strong>Cap the nodes</strong> — roughly four to six labeled parts; drop decoration.</li>
+<li><strong>Same chrome as the rest of the book</strong> — warm figure panel, accent fill for
+   “inside” / active, dashed border for a <strong>boundary</strong> (ACL, ports).</li>
+</ol>
+<p>Why these rules? Short research notes and citations live in
+<a href="bibliography_visual_explanations.html">Bibliography: visual explanations</a>.</p>
+<figure class="concept-diagram" role="img" aria-label="Inside domain core, application service, dashed ports edge, outside adapters">
+  <div class="diagram-layers">
+    <div class="diagram-layer diagram-layer-core">
+      <strong>Domain (inside)</strong>
+      <span>rules and types you protect</span>
+    </div>
+    <div class="diagram-layer">
+      <strong>Application service</strong>
+      <span>use-case orchestration</span>
+    </div>
+    <div class="diagram-layer diagram-layer-edge">
+      <strong>Ports (boundary)</strong>
+      <span>interfaces the inside depends on</span>
+    </div>
+    <div class="diagram-layer diagram-outside">
+      <strong>Adapters / outside</strong>
+      <span>HTTP, SQL, legacy shapes</span>
+    </div>
+  </div>
+  <figcaption>
+    Shared regions show what belongs together. The dashed edge is the boundary
+    you defend — the same “inside vs outside” story as hexagonal architecture.
+  </figcaption>
+</figure>
+
 <hr />
-<p><a href="chapter_2_2_variables.html">Previous: Variables</a> · <a href="chapter_2_4_running_and_checking.html">Next: Running and checking your work</a></p>
+<p><a href="chapter_9_session_patterns.html">Previous: Patterns session</a> · <a href="chapter_9_1_app_shape.html">Next: App shape</a></p>
     </main>
   </div>
 </body>

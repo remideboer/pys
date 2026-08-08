@@ -2,46 +2,29 @@
 
 **Category:** Architectural  
 **Demo:** [layered.pys](layered.pys)  
-**Wikipedia:** [Multitier architecture](https://en.wikipedia.org/wiki/Multitier_architecture)
+**Wikipedia:** [Multitier architecture](https://en.wikipedia.org/wiki/Multitier_architecture)  
+**Fuller teaching:** [multitier.pys](multitier.pys) · book §10.1a
 
 ## Intent
 
 Organize code so outer layers (UI) depend on inner ones (application / domain),
-not the reverse.
+not the reverse. This file is the **short** sibling; Multitier names the classic
+three-tier / n-tier vocabulary (and **layer ≠ tier**).
 
 ## Explanation
 
 `CheckoutUi` → `CheckoutApp` → `PricingService` / `Money`. Full shops under
 [`examples/database/`](../../database/) and [`examples/rest-api/shop/`](../../rest-api/shop/).
 
-## Classic structure (UML)
+## Prompting an AI
 
-```mermaid
-classDiagram
-    class Presentation
-    class Application
-    class Domain
-    Presentation --> Application
-    Application --> Domain
-```
+**Say this:** “Keep presentation above application above domain — no upward
+dependencies.” Prefer naming **three-tier / Multitier** when you want the
+industry term ([multitier.md](multitier.md)).
 
-## This demo
+**Not this:** “UI class opens the database.”
 
-```mermaid
-classDiagram
-    class CheckoutUi
-    class CheckoutApp
-    class PricingService
-    class Money
-    CheckoutUi --> CheckoutApp
-    CheckoutApp --> PricingService
-    PricingService --> Money
-```
-
-## Real-world use cases
-
-- Classic enterprise n-tier apps.
-- Teaching dependency direction before full hexagonal ports.
+**Confusion to avoid:** Layered/Multitier ≠ Hexagonal (see [hexagonal.md](hexagonal.md)).
 
 ## Run
 

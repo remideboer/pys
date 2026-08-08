@@ -83,7 +83,7 @@ Each record then uses:
 | [CER-046](CER-046-open-override-closed.md) | `open` / `override` / `closed` extension points | Language |
 | [CER-047](CER-047-static-members.md) | Class `static` members | Language |
 | [CER-048](CER-048-named-call-args.md) | Named call args (no positional+named mix) | Language |
-| [CER-049](CER-049-gof-design-patterns-examples.md) | Pattern teaching examples + book Session 10 | Examples |
+| [CER-049](CER-049-gof-design-patterns-examples.md) | Pattern teaching examples + book Session 10 (incl. Multitier) | Examples |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
