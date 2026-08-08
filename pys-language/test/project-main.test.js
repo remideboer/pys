@@ -44,7 +44,7 @@ test('extension manifest exposes entrypoint command and result language support'
     fs.readFileSync(path.join(extensionRoot, 'package.json'), 'utf8'),
   );
   const commands = manifest.contributes.commands.map((entry) => entry.command);
-  assert.equal(manifest.version, '0.0.81');
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.ok(commands.includes('pys.setAsEntrypoint'));
 
   const grammar = fs.readFileSync(
@@ -91,7 +91,9 @@ test('extension manifest exposes entrypoint command and result language support'
     path.join(extensionRoot, 'RELEASE_NOTES.md'),
     'utf8',
   );
-  assert.match(notes, /0\.0\.81/);
+  // Notes must name the current package.json version (publish workflow check).
+  const versionLiteral = manifest.version.replace(/\./g, '\\.');
+  assert.match(notes, new RegExp(versionLiteral));
   assert.match(notes, /constructor/);
   assert.match(notes, /static/);
 });
