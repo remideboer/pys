@@ -9,8 +9,8 @@ companion to [`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).
 
 | File | Responsibility |
 |------|----------------|
-| [`shop.sql`](shop.sql) | MySQL schema (`product`, `order`, `order_line`) |
-| [`seed_boardgames.sql`](seed_boardgames.sql) | Reproducible Dutch board-game catalog + sample orders |
+| [`shop.sql`](shop.sql) | MySQL schema (`account` + address/payment, `product`, `order`, `order_line`) |
+| [`seed_boardgames.sql`](seed_boardgames.sql) | Reproducible Dutch board-game catalog, multicultural NL accounts, sample orders |
 | [`models.pys`](models.pys) | Domain entities (`Product`, `Order`, `OrderLine`) |
 | [`db.pys`](db.pys) | MySQL session + cell conversion (**S**) |
 | [`mappers.pys`](mappers.pys) | [Data Mapper](https://martinfowler.com/eaaCatalog/dataMapper.html) contracts + MySQL mapping: SQL and tuple/entity translation |
@@ -66,17 +66,20 @@ Requires `mysql-connector-python` (repo root [`pys.deps`](../../pys.deps)).
 mysql -u pys -p < examples/database/shop.sql
 ```
 
-2. Load a Dutch **board-game shop** demo catalog (products, orders, lines):
+2. Load a Dutch **board-game shop** demo catalog (accounts, products, orders, lines):
 
 ```text
 mysql -u pys -p shop < examples/database/seed_boardgames.sql
 ```
 
 [`seed_boardgames.sql`](seed_boardgames.sql) clears existing `shop` rows, then
-inserts ~18 products (basisspellen, uitbreidingen, sleeves, dobbelaccessoires)
-and a few sample orders with Dutch `customer_ref` values. Unit prices are
-illustrative EUR snapshots inspired by common NL listings (bol.com,
-Spellenhuis.nl, Lobbes, 999games.nl) — not live prices. Safe to re-run.
+inserts demo **accounts** (admin/clerk + multicultural NL customers; password
+`Welcome1!`), Dutch addresses, fake IBAN/card-last4 payment rows, ~18 products
+(basisspellen, uitbreidingen, sleeves, dobbelaccessoires), and sample orders
+(some with `account_id`, some guest/`NULL`). Unit prices are illustrative EUR
+snapshots inspired by common NL listings (bol.com, Spellenhuis.nl, Lobbes,
+999games.nl) — not live prices. Safe to re-run. `shop.sql` recreates tables
+(drops children first) so schema changes apply cleanly.
 
 ### Nullable columns (SQL `NULL` fidelity)
 
