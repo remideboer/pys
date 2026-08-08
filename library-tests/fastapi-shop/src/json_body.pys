@@ -1,0 +1,8 @@
+# Shared JSON body reader for sync FastAPI routes (no PYS default-param Body()).
+
+import anyio
+import Request from fastapi
+
+package function object readJson(Request request) {
+    return anyio.from_thread.run(request.json)
+}

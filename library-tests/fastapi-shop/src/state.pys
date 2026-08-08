@@ -1,0 +1,25 @@
+# Module-level wiring set by main before uvicorn starts.
+# Use a dict holder so bind() can mutate without Python `global`.
+
+dict HOLDER = dict()
+HOLDER["db"] = null
+HOLDER["sec"] = null
+HOLDER["cfg"] = null
+
+package function void bind(object cfg, object db, object sec) {
+    HOLDER["cfg"] = cfg
+    HOLDER["db"] = db
+    HOLDER["sec"] = sec
+}
+
+package function object database() {
+    return HOLDER["db"]
+}
+
+package function object security() {
+    return HOLDER["sec"]
+}
+
+package function object config() {
+    return HOLDER["cfg"]
+}

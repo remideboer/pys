@@ -1,0 +1,167 @@
+# Account directory + address/payment reads (password hashes never returned).
+
+import APIRouter, Request from fastapi
+import database, security from state
+import withParam from paths
+
+object appRouter = APIRouter(tags=["accounts"])
+string ACCOUNT_ONE = withParam("/api/accounts/", "account_id")
+string ACCOUNT_ADDR = withParam("/api/accounts/", "account_id") + "/addresses"
+string ACCOUNT_PAY = withParam("/api/accounts/", "account_id") + "/payments"
+
+function dict accountPublic(object row, object db) {
+    dict out = dict()
+    out["accountId"] = db.cellInt(row[0])
+    out["username"] = db.cellStr(row[1])
+    out["displayName"] = db.cellStr(row[2])
+    out["email"] = db.cellStr(row[3])
+    out["role"] = db.cellStr(row[4])
+    out["active"] = db.cellBool(row[5])
+    return out
+}
+
+function dict addressRow(object row, object db) {
+    dict a = dict()
+    a["addressId"] = db.cellInt(row[0])
+    a["kind"] = db.cellStr(row[1])
+    a["street"] = db.cellStr(row[2])
+    a["houseNumber"] = db.cellStr(row[3])
+    a["postalCode"] = db.cellStr(row[4])
+    a["city"] = db.cellStr(row[5])
+    a["country"] = db.cellStr(row[6])
+    return a
+}
+
+function dict paymentRow(object row, object db) {
+    dict p = dict()
+    p["paymentMethodId"] = db.cellInt(row[0])
+    p["methodType"] = db.cellStr(row[1])
+    p["label"] = db.cellStr(row[2])
+    p["iban"] = db.cellNullableStr(row[3])
+    p["cardBrand"] = db.cellNullableStr(row[4])
+    p["cardLast4"] = db.cellNullableStr(row[5])
+    if (row[6] == null) {
+        p["expMonth"] = null
+    } else {
+        p["expMonth"] = db.cellInt(row[6])
+    }
+    if (row[7] == null) {
+        p["expYear"] = null
+    } else {
+        p["expYear"] = db.cellInt(row[7])
+    }
+    p["isDefault"] = db.cellBool(row[8])
+    return p
+}
+
+@appRouter.get("/api/accounts")
+function list listAccounts() {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT account_id, username, display_name, email, role, active "
+        + "FROM account ORDER BY account_id"
+    )
+    list rows = cur.fetchall()
+    cur.close()
+    list out = []
+    loop (row in rows) {
+        out.append(accountPublic(row, db))
+    }
+    return out
+}
+
+@appRouter.get("/api/accounts/me")
+function object me(Request request) {
+    nullable<dict> user = security().requireUser(request)
+    if (user == null) {
+        return security().unauthorized("bearer token required")
+    }
+    nullable<dict> accountN = security().findAccount(str(user["sub"]))
+    if (accountN == null) {
+        return security().notFound("account not found")
+    }
+    dict account = accountN
+    dict out = dict()
+    out["accountId"] = account["accountId"]
+    out["username"] = account["username"]
+    out["displayName"] = account["displayName"]
+    out["email"] = account["email"]
+    out["role"] = account["role"]
+    out["active"] = account["active"]
+    return out
+}
+
+@appRouter.get(ACCOUNT_ONE)
+function object getAccount(int account_id) {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT account_id, username, display_name, email, role, active "
+        + "FROM account WHERE account_id=%s",
+        (account_id,)
+    )
+    object row = cur.fetchone()
+    cur.close()
+    if (row == null) {
+        return security().notFound("account not found")
+    }
+    return accountPublic(row, db)
+}
+
+@appRouter.get(ACCOUNT_ADDR)
+function object listAddresses(int account_id) {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT account_id FROM account WHERE account_id=%s",
+        (account_id,)
+    )
+    if (cur.fetchone() == null) {
+        cur.close()
+        return security().notFound("account not found")
+    }
+    cur.execute(
+        "SELECT address_id, address_kind, street, house_number, postal_code, city, country "
+        + "FROM account_address WHERE account_id=%s ORDER BY address_id",
+        (account_id,)
+    )
+    list rows = cur.fetchall()
+    cur.close()
+    list out = []
+    loop (row in rows) {
+        out.append(addressRow(row, db))
+    }
+    return out
+}
+
+@appRouter.get(ACCOUNT_PAY)
+function object listPayments(int account_id) {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT account_id FROM account WHERE account_id=%s",
+        (account_id,)
+    )
+    if (cur.fetchone() == null) {
+        cur.close()
+        return security().notFound("account not found")
+    }
+    cur.execute(
+        "SELECT payment_method_id, method_type, label, iban, card_brand, card_last4, "
+        + "exp_month, exp_year, is_default "
+        + "FROM account_payment_method WHERE account_id=%s ORDER BY payment_method_id",
+        (account_id,)
+    )
+    list rows = cur.fetchall()
+    cur.close()
+    list out = []
+    loop (row in rows) {
+        out.append(paymentRow(row, db))
+    }
+    return out
+}
+
+package function object accountsRouter() {
+    return appRouter
+}

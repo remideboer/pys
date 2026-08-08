@@ -1,0 +1,203 @@
+# Order + line reads/writes — GET open; writes require Bearer JWT.
+
+import time
+import APIRouter, Request from fastapi
+import database, security from state
+import withParam from paths
+import readJson from json_body
+
+object appRouter = APIRouter(tags=["orders"])
+string ORDER_ONE = withParam("/api/orders/", "order_id")
+string ORDER_LINES = withParam("/api/orders/", "order_id") + "/lines"
+
+function dict orderRow(object row, object db) {
+    dict out = dict()
+    out["orderId"] = db.cellInt(row[0])
+    out["placedAt"] = db.cellStr(row[1])
+    out["status"] = db.cellStr(row[2])
+    nullable<string> ref = db.cellNullableStr(row[3])
+    out["customerRef"] = ref
+    nullable<string> acc = db.cellNullableStr(row[4])
+    if (acc == null) {
+        out["accountId"] = null
+    } else {
+        out["accountId"] = int(acc)
+    }
+    return out
+}
+
+function object loadOrder(int orderId) {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT order_id, placed_at, status, customer_ref, account_id "
+        + "FROM `order` WHERE order_id=%s",
+        (orderId,)
+    )
+    object row = cur.fetchone()
+    cur.close()
+    if (row == null) {
+        return security().notFound("order not found")
+    }
+    return orderRow(row, db)
+}
+
+function dict lineRow(object row, object db) {
+    dict line = dict()
+    line["orderId"] = db.cellInt(row[0])
+    line["lineNumber"] = db.cellInt(row[1])
+    line["productId"] = db.cellInt(row[2])
+    line["skuSnapshot"] = db.cellStr(row[3])
+    line["unitPrice"] = db.cellFloat(row[4])
+    line["quantity"] = db.cellInt(row[5])
+    return line
+}
+
+@appRouter.get("/api/orders")
+function list listOrders() {
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT order_id, placed_at, status, customer_ref, account_id "
+        + "FROM `order` ORDER BY order_id"
+    )
+    list rows = cur.fetchall()
+    cur.close()
+    list out = []
+    loop (row in rows) {
+        out.append(orderRow(row, db))
+    }
+    return out
+}
+
+@appRouter.get(ORDER_ONE)
+function object getOrder(int order_id) {
+    return loadOrder(order_id)
+}
+
+@appRouter.post("/api/orders")
+function object createOrder(Request request) {
+    nullable<dict> user = security().requireUser(request)
+    if (user == null) {
+        return security().unauthorized("bearer token required")
+    }
+    object body = readJson(request)
+    string status = "placed"
+    if ("status" in body) {
+        status = str(body["status"])
+    }
+    object customerRef = null
+    if ("customerRef" in body) {
+        if (body["customerRef"] == null) {
+            customerRef = null
+        } else {
+            customerRef = str(body["customerRef"])
+        }
+    }
+    object accountId = null
+    if ("accountId" in body) {
+        if (body["accountId"] == null) {
+            accountId = null
+        } else {
+            accountId = int(body["accountId"])
+        }
+    } else {
+        if ("uid" in user) {
+            accountId = int(user["uid"])
+        }
+    }
+    string placedAt = time.strftime("%Y-%m-%d %H:%M:%S.000")
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "INSERT INTO `order` (placed_at, status, customer_ref, account_id) "
+        + "VALUES (%s, %s, %s, %s)",
+        (placedAt, status, customerRef, accountId)
+    )
+    db.commit()
+    int newId = int(cur.lastrowid)
+    cur.close()
+    return loadOrder(newId)
+}
+
+@appRouter.get(ORDER_LINES)
+function object listLines(int order_id) {
+    object existing = loadOrder(order_id)
+    if (hasattr(existing, "status_code")) {
+        return existing
+    }
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT order_id, line_number, product_id, sku_snapshot, unit_price, quantity "
+        + "FROM order_line WHERE order_id=%s ORDER BY line_number",
+        (order_id,)
+    )
+    list rows = cur.fetchall()
+    cur.close()
+    list out = []
+    loop (row in rows) {
+        out.append(lineRow(row, db))
+    }
+    return out
+}
+
+@appRouter.post(ORDER_LINES)
+function object addLine(int order_id, Request request) {
+    nullable<dict> user = security().requireUser(request)
+    if (user == null) {
+        return security().unauthorized("bearer token required")
+    }
+    object body = readJson(request)
+    object existing = loadOrder(order_id)
+    if (hasattr(existing, "status_code")) {
+        return existing
+    }
+    if (!("productId" in body) || !("quantity" in body)) {
+        return security().badRequest("productId and quantity required")
+    }
+    int productId = int(body["productId"])
+    int quantity = int(body["quantity"])
+    if (quantity < 1) {
+        return security().badRequest("quantity must be >= 1")
+    }
+    object db = database()
+    object cur = db.cursor()
+    cur.execute(
+        "SELECT sku, unit_price FROM product WHERE product_id=%s",
+        (productId,)
+    )
+    object prow = cur.fetchone()
+    if (prow == null) {
+        cur.close()
+        return security().notFound("product not found")
+    }
+    string sku = db.cellStr(prow[0])
+    float unitPrice = db.cellFloat(prow[1])
+    cur.execute(
+        "SELECT COALESCE(MAX(line_number), 0) + 1 FROM order_line WHERE order_id=%s",
+        (order_id,)
+    )
+    object nextRow = cur.fetchone()
+    int lineNumber = db.cellInt(nextRow[0])
+    cur.execute(
+        "INSERT INTO order_line "
+        + "(order_id, line_number, product_id, sku_snapshot, unit_price, quantity) "
+        + "VALUES (%s, %s, %s, %s, %s, %s)",
+        (order_id, lineNumber, productId, sku, unitPrice, quantity)
+    )
+    db.commit()
+    cur.close()
+    dict line = dict()
+    line["orderId"] = order_id
+    line["lineNumber"] = lineNumber
+    line["productId"] = productId
+    line["skuSnapshot"] = sku
+    line["unitPrice"] = unitPrice
+    line["quantity"] = quantity
+    return line
+}
+
+package function object ordersRouter() {
+    return appRouter
+}

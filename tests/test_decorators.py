@@ -102,7 +102,19 @@ package class C {
     assert ei.value.code == "pys.decorator-target"
 
 
-def test_decorator_before_statement_rejected() -> None:
+def test_emit_keeps_nominal_param_annotation() -> None:
+    """FastAPI Request injection needs a Python annotation (ADR-026 field research)."""
+    py = transpile(
+        """
+import Request from fastapi
+
+function void handle(Request request) {
+    print("ok")
+}
+"""
+    )
+    ast.parse(py)
+    assert "def handle(request: Request):" in py
     with pytest.raises(TranspileError) as ei:
         transpile(
             """

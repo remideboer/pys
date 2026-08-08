@@ -1,0 +1,33 @@
+# Build FastAPI app (no server). Used by main.pys and tests.
+
+import FastAPI from fastapi
+import ServerConfig from config
+import ShopDatabase from db
+import Security from security
+import bind from state
+import metaRouter from routes_meta
+import productsRouter from routes_products
+import ordersRouter from routes_orders
+import accountsRouter from routes_accounts
+
+package function object createApp() {
+    ServerConfig cfg = ServerConfig()
+    ShopDatabase db = ShopDatabase(cfg.dbHost, cfg.dbUser, cfg.dbPassword, cfg.dbName)
+    Security sec = Security(cfg, db)
+    bind(cfg, db, sec)
+
+    FastAPI app = FastAPI(
+        title="PYS FastAPI shop",
+        description="Library field research: FastAPI decorators from .pys (ADR-026)",
+        version="0.1.0"
+    )
+    app.include_router(metaRouter())
+    app.include_router(productsRouter())
+    app.include_router(ordersRouter())
+    app.include_router(accountsRouter())
+    return app
+}
+
+package function ServerConfig listenConfig() {
+    return ServerConfig()
+}

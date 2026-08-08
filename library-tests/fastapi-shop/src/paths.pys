@@ -1,0 +1,10 @@
+# FastAPI path templates need literal {name}; PYS strings become f-strings,
+# so build braces with chr (same trick as webserver-templates).
+
+package function string withParam(string prefix, string name) {
+    return prefix + chr(123) + name + chr(125)
+}
+
+package function string withTwoParams(string prefix, string a, string mid, string b) {
+    return prefix + chr(123) + a + chr(125) + mid + chr(123) + b + chr(125)
+}

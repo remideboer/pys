@@ -1,0 +1,60 @@
+# MySQL session for FastAPI field research (shared shop schema).
+
+import sys
+import mysql.connector
+
+package class ShopDatabase {
+    private object conn
+
+    public ShopDatabase(string host, string user, string password, string database) {
+        this.conn = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+    }
+
+    public object cursor() {
+        return this.conn.cursor()
+    }
+
+    public void commit() {
+        this.conn.commit()
+    }
+
+    public void close() {
+        this.conn.close()
+    }
+
+    public nullable<string> cellNullableStr(value) {
+        if (value == null) {
+            return null
+        }
+        string s = str(value)
+        return s
+    }
+
+    public string cellStr(value) {
+        if (value == null) {
+            sys.exit("Database contract violation: expected a non-null string cell.")
+        }
+        string s = str(value)
+        return s
+    }
+
+    public bool cellBool(value) {
+        bool flag = int(this.cellStr(value)) == 1
+        return flag
+    }
+
+    public float cellFloat(value) {
+        float n = float(this.cellStr(value))
+        return n
+    }
+
+    public int cellInt(value) {
+        int n = int(this.cellStr(value))
+        return n
+    }
+}

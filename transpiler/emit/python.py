@@ -570,7 +570,7 @@ class _Emitter:
         elif isinstance(stmt, FunctionDef):
             for deco in stmt.decorators:
                 self._emit(indent, f"@{self._expr(deco)}")
-            params = ", ".join(stmt.params)
+            params = self._format_def_params(stmt.params, stmt.param_types)
             if stmt.return_type:
                 self.fn_return_types[stmt.name] = stmt.return_type
             self._emit(indent, f"def {stmt.name}({params}):")
@@ -723,6 +723,19 @@ class _Emitter:
     @staticmethod
     def _base_type(type_name: str) -> str:
         return type_name.split("<", 1)[0] if type_name else ""
+
+    @classmethod
+    def _format_def_params(cls, params: list[str], param_types: list[str]) -> str:
+        """Emit `name` or `name: Type` for library DI (e.g. FastAPI Request)."""
+        parts: list[str] = []
+        for i, name in enumerate(params):
+            raw = param_types[i] if i < len(param_types) else ""
+            base = cls._base_type(raw).strip()
+            if base and base[0].isupper() and base.isidentifier():
+                parts.append(f"{name}: {base}")
+            else:
+                parts.append(name)
+        return ", ".join(parts)
 
     def _is_result_type(self, type_name: str) -> bool:
         return self._base_type(type_name) == "result"

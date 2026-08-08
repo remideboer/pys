@@ -1,0 +1,141 @@
+# JWT (stdlib HS256) + bcrypt password verify against shop.account.
+# PyJWT deferred until PYS has try/catch for InvalidTokenError.
+
+import json
+import hmac
+import hashlib
+import base64
+import time
+import bcrypt
+import Request from fastapi
+import JSONResponse from fastapi.responses
+import ServerConfig from config
+import ShopDatabase from db
+
+package class Security {
+    private string secret
+    private int ttlSec
+    private ShopDatabase db
+
+    public Security(ServerConfig cfg, ShopDatabase db) {
+        this.secret = cfg.jwtSecret
+        this.ttlSec = cfg.jwtTtlSec
+        this.db = db
+    }
+
+    private string b64url(raw) {
+        string s = base64.urlsafe_b64encode(raw).decode("utf-8")
+        return s.replace("=", "")
+    }
+
+    private object b64urlDecode(string s) {
+        string pad = s
+        int rem = len(pad) % 4
+        if (rem == 2) {
+            pad = pad + "=="
+        } else {
+            if (rem == 3) {
+                pad = pad + "="
+            }
+        }
+        return base64.urlsafe_b64decode(pad.encode("utf-8"))
+    }
+
+    public nullable<dict> findAccount(string username) {
+        object cur = this.db.cursor()
+        cur.execute(
+            "SELECT account_id, username, password_hash, display_name, email, role, active "
+            + "FROM account WHERE username=%s",
+            (username,)
+        )
+        object row = cur.fetchone()
+        cur.close()
+        if (row == null) {
+            return null
+        }
+        dict out = dict()
+        out["accountId"] = this.db.cellInt(row[0])
+        out["username"] = this.db.cellStr(row[1])
+        out["passwordHash"] = this.db.cellStr(row[2])
+        out["displayName"] = this.db.cellStr(row[3])
+        out["email"] = this.db.cellStr(row[4])
+        out["role"] = this.db.cellStr(row[5])
+        out["active"] = this.db.cellBool(row[6])
+        return out
+    }
+
+    public bool verifyPassword(string plain, string passwordHash) {
+        return bcrypt.checkpw(plain.encode("utf-8"), passwordHash.encode("utf-8"))
+    }
+
+    public string issueToken(dict account) {
+        dict header = dict()
+        header["alg"] = "HS256"
+        header["typ"] = "JWT"
+        dict payload = dict()
+        payload["sub"] = account["username"]
+        payload["uid"] = account["accountId"]
+        payload["role"] = account["role"]
+        payload["iat"] = (int)(time.time())
+        payload["exp"] = (int)(time.time()) + this.ttlSec
+        string h = this.b64url(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+        string p = this.b64url(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+        string signing = h + "." + p
+        var sig = hmac.new(this.secret.encode("utf-8"), signing.encode("utf-8"), hashlib.sha256).digest()
+        return signing + "." + this.b64url(sig)
+    }
+
+    public nullable<dict> decodeToken(string token) {
+        var parts = token.split(".")
+        if (len(parts) != 3) {
+            return null
+        }
+        string signing = parts[0] + "." + parts[1]
+        var expected = hmac.new(
+            this.secret.encode("utf-8"),
+            signing.encode("utf-8"),
+            hashlib.sha256
+        ).digest()
+        var got = this.b64urlDecode(parts[2])
+        if (hmac.compare_digest(expected, got) == false) {
+            return null
+        }
+        dict payload = json.loads(this.b64urlDecode(parts[1]).decode("utf-8"))
+        if (!("exp" in payload) || !("sub" in payload)) {
+            return null
+        }
+        if ((int)(payload["exp"]) < (int)(time.time())) {
+            return null
+        }
+        return payload
+    }
+
+    # null = unauthorized; otherwise JWT payload dict
+    public nullable<dict> requireUser(Request request) {
+        string header = str(request.headers.get("authorization", ""))
+        string lower = header.lower()
+        if (!lower.startswith("bearer ")) {
+            return null
+        }
+        string token = header[7:].strip()
+        return this.decodeToken(token)
+    }
+
+    public object unauthorized(string detail) {
+        dict body = dict()
+        body["detail"] = detail
+        return JSONResponse(status_code=401, content=body)
+    }
+
+    public object notFound(string detail) {
+        dict body = dict()
+        body["detail"] = detail
+        return JSONResponse(status_code=404, content=body)
+    }
+
+    public object badRequest(string detail) {
+        dict body = dict()
+        body["detail"] = detail
+        return JSONResponse(status_code=400, content=body)
+    }
+}

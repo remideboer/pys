@@ -1,0 +1,9 @@
+# FastAPI shop field research — JWT + MySQL accounts (port 8093).
+# OpenAPI UI: http://127.0.0.1:8093/docs
+
+import uvicorn
+import createApp, listenConfig from app_factory
+
+object app = createApp()
+object cfg = listenConfig()
+uvicorn.run(app, host=cfg.listenHost, port=cfg.listenPort)

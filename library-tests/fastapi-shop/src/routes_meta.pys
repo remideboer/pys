@@ -1,0 +1,46 @@
+# Health + login (library decorator application — ADR-026).
+
+import APIRouter, Request from fastapi
+import security from state
+import readJson from json_body
+
+object appRouter = APIRouter(tags=["meta"])
+
+@appRouter.get("/health")
+function dict health() {
+    dict out = dict()
+    out["ok"] = true
+    return out
+}
+
+@appRouter.post("/api/login")
+function object login(Request request) {
+    object body = readJson(request)
+    if (!("username" in body) || !("password" in body)) {
+        return security().badRequest("username and password required")
+    }
+    string username = str(body["username"])
+    string password = str(body["password"])
+    nullable<dict> accountN = security().findAccount(username)
+    if (accountN == null) {
+        return security().unauthorized("invalid credentials")
+    }
+    dict account = accountN
+    if (account["active"] == false) {
+        return security().unauthorized("account inactive")
+    }
+    if (!security().verifyPassword(password, str(account["passwordHash"]))) {
+        return security().unauthorized("invalid credentials")
+    }
+    string token = security().issueToken(account)
+    dict out = dict()
+    out["accessToken"] = token
+    out["tokenType"] = "Bearer"
+    out["username"] = account["username"]
+    out["role"] = account["role"]
+    return out
+}
+
+package function object metaRouter() {
+    return appRouter
+}

@@ -1,0 +1,23 @@
+# Tunables for FastAPI shop library-test (port 8093 — after teaching jwt 8092).
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public string dbHost
+    public string dbUser
+    public string dbPassword
+    public string dbName
+    public string jwtSecret
+    public int jwtTtlSec
+
+    public ServerConfig() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8093
+        this.dbHost = "localhost"
+        this.dbUser = "pys"
+        this.dbPassword = "123456789"
+        this.dbName = "shop"
+        this.jwtSecret = "pys-fastapi-field-research-secret"
+        this.jwtTtlSec = 3600
+    }
+}

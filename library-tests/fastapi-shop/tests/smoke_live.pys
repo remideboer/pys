@@ -1,0 +1,38 @@
+# Live MySQL smoke for FastAPI shop (library-tests). Password: Welcome1!
+
+import createApp from app_factory
+import TestClient from fastapi.testclient
+
+object app = createApp()
+object client = TestClient(app)
+
+object health = client.get("/health")
+print("health=" + str(health.status_code))
+print(str(health.json()))
+
+object login = client.post(
+    "/api/login",
+    json={"username": "amira", "password": "Welcome1!"}
+)
+print("login=" + str(login.status_code))
+if (login.status_code == 200) {
+    dict body = login.json()
+    print("user=" + str(body["username"]))
+    string token = str(body["accessToken"])
+    object products = client.get("/api/products")
+    print("products=" + str(products.status_code) + " n=" + str(len(products.json())))
+    object addrs = client.get("/api/accounts/3/addresses")
+    print("addresses=" + str(addrs.status_code) + " n=" + str(len(addrs.json())))
+    object me = client.get(
+        "/api/accounts/me",
+        headers={"Authorization": "Bearer " + token}
+    )
+    print("me=" + str(me.status_code) + " " + str(me.json()["username"]))
+    object denied = client.post(
+        "/api/products",
+        json={"sku": "T", "name": "T", "unitPrice": 1.0}
+    )
+    print("denied=" + str(denied.status_code))
+} else {
+    print(login.text)
+}
