@@ -10,7 +10,7 @@ Ensure a class has only one instance and provide a global point of access to it.
 
 ## Explanation
 
-`getInstance()` lazily creates and returns the sole `Logger`. Both callers share the same object (write count accumulates). Classic form is shown for literacy; in applications prefer constructor injection or a composition root over a hidden global.
+`getInstance()` lazily creates and returns the sole `Logger`. Both callers share the same object (write count accumulates). Classic form is shown for literacy; in applications prefer [Dependency Injection](../general/dependency_injection.md) (constructor injection / a composition root) over a hidden global.
 
 ## Classic structure (UML)
 
@@ -41,7 +41,7 @@ classDiagram
 
 ## Real-world use cases
 
-- Process-wide logging or metrics sinks (historically; often replaced by DI).
+- Process-wide logging or metrics sinks (historically; often replaced by [DI](../general/dependency_injection.md)).
 - Hardware device drivers that must own a single connection handle.
 - Caches or thread pools that must not be constructed twice by accident.
 

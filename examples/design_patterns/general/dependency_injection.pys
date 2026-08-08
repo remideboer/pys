@@ -1,0 +1,42 @@
+# Dependency Injection — supply collaborators from outside (constructor form).
+# Consensus name: Dependency Injection (DI). Contrast: creational/singleton.pys.
+
+interface Logger {
+    info(string message)
+}
+
+class ConsoleLogger implements Logger {
+    private int writes
+
+    public constructor() {
+        this.writes = 0
+    }
+
+    public info(string message) {
+        this.writes = this.writes + 1
+        print("[log] " + message)
+    }
+
+    public int writeCount() {
+        return this.writes
+    }
+}
+
+class OrderService {
+    private Logger logger
+
+    public constructor(Logger logger) {
+        this.logger = logger
+    }
+
+    public void place(string sku) {
+        this.logger.info("order:" + sku)
+    }
+}
+
+# Composition root: wire once, then use — no Logger.getInstance().
+ConsoleLogger log = ConsoleLogger()
+OrderService orders = OrderService(log)
+orders.place("BG-001")
+orders.place("BG-002")
+print(log.writeCount())  # 2

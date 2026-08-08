@@ -1,5 +1,6 @@
 # Singleton — one shared instance for a class.
-# Modern note: prefer DI / a composition root in apps; this shows the classic form.
+# Modern note: prefer Dependency Injection (constructor) — see
+# ../general/dependency_injection.pys; this file shows the classic Singleton form.
 
 class Logger {
     private static nullable<Logger> instance = null

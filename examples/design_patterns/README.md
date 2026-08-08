@@ -1,8 +1,8 @@
 # Gang of Four design patterns — PYS teaching demos
 
 Classic patterns from *Design Patterns: Elements of Reusable Object-Oriented
-Software* (Gamma, Helm, Johnson, Vlissides, 1994), implemented as **pure OO**
-runnable `.pys` files. Folder layout follows the three GoF categories.
+Software* (Gamma, Helm, Johnson, Vlissides, 1994), plus related **general** and
+**concurrency** demos, as **pure OO** runnable `.pys` files.
 
 Background: [Wikipedia — Design Patterns](https://en.wikipedia.org/wiki/Design_Patterns).
 Concurrency catalog: [Wikipedia — Concurrency pattern](https://en.wikipedia.org/wiki/Concurrency_pattern).
@@ -31,7 +31,15 @@ print lines are marked with `# …` comments.
 | Builder | [builder.pys](creational/builder.pys) | [builder.md](creational/builder.md) |
 | Factory Method | [factory_method.pys](creational/factory_method.pys) | [factory_method.md](creational/factory_method.md) |
 | Prototype | [prototype.pys](creational/prototype.pys) | [prototype.md](creational/prototype.md) |
-| Singleton | [singleton.pys](creational/singleton.pys) | [singleton.md](creational/singleton.md) |
+| Singleton | [singleton.pys](creational/singleton.pys) | [singleton.md](creational/singleton.md) — prefer [DI](general/dependency_injection.md) in apps |
+
+## General
+
+Not from the GoF catalog; common companion patterns used with OO PYS apps.
+
+| Pattern | Code | Notes |
+|---------|------|-------|
+| Dependency Injection | [dependency_injection.pys](general/dependency_injection.pys) | [dependency_injection.md](general/dependency_injection.md) (constructor injection) |
 
 ## Structural
 
@@ -93,8 +101,9 @@ demos (including no “await N tasks” stand-in for Barrier):
 ## Modern notes
 
 - Prefer **program to an interface** and **composition over inheritance** (GoF ch. 1).
-- **Singleton** is shown in classic form for literacy; prefer constructor injection /
-  a composition root in application code instead of a global instance.
+- **Singleton** is shown in classic form for literacy; prefer
+  [Dependency Injection](general/dependency_injection.md) (constructor injection /
+  a composition root) instead of a global instance.
 - **Interpreter** is for tiny DSLs; do not invent a language when a function
   or library parser would do.
 - Language `loop (x in xs)` already iterates collections; the Iterator demo

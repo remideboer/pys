@@ -61,6 +61,19 @@ Barrier.
 **Evidence:** `tests/test_design_patterns.py` asserts four `concurrency/*.pys`
 transpile; README Out-of-language table.
 
+### 4. Dependency Injection (general)
+
+**Pre-behavior:** Singleton README/comments pointed at DI without a runnable demo.
+
+**Why it hurt:** Students saw “prefer DI” but had no OO constructor-injection
+example next to the classic Singleton.
+
+**Post-behavior:** `general/dependency_injection.pys` (+ `.md`) shows constructor
+injection of a `Logger` into `OrderService` with an explicit composition root;
+Singleton cross-links to it. Consensus name: **Dependency Injection** (not GoF).
+
+**Evidence:** transpile gate covers `general/*.pys`.
+
 ## Trade-offs
 
 - One file per pattern (not multi-module packages) for runnable teaching

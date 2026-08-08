@@ -1,4 +1,4 @@
-"""Transpile gate for examples/design_patterns/**/*.pys (GoF + concurrency)."""
+"""Transpile gate for examples/design_patterns/**/*.pys (GoF + concurrency + general)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,8 @@ def test_design_patterns_pys_transpile() -> None:
     assert paths, "expected examples/design_patterns/**/*.pys"
     concurrency = [p for p in paths if "concurrency" in p.parts]
     assert len(concurrency) == 4, "expected four concurrency pattern demos"
+    general = [p for p in paths if "general" in p.parts]
+    assert len(general) == 1, "expected dependency_injection under general/"
     for path in paths:
         try:
             out = transpile(path.read_text(encoding="utf-8"))
