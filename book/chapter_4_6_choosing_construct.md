@@ -29,6 +29,16 @@ Use this as a pocket card:
 - **trait** — behavior mixin; **not** a type; `requires` host state.
 - **abstract class** — partial class; is a type; may have fields.
 
+Do **not** write an `abstract class` that only lists abstract methods and an
+empty constructor — that is an interface. Prefer:
+
+```pys
+interface Loadable {
+    load(int weight)
+    int capacity()
+}
+```
+
 When unsure, start with `class` or `data` and refactor when the equality
 story becomes clear — Session 6’s tests make that safer.
 

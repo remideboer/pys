@@ -176,6 +176,12 @@ leave entity identity to annotations (<code>@Id</code>, <code>[Key]</code>); PYS
 <li><strong>trait</strong> — behavior mixin; <strong>not</strong> a type; <code>requires</code> host state.</li>
 <li><strong>abstract class</strong> — partial class; is a type; may have fields.</li>
 </ul>
+<p>Do <strong>not</strong> write an <code>abstract class</code> that only lists abstract methods and an
+empty constructor — that is an interface. Prefer:</p>
+<pre><code class="language-pys"><span class="tok-kw">interface</span> <span class="tok-typename">Loadable</span> {
+    <span class="tok-ident">load</span>(<span class="tok-type">int</span> <span class="tok-ident">weight</span>)
+    <span class="tok-type">int</span> <span class="tok-ident">capacity</span>()
+}</code></pre>
 <p>When unsure, start with <code>class</code> or <code>data</code> and refactor when the equality
 story becomes clear — Session 6’s tests make that safer.</p>
 <h3>Exercise</h3>

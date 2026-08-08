@@ -4,115 +4,115 @@
 import Product, Order, OrderLine from models
 import ProductMapper, OrderMapper, OrderLineMapper from mappers
 
-package abstract class ProductRepository {
-    public abstract list<Product> all()
-    public abstract nullable<Product> get(int id)
-    public abstract Product add(string sku, string name, float unitPrice)
-    public abstract void save(Product product)
-    public abstract void remove(Product product)
+package interface ProductRepository {
+    list<Product> all()
+    nullable<Product> get(int id)
+    Product add(string sku, string name, float unitPrice)
+    save(Product product)
+    remove(Product product)
 }
 
-package abstract class OrderRepository {
-    public abstract list<Order> all()
-    public abstract nullable<Order> get(int id)
-    public abstract Order add(string status, nullable<string> customerRef)
-    public abstract void save(Order order)
-    public abstract void remove(Order order)
+package interface OrderRepository {
+    list<Order> all()
+    nullable<Order> get(int id)
+    Order add(string status, nullable<string> customerRef)
+    save(Order order)
+    remove(Order order)
 }
 
-package abstract class OrderLineRepository {
-    public abstract list<OrderLine> all()
-    public abstract list<OrderLine> forOrder(int orderId)
-    public abstract nullable<OrderLine> get(int orderId, int lineNumber)
-    public abstract void add(OrderLine line)
-    public abstract void save(OrderLine line)
-    public abstract void remove(OrderLine line)
+package interface OrderLineRepository {
+    list<OrderLine> all()
+    list<OrderLine> forOrder(int orderId)
+    nullable<OrderLine> get(int orderId, int lineNumber)
+    add(OrderLine line)
+    save(OrderLine line)
+    remove(OrderLine line)
 }
 
-package class DefaultProductRepository inherits ProductRepository {
+package class DefaultProductRepository implements ProductRepository {
     private ProductMapper mapper
 
     public constructor(ProductMapper mapper) {
         this.mapper = mapper
     }
 
-    public override list<Product> all() {
+    public list<Product> all() {
         return this.mapper.findAll()
     }
 
-    public override nullable<Product> get(int id) {
+    public nullable<Product> get(int id) {
         return this.mapper.findById(id)
     }
 
-    public override Product add(string sku, string name, float unitPrice) {
+    public Product add(string sku, string name, float unitPrice) {
         return this.mapper.insert(sku, name, unitPrice)
     }
 
-    public override void save(Product product) {
+    public void save(Product product) {
         this.mapper.update(product)
     }
 
-    public override void remove(Product product) {
+    public void remove(Product product) {
         this.mapper.delete(product)
     }
 }
 
-package class DefaultOrderRepository inherits OrderRepository {
+package class DefaultOrderRepository implements OrderRepository {
     private OrderMapper mapper
 
     public constructor(OrderMapper mapper) {
         this.mapper = mapper
     }
 
-    public override list<Order> all() {
+    public list<Order> all() {
         return this.mapper.findAll()
     }
 
-    public override nullable<Order> get(int id) {
+    public nullable<Order> get(int id) {
         return this.mapper.findById(id)
     }
 
-    public override Order add(string status, nullable<string> customerRef) {
+    public Order add(string status, nullable<string> customerRef) {
         return this.mapper.insert(status, customerRef)
     }
 
-    public override void save(Order order) {
+    public void save(Order order) {
         this.mapper.update(order)
     }
 
-    public override void remove(Order order) {
+    public void remove(Order order) {
         this.mapper.delete(order)
     }
 }
 
-package class DefaultOrderLineRepository inherits OrderLineRepository {
+package class DefaultOrderLineRepository implements OrderLineRepository {
     private OrderLineMapper mapper
 
     public constructor(OrderLineMapper mapper) {
         this.mapper = mapper
     }
 
-    public override list<OrderLine> all() {
+    public list<OrderLine> all() {
         return this.mapper.findAll()
     }
 
-    public override list<OrderLine> forOrder(int orderId) {
+    public list<OrderLine> forOrder(int orderId) {
         return this.mapper.findByOrder(orderId)
     }
 
-    public override nullable<OrderLine> get(int orderId, int lineNumber) {
+    public nullable<OrderLine> get(int orderId, int lineNumber) {
         return this.mapper.findById(orderId, lineNumber)
     }
 
-    public override void add(OrderLine line) {
+    public void add(OrderLine line) {
         this.mapper.insert(line)
     }
 
-    public override void save(OrderLine line) {
+    public void save(OrderLine line) {
         this.mapper.update(line)
     }
 
-    public override void remove(OrderLine line) {
+    public void remove(OrderLine line) {
         this.mapper.delete(line)
     }
 }

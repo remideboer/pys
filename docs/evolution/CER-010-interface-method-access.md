@@ -63,6 +63,21 @@ socket); hover + `interface` snippet in `pys-language/` mention nominal returns.
 
 **Evidence:** `tests/test_interface_return_types.py`.
 
+### 3. Shop ports use interfaces (2026-08-08)
+
+**Pre-behavior:** `examples/database` and `examples/rest-api/shop/*` declared
+Repository / Data Mapper contracts as bare `abstract class` (no fields or
+shared bodies), with README claiming abstract was required for `list<Product>`.
+
+**Why it hurt:** Violated construct fit (socket → `interface`); the README
+rationale was obsolete after §2.
+
+**Post-behavior:** Those ports are `interface`; implementors use `implements`.
+README updated. Legitimate abstracts with shared code unchanged
+(`examples/abstract_classes.pys`, design_patterns template bases).
+
+**Evidence:** transpile of converted `repositories.pys` / `mappers.pys` modules.
+
 ## Trade-offs
 
 - Breaking change for existing PYS that used `public` on interface methods;

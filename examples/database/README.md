@@ -28,9 +28,9 @@ companion to [`docs/DATA_ENTITY.md`](../../docs/DATA_ENTITY.md).
   panels are independent classes on the same ports.
 - **L**iskov: `OrderLine` is a substitutable `Order` for identity inheritance.
 - **I**nterface segregation: separate product / order / line repository contracts.
-- **D**ependency inversion: menus and GUI take abstract `ProductRepository`
-  etc.; default repositories take abstract mappers; only MySQL mappers know
-  `ShopDatabase`.
+- **D**ependency inversion: menus and GUI take `ProductRepository`
+  etc. **interfaces**; default repositories take mapper **interfaces**; only
+  MySQL mappers know `ShopDatabase`.
 
 ## Repository vs Data Mapper
 
@@ -42,10 +42,11 @@ These are deliberately separate patterns:
   boundary: `all`, `get`, `add`, `save`, `remove`. It delegates storage work
   to a mapper and contains no SQL.
 
-The Repository contracts are abstract classes because PYS abstract methods
-preserve typed generic returns such as `list<Product>` while still allowing
-the menus to depend on a nominal, substitutable port. The concrete
-`Default*Repository` classes are intentionally database-agnostic.
+The Repository and Data Mapper contracts are **`interface`s** (ports only —
+no fields or shared method bodies). Typed returns such as `list<Product>` are
+allowed on interface methods ([CER-010](../../docs/evolution/CER-010-interface-method-access.md)
+§2). Menus depend on those nominal ports; concrete `Default*Repository`
+classes stay database-agnostic and implement the interfaces.
 
 ## Credentials
 

@@ -5,33 +5,33 @@ import threading
 
 import Product, Order, OrderLine from models
 
-package abstract class ProductRepository {
-    public abstract list<Product> all()
-    public abstract nullable<Product> get(int id)
-    public abstract Product add(string sku, string name, float unitPrice)
-    public abstract void save(Product product)
-    public abstract void remove(Product product)
+package interface ProductRepository {
+    list<Product> all()
+    nullable<Product> get(int id)
+    Product add(string sku, string name, float unitPrice)
+    save(Product product)
+    remove(Product product)
 }
 
-package abstract class OrderRepository {
-    public abstract list<Order> all()
-    public abstract nullable<Order> get(int id)
-    public abstract Order add(string status, nullable<string> customerRef)
-    public abstract void save(Order order)
-    public abstract void remove(Order order)
+package interface OrderRepository {
+    list<Order> all()
+    nullable<Order> get(int id)
+    Order add(string status, nullable<string> customerRef)
+    save(Order order)
+    remove(Order order)
 }
 
-package abstract class OrderLineRepository {
-    public abstract list<OrderLine> all()
-    public abstract list<OrderLine> forOrder(int orderId)
-    public abstract nullable<OrderLine> get(int orderId, int lineNumber)
-    public abstract OrderLine addLine(Order order, Product product, int quantity)
-    public abstract void save(OrderLine line)
-    public abstract void remove(OrderLine line)
-    public abstract void removeForOrder(int orderId)
+package interface OrderLineRepository {
+    list<OrderLine> all()
+    list<OrderLine> forOrder(int orderId)
+    nullable<OrderLine> get(int orderId, int lineNumber)
+    OrderLine addLine(Order order, Product product, int quantity)
+    save(OrderLine line)
+    remove(OrderLine line)
+    removeForOrder(int orderId)
 }
 
-package class InMemoryProductRepository inherits ProductRepository {
+package class InMemoryProductRepository implements ProductRepository {
     private object lock
     private dict byId
     private int nextId
@@ -54,7 +54,7 @@ package class InMemoryProductRepository inherits ProductRepository {
         this.add("BG-AZUL", "Azul", 39.95)
     }
 
-    public override list<Product> all() {
+    public list<Product> all() {
         this.lock.acquire()
         dict m = this.byId
         list<Product> out = []
@@ -65,7 +65,7 @@ package class InMemoryProductRepository inherits ProductRepository {
         return out
     }
 
-    public override nullable<Product> get(int id) {
+    public nullable<Product> get(int id) {
         this.lock.acquire()
         dict m = this.byId
         nullable<Product> found = null
@@ -76,7 +76,7 @@ package class InMemoryProductRepository inherits ProductRepository {
         return found
     }
 
-    public override Product add(string sku, string name, float unitPrice) {
+    public Product add(string sku, string name, float unitPrice) {
         this.lock.acquire()
         int id = this.nextId
         this.nextId = this.nextId + 1
@@ -89,7 +89,7 @@ package class InMemoryProductRepository inherits ProductRepository {
         return p
     }
 
-    public override void save(Product product) {
+    public void save(Product product) {
         this.lock.acquire()
         dict m = this.byId
         m[product.id()] = product
@@ -97,7 +97,7 @@ package class InMemoryProductRepository inherits ProductRepository {
         this.lock.release()
     }
 
-    public override void remove(Product product) {
+    public void remove(Product product) {
         this.lock.acquire()
         dict m = this.byId
         if (product.id() in m) {
@@ -108,7 +108,7 @@ package class InMemoryProductRepository inherits ProductRepository {
     }
 }
 
-package class InMemoryOrderRepository inherits OrderRepository {
+package class InMemoryOrderRepository implements OrderRepository {
     private object lock
     private dict byId
     private int nextId
@@ -130,7 +130,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
         this.lock.release()
     }
 
-    public override list<Order> all() {
+    public list<Order> all() {
         this.lock.acquire()
         dict m = this.byId
         list<Order> out = []
@@ -141,7 +141,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
         return out
     }
 
-    public override nullable<Order> get(int id) {
+    public nullable<Order> get(int id) {
         this.lock.acquire()
         dict m = this.byId
         nullable<Order> found = null
@@ -152,7 +152,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
         return found
     }
 
-    public override Order add(string status, nullable<string> customerRef) {
+    public Order add(string status, nullable<string> customerRef) {
         this.lock.acquire()
         int id = this.nextId
         this.nextId = this.nextId + 1
@@ -165,7 +165,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
         return o
     }
 
-    public override void save(Order order) {
+    public void save(Order order) {
         this.lock.acquire()
         dict m = this.byId
         m[order.id()] = order
@@ -173,7 +173,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
         this.lock.release()
     }
 
-    public override void remove(Order order) {
+    public void remove(Order order) {
         this.lines.removeForOrder(order.id())
         this.lock.acquire()
         dict m = this.byId
@@ -185,7 +185,7 @@ package class InMemoryOrderRepository inherits OrderRepository {
     }
 }
 
-package class InMemoryOrderLineRepository inherits OrderLineRepository {
+package class InMemoryOrderLineRepository implements OrderLineRepository {
     private object lock
     private dict byKey
     private dict nextLine
@@ -211,7 +211,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         return str(orderId) + ":" + str(lineNumber)
     }
 
-    public override list<OrderLine> all() {
+    public list<OrderLine> all() {
         this.lock.acquire()
         dict m = this.byKey
         list<OrderLine> out = []
@@ -222,7 +222,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         return out
     }
 
-    public override list<OrderLine> forOrder(int orderId) {
+    public list<OrderLine> forOrder(int orderId) {
         this.lock.acquire()
         dict m = this.byKey
         list<OrderLine> out = []
@@ -236,7 +236,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         return out
     }
 
-    public override nullable<OrderLine> get(int orderId, int lineNumber) {
+    public nullable<OrderLine> get(int orderId, int lineNumber) {
         this.lock.acquire()
         dict m = this.byKey
         string k = this.keyOf(orderId, lineNumber)
@@ -248,7 +248,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         return found
     }
 
-    public override OrderLine addLine(Order order, Product product, int quantity) {
+    public OrderLine addLine(Order order, Product product, int quantity) {
         this.lock.acquire()
         int oid = order.id()
         dict nextMap = this.nextLine
@@ -276,7 +276,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         return line
     }
 
-    public override void save(OrderLine line) {
+    public void save(OrderLine line) {
         this.lock.acquire()
         dict m = this.byKey
         m[this.keyOf(line.id(), line.lineKey())] = line
@@ -284,7 +284,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         this.lock.release()
     }
 
-    public override void remove(OrderLine line) {
+    public void remove(OrderLine line) {
         this.lock.acquire()
         dict m = this.byKey
         string k = this.keyOf(line.id(), line.lineKey())
@@ -295,7 +295,7 @@ package class InMemoryOrderLineRepository inherits OrderLineRepository {
         this.lock.release()
     }
 
-    public override void removeForOrder(int orderId) {
+    public void removeForOrder(int orderId) {
         this.lock.acquire()
         dict m = this.byKey
         list<string> drop = []
