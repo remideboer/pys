@@ -28,7 +28,8 @@ True
 >
 > `Damage(20, "physical")` fills fields in declaration order.
 > `Damage(amount=20, type="physical")` names each field — handy when
-> optional trailing fields appear later.
+> optional trailing fields appear later. Do not mix styles in one call
+> (`Damage(20, type="physical")` is illegal).
 
 ## `data` — value object (VO)
 

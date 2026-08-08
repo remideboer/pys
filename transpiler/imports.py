@@ -33,6 +33,7 @@ class ModuleInfo:
     exports: dict[str, str] = field(default_factory=dict)
     function_returns: dict[str, str] = field(default_factory=dict)
     function_params: dict[str, list[str]] = field(default_factory=dict)
+    function_param_names: dict[str, list[str]] = field(default_factory=dict)
     constants: set[str] = field(default_factory=set)
     fixed_vars: set[str] = field(default_factory=set)
     types: dict[str, str] = field(default_factory=dict)
@@ -147,6 +148,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
     exports: dict[str, str] = {}
     function_returns: dict[str, str] = {}
     function_params: dict[str, list[str]] = {}
+    function_param_names: dict[str, list[str]] = {}
     constants: set[str] = set()
     fixed_vars: set[str] = set()
     types: dict[str, str] = {}
@@ -183,6 +185,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             exports[stmt.name] = vis
             function_returns[stmt.name] = stmt.return_type
             function_params[stmt.name] = list(stmt.param_types)
+            function_param_names[stmt.name] = list(stmt.params)
             symbol_locations[stmt.name] = (path, line, col)
         elif isinstance(stmt, InterfaceDef):
             vis = stmt.visibility or "module"
@@ -356,6 +359,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
         exports=exports,
         function_returns=function_returns,
         function_params=function_params,
+        function_param_names=function_param_names,
         constants=constants,
         fixed_vars=fixed_vars,
         types=types,
@@ -414,6 +418,7 @@ class ImportResolver:
         self.exports: dict[str, str] = {}
         self.function_returns: dict[str, str] = {}
         self.function_params: dict[str, list[str]] = {}
+        self.function_param_names: dict[str, list[str]] = {}
         self.constants: set[str] = set()
         self.fixed_vars: set[str] = set()
         self.imported_names: set[str] = set()
@@ -453,6 +458,9 @@ class ImportResolver:
             self.function_returns = dict(info.function_returns)
             self.function_params = {
                 name: list(params) for name, params in info.function_params.items()
+            }
+            self.function_param_names = {
+                name: list(names) for name, names in info.function_param_names.items()
             }
             self.constants = set(info.constants)
             self.fixed_vars = set(info.fixed_vars)
@@ -620,6 +628,8 @@ class ImportResolver:
                 self.function_returns[name] = info.function_returns[name]
             if name in info.function_params:
                 self.function_params[name] = list(info.function_params[name])
+            if name in info.function_param_names:
+                self.function_param_names[name] = list(info.function_param_names[name])
             if name in info.constants:
                 self.constants.add(name)
             if name in info.fixed_vars:

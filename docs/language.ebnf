@@ -536,6 +536,9 @@ constructor_call = named_type , [ type_args ] , "(" , [ arg_list ] , ")" ;
 
 arg_list         = argument , { "," , argument } ;
 argument         = [ identifier , "=" ] , expression ;
+(* Call style is all-positional or all-named — never mixed — for PYS functions,
+   methods, class/entity constructors, and struct/data construction (CER-048).
+   Library calls may still pass mixed kwargs through to Python. *)
 
 literal          = integer | float | boolean | null_lit | char_lit | string_lit ;
 

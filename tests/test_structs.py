@@ -114,7 +114,7 @@ struct AllFix {
         ),
         (
             "struct S { int x }\nS s = S(y=1)\n",
-            r"Unknown field",
+            r"Unknown named argument|Unknown field",
         ),
         (
             "struct S { int x }\nS s = new S(1)\n",

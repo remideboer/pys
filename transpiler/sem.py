@@ -198,26 +198,54 @@ def analyze(
         for stmt in module.body
         if isinstance(stmt, FunctionDef)
     }
+    function_param_names = {
+        stmt.name: list(stmt.params)
+        for stmt in module.body
+        if isinstance(stmt, FunctionDef)
+    }
     # Built-in recoverable parsers (Python emit target defines acceptance).
     function_returns.setdefault("parseFloat", "result<float, string>")
     function_params.setdefault("parseFloat", ["string"])
+    function_param_names.setdefault("parseFloat", ["text"])
     function_returns.setdefault("parseInt", "result<int, string>")
     function_params.setdefault("parseInt", ["string"])
+    function_param_names.setdefault("parseInt", ["text"])
     # Console I/O (like print): no import required.
     function_returns.setdefault("input", "string")
     function_params.setdefault("input", ["string"])  # optional; arity checked separately
+    function_param_names.setdefault("input", ["prompt"])
     # Base display (ADR-024): optional width as second int.
     for _base_fn in ("toBin", "toHex", "toOct"):
         function_returns.setdefault(_base_fn, "string")
         function_params.setdefault(_base_fn, ["int", "int"])
+        function_param_names.setdefault(_base_fn, ["value", "width"])
     if import_resolver is not None:
         function_returns.update(import_resolver.function_returns)
         function_params.update(import_resolver.function_params)
+        function_param_names.update(getattr(import_resolver, "function_param_names", {}))
+
+    ctor_overloads: dict[str, list[tuple[list[str], list[str]]]] = {}
+    method_param_names: dict[tuple[str, str], list[str]] = {}
+    for stmt in module.body:
+        if isinstance(stmt, (ClassDef, EntityDef)):
+            overs: list[tuple[list[str], list[str]]] = []
+            for method in stmt.methods:
+                method_param_names[(stmt.name, method.name)] = list(method.params)
+                if method.is_constructor:
+                    overs.append((list(method.params), list(method.param_types)))
+            if overs:
+                ctor_overloads[stmt.name] = overs
+            elif stmt.name not in ctor_overloads:
+                ctor_overloads[stmt.name] = [([], [])]
+
     _check_results(
         module.body,
         types=types,
         function_returns=function_returns,
         function_params=function_params,
+        function_param_names=function_param_names,
+        method_param_names=method_param_names,
+        ctor_overloads=ctor_overloads,
         class_names=class_names,
         class_parents=class_parents,
         class_implements=class_implements,
@@ -229,6 +257,10 @@ def analyze(
         types=types,
         function_returns=function_returns,
         function_params=function_params,
+        function_param_names=function_param_names,
+        method_param_names=method_param_names,
+        ctor_overloads=ctor_overloads,
+        class_names=class_names,
         class_parents=class_parents,
         class_implements=class_implements,
         interfaces=interfaces,
@@ -1099,12 +1131,17 @@ def _check_nullability(
     types: dict[str, str],
     function_returns: dict[str, str],
     function_params: dict[str, list[str]],
+    function_param_names: dict[str, list[str]],
+    method_param_names: dict[tuple[str, str], list[str]],
+    ctor_overloads: dict[str, list[tuple[list[str], list[str]]]],
+    class_names: set[str],
     class_parents: dict[str, str | None],
     class_implements: dict[str, list[str]],
     interfaces: set[str],
     warnings: list,
 ) -> None:
     """Enforce nullable use and maintain conservative lexical flow facts."""
+    from .call_args import bind_call_arguments, pick_overload
 
     module.analysis_narrowed_types = {}
     shared_names = {
@@ -1272,37 +1309,79 @@ def _check_nullability(
             return
         if isinstance(expr, Call):
             walk_expr(expr.callee, env, present)
+            call_line = expr.span.line if expr.span else 1
+            call_col = expr.span.column if expr.span else 1
             expected: list[str] = []
+            names: list[str] = []
+            defaults: set[str] = set()
+            label = "call"
+            known = False
             if isinstance(expr.callee, Identifier):
-                expected = function_params.get(expr.callee.name, [])
-            for idx, arg in enumerate(expr.args):
-                value = arg.value if isinstance(arg, KeywordArg) else arg
-                if idx < len(expected) and expected[idx] and expected[idx] != "var":
-                    actual = expr_type(value, env, present)
-                    if actual and not _is_assignable_type(
-                        actual,
-                        expected[idx],
-                        class_parents,
-                        class_implements=class_implements,
-                        interfaces=interfaces,
-                    ):
-                        if _nullable_inner(actual) is not None:
-                            require_present(
-                                value,
-                                env,
-                                present,
-                                f"passing to non-null parameter {idx + 1}",
-                            )
-                        else:
-                            _transpile_error(
-                                f"Argument {idx + 1} has type {actual}; "
-                                f"expected {expected[idx]}.",
-                                value.span.line if value.span else 1,
-                                value.span.column if value.span else 1,
-                                "argument",
-                                code="pys.argument-type",
-                            )
-                walk_expr(value, env, present)
+                fname = expr.callee.name
+                if fname in function_params:
+                    known = True
+                    expected = list(function_params[fname])
+                    names = list(function_param_names.get(fname, []))
+                    if len(names) < len(expected):
+                        names = [f"arg{i + 1}" for i in range(len(expected))]
+                    label = f"function '{fname}'"
+                    if fname == "input":
+                        defaults = {"prompt"}
+                    if fname in {"toBin", "toHex", "toOct"}:
+                        defaults = {"width"}
+                elif fname in ctor_overloads:
+                    known = True
+                    names, expected = pick_overload(
+                        ctor_overloads[fname],
+                        expr.args,
+                        label=f"constructor '{fname}'",
+                        line=call_line,
+                        column=call_col,
+                    )
+                    label = f"constructor '{fname}'"
+            if known:
+                bound = bind_call_arguments(
+                    expr.args,
+                    param_names=names,
+                    defaults=defaults,
+                    label=label,
+                    line=call_line,
+                    column=call_col,
+                )
+                for idx, (_pname, value) in enumerate(bound):
+                    if value is None:
+                        continue
+                    if idx < len(expected) and expected[idx] and expected[idx] != "var":
+                        actual = expr_type(value, env, present)
+                        if actual and not _is_assignable_type(
+                            actual,
+                            expected[idx],
+                            class_parents,
+                            class_implements=class_implements,
+                            interfaces=interfaces,
+                        ):
+                            if _nullable_inner(actual) is not None:
+                                require_present(
+                                    value,
+                                    env,
+                                    present,
+                                    f"passing to non-null parameter {_pname}",
+                                )
+                            else:
+                                _transpile_error(
+                                    f"Argument '{_pname}' has type {actual}; "
+                                    f"expected {expected[idx]}.",
+                                    value.span.line if value.span else 1,
+                                    value.span.column if value.span else 1,
+                                    "argument",
+                                    code="pys.argument-type",
+                                )
+                    walk_expr(value, env, present)
+            else:
+                # Library / unknown callees: allow Python-style mixed kwargs.
+                for arg in expr.args:
+                    value = arg.value if isinstance(arg, KeywordArg) else arg
+                    walk_expr(value, env, present)
             # A call on a receiver may mutate its fields. Retain local facts but
             # conservatively invalidate member-path facts.
             present.difference_update({path for path in present if "." in path})
@@ -1552,6 +1631,9 @@ def _check_results(
     types: dict[str, str],
     function_returns: dict[str, str],
     function_params: dict[str, list[str]],
+    function_param_names: dict[str, list[str]],
+    method_param_names: dict[tuple[str, str], list[str]],
+    ctor_overloads: dict[str, list[tuple[list[str], list[str]]]],
     class_names: set[str],
     class_parents: dict[str, str | None],
     class_implements: dict[str, list[str]],
@@ -1559,18 +1641,22 @@ def _check_results(
     is_entrypoint: bool,
 ) -> None:
     """Validate contextual result construction and postfix propagation."""
+    from .call_args import bind_call_arguments, pick_overload
 
     reserved = {"ok", "error"}
     entry_error_type: str | None = None
     method_returns: dict[tuple[str, str], str] = {}
     method_params: dict[tuple[str, str], list[str]] = {}
     for stmt in body:
-        if not isinstance(stmt, ClassDef):
+        if not isinstance(stmt, (ClassDef, EntityDef)):
             continue
         for method in stmt.methods:
             if method.return_type:
                 method_returns[(stmt.name, method.name)] = method.return_type
             method_params[(stmt.name, method.name)] = list(method.param_types)
+            method_param_names.setdefault(
+                (stmt.name, method.name), list(method.params)
+            )
 
     def method_owner(type_name: str | None, method_name: str) -> str | None:
         owner = _base_type_name(type_name or "")
@@ -1786,48 +1872,54 @@ def _check_results(
                 return arm_types[0]
             return None
         if isinstance(expr, Call):
+            call_line = expr.span.line if expr.span else 1
+            call_col = expr.span.column if expr.span else 1
             expected_params: list[str] = []
+            param_names: list[str] = []
+            defaults: set[str] = set()
+            label = "call"
+            known = False
             if isinstance(expr.callee, Identifier):
-                expected_params = function_params.get(expr.callee.name, [])
-                if expr.callee.name == "input" and len(expr.args) > 1:
+                fname = expr.callee.name
+                if fname in function_params:
+                    known = True
+                    expected_params = list(function_params[fname])
+                    param_names = list(function_param_names.get(fname, []))
+                    if len(param_names) < len(expected_params):
+                        param_names = [f"arg{i + 1}" for i in range(len(expected_params))]
+                    label = f"function '{fname}'"
+                    if fname == "input":
+                        defaults = {"prompt"}
+                    if fname in {"toBin", "toHex", "toOct"}:
+                        defaults = {"width"}
+                elif fname in ctor_overloads:
+                    known = True
+                    param_names, expected_params = pick_overload(
+                        ctor_overloads[fname],
+                        expr.args,
+                        label=f"constructor '{fname}'",
+                        line=call_line,
+                        column=call_col,
+                    )
+                    label = f"constructor '{fname}'"
+                if fname == "input" and len(expr.args) > 1:
                     fail(
                         "`input` takes at most one string prompt argument.",
                         expr,
                         code="pys.input-arity",
                         tips=['Use `input()` or `input("prompt")`.'],
                     )
-                if expr.callee.name in {"toBin", "toHex", "toOct"}:
+                if fname in {"toBin", "toHex", "toOct"}:
                     n = len(expr.args)
                     if n < 1 or n > 2:
                         fail(
-                            f"`{expr.callee.name}` takes one value and an optional width.",
+                            f"`{fname}` takes one value and an optional width.",
                             expr,
                             code="pys.base-display-arity",
                             tips=[
-                                f'Use `{expr.callee.name}(value)` or '
-                                f'`{expr.callee.name}(value, width)`.'
+                                f'Use `{fname}(value)` or `{fname}(value, width)`.'
                             ],
                         )
-                    else:
-                        for index, arg in enumerate(expr.args):
-                            value = arg.value if isinstance(arg, KeywordArg) else arg
-                            actual = expr_type(
-                                value,
-                                env,
-                                return_type=return_type,
-                                scope_kind=scope_kind,
-                            )
-                            if actual is not None and actual not in _INT_LIKE:
-                                kind = "value" if index == 0 else "width"
-                                fail(
-                                    f"`{expr.callee.name}` {kind} must be int-like "
-                                    f"(int / byte / nibble / …), got {actual}.",
-                                    value,
-                                    code="pys.base-display-type",
-                                    tips=[
-                                        "Width aliases such as `byte` are allowed."
-                                    ],
-                                )
             elif isinstance(expr.callee, Member):
                 receiver_type = expr_type(
                     expr.callee.object,
@@ -1837,52 +1929,99 @@ def _check_results(
                 )
                 owner = method_owner(receiver_type, expr.callee.name)
                 if owner:
+                    known = True
                     expected_params = method_params.get(
                         (owner, expr.callee.name),
                         [],
                     )
-            for index, arg in enumerate(expr.args):
-                value = arg.value if isinstance(arg, KeywordArg) else arg
-                expected_param = (
-                    expected_params[index] if index < len(expected_params) else None
+                    param_names = list(
+                        method_param_names.get((owner, expr.callee.name), [])
+                    )
+                    if len(param_names) < len(expected_params):
+                        param_names = [
+                            f"arg{i + 1}" for i in range(len(expected_params))
+                        ]
+                    label = f"method '{expr.callee.name}'"
+
+            if known:
+                bound = bind_call_arguments(
+                    expr.args,
+                    param_names=param_names,
+                    defaults=defaults,
+                    label=label,
+                    line=call_line,
+                    column=call_col,
                 )
-                actual_arg = expr_type(
-                    value,
-                    env,
-                    return_type=return_type,
-                    scope_kind=scope_kind,
-                    expected_result=(
-                        expected_param
-                        if _result_type_parts(expected_param)
+                for index, (pname, value) in enumerate(bound):
+                    if value is None:
+                        continue
+                    expected_param = (
+                        expected_params[index]
+                        if index < len(expected_params)
                         else None
-                    ),
-                )
-                if (
-                    expected_param
-                    and actual_arg
-                    and (
-                        _result_type_parts(expected_param)
-                        or _result_type_parts(actual_arg)
                     )
-                    and not _is_assignable_type(
-                        actual_arg,
-                        expected_param,
-                        class_parents,
-                        class_implements=class_implements,
-                        interfaces=interfaces,
-                    )
-                ):
-                    fail(
-                        f"Argument {index + 1} has type {actual_arg}, expected "
-                        f"{expected_param}.",
+                    actual_arg = expr_type(
                         value,
-                        code="pys.result-argument-type",
-                        tips=(
-                            ["Handle the result with `propagate` or `switch` first."]
-                            if _result_type_parts(actual_arg)
-                            and not _result_type_parts(expected_param)
+                        env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
+                        expected_result=(
+                            expected_param
+                            if _result_type_parts(expected_param)
                             else None
                         ),
+                    )
+                    if isinstance(expr.callee, Identifier) and expr.callee.name in {
+                        "toBin",
+                        "toHex",
+                        "toOct",
+                    }:
+                        if actual_arg is not None and actual_arg not in _INT_LIKE:
+                            kind = "value" if pname == "value" else "width"
+                            fail(
+                                f"`{expr.callee.name}` {kind} must be int-like "
+                                f"(int / byte / nibble / …), got {actual_arg}.",
+                                value,
+                                code="pys.base-display-type",
+                                tips=["Width aliases such as `byte` are allowed."],
+                            )
+                    if (
+                        expected_param
+                        and actual_arg
+                        and (
+                            _result_type_parts(expected_param)
+                            or _result_type_parts(actual_arg)
+                        )
+                        and not _is_assignable_type(
+                            actual_arg,
+                            expected_param,
+                            class_parents,
+                            class_implements=class_implements,
+                            interfaces=interfaces,
+                        )
+                    ):
+                        fail(
+                            f"Argument '{pname}' has type {actual_arg}, expected "
+                            f"{expected_param}.",
+                            value,
+                            code="pys.result-argument-type",
+                            tips=(
+                                [
+                                    "Handle the result with `propagate` or `switch` first."
+                                ]
+                                if _result_type_parts(actual_arg)
+                                and not _result_type_parts(expected_param)
+                                else None
+                            ),
+                        )
+            else:
+                for arg in expr.args:
+                    value = arg.value if isinstance(arg, KeywordArg) else arg
+                    expr_type(
+                        value,
+                        env,
+                        return_type=return_type,
+                        scope_kind=scope_kind,
                     )
             if isinstance(expr.callee, Identifier):
                 return function_returns.get(expr.callee.name) or (
@@ -4914,6 +5053,8 @@ def _check_structs(
     """SA rules for struct types, construction, and field mutability."""
 
     def check_null_in_struct_ctor(call: Call, struct_name: str) -> None:
+        from .call_args import bind_call_arguments
+
         meta = struct_info[struct_name]
         kind = meta.get("kind", "struct")
         label = "data" if kind == "data" else "struct"
@@ -4922,54 +5063,17 @@ def _check_structs(
         defaults: set[str] = meta["defaults"]
         line = call.span.line if call.span else 1
         col = call.span.column if call.span else 1
-        positional: list[Expr] = []
-        named: dict[str, Expr] = {}
-        for arg in call.args:
-            if isinstance(arg, KeywordArg):
-                if arg.name in named:
-                    _transpile_error(
-                        f"Duplicate named argument '{arg.name}' in {label} {struct_name} constructor.",
-                        arg.span.line if arg.span else line,
-                        arg.span.column if arg.span else col,
-                        arg.name,
-                    )
-                if arg.name not in fields:
-                    _transpile_error(
-                        f"Unknown field '{arg.name}' in {label} {struct_name} constructor.",
-                        arg.span.line if arg.span else line,
-                        arg.span.column if arg.span else col,
-                        arg.name,
-                    )
-                named[arg.name] = arg.value
-            else:
-                if named:
-                    _transpile_error(
-                        f"Positional argument after named argument in {label} {struct_name} constructor.",
-                        arg.span.line if arg.span else line,
-                        arg.span.column if arg.span else col,
-                        struct_name,
-                    )
-                positional.append(arg)
-        if len(positional) > len(fields):
-            _transpile_error(
-                f"{label.capitalize()} {struct_name} constructor expects at most {len(fields)} "
-                f"positional argument(s), got {len(positional)}.",
-                line,
-                col,
-                struct_name,
-            )
-        for i, arg in enumerate(positional):
-            if (
-                _is_null_lit(arg)
-                and _nullable_inner(field_types.get(fields[i], "")) is None
-            ):
-                _transpile_error(
-                    f"{label.capitalize()} field '{fields[i]}' of type {struct_name} cannot be null.",
-                    arg.span.line if arg.span else line,
-                    arg.span.column if arg.span else col,
-                    "null",
-                )
-        for fname, val in named.items():
+        bound = bind_call_arguments(
+            call.args,
+            param_names=fields,
+            defaults=defaults,
+            label=f"{label} {struct_name} constructor",
+            line=line,
+            column=col,
+        )
+        for fname, val in bound:
+            if val is None:
+                continue
             if _is_null_lit(val) and _nullable_inner(field_types.get(fname, "")) is None:
                 _transpile_error(
                     f"{label.capitalize()} field '{fname}' of type {struct_name} cannot be null.",
@@ -4977,15 +5081,6 @@ def _check_structs(
                     val.span.column if val.span else col,
                     "null",
                 )
-        provided = set(fields[: len(positional)]) | set(named)
-        missing = [f for f in fields if f not in provided and f not in defaults]
-        if missing:
-            _transpile_error(
-                f"{label.capitalize()} {struct_name} constructor missing field(s): {', '.join(missing)}.",
-                line,
-                col,
-                struct_name,
-            )
 
     def walk_expr(expr: Expr | None) -> None:
         if expr is None:

@@ -138,7 +138,8 @@
 <p><strong>Sidebar — named constructor arguments</strong></p>
 <p><code>Damage(20, "physical")</code> fills fields in declaration order.
 <code>Damage(amount=20, type="physical")</code> names each field — handy when
-optional trailing fields appear later.</p>
+optional trailing fields appear later. Do not mix styles in one call
+(<code>Damage(20, type="physical")</code> is illegal).</p>
 </blockquote>
 <h2><code>data</code> — value object (VO)</h2>
 <p>A <strong>value object</strong> (VO) is a bundle you treat as a <em>value</em>: two instances with

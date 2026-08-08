@@ -479,8 +479,13 @@ Rules:
    `function` and before the name: `global function AppStore openStore()` /
    `package function int multiply(…)`
 3. Parameters may be typed: `int a`
-4. Visibility on the function controls who may import it (see §7)
-5. Void functions (no value returned) may omit the return type, or write `void`
+4. **Call arguments** are either all positional or all named — never mixed
+   (`greet("Ada", times=2)` is illegal; `greet(name="Ada", times=2)` is fine).
+   The same rule applies to methods, class/`entity` constructors, and
+   `struct`/`data` construction. Unknown library calls may still use Python-style
+   mixed kwargs at the foreign boundary.
+5. Visibility on the function controls who may import it (see §7)
+6. Void functions (no value returned) may omit the return type, or write `void`
    explicitly. A `void` body must not `return expr`.
 
 Inside a **class**, do not write `function` / `func` — methods use member access
@@ -857,8 +862,9 @@ Rules:
    `global` / `package` / `module` on the **struct** to control who can import
    the type
 2. **Field kind order** (parse-enforced): all `fix` fields before mutable fields
-3. Canonical constructor from field order — positional and/or named args
-   (`Type(...)`, never `new`); fields with defaults must be trailing
+3. Canonical constructor from field order — positional **or** named args
+   (`Type(...)`, never `new`); never mix styles in one call; fields with
+   defaults must be trailing
 4. Pass-by-value: assignment, call arguments, and returns copy the instance
    (nested struct fields are deep-copied)
 5. `==` is field-wise (not reference identity)

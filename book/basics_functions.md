@@ -22,6 +22,20 @@ Hello, Ada!
 Hello, Tom!
 ```
 
+You can also pass arguments **by name** when there are several parameters.
+Use **only** named or **only** positional in one call — never mix:
+
+```pys
+function void greetTwice(string name, int times) {
+    print(name)
+}
+
+greetTwice(name="Ada", times=2)
+# greetTwice("Ada", times=2)  // illegal: mixed styles
+```
+
+Compiles; prints `Ada` (once in this short body — `times` is unused here to
+keep the demo focused on call style).
 
 Breakdown:
 
@@ -32,6 +46,7 @@ Breakdown:
   type `string`.
 - `{ ... }` — the *body*: what runs when we call `greet(...)`.
 - `greet("Ada")` — a *call*: run the body with `name` set to `"Ada"`.
+- `greetTwice(name="Ada", times=2)` — the same idea with **named** arguments.
 
 Think of a function as a **reusable machine** (the gear): the same block of
 code can run many times. Values may go **in** (parameters). Something may

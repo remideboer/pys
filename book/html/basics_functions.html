@@ -134,6 +134,16 @@ you package a step and reuse it.</p>
 <pre><code class="language-text">Hello, Ada!
 Hello, Tom!
 </code></pre>
+<p>You can also pass arguments <strong>by name</strong> when there are several parameters.
+Use <strong>only</strong> named or <strong>only</strong> positional in one call — never mix:</p>
+<pre><code class="language-pys"><span class="tok-kw">function</span> <span class="tok-type">void</span> <span class="tok-ident">greetTwice</span>(<span class="tok-type">string</span> <span class="tok-ident">name</span>, <span class="tok-type">int</span> <span class="tok-kw">times</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">name</span>)
+}
+
+<span class="tok-ident">greetTwice</span>(<span class="tok-ident">name</span><span class="tok-op">=</span><span class="tok-string">&quot;</span><span class="tok-string">Ada</span><span class="tok-string">&quot;</span>, <span class="tok-kw">times</span><span class="tok-op">=</span><span class="tok-number">2</span>)
+<span class="tok-comment"># greetTwice(&quot;Ada&quot;, times=2)  // illegal: mixed styles</span></code></pre>
+<p>Compiles; prints <code>Ada</code> (once in this short body — <code>times</code> is unused here to
+keep the demo focused on call style).</p>
 <p>Breakdown:</p>
 <ul>
 <li><code>function</code> — we are declaring a function.</li>
@@ -143,6 +153,7 @@ Hello, Tom!
   type <code>string</code>.</li>
 <li><code>{ ... }</code> — the <em>body</em>: what runs when we call <code>greet(...)</code>.</li>
 <li><code>greet("Ada")</code> — a <em>call</em>: run the body with <code>name</code> set to <code>"Ada"</code>.</li>
+<li><code>greetTwice(name="Ada", times=2)</code> — the same idea with <strong>named</strong> arguments.</li>
 </ul>
 <p>Think of a function as a <strong>reusable machine</strong> (the gear): the same block of
 code can run many times. Values may go <strong>in</strong> (parameters). Something may

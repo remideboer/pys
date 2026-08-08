@@ -204,7 +204,7 @@ def test_result_constructor_uses_function_parameter_context() -> None:
 
 
 def test_result_argument_cannot_flow_to_plain_parameter() -> None:
-    with pytest.raises(TranspileError, match="Argument 1 has type result"):
+    with pytest.raises(TranspileError, match="Argument 'value' has type result"):
         analyze(
             parse_program(
                 "function result<int, string> readNumber() {\n"
