@@ -37,15 +37,18 @@ Worked teaching shape (requirement): `AbstractList` owns `size` / shared
 
 1. **`abstract class`** is a nominal type: bindings and polymorphism allowed;
    direct `AbstractName(...)` rejected.
-2. Header modifiers: `[sealed | abstract]` — mutually exclusive.
+2. Header modifiers: `[closed | abstract]` — mutually exclusive
+   ([ADR-028](ADR-028-open-override-closed.md); formerly `sealed`).
 3. Abstract methods: only inside an abstract class; require `member_access` +
-   `abstract` + return type; no `{` body.
+   `abstract` + return type; no `{` body. Abstract methods are **implicitly
+   open** sockets for `override` (ADR-028).
 4. **`void`** is a return type; `void` methods must not `return expr`.
-5. Concrete subclasses must implement every inherited abstract method (name +
-   arity; return type when both known). Intermediate abstract ancestors may
-   leave methods unimplemented.
+5. Concrete subclasses must **`override`** every inherited abstract method
+   (name + arity; return type when both known). Intermediate abstract ancestors
+   may leave methods unimplemented.
 6. **Emit**: subclass `ABC`; each abstract method gets `@abstractmethod` +
-   `pass`. Constructors allowed; call via `super(...)`.
+   `pass`. Constructors use `constructor` ([ADR-027](ADR-027-constructor-keyword.md));
+   call via `super(...)`.
 7. Users do not write `@abstractmethod` in PYS — `abstract` emits it. Library
    decorator application (`@expr` on methods) is allowed ([ADR-026](ADR-026-library-decorators.md)).
 

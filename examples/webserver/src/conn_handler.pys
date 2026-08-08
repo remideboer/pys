@@ -11,7 +11,7 @@ package class ConnHandler {
     private float idleTimeoutSec
     private float writeTimeoutSec
 
-    public ConnHandler(
+    public constructor(
         Http11 http,
         Http2Server http2,
         object router,

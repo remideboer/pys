@@ -9,7 +9,7 @@ import h2.events
 import HttpRequest from http11
 
 package class Http2Server {
-    public Http2Server() {
+    public constructor() {
     }
 
     public void serve(conn, router, float writeTimeoutSec) {

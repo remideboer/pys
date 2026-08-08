@@ -83,7 +83,7 @@ trait Printer {
 }
 package class Tag uses Printer {
     public string label
-    public Tag(string label) {
+    public constructor(string label) {
         this.label = label
     }
 }
@@ -94,7 +94,7 @@ package class Tag uses Printer {
 def test_class_method_before_field_errors() -> None:
     src = """
 package class Box {
-    public open() {
+    public unlock() {
         print(1)
     }
     private int n
@@ -108,7 +108,7 @@ package class Box {
 def test_class_field_after_ctor_errors() -> None:
     src = """
 package class Box {
-    public Box() {
+    public constructor() {
     }
     private int n
 }
@@ -134,7 +134,7 @@ package class Box {
     public const int MAX = 10
     private fix int id
     private int n
-    public Box(int id, int n) {
+    public constructor(int id, int n) {
         this.id = id
         this.n = n
     }
@@ -153,7 +153,7 @@ def test_entity_mutable_before_identity_errors() -> None:
 entity Customer identity(customerId) {
     public string name
     private fix int customerId
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }
@@ -168,7 +168,7 @@ def test_entity_identity_first_ok() -> None:
 entity Customer identity(customerId) {
     private fix int customerId
     public string name
-    public Customer(int customerId, string name) {
+    public constructor(int customerId, string name) {
         this.customerId = customerId
         this.name = name
     }

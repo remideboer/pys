@@ -26,11 +26,11 @@ package class Vehicle implements Drivable {
     protected int year
 
     # constructor chaining via this(...)
-    public Vehicle(string make, string model) {
+    public constructor(string make, string model) {
         this(make, model, 2024)
     }
 
-    public Vehicle(string make, string model, int year) {
+    public constructor(string make, string model, int year) {
         this.make = make
         this.model = model
         this.year = year
@@ -40,7 +40,7 @@ package class Vehicle implements Drivable {
         print("{this.make} {this.model} starting")
     }
 
-    public move() {
+    public open move() {
         print("{this.make} {this.model} moving")
     }
 
@@ -51,12 +51,12 @@ package class Vehicle implements Drivable {
 
 # --- Car: inherits Vehicle (still one interface via the parent) ---
 package class Car inherits Vehicle {
-    public Car(string make, string model, int year) {
+    public constructor(string make, string model, int year) {
         super(make, model, year)
     }
 
     # method overloading
-    public move() {
+    public override move() {
         print("{this.make} {this.model} ({this.year}) driving")
     }
 
@@ -69,12 +69,12 @@ package class Car inherits Vehicle {
 package class Truck inherits Vehicle implements Loadable {
     private int maxLoad
 
-    public Truck(string make, string model, int year, int maxLoad) {
+    public constructor(string make, string model, int year, int maxLoad) {
         super(make, model, year)
         this.maxLoad = maxLoad
     }
 
-    public move() {
+    public override move() {
         print("{this.make} {this.model} ({this.year}) hauling")
     }
 
@@ -91,12 +91,12 @@ package class Truck inherits Vehicle implements Loadable {
 package class Plane inherits Vehicle implements Flyable {
     private int altitude
 
-    public Plane(string make, string model, int year) {
+    public constructor(string make, string model, int year) {
         super(make, model, year)
         this.altitude = 0
     }
 
-    public move() {
+    public override move() {
         print("{this.make} {this.model} flying at {this.altitude}ft")
     }
 
@@ -115,7 +115,7 @@ package class Plane inherits Vehicle implements Flyable {
 package class CargoPlane inherits Plane implements Loadable {
     private int maxLoad
 
-    public CargoPlane(string make, string model, int year, int maxLoad) {
+    public constructor(string make, string model, int year, int maxLoad) {
         super(make, model, year)
         this.maxLoad = maxLoad
     }
@@ -129,11 +129,11 @@ package class CargoPlane inherits Plane implements Loadable {
     }
 }
 
-# --- Ship: sealed — cannot be extended with inherits ---
-package sealed class Ship inherits Vehicle implements Loadable {
+# --- Ship: closed — cannot be extended with inherits ---
+package closed class Ship inherits Vehicle implements Loadable {
     private int maxLoad
 
-    public Ship(string make, string model, int year, int maxLoad) {
+    public constructor(string make, string model, int year, int maxLoad) {
         super(make, model, year)
         this.maxLoad = maxLoad
     }

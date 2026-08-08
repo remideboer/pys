@@ -31,6 +31,8 @@ def test_example_classes_emit_and_output() -> None:
     assert "class Person:" in py
     assert "class Dog(Animal):" in py
     assert "class Unit:" in py
+    assert "class Vehicle:" in py
+    assert "class Car(Vehicle):" in py
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "t.py"
         path.write_text(py, encoding="utf-8")
@@ -45,4 +47,6 @@ def test_example_classes_emit_and_output() -> None:
         "Rex the dog says woof",
         "Rex the dog says woof",
         "unit#42",
+        "Car plate=UNKNOWN model=Unnamed",
+        "Car plate=ABC-1 model=Roadster",
     ]

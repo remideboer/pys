@@ -26,7 +26,7 @@ class Product uses Printable, Comparable {
     private string name
     private float price
 
-    public Product(string name, float price) {
+    public constructor(string name, float price) {
         this.name = name
         this.price = price
     }
@@ -63,7 +63,7 @@ class Part uses Tagged {
     private string name
     private int id
 
-    public Part(string name, int id) {
+    public constructor(string name, int id) {
         this.name = name
         this.id = id
     }
@@ -76,13 +76,13 @@ print(bolt.tag())  # bolt#42
 class Named {
     private string name
 
-    public Named(string name) {
+    public constructor(string name) {
         this.name = name
     }
 }
 
 class Widget inherits Named uses Printable {
-    public Widget(string name) {
+    public constructor(string name) {
         super(name)
     }
 }
@@ -111,7 +111,7 @@ class Meter uses Bounded {
     private int value
     private int max
 
-    public Meter(int value, int max) {
+    public constructor(int value, int max) {
         this.value = value
         this.max = max
     }
@@ -136,7 +136,7 @@ trait Soft {
 }
 
 class Greeter uses Loud, Soft {
-    public Greeter() {
+    public constructor() {
     }
 
     public string greet() {
@@ -153,7 +153,7 @@ class CatalogItem uses Printable(name: title) {
     private string title
     private float unitPrice
 
-    public CatalogItem(string title, float unitPrice) {
+    public constructor(string title, float unitPrice) {
         this.title = title
         this.unitPrice = unitPrice
     }

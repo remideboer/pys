@@ -43,7 +43,7 @@ def test_example_abstract_classes_emit_is_valid_python() -> None:
     assert get_at > init_at
     assert "class ArrayListPys(AbstractCountedList):" in py
     assert "class LinkedListPys(AbstractCountedList):" in py
-    assert "def hasItem(list, item):" in py
+    assert "def hasItem(list: AbstractList, item):" in py or "def hasItem(list, item):" in py
 
 
 def test_abstract_classes_runtime_behavior() -> None:
@@ -87,7 +87,7 @@ def test_abstract_classes_runtime_behavior() -> None:
         (
             """
 class C {
-    public C() {}
+    public constructor() {}
     public abstract int f()
 }
 """,
@@ -96,11 +96,11 @@ class C {
         (
             """
 abstract class A {
-    public A() {}
+    public constructor() {}
     public abstract int f()
 }
 class C inherits A {
-    public C() { super() }
+    public constructor() { super() }
 }
 """,
             r"must implement|abstract",
@@ -108,7 +108,7 @@ class C inherits A {
         (
             """
 abstract class A {
-    public A() {}
+    public constructor() {}
     public abstract int f()
 }
 A a = A()
@@ -117,8 +117,8 @@ A a = A()
         ),
         (
             """
-sealed abstract class A {
-    public A() {}
+closed abstract class A {
+    public constructor() {}
 }
 """,
             r"mutually exclusive",
@@ -126,12 +126,12 @@ sealed abstract class A {
         (
             """
 abstract class A {
-    public A() {}
+    public constructor() {}
     public abstract void f()
 }
 class C inherits A {
-    public C() { super() }
-    public void f() {
+    public constructor() { super() }
+    public override void f() {
         return 1
     }
 }
@@ -148,15 +148,15 @@ def test_abstract_sa_errors(source: str, match: str) -> None:
 def test_abstract_happy_path_template_method() -> None:
     src = """
 abstract class Base {
-    public Base() {}
+    public constructor() {}
     public int template() {
         return this.hook() + 1
     }
     public abstract int hook()
 }
 class Concrete inherits Base {
-    public Concrete() { super() }
-    public int hook() { return 41 }
+    public constructor() { super() }
+    public override int hook() { return 41 }
 }
 Concrete c = Concrete()
 print(c.template())
@@ -178,12 +178,12 @@ def test_ide_goto_abstract_class(tmp_path: Path) -> None:
     path.write_text(
         """
 abstract class Shape {
-    public Shape() {}
+    public constructor() {}
     public abstract float area()
 }
 class Box inherits Shape {
-    public Box() { super() }
-    public float area() { return 1.0 }
+    public constructor() { super() }
+    public override float area() { return 1.0 }
 }
 """,
         encoding="utf-8",

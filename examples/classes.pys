@@ -1,4 +1,4 @@
-# Classes in general: fields, constructors, visibility, inherits, sealed.
+# Classes in general: fields, constructors, visibility, inherits, open/override, closed.
 # For interfaces see examples/interfaces.pys; for abstract classes see
 # examples/abstract_classes.pys; for traits see examples/traits.pys.
 
@@ -6,7 +6,7 @@
 class Person {
     private string name
 
-    public Person(string name) {
+    public constructor(string name) {
         this.name = name
     }
 
@@ -29,7 +29,7 @@ class Point {
     private int x
     private int y
 
-    public Point(int x, int y) {
+    public constructor(int x, int y) {
         this.x = x
         this.y = y
     }
@@ -48,11 +48,11 @@ print(p.show())  # (3,4)
 class Animal {
     protected string kind
 
-    public Animal(string kind) {
+    public constructor(string kind) {
         this.kind = kind
     }
 
-    public string speak() {
+    public open string speak() {
         return this.kind + " makes a sound"
     }
 }
@@ -60,12 +60,12 @@ class Animal {
 class Dog inherits Animal {
     private string name
 
-    public Dog(string name) {
+    public constructor(string name) {
         super("dog")
         this.name = name
     }
 
-    public string speak() {
+    public override string speak() {
         return this.name + " the " + this.kind + " says woof"
     }
 }
@@ -77,11 +77,11 @@ print(rex.speak())  # Rex the dog says woof
 Animal a = rex
 print(a.speak())  # Rex the dog says woof
 
-# --- Sealed class: usable, but no further inherits ---
-sealed class Unit {
+# --- Closed class: usable, but no further inherits ---
+closed class Unit {
     private string id
 
-    public Unit(string id) {
+    public constructor(string id) {
         this.id = id
     }
 
@@ -92,3 +92,38 @@ sealed class Unit {
 
 Unit u = Unit("42")
 print(u.tag())  # unit#42
+
+# --- Root override: toString + this(...) / super(...) ctor chaining ---
+class Vehicle {
+    protected fix string plate
+
+    public constructor(string plate) {
+        this.plate = plate
+    }
+
+    public override string toString() {
+        return "Vehicle plate=" + this.plate
+    }
+}
+
+class Car inherits Vehicle {
+    private fix string model
+
+    public constructor() {
+        this("UNKNOWN", "Unnamed")
+    }
+
+    public constructor(string plate, string model) {
+        super(plate)
+        this.model = model
+    }
+
+    public override closed string toString() {
+        return "Car plate=" + this.plate + " model=" + this.model
+    }
+}
+
+Car defaultCar = Car()
+print(defaultCar.toString())  # Car plate=UNKNOWN model=Unnamed
+Car named = Car("ABC-1", "Roadster")
+print(named.toString())  # Car plate=ABC-1 model=Roadster

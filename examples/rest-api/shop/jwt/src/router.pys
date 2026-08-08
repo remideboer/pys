@@ -19,7 +19,7 @@ package class AppContext {
     public LineApi lines
     public AuthService auth
 
-    public AppContext(ServerConfig cfg) {
+    public constructor(ServerConfig cfg) {
         this.cfg = cfg
         this.store = ShopStore(cfg.dbHost, cfg.dbUser, cfg.dbPassword, cfg.dbName)
         this.json = JsonUtil()
@@ -34,7 +34,7 @@ package class AppContext {
 package class Router {
     private AppContext ctx
 
-    public Router(AppContext ctx) {
+    public constructor(AppContext ctx) {
         this.ctx = ctx
     }
 

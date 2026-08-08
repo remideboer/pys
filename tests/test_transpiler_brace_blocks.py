@@ -37,22 +37,22 @@ def test_polymorphic_assignment_and_dispatch() -> None:
 }
 
 class Car implements Startable {
-    public Car() {
+    public constructor() {
         pass
     }
     public start() {
         print("car-start")
     }
-    public drive() {
+    public open drive() {
         print("car-drive")
     }
 }
 
 class Truck inherits Car {
-    public Truck() {
+    public constructor() {
         pass
     }
-    public drive() {
+    public override drive() {
         print("truck-drive")
     }
 }
@@ -71,12 +71,12 @@ c.drive()
 
 def test_incompatible_object_assignment_rejected() -> None:
     source = """class Car {
-    public Car() {
+    public constructor() {
         pass
     }
 }
 class Other {
-    public Other() {
+    public constructor() {
         pass
     }
 }
@@ -88,7 +88,7 @@ Car c = Other()
 
 def test_declared_type_hides_subtype_only_members() -> None:
     source = """class Car {
-    public Car() {
+    public constructor() {
         pass
     }
     public drive() {
@@ -97,7 +97,7 @@ def test_declared_type_hides_subtype_only_members() -> None:
 }
 class Truck inherits Car {
     private int loadCapacity
-    public Truck() {
+    public constructor() {
         pass
     }
     public haul() {
@@ -113,12 +113,12 @@ c.haul()
 
 def test_reference_cast_enables_subtype_members() -> None:
     source = """class Car {
-    public Car() {
+    public constructor() {
         pass
     }
 }
 class Truck inherits Car {
-    public Truck() {
+    public constructor() {
         pass
     }
     public haul() {
@@ -140,7 +140,7 @@ def test_transpile_interface_and_implements() -> None:
 }
 
 class Car implements Startable {
-    public Car() {
+    public constructor() {
         pass
     }
 
@@ -163,7 +163,7 @@ def test_missing_interface_method_is_rejected() -> None:
 }
 
 class Car implements Startable {
-    public Car() {
+    public constructor() {
         pass
     }
 }
@@ -282,7 +282,7 @@ def test_subclass_can_call_library_parent_methods(
     main.write_text(
         "import QMainWindow, QPushButton from PyQt6.QtWidgets\n"
         "package class MainWindow inherits QMainWindow {\n"
-        "    public MainWindow() {\n"
+        "    public constructor() {\n"
         "        this.setWindowTitle(\"My App\")\n"
         "        QPushButton button = QPushButton(\"Press Me!\")\n"
         "        this.setCentralWidget(button)\n"
@@ -321,7 +321,7 @@ def test_subclass_rejects_unknown_library_parent_method(
     main.write_text(
         "import QMainWindow from PyQt6.QtWidgets\n"
         "package class MainWindow inherits QMainWindow {\n"
-        "    public MainWindow() {\n"
+        "    public constructor() {\n"
         "        this.notARealQtMethod()\n"
         "    }\n"
         "}\n",
@@ -355,7 +355,7 @@ def test_subclass_allows_library_parent_when_module_unloadable(
     main.write_text(
         "import QMainWindow from PyQt6.QtWidgets\n"
         "package class MainWindow inherits QMainWindow {\n"
-        "    public MainWindow() {\n"
+        "    public constructor() {\n"
         "        this.setWindowTitle(\"My App\")\n"
         "        this.show()\n"
         "    }\n"
@@ -666,7 +666,7 @@ def test_private_field_access_denied_outside_class() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -682,7 +682,7 @@ def test_private_field_allowed_inside_defining_class() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 
@@ -701,12 +701,12 @@ print(car.getMake())
 
 def test_subclass_constructor_injects_implicit_super() -> None:
     source = """class Car {
-    public Car() {
+    public constructor() {
         pass
     }
 }
 class Truck inherits Car {
-    public Truck() {
+    public constructor() {
         pass
     }
 }
@@ -721,12 +721,12 @@ class Truck inherits Car {
 
 def test_subclass_constructor_keeps_explicit_super() -> None:
     source = """class Car {
-    public Car(string make) {
+    public constructor(string make) {
         pass
     }
 }
 class Truck inherits Car {
-    public Truck(string make) {
+    public constructor(string make) {
         super(make)
     }
 }
@@ -741,7 +741,7 @@ def test_private_field_denied_in_subclass() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -760,7 +760,7 @@ def test_protected_field_allowed_in_subclass_not_outside() -> None:
     source = """class Car {
     protected string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -782,7 +782,7 @@ def test_module_field_allowed_in_same_file() -> None:
     source = """class Car {
     module string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }

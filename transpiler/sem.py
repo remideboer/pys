@@ -249,6 +249,9 @@ def analyze(
     _check_oop(module.body, types=types, resolver=import_resolver)
     _check_traits(module.body, types=types)
     _check_abstract_classes(module.body)
+    _check_open_override_closed(module.body)
+    _check_explicit_this_fields(module.body)
+    _check_fix_ctor_assignment(module.body)
     _check_interfaces(module.body)
     _check_lambdas(module.body, types=types)
     _check_atomics(module.body, types=types)
@@ -2932,7 +2935,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             class_members[stmt.name] = {m: "public" for m in stmt.methods}
         elif isinstance(stmt, ClassDef):
             class_names.add(stmt.name)
-            if stmt.sealed:
+            if stmt.sealed or stmt.closed:
                 sealed.add(stmt.name)
             members: dict[str, str] = {}
             for f in stmt.fields:
@@ -2994,10 +2997,12 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             if b in sealed:
                 line = stmt.span.line if stmt.span else 1
                 _transpile_error(
-                    f"Class {stmt.name} cannot inherit from sealed class {b}.",
+                    f"Class {stmt.name} cannot inherit from closed class {b}.",
                     line,
                     1,
                     f"class {stmt.name}",
+                    code="pys.closed-inherit",
+                    tips=[f"Remove `closed` from `{b}`, or stop inheriting from it."],
                 )
 
     type_modules: dict[str, str] = dict(getattr(resolver, "type_modules", {}) or {}) if resolver else {}
@@ -3290,9 +3295,30 @@ def _check_abstract_classes(body: list[Any]) -> None:
                     1,
                     mname,
                     code="pys.abstract-impl",
-                    tips=[f"Add `public {ret or 'void'} {mname}(...) {{ … }}` on {cls.name}."],
+                    tips=[f"Add `public override {ret or 'void'} {mname}(...) {{ … }}` on {cls.name}."],
                 )
             got_ret, got_arity, _ = provided[mname]
+            impl = next(
+                (
+                    mm
+                    for mm in cls.methods
+                    if mm.name == mname and not mm.is_constructor and not mm.is_abstract
+                ),
+                None,
+            )
+            if impl is not None and (impl.extension or "") not in {
+                "override",
+                "override_closed",
+            }:
+                _transpile_error(
+                    f"Class {cls.name} method '{mname}' implements an abstract "
+                    f"ancestor — mark it `override`.",
+                    impl.span.line if impl.span else line,
+                    impl.span.column if impl.span else 1,
+                    mname,
+                    code="pys.missing-override",
+                    tips=[f"Write `override` before the return type of '{mname}'."],
+                )
             if got_arity != arity:
                 _transpile_error(
                     f"Class {cls.name} method '{mname}' does not match abstract "
@@ -3380,6 +3406,566 @@ def _check_abstract_classes(body: list[Any]) -> None:
                         walk(t.body.statements)
 
     walk(body)
+
+
+_ROOT_OPEN_METHODS = frozenset({"toString", "equals", "hashCode"})
+
+
+def _class_parent_name(cls: ClassDef, classes: dict[str, ClassDef]) -> str:
+    if cls.parent:
+        return cls.parent
+    for b in cls.bases:
+        if b in classes:
+            return b
+    return ""
+
+
+def _is_open_socket(method: MethodDef) -> bool:
+    """True when a subclass may plug an ``override`` into this member."""
+    if method.is_abstract:
+        return True
+    ext = method.extension or "closed"
+    return ext in {"open", "override"}
+
+
+def _check_open_override_closed(body: list[Any]) -> None:
+    """ADR-028: closed-by-default methods, open/override/closed, implicit root."""
+    classes = _class_map(body)
+
+    for cls in classes.values():
+        line = cls.span.line if cls.span else 1
+        class_is_closed = bool(cls.closed or cls.sealed)
+
+        for m in cls.methods:
+            if m.is_constructor:
+                continue
+            mline = m.span.line if m.span else line
+            mcol = m.span.column if m.span else 1
+            ext = m.extension
+            access = (m.access or "public").lower()
+
+            if access == "private" and ext in {
+                "open",
+                "override",
+                "override_closed",
+                "closed",
+            }:
+                _transpile_error(
+                    f"Method '{m.name}' is private and therefore cannot be "
+                    f"'{ext.replace('_', ' ')}' — private members are not visible "
+                    f"to subclasses at all.",
+                    mline,
+                    mcol,
+                    m.name,
+                    code="pys.private-extension",
+                    tips=[
+                        "Remove the extension modifier, or change access to "
+                        "`protected`/`public` if subclasses should see it."
+                    ],
+                )
+
+            if ext == "open" and class_is_closed:
+                _transpile_error(
+                    f"Method '{m.name}' is 'open' but class '{cls.name}' is "
+                    f"'closed' and cannot be inherited from.",
+                    mline,
+                    mcol,
+                    m.name,
+                    code="pys.open-in-closed-class",
+                    tips=[
+                        f"Remove `open` from '{m.name}', or remove `closed` "
+                        f"from class {cls.name}."
+                    ],
+                )
+
+            # Walk ancestors for a same-name + arity member.
+            ancestor_method: MethodDef | None = None
+            ancestor_cls_name = ""
+            current_name = _class_parent_name(cls, classes)
+            seen: set[str] = set()
+            while current_name and current_name not in seen:
+                seen.add(current_name)
+                parent = classes.get(current_name)
+                if parent is None:
+                    break
+                for pm in parent.methods:
+                    if pm.is_constructor:
+                        continue
+                    if pm.name == m.name and len(pm.params) == len(m.params):
+                        ancestor_method = pm
+                        ancestor_cls_name = parent.name
+                        break
+                if ancestor_method is not None:
+                    break
+                current_name = _class_parent_name(parent, classes)
+
+            root_socket = False
+            if ancestor_method is None and m.name in _ROOT_OPEN_METHODS:
+                if m.name == "equals":
+                    root_socket = len(m.params) == 1
+                else:
+                    root_socket = len(m.params) == 0
+
+            wants_override = ext in {"override", "override_closed"}
+            is_redefinition = ancestor_method is not None
+
+            if wants_override:
+                if root_socket:
+                    pass  # ok — plugging into implicit root
+                elif ancestor_method is None:
+                    _transpile_error(
+                        f"Method '{m.name}' is marked 'override' but no matching "
+                        f"'open' or abstract method exists in any ancestor of "
+                        f"'{cls.name}'.",
+                        mline,
+                        mcol,
+                        m.name,
+                        code="pys.override-no-socket",
+                        tips=[
+                            f"Mark the base method `open`, or remove `override` "
+                            f"from {cls.name}.{m.name}."
+                        ],
+                    )
+                elif not _is_open_socket(ancestor_method):
+                    aext = ancestor_method.extension or "closed"
+                    _transpile_error(
+                        f"Method '{m.name}' cannot override {ancestor_cls_name}."
+                        f"{m.name} — that member is '{aext.replace('_', ' ')}' "
+                        f"(not an open socket).",
+                        mline,
+                        mcol,
+                        m.name,
+                        code="pys.override-closed-socket",
+                        tips=[
+                            f"Mark {ancestor_cls_name}.{m.name} as `open`, or "
+                            f"remove the subclass method."
+                        ],
+                    )
+            elif is_redefinition and not m.is_abstract:
+                # Same name+arity as ancestor without override → hard error.
+                _transpile_error(
+                    f"Method '{m.name}' hides {ancestor_cls_name}.{m.name} — "
+                    f"mark it `override` (and ensure the ancestor is `open` or "
+                    f"abstract), or rename it.",
+                    mline,
+                    mcol,
+                    m.name,
+                    code="pys.missing-override",
+                    tips=[
+                        f"Write `override` on {cls.name}.{m.name}, and `open` on "
+                        f"{ancestor_cls_name}.{m.name} if it is not abstract."
+                    ],
+                )
+            elif root_socket and not wants_override and ext != "open":
+                # User declares toString/equals/hashCode without override.
+                if ext in {None, "closed"}:
+                    _transpile_error(
+                        f"Method '{m.name}' overrides the implicit root socket — "
+                        f"mark it `override` (ADR-028).",
+                        mline,
+                        mcol,
+                        m.name,
+                        code="pys.missing-override",
+                        tips=[f"Write `public override … {m.name}(...)`."],
+                    )
+
+
+def _host_instance_fields(cls: ClassDef, classes: dict[str, ClassDef]) -> dict[str, str]:
+    """Field name → access for class + inherits chain."""
+    fields: dict[str, str] = {}
+    current: ClassDef | None = cls
+    seen: set[str] = set()
+    while current and current.name not in seen:
+        seen.add(current.name)
+        for f in current.fields:
+            fields.setdefault(f.name, f.access or "public")
+        parent = _class_parent_name(current, classes)
+        current = classes.get(parent) if parent else None
+    return fields
+
+
+def _check_explicit_this_fields(body: list[Any]) -> None:
+    """Bare identifiers that match instance fields must use ``this.`` (ADR-027 §3)."""
+    classes = _class_map(body)
+    entities = {s.name: s for s in body if isinstance(s, EntityDef)}
+
+    builtins = {
+        "print",
+        "str",
+        "int",
+        "float",
+        "bool",
+        "len",
+        "range",
+        "super",
+        "this",
+        "self",
+        "true",
+        "false",
+        "null",
+        "ok",
+        "error",
+        "parseFloat",
+        "parseInt",
+        "input",
+        "toBin",
+        "toHex",
+        "toOct",
+    }
+
+    def field_map_for(type_name: str) -> dict[str, str]:
+        if type_name in classes:
+            return _host_instance_fields(classes[type_name], classes)
+        if type_name in entities:
+            fields: dict[str, str] = {}
+            cur: EntityDef | None = entities[type_name]
+            seen: set[str] = set()
+            while cur and cur.name not in seen:
+                seen.add(cur.name)
+                for f in cur.fields:
+                    fields.setdefault(f.name, f.access or "public")
+                cur = entities.get(cur.parent) if cur.parent else None
+            return fields
+        return {}
+
+    def walk_expr(
+        expr: Expr | None,
+        *,
+        locals_: set[str],
+        fields: dict[str, str],
+        type_name: str,
+    ) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Identifier):
+            name = expr.name
+            if (
+                name in fields
+                and name not in locals_
+                and name not in builtins
+                and name not in classes
+                and name not in entities
+            ):
+                access = fields[name]
+                _transpile_error(
+                    f"'{name}' is not defined in this scope. Did you mean 'this.{name}'? "
+                    f"'{name}' is a {access} field of '{type_name}' and is not accessible "
+                    f"without an explicit 'this.' prefix.",
+                    expr.span.line if expr.span else 1,
+                    expr.span.column if expr.span else 1,
+                    name,
+                    code="pys.this-field",
+                    tips=[f"Write `this.{name}` instead of bare `{name}`."],
+                    suggested_fix=f"this.{name}",
+                )
+            return
+        if isinstance(expr, Member):
+            # Only walk the receiver — member name is not a bare field id.
+            walk_expr(expr.object, locals_=locals_, fields=fields, type_name=type_name)
+            return
+        if isinstance(expr, Call):
+            walk_expr(expr.callee, locals_=locals_, fields=fields, type_name=type_name)
+            for a in expr.args or []:
+                if isinstance(a, KeywordArg):
+                    walk_expr(a.value, locals_=locals_, fields=fields, type_name=type_name)
+                elif isinstance(a, Expr):
+                    walk_expr(a, locals_=locals_, fields=fields, type_name=type_name)
+            return
+        for attr in (
+            "left",
+            "right",
+            "operand",
+            "value",
+            "expr",
+            "cond",
+            "index",
+            "subject",
+            "body",
+        ):
+            child = getattr(expr, attr, None)
+            if isinstance(child, Expr):
+                walk_expr(child, locals_=locals_, fields=fields, type_name=type_name)
+        for attr in ("elements", "items", "cases", "args"):
+            seq = getattr(expr, attr, None)
+            if isinstance(seq, list):
+                for item in seq:
+                    if isinstance(item, Expr):
+                        walk_expr(item, locals_=locals_, fields=fields, type_name=type_name)
+                    elif hasattr(item, "value") and isinstance(item.value, Expr):
+                        walk_expr(
+                            item.value, locals_=locals_, fields=fields, type_name=type_name
+                        )
+
+    def walk_stmts(
+        stmts: list[Any],
+        *,
+        locals_: set[str],
+        fields: dict[str, str],
+        type_name: str,
+    ) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                # Bare field on the left: `name = …` where name is a field.
+                if (
+                    _is_simple_name(stmt.name)
+                    and stmt.name in fields
+                    and stmt.name not in locals_
+                    and not stmt.declare_type
+                ):
+                    _transpile_error(
+                        f"'{stmt.name}' is not defined in this scope. Did you mean "
+                        f"'this.{stmt.name}'? '{stmt.name}' is a field of '{type_name}'.",
+                        stmt.span.line if stmt.span else 1,
+                        stmt.span.column if stmt.span else 1,
+                        stmt.name,
+                        code="pys.this-field",
+                        tips=[f"Write `this.{stmt.name} = …`."],
+                        suggested_fix=f"this.{stmt.name}",
+                    )
+                walk_expr(
+                    stmt.value, locals_=locals_, fields=fields, type_name=type_name
+                )
+                if stmt.declare_type or stmt.is_const or stmt.is_fix:
+                    locals_.add(stmt.name)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt, AugAssignStmt)):
+                walk_expr(
+                    getattr(stmt, "value", None) or getattr(stmt, "expr", None),
+                    locals_=locals_,
+                    fields=fields,
+                    type_name=type_name,
+                )
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond, locals_=locals_, fields=fields, type_name=type_name)
+                if stmt.then_body:
+                    walk_stmts(
+                        stmt.then_body.statements,
+                        locals_=set(locals_),
+                        fields=fields,
+                        type_name=type_name,
+                    )
+                if stmt.else_body:
+                    walk_stmts(
+                        stmt.else_body.statements,
+                        locals_=set(locals_),
+                        fields=fields,
+                        type_name=type_name,
+                    )
+            elif isinstance(stmt, Block):
+                walk_stmts(
+                    stmt.statements,
+                    locals_=set(locals_),
+                    fields=fields,
+                    type_name=type_name,
+                )
+            elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+                for attr in ("cond", "iterable", "start", "end", "step"):
+                    child = getattr(stmt, attr, None)
+                    if isinstance(child, Expr):
+                        walk_expr(
+                            child, locals_=locals_, fields=fields, type_name=type_name
+                        )
+                nested = set(locals_)
+                if hasattr(stmt, "var") and stmt.var:
+                    nested.add(stmt.var)
+                if stmt.body:
+                    walk_stmts(
+                        stmt.body.statements,
+                        locals_=nested,
+                        fields=fields,
+                        type_name=type_name,
+                    )
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(
+                    stmt.subject, locals_=locals_, fields=fields, type_name=type_name
+                )
+                for case in stmt.cases:
+                    if case.body:
+                        walk_stmts(
+                            case.body.statements,
+                            locals_=set(locals_),
+                            fields=fields,
+                            type_name=type_name,
+                        )
+
+    for cls in classes.values():
+        fields = _host_instance_fields(cls, classes)
+        for m in cls.methods:
+            if not m.body:
+                continue
+            locals_ = set(m.params) | {"this", "self"}
+            walk_stmts(
+                m.body.statements,
+                locals_=locals_,
+                fields=fields,
+                type_name=cls.name,
+            )
+
+    for ent in entities.values():
+        fields = field_map_for(ent.name)
+        for m in ent.methods:
+            if not m.body:
+                continue
+            locals_ = set(m.params) | {"this", "self"}
+            walk_stmts(
+                m.body.statements,
+                locals_=locals_,
+                fields=fields,
+                type_name=ent.name,
+            )
+
+    for stmt in body:
+        if not isinstance(stmt, TraitDef):
+            continue
+        req_fields = {
+            r.name: "requires" for r in stmt.requires if r.kind == "field"
+        }
+        for m in stmt.methods:
+            if not m.body:
+                continue
+            locals_ = set(m.params) | {"this", "self"}
+            walk_stmts(
+                m.body.statements,
+                locals_=locals_,
+                fields=req_fields,
+                type_name=stmt.name,
+            )
+
+
+def _this_field_assigns(stmts: list[Any]) -> set[str]:
+    """Names assigned via ``this.x =`` / ``self.x =`` in a statement list (flat)."""
+    out: set[str] = set()
+    for stmt in stmts:
+        if isinstance(stmt, AssignStmt):
+            parts = stmt.name.split(".")
+            if len(parts) == 2 and parts[0] in {"this", "self"}:
+                out.add(parts[1])
+        elif isinstance(stmt, IfStmt):
+            then_set = (
+                _this_field_assigns(stmt.then_body.statements) if stmt.then_body else set()
+            )
+            else_set = (
+                _this_field_assigns(stmt.else_body.statements) if stmt.else_body else set()
+            )
+            if stmt.else_body is not None:
+                out |= then_set & else_set
+            # without else, nothing is definite from the if
+        elif isinstance(stmt, Block):
+            out |= _this_field_assigns(stmt.statements)
+        elif isinstance(stmt, SwitchStmt):
+            if stmt.cases:
+                sets = [
+                    _this_field_assigns(c.body.statements) if c.body else set()
+                    for c in stmt.cases
+                ]
+                common = sets[0]
+                for s in sets[1:]:
+                    common &= s
+                out |= common
+    return out
+
+
+def _ctor_chain_call(stmts: list[Any]) -> tuple[str, Call] | None:
+    """Return ('this'|'super', call) if the first meaningful stmt is a chain call."""
+    for stmt in stmts:
+        if isinstance(stmt, ExprStmt) and isinstance(stmt.expr, Call):
+            cal = stmt.expr.callee
+            if isinstance(cal, Identifier) and cal.name in {"this", "self", "super"}:
+                kind = "super" if cal.name == "super" else "this"
+                return kind, stmt.expr
+        break
+    return None
+
+
+def _check_fix_ctor_assignment(body: list[Any]) -> None:
+    """Uninitialized ``fix`` fields must be assigned on every constructor path."""
+    classes = _class_map(body)
+    entities = {s.name: s for s in body if isinstance(s, EntityDef)}
+
+    def uninit_fix(owner: ClassDef | EntityDef) -> set[str]:
+        return {
+            f.name
+            for f in owner.fields
+            if f.is_fix and f.default is None
+        }
+
+    def check_owner(
+        owner: ClassDef | EntityDef,
+        *,
+        parent_name: str,
+        parent_uninit: set[str],
+    ) -> None:
+        local_uninit = uninit_fix(owner)
+        ctors = [m for m in owner.methods if m.is_constructor and m.body]
+        if not ctors:
+            return
+        # Map arity → ctor for this(...) resolution (best-effort).
+        by_arity: dict[int, MethodDef] = {}
+        for c in ctors:
+            by_arity.setdefault(len(c.params), c)
+
+        def assigns_for(ctor: MethodDef, stack: set[int]) -> set[str]:
+            assert ctor.body is not None
+            key = id(ctor)
+            if key in stack:
+                return set()
+            stmts = ctor.body.statements
+            chain = _ctor_chain_call(stmts)
+            assigned = _this_field_assigns(stmts)
+            if chain is None:
+                return assigned
+            kind, call = chain
+            if kind == "this":
+                target = by_arity.get(len(call.args or []))
+                if target is None:
+                    return assigned
+                nested = assigns_for(target, stack | {key})
+                return nested | assigned
+            # super(...): parent ctor is assumed to cover parent_uninit;
+            # this ctor must still cover local_uninit.
+            return assigned | parent_uninit
+
+        for ctor in ctors:
+            line = ctor.span.line if ctor.span else (owner.span.line if owner.span else 1)
+            got = assigns_for(ctor, set())
+            needed = local_uninit | (
+                set()  # parent fields are parent's job via super
+            )
+            # If no super/this chain and we inherit, parent_uninit must be covered
+            # by implicit/explicit super — we only require local_uninit here.
+            chain = _ctor_chain_call(ctor.body.statements) if ctor.body else None
+            if chain is None and parent_name and parent_uninit:
+                # Implicit super() — parent ctor must exist with 0 args; assume OK
+                # for parent fields. Local still required.
+                pass
+            missing = needed - got
+            if missing:
+                names = ", ".join(sorted(missing))
+                _transpile_error(
+                    f"Constructor of '{owner.name}' must assign fix field(s) "
+                    f"{names} on every path (use `this.{next(iter(sorted(missing)))} = …` "
+                    f"or `this(...)` / `super(...)` delegation).",
+                    line,
+                    1,
+                    names,
+                    code="pys.fix-ctor",
+                    tips=[
+                        "Assign each uninitialized `fix` field exactly once in every "
+                        "constructor path, including after `super(...)`."
+                    ],
+                )
+
+    for cls in classes.values():
+        parent = _class_parent_name(cls, classes)
+        parent_uninit: set[str] = set()
+        if parent and parent in classes:
+            parent_uninit = uninit_fix(classes[parent])
+        check_owner(cls, parent_name=parent, parent_uninit=parent_uninit)
+
+    for ent in entities.values():
+        parent_uninit = set()
+        if ent.parent and ent.parent in entities:
+            parent_uninit = uninit_fix(entities[ent.parent])
+        check_owner(ent, parent_name=ent.parent or "", parent_uninit=parent_uninit)
 
 
 def _trait_map(body: list[Any]) -> dict[str, TraitDef]:
@@ -4069,7 +4655,7 @@ def _check_data_and_entities(body: list[Any], *, types: dict[str, str]) -> None:
         if not has_ctor:
             _transpile_error(
                 f"Entity '{stmt.name}' must declare a constructor "
-                f"`public {stmt.name}(...) {{ … }}`.",
+                f"`public constructor(...) {{ … }}`.",
                 line,
                 1,
                 stmt.name,

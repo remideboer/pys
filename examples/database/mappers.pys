@@ -33,7 +33,7 @@ package abstract class OrderLineMapper {
 package class MysqlProductMapper inherits ProductMapper {
     private ShopDatabase db
 
-    public MysqlProductMapper(ShopDatabase db) {
+    public constructor(ShopDatabase db) {
         this.db = db
     }
 
@@ -48,7 +48,7 @@ package class MysqlProductMapper inherits ProductMapper {
         )
     }
 
-    public list<Product> findAll() {
+    public override list<Product> findAll() {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT product_id, sku, name, unit_price, active, created_at "
@@ -63,7 +63,7 @@ package class MysqlProductMapper inherits ProductMapper {
         return products
     }
 
-    public nullable<Product> findById(int id) {
+    public override nullable<Product> findById(int id) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT product_id, sku, name, unit_price, active, created_at "
@@ -78,7 +78,7 @@ package class MysqlProductMapper inherits ProductMapper {
         return this.fromRow(row)
     }
 
-    public Product insert(string sku, string name, float unitPrice) {
+    public override Product insert(string sku, string name, float unitPrice) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "INSERT INTO product (sku, name, unit_price, active) VALUES (%s, %s, %s, 1)",
@@ -95,7 +95,7 @@ package class MysqlProductMapper inherits ProductMapper {
         }
     }
 
-    public void update(Product product) {
+    public override void update(Product product) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "UPDATE product SET sku=%s, name=%s, unit_price=%s, active=%s "
@@ -106,7 +106,7 @@ package class MysqlProductMapper inherits ProductMapper {
         cur.close()
     }
 
-    public void delete(Product product) {
+    public override void delete(Product product) {
         MySQLCursor cur = this.db.cursor()
         cur.execute("DELETE FROM product WHERE product_id=%s", (product.id(),))
         this.db.commit()
@@ -117,7 +117,7 @@ package class MysqlProductMapper inherits ProductMapper {
 package class MysqlOrderMapper inherits OrderMapper {
     private ShopDatabase db
 
-    public MysqlOrderMapper(ShopDatabase db) {
+    public constructor(ShopDatabase db) {
         this.db = db
     }
 
@@ -130,7 +130,7 @@ package class MysqlOrderMapper inherits OrderMapper {
         )
     }
 
-    public list<Order> findAll() {
+    public override list<Order> findAll() {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT order_id, placed_at, status, customer_ref "
@@ -145,7 +145,7 @@ package class MysqlOrderMapper inherits OrderMapper {
         return orders
     }
 
-    public nullable<Order> findById(int id) {
+    public override nullable<Order> findById(int id) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "SELECT order_id, placed_at, status, customer_ref "
@@ -160,7 +160,7 @@ package class MysqlOrderMapper inherits OrderMapper {
         return this.fromRow(row)
     }
 
-    public Order insert(string status, nullable<string> customerRef) {
+    public override Order insert(string status, nullable<string> customerRef) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "INSERT INTO `order` (placed_at, status, customer_ref) "
@@ -178,7 +178,7 @@ package class MysqlOrderMapper inherits OrderMapper {
         }
     }
 
-    public void update(Order order) {
+    public override void update(Order order) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "UPDATE `order` SET status=%s, customer_ref=%s "
@@ -189,7 +189,7 @@ package class MysqlOrderMapper inherits OrderMapper {
         cur.close()
     }
 
-    public void delete(Order order) {
+    public override void delete(Order order) {
         MySQLCursor cur = this.db.cursor()
         cur.execute("DELETE FROM `order` WHERE order_id=%s", (order.id(),))
         this.db.commit()
@@ -200,7 +200,7 @@ package class MysqlOrderMapper inherits OrderMapper {
 package class MysqlOrderLineMapper inherits OrderLineMapper {
     private ShopDatabase db
 
-    public MysqlOrderLineMapper(ShopDatabase db) {
+    public constructor(ShopDatabase db) {
         this.db = db
     }
 
@@ -230,7 +230,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         return lines
     }
 
-    public list<OrderLine> findAll() {
+    public override list<OrderLine> findAll() {
         return this.query(
             "SELECT o.order_id, o.placed_at, o.status, o.customer_ref, "
             + "ol.line_number, ol.product_id, ol.sku_snapshot, ol.unit_price, ol.quantity "
@@ -241,7 +241,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         )
     }
 
-    public list<OrderLine> findByOrder(int orderId) {
+    public override list<OrderLine> findByOrder(int orderId) {
         return this.query(
             "SELECT o.order_id, o.placed_at, o.status, o.customer_ref, "
             + "ol.line_number, ol.product_id, ol.sku_snapshot, ol.unit_price, ol.quantity "
@@ -252,7 +252,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         )
     }
 
-    public nullable<OrderLine> findById(int orderId, int lineNumber) {
+    public override nullable<OrderLine> findById(int orderId, int lineNumber) {
         list<OrderLine> rows = this.query(
             "SELECT o.order_id, o.placed_at, o.status, o.customer_ref, "
             + "ol.line_number, ol.product_id, ol.sku_snapshot, ol.unit_price, ol.quantity "
@@ -267,7 +267,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         return rows[0]
     }
 
-    public void insert(OrderLine line) {
+    public override void insert(OrderLine line) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "INSERT INTO order_line "
@@ -286,7 +286,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         cur.close()
     }
 
-    public void update(OrderLine line) {
+    public override void update(OrderLine line) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "UPDATE order_line SET product_id=%s, sku_snapshot=%s, "
@@ -305,7 +305,7 @@ package class MysqlOrderLineMapper inherits OrderLineMapper {
         cur.close()
     }
 
-    public void delete(OrderLine line) {
+    public override void delete(OrderLine line) {
         MySQLCursor cur = this.db.cursor()
         cur.execute(
             "DELETE FROM order_line WHERE order_id=%s AND line_number=%s",

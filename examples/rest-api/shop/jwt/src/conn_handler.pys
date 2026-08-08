@@ -8,7 +8,7 @@ package class ConnHandler {
     private float idleTimeoutSec
     private float writeTimeoutSec
 
-    public ConnHandler(Http11 http, object router, float idleTimeoutSec, float writeTimeoutSec) {
+    public constructor(Http11 http, object router, float idleTimeoutSec, float writeTimeoutSec) {
         this.http = http
         this.router = router
         this.idleTimeoutSec = idleTimeoutSec

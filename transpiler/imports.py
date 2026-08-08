@@ -292,7 +292,7 @@ def module_info_from_ast(path: Path, tree: Module) -> ModuleInfo:
             exports[stmt.name] = vis
             symbol_locations[stmt.name] = (path, line, col)
             class_decl_lines[stmt.name] = line
-            if stmt.sealed:
+            if stmt.sealed or getattr(stmt, "closed", False):
                 sealed_classes.add(stmt.name)
             parent: str | None = None
             implements: list[str] = []

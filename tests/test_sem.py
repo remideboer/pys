@@ -55,7 +55,7 @@ def test_sem_private_field_access_denied_outside_class() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -71,7 +71,7 @@ def test_sem_private_field_allowed_inside_defining_class() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 
@@ -87,7 +87,7 @@ def test_sem_private_field_denied_in_subclass() -> None:
     source = """class Car {
     private string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -106,7 +106,7 @@ def test_sem_protected_field_allowed_in_subclass() -> None:
     source = """class Car {
     protected string make
 
-    public Car(string make) {
+    public constructor(string make) {
         this.make = make
     }
 }
@@ -120,9 +120,9 @@ class Truck inherits Car {
     _analyze(source)
 
 
-def test_sem_sealed_class_rejects_inheritance() -> None:
-    with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
-        _analyze("sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n")
+def test_sem_closed_class_rejects_inheritance() -> None:
+    with pytest.raises(TranspileError, match="cannot inherit from closed class Foo"):
+        _analyze("closed class Foo {\n}\nclass Bar inherits Foo {\n}\n")
 
 
 def test_sem_missing_interface_method() -> None:
@@ -131,7 +131,7 @@ def test_sem_missing_interface_method() -> None:
 }
 
 class Car implements Startable {
-    public Car() {
+    public constructor() {
         pass
     }
 }

@@ -119,7 +119,7 @@ def test_generic_class_transpiles() -> None:
     source = (
         "class Box<T> {\n"
         "    private T value\n"
-        "    public Box(T value) {\n"
+        "    public constructor(T value) {\n"
         "        this.value = value\n"
         "    }\n"
         "    public T get() {\n"
@@ -312,18 +312,18 @@ def test_translate_super_call() -> None:
     assert LANGUAGE.translate_line("super.drive()") == "super().drive()"
 
 
-def test_sealed_class_transpiles() -> None:
-    assert LANGUAGE.translate_line("sealed class Ship") == "class Ship:"
-    assert LANGUAGE.translate_line("package sealed class Ship") == "class Ship:"
+def test_closed_class_transpiles() -> None:
+    assert LANGUAGE.translate_line("closed class Ship") == "class Ship:"
+    assert LANGUAGE.translate_line("package closed class Ship") == "class Ship:"
     assert (
-        LANGUAGE.translate_line("package sealed class Ship inherits Vehicle implements Loadable")
+        LANGUAGE.translate_line("package closed class Ship inherits Vehicle implements Loadable")
         == "class Ship(Vehicle, Loadable):"
     )
 
 
-def test_sealed_class_rejects_inheritance() -> None:
-    source = "sealed class Foo {\n}\nclass Bar inherits Foo {\n}\n"
-    with pytest.raises(TranspileError, match="cannot inherit from sealed class Foo"):
+def test_closed_class_rejects_inheritance() -> None:
+    source = "closed class Foo {\n}\nclass Bar inherits Foo {\n}\n"
+    with pytest.raises(TranspileError, match="cannot inherit from closed class Foo"):
         transpile(source)
 
 
