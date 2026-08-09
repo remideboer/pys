@@ -111,6 +111,25 @@ def test_by_target_javascript_mysql_compiles() -> None:
     assert "createConnection" in js
 
 
+def test_by_target_javascript_express_memory_compiles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    silo = (
+        ROOT
+        / "examples"
+        / "by-target"
+        / "javascript"
+        / "rest-api"
+        / "express"
+        / "memory"
+    )
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(silo))
+    modules = transpile_with_modules(silo / "src" / "main.pys", target="javascript")
+    joined = "\n".join(modules.values())
+    assert 'from "express"' in joined
+    assert "listen" in joined
+
+
 def test_by_target_javascript_nodegui_compiles() -> None:
     path = (
         ROOT / "examples" / "by-target" / "javascript" / "gui_nodegui" / "main.pys"

@@ -17,6 +17,8 @@ The most common form in teaching and industry talk is **three-tier**:
 3. Data (persistence)
 
 Your living shop examples under [`examples/rest-api/shop/`](../examples/rest-api/shop/)
+(and the Express JS track under
+[`examples/by-target/javascript/rest-api/express/`](../examples/by-target/javascript/rest-api/express/))
 often use this stack — sometimes combined with ports (hexagonal).
 
 ## Layer ≠ tier (the key distinction)

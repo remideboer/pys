@@ -8,6 +8,7 @@ decorators (no silent drop).
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from ..ast_nodes import (
@@ -72,7 +73,10 @@ from ..ast_nodes import (
 )
 from ..language_spec import _translate_string_literal
 
-from .js_packages import JS_PACKAGE_MAP as _JS_PACKAGE_MAP
+from .js_packages import (
+    JS_DEFAULT_EXPORT_PACKAGES as _JS_DEFAULT_EXPORT_PACKAGES,
+    JS_PACKAGE_MAP as _JS_PACKAGE_MAP,
+)
 from .js_runtime import JS_CONCURRENCY_PREAMBLE, JS_VALUE_HELPERS
 
 
@@ -305,7 +309,7 @@ class _JsEmitter:
         elif isinstance(stmt, ForEachStmt):
             self._emit(
                 indent,
-                f"for (const {stmt.var} of {self._expr(stmt.iterable)}) {{",
+                f"for (const {stmt.var} of _pys_iter({self._expr(stmt.iterable)})) {{",
                 pys_line=pys,
             )
             self._block(stmt.body, indent + 1)
@@ -402,11 +406,11 @@ class _JsEmitter:
         return self._expr(value)
 
     def _js_lvalue(self, name: str) -> str:
+        # Assign targets are flattened strings (e.g. m[self.keyOf(a, b)]);
+        # rewrite receiver self → this without touching identifiers like myself.
         if name == "self":
             return "this"
-        if name.startswith("self."):
-            return "this." + name[5:]
-        return name
+        return re.sub(r"\bself\.", "this.", name)
 
     def _if(self, stmt: IfStmt, indent: int, *, first: bool) -> None:
         kw = "if" if first else "else if"
@@ -767,6 +771,8 @@ class _JsEmitter:
         if not stmt.fields and not stmt.methods and not keys:
             self._emit(indent + 1, "/* empty entity */", pys_line=None)
         self._emit(indent, "}", pys_line=None)
+        if getattr(stmt, "visibility", "") in ("global", "package"):
+            self._emit(indent, f"export {{ {stmt.name} }};", pys_line=pys)
 
     def _enum(self, stmt: EnumDef, indent: int) -> None:
         pys = self._pys_line(stmt)
@@ -810,30 +816,59 @@ class _JsEmitter:
                 f"const {alias} = {{ sleep(seconds) {{ "
                 f"const end = Date.now() + (Number(seconds) * 1000); "
                 f"while (Date.now() < end) {{ /* busy-wait; cooperative tasks */ }} "
-                f"}} }};",
+                f"}}, "
+                f"time() {{ return Date.now() / 1000; }}, "
+                f"isoformat() {{ return new Date().toISOString().slice(0, 19); }} "
+                f"}};",
+                pys_line=pys,
+            )
+            return
+        if module == "json" and stmt.kind in ("module", "as"):
+            alias = stmt.alias if stmt.kind == "as" and stmt.alias else "json"
+            self._emit(
+                indent,
+                f"const {alias} = {{ "
+                f"dumps(value, ..._args) {{ return JSON.stringify(value); }}, "
+                f"loads(text) {{ return JSON.parse(text); }} "
+                f"}};",
                 pys_line=pys,
             )
             return
         npm = _JS_PACKAGE_MAP.get(module)
-        if npm is None and ("." in module or module in {"tkinter", "sys", "os", "json", "re", "math"}):
+        if npm is None and ("." in module or module in {"tkinter", "sys", "os", "re", "math"}):
             raise JsEmitError(
                 f"JavaScript emitter cannot import Python package {module!r}; "
                 "use --target python, a sibling .pys module, or an npm-mapped "
-                "name (nodegui, mysql2)."
+                "name (nodegui, mysql2, express, crypto, buffer)."
             )
         if npm is not None:
+            use_default = module in _JS_DEFAULT_EXPORT_PACKAGES
             if stmt.kind == "module":
-                self._emit(
-                    indent,
-                    f'import * as {stmt.module} from "{npm}";',
-                    pys_line=pys,
-                )
+                if use_default:
+                    self._emit(
+                        indent,
+                        f'import {stmt.module} from "{npm}";',
+                        pys_line=pys,
+                    )
+                else:
+                    self._emit(
+                        indent,
+                        f'import * as {stmt.module} from "{npm}";',
+                        pys_line=pys,
+                    )
             elif stmt.kind == "as":
-                self._emit(
-                    indent,
-                    f'import * as {stmt.alias} from "{npm}";',
-                    pys_line=pys,
-                )
+                if use_default:
+                    self._emit(
+                        indent,
+                        f'import {stmt.alias} from "{npm}";',
+                        pys_line=pys,
+                    )
+                else:
+                    self._emit(
+                        indent,
+                        f'import * as {stmt.alias} from "{npm}";',
+                        pys_line=pys,
+                    )
             elif stmt.kind == "name_from":
                 names = ", ".join(stmt.names) if stmt.names else stmt.name
                 self._emit(
@@ -1284,6 +1319,10 @@ class _JsEmitter:
                 return f"{raw}.{method}({arg_s})"
             if method == "append":
                 return f"{recv}.push({arg_s})"
+            if method == "pop":
+                if arg_s:
+                    return f"_pys_dict_pop({recv}, {arg_s})"
+                return f"{recv}.pop()"
             if method == "loop" and len(expr.args) == 1:
                 return f"{recv}.map({self._expr(expr.args[0])})"
             str_map = {
@@ -1292,6 +1331,7 @@ class _JsEmitter:
                 "strip": "trim",
                 "startswith": "startsWith",
                 "endswith": "endsWith",
+                "find": "indexOf",
             }
             if method in str_map and not arg_s:
                 return f"{recv}.{str_map[method]}()"
@@ -1315,6 +1355,12 @@ class _JsEmitter:
                 return f"new {name}({arg_s})"
             if name == "len":
                 return f"({arg_s}).length"
+            if name == "dict" and not arg_s:
+                return "{}"
+            if name == "list" and not arg_s:
+                return "[]"
+            if name == "set" and not arg_s:
+                return "new Set()"
             if name == "str":
                 return f"_pys_format({arg_s})"
             if name == "int":
@@ -1506,6 +1552,16 @@ function _pys_enum_member(name, value) {
 }
 function print(value) {
   console.log(_pys_format(value));
+}
+function _pys_iter(obj) {
+  if (obj == null) return [];
+  if (typeof obj[Symbol.iterator] === "function") return obj;
+  return Object.keys(obj);
+}
+function _pys_dict_pop(obj, key) {
+  const v = obj[key];
+  delete obj[key];
+  return v;
 }
 function _pys_keep_alive(value) {
   globalThis.__pys_keep = globalThis.__pys_keep || [];

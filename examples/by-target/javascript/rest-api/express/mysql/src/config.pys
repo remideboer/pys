@@ -1,0 +1,19 @@
+# Tunables for Express MySQL shop.
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+    public string dbHost
+    public string dbUser
+    public string dbPassword
+    public string dbName
+
+    public constructor() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8191
+        this.dbHost = "127.0.0.1"
+        this.dbUser = "pys"
+        this.dbPassword = "123456789"
+        this.dbName = "shop"
+    }
+}

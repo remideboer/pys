@@ -1,0 +1,142 @@
+# Express app factory — MySQL callbacks + JWT write gate.
+
+import express as express
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from store
+import ProductApi from api_products
+import OrderApi from api_orders
+import LineApi from api_lines
+import ServerConfig from config
+import JwtService from jwt_service
+import AuthService from auth
+
+package class AppContext {
+    public ShopStore store
+    public JsonUtil json
+    public ProductApi products
+    public OrderApi orders
+    public LineApi lines
+    public AuthService auth
+
+    public constructor(ServerConfig cfg) {
+        this.store = ShopStore(cfg.dbHost, cfg.dbUser, cfg.dbPassword, cfg.dbName)
+        this.json = JsonUtil()
+        this.products = ProductApi(this.store, this.json)
+        this.orders = OrderApi(this.store, this.json)
+        this.lines = LineApi(this.store, this.json)
+        JwtService jwt = JwtService(cfg.jwtSecret, cfg.jwtTtlSec)
+        this.auth = AuthService(jwt, this.json)
+    }
+}
+
+function void send(object res, ApiResponse r) {
+    if (r.location != "") {
+        res.set("Location", r.location)
+    }
+    if (r.status == 204) {
+        res.status(204).send()
+        return
+    }
+    res.status(r.status).json(r.body)
+}
+
+function bool isWrite(string method) {
+    return method == "POST" || method == "PUT" || method == "DELETE"
+}
+
+package class ShopApp {
+    private AppContext ctx
+
+    public constructor(AppContext ctx) {
+        this.ctx = ctx
+    }
+
+    public object build() {
+        object app = express()
+        app.use(express.json())
+        AppContext ctx = this.ctx
+        JsonUtil json = ctx.json
+        AuthService auth = ctx.auth
+
+        app.use((object req, object res, object next) => {
+            string path = str(req.path)
+            string method = str(req.method).upper()
+            if (method == "POST" && path == "/api/login") {
+                next()
+                return
+            }
+            if (isWrite(method)) {
+                nullable<string> user = auth.requireUser(req)
+                if (user == null) {
+                    send(res, auth.unauthorized())
+                    return
+                }
+            }
+            next()
+        })
+
+        app.get("/health", (object req, object res) => {
+            send(res, ApiResponse(200, json.healthOk()))
+        })
+
+        app.post("/api/login", (object req, object res) => {
+            send(res, auth.login(req.body))
+        })
+
+        app.get("/api/products", (object req, object res) => {
+            ctx.products.listAll((object r) => { send(res, r) })
+        })
+        app.post("/api/products", (object req, object res) => {
+            ctx.products.create(req.body, (object r) => { send(res, r) })
+        })
+        app.get("/api/products/:id", (object req, object res) => {
+            ctx.products.getOne((int)(req.params.id), (object r) => { send(res, r) })
+        })
+        app.put("/api/products/:id", (object req, object res) => {
+            ctx.products.update((int)(req.params.id), req.body, (object r) => { send(res, r) })
+        })
+        app.delete("/api/products/:id", (object req, object res) => {
+            ctx.products.delete((int)(req.params.id), (object r) => { send(res, r) })
+        })
+
+        app.get("/api/orders", (object req, object res) => {
+            ctx.orders.listAll((object r) => { send(res, r) })
+        })
+        app.post("/api/orders", (object req, object res) => {
+            ctx.orders.create(req.body, (object r) => { send(res, r) })
+        })
+        app.get("/api/orders/:id", (object req, object res) => {
+            ctx.orders.getOne((int)(req.params.id), (object r) => { send(res, r) })
+        })
+        app.put("/api/orders/:id", (object req, object res) => {
+            ctx.orders.update((int)(req.params.id), req.body, (object r) => { send(res, r) })
+        })
+        app.delete("/api/orders/:id", (object req, object res) => {
+            ctx.orders.delete((int)(req.params.id), (object r) => { send(res, r) })
+        })
+
+        app.get("/api/orders/:id/lines", (object req, object res) => {
+            ctx.lines.listForOrder((int)(req.params.id), (object r) => { send(res, r) })
+        })
+        app.post("/api/orders/:id/lines", (object req, object res) => {
+            ctx.lines.create((int)(req.params.id), req.body, (object r) => { send(res, r) })
+        })
+        app.get("/api/orders/:id/lines/:n", (object req, object res) => {
+            ctx.lines.getOne((int)(req.params.id), (int)(req.params.n), (object r) => { send(res, r) })
+        })
+        app.put("/api/orders/:id/lines/:n", (object req, object res) => {
+            ctx.lines.update((int)(req.params.id), (int)(req.params.n), req.body, (object r) => { send(res, r) })
+        })
+        app.delete("/api/orders/:id/lines/:n", (object req, object res) => {
+            ctx.lines.delete((int)(req.params.id), (int)(req.params.n), (object r) => { send(res, r) })
+        })
+
+        app.use((object req, object res) => {
+            send(res, ApiResponse(404, json.errorBody("not found")))
+        })
+
+        return app
+    }
+}

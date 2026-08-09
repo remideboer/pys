@@ -1,0 +1,46 @@
+# Handler-level API tests (no HTTP listen).
+
+import AppContext from app
+import ProductApi from api_products
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== express shop memory api ===")
+
+AppContext ctx = AppContext()
+ProductApi products = ctx.products
+
+var listed = products.listAll()
+assertTrue("list 200", listed.status == 200)
+
+dict createBody = dict()
+createBody["sku"] = "BG-NEW"
+createBody["name"] = "New Game"
+createBody["unitPrice"] = 12.5
+var created = products.create(createBody)
+assertTrue("create 201", created.status == 201)
+assertTrue("create location", created.location == "/api/products/4")
+
+var got = products.getOne(4)
+assertTrue("get 200", got.status == 200)
+
+dict bad = dict()
+bad["sku"] = ""
+bad["name"] = "x"
+bad["unitPrice"] = 1.0
+var badCreate = products.create(bad)
+assertTrue("empty sku 400", badCreate.status == 400)
+
+var missing = products.getOne(999)
+assertTrue("missing 404", missing.status == 404)
+
+var deleted = products.delete(4)
+assertTrue("delete 204", deleted.status == 204)
+
+print("=== api done ===")

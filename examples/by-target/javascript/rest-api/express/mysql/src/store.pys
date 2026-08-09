@@ -1,0 +1,56 @@
+# Composition: MySQL mappers → default repositories.
+
+import ShopDatabase from db
+import MysqlProductMapper, MysqlOrderMapper, MysqlOrderLineMapper from mappers
+import DefaultProductRepository, DefaultOrderRepository, DefaultOrderLineRepository from repositories
+import Order, OrderLine, Product from models
+
+package class ShopStore {
+    public DefaultProductRepository products
+    public DefaultOrderRepository orders
+    public DefaultOrderLineRepository lines
+    public ShopDatabase db
+
+    public constructor(string host, string user, string password, string database) {
+        this.db = ShopDatabase(host, user, password, database)
+        MysqlProductMapper productMapper = MysqlProductMapper(this.db)
+        MysqlOrderMapper orderMapper = MysqlOrderMapper(this.db)
+        MysqlOrderLineMapper lineMapper = MysqlOrderLineMapper(this.db)
+        this.products = DefaultProductRepository(productMapper)
+        this.orders = DefaultOrderRepository(orderMapper)
+        this.lines = DefaultOrderLineRepository(lineMapper)
+    }
+
+    public void addLine(Order order, Product product, int quantity, object onDone) {
+        DefaultOrderLineRepository lines = this.lines
+        lines.forOrder(order.id(), (object err, object existing) => {
+            if (err != null) {
+                onDone(err, null)
+                return
+            }
+            int n = len(existing) + 1
+            OrderLine line = OrderLine(
+                order.id(),
+                order.placedAt,
+                order.status,
+                order.customerRef,
+                n,
+                product.id(),
+                product.sku,
+                product.unitPrice,
+                quantity
+            )
+            lines.add(line, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(err2, null)
+                    return
+                }
+                onDone(null, line)
+            })
+        })
+    }
+
+    public void close() {
+        this.db.close()
+    }
+}

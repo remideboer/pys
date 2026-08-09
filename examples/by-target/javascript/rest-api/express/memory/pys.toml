@@ -1,0 +1,10 @@
+[project]
+main = "src/main.pys"
+target = "javascript"
+
+[source_roots]
+main = "src"
+test = "tests"
+
+[dependencies.npm]
+express = "^4.21.0"

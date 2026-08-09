@@ -138,6 +138,8 @@ Lines are reached through `Order`. A repository (next section) would
   ([`repository.pys`](../examples/patterns/persistence/repository.pys)); living
   shops under [`examples/rest-api/shop/`](../examples/rest-api/shop/) model
   orders and lines — use Aggregate vocabulary even when the demo is thin.
+  The JavaScript Express twin lives under
+  [`examples/by-target/javascript/rest-api/express/`](../examples/by-target/javascript/rest-api/express/).
 
 ### Non-golden note
 

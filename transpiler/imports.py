@@ -807,7 +807,7 @@ class ImportResolver:
             _error(
                 f"Cannot find module '{module_ref}'. Expected a .pys file next to this source, "
                 f"a Python package from pys.toml [dependencies] / the standard library, or (for "
-                f"--target javascript) an npm-mapped name such as mysql2 / nodegui "
+                f"--target javascript) an npm-mapped name such as mysql2 / nodegui / express "
                 f"(declared in [dependencies.npm]; installed into ~/.pys/repository/npm on Run).",
                 line_number,
                 raw_line.rstrip(),

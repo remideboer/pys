@@ -1,0 +1,18 @@
+# Thin HTTP result DTO — Express wiring maps this to res.status/json.
+
+package class ApiResponse {
+    public int status
+    public object body
+    public string location
+
+    public constructor(int status, object body) {
+        this.status = status
+        this.body = body
+        this.location = ""
+    }
+
+    public ApiResponse withLocation(string location) {
+        this.location = location
+        return this
+    }
+}

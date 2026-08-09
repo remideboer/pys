@@ -193,6 +193,53 @@ def test_by_target_mysql_npm_deps_in_toml() -> None:
     assert find_package_json(path) is None
 
 
+def test_by_target_express_memory_npm_deps_in_toml() -> None:
+    root = Path(__file__).resolve().parents[1]
+    path = (
+        root
+        / "examples"
+        / "by-target"
+        / "javascript"
+        / "rest-api"
+        / "express"
+        / "memory"
+        / "src"
+        / "main.pys"
+    )
+    cfg = load_npm_deps(path)
+    assert cfg is not None
+    assert cfg.dependencies.get("express") == "^4.21.0"
+
+
+def test_deps_lock_npm_only_toml_explains_no_pys_lock(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """npm-only manifests must not look like a missing deps file."""
+    import subprocess
+    import sys
+
+    silo = tmp_path / "js-silo"
+    silo.mkdir()
+    toml = silo / "pys.toml"
+    toml.write_text(
+        '[project]\nmain = "main.pys"\ntarget = "javascript"\n\n'
+        '[dependencies.npm]\nexpress = "^4.21.0"\n',
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [sys.executable, "-m", "transpiler", "deps", "lock", str(toml)],
+        cwd=str(silo),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+    out = (proc.stdout or "") + (proc.stderr or "")
+    assert "[dependencies.npm] only" in out
+    assert "pys.lock" in out
+    assert not (silo / "pys.lock").exists()
+
+
 def test_run_source_javascript_uses_central_npm_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

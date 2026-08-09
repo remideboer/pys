@@ -1,0 +1,55 @@
+# MySQL connection + cell helpers (mysql2). Query is callback-based (Node).
+
+import mysql2 as mysql
+
+package class ShopDatabase {
+    public object conn
+
+    public constructor(string host, string user, string password, string database) {
+        this.conn = mysql.createConnection(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+    }
+
+    public void connect(object onDone) {
+        this.conn.connect(onDone)
+    }
+
+    public void query(string sql, object params, object onDone) {
+        this.conn.query(sql, params, onDone)
+    }
+
+    public void commit(object onDone) {
+        this.conn.commit(onDone)
+    }
+
+    public void close() {
+        this.conn.end()
+    }
+
+    public nullable<string> cellNullableStr(value) {
+        if (value == null) {
+            return null
+        }
+        return str(value)
+    }
+
+    public string cellStr(value) {
+        return str(value)
+    }
+
+    public bool cellBool(value) {
+        return (int)(this.cellStr(value)) == 1
+    }
+
+    public float cellFloat(value) {
+        return (float)(this.cellStr(value))
+    }
+
+    public int cellInt(value) {
+        return (int)(this.cellStr(value))
+    }
+}

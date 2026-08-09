@@ -166,3 +166,22 @@ selector). JS by-target silos set `target = "javascript"`.
   FastAPI decorators and exact int64.
 - Cooperative tasks do not simulate OS-thread interleaving.
 - Entity / data identity uses `.equals()` via `_pys_value_eq` for `==`.
+
+### 13. Express / JSON / crypto shims for JS REST shops
+
+**Pre-behavior:** Mapped npm was only `nodegui` + `mysql2`. `import json` and
+Python stdlib packages fail-closed; `time` shim had only busy-wait `sleep`.
+Express’s default export could not be bound via `import * as`.
+
+**Post-behavior:** Map `express`→`express` with **default ESM import**;
+`crypto`→`node:crypto`, `buffer`→`node:buffer` (namespace). Shim `import json`
+(`dumps`/`loads` → `JSON.stringify`/`JSON.parse`) and extend `time` with
+`time()` + `isoformat()`. Package `entity` emits `export { Name };`. Dict
+helpers: `dict()`→`{}`, `list()`→`[]`, `_pys_iter` / `_pys_dict_pop`,
+`self.` inside assign subscripts → `this.`, string `find`→`indexOf`.
+Enables Express REST shops under
+`examples/by-target/javascript/rest-api/express/`.
+
+**Evidence:** `tests/test_emit_javascript.py`; Express memory/mysql/jwt silos;
+`tests/test_rest_shop_express_*.py`. `deps lock` on npm-only `pys.toml` exits 0
+with an explanation (no `pys.lock`); npm installs on Run.

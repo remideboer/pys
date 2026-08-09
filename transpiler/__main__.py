@@ -82,6 +82,7 @@ def main() -> None:
             parser.error(str(exc))
     elif args.command == "deps" and args.deps_command == "lock":
         from .deps import DEPS_FILENAME, MANIFEST_FILENAME, DepsError, generate_lock, load_deps
+        from .npm_deps import parse_npm_from_toml
 
         if args.deps_file is None:
             if Path(MANIFEST_FILENAME).is_file():
@@ -96,9 +97,27 @@ def main() -> None:
         else:
             deps_file = args.deps_file.resolve()
         try:
+            if not deps_file.is_file():
+                raise DepsError(f"Dependency file not found: {deps_file}")
             config = load_deps(deps_file, stop_at=deps_file.parent)
             if config is None or config.source_path is None:
-                raise DepsError(f"Dependency file not found: {deps_file}")
+                if deps_file.name == MANIFEST_FILENAME:
+                    npm = parse_npm_from_toml(
+                        deps_file.read_text(encoding="utf-8"),
+                        source_path=deps_file,
+                    )
+                    if npm is not None:
+                        print(
+                            f"{deps_file}: [dependencies.npm] only - no pys.lock. "
+                            "npm packages install on Run into ~/.pys/repository/npm/ "
+                            "(PYS_REPO override). Use Run Project / "
+                            "`python -m transpiler run` instead of deps lock."
+                        )
+                        return
+                raise DepsError(
+                    f"No Python [dependencies] / [interpreter] in {deps_file} "
+                    "(deps lock writes pys.lock for Python packages only)."
+                )
             if config.source_path.resolve() != deps_file:
                 raise DepsError(f"Dependency file not found: {deps_file}")
             lock_path = generate_lock(config)

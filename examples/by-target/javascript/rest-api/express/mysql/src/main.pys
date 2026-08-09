@@ -1,0 +1,24 @@
+# Express MySQL shop REST API — phase 2 (JS by-target).
+#
+# Requires local MySQL with schema/seed (shop.sql + seed_boardgames.sql).
+# Run Project on this silo's pys.toml (target = javascript).
+
+import ServerConfig from config
+import AppContext, ShopApp from app
+
+ServerConfig cfg = ServerConfig()
+AppContext ctx = AppContext(cfg)
+ShopApp shop = ShopApp(ctx)
+object app = shop.build()
+
+print("shop REST (express/mysql) on " + cfg.listenHost + ":" + str(cfg.listenPort))
+ctx.store.db.connect((object err) => {
+    if (err != null) {
+        print("MySQL connect failed: " + str(err))
+        return
+    }
+    print("MySQL connected database=" + cfg.dbName)
+    app.listen(cfg.listenPort, cfg.listenHost, () => {
+        print("listening")
+    })
+})

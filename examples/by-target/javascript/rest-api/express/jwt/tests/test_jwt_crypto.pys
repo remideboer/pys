@@ -1,0 +1,25 @@
+# JWT crypto unit tests — no MySQL / Express listen.
+
+import JwtService from jwt_service
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== express shop jwt crypto ===")
+
+JwtService jwt = JwtService("test-secret", 60)
+string token = jwt.issue("admin")
+assertTrue("token has dots", token.find(".") > 0)
+nullable<string> sub = jwt.subjectOf(token)
+assertTrue("subject admin", sub == "admin")
+nullable<string> bad = jwt.subjectOf(token + "x")
+assertTrue("tamper rejected", bad == null)
+nullable<string> junk = jwt.subjectOf("not.a.jwt")
+assertTrue("junk rejected", junk == null)
+
+print("=== jwt crypto done ===")

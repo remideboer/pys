@@ -1,0 +1,136 @@
+# Product CRUD — callback style for mysql2.
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from store
+import Product from models
+
+package class ProductApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public void listAll(object onDone) {
+        JsonUtil json = this.json
+        this.store.products.all((object err, object items) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            onDone(ApiResponse(200, json.productsToList(items)))
+        })
+    }
+
+    public void getOne(int id, object onDone) {
+        JsonUtil json = this.json
+        this.store.products.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("product not found")))
+                return
+            }
+            onDone(ApiResponse(200, json.productToDict(found)))
+        })
+    }
+
+    public void create(object body, object onDone) {
+        JsonUtil json = this.json
+        nullable<dict> rawBody = json.asObject(body)
+        if (rawBody == null) {
+            onDone(ApiResponse(400, json.errorBody("JSON object required")))
+            return
+        }
+        dict b = rawBody
+        if (!("sku" in b) || !("name" in b) || !("unitPrice" in b)) {
+            onDone(ApiResponse(400, json.errorBody("sku, name, unitPrice required")))
+            return
+        }
+        string sku = str(b["sku"])
+        string name = str(b["name"])
+        float price = (float)(b["unitPrice"])
+        if (sku == "" || name == "") {
+            onDone(ApiResponse(400, json.errorBody("sku and name must be non-empty")))
+            return
+        }
+        this.store.products.add(sku, name, price, (object err, object p) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            Product product = p
+            onDone(ApiResponse(201, json.productToDict(product)).withLocation(
+                "/api/products/" + str(product.id())
+            ))
+        })
+    }
+
+    public void update(int id, object body, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.products.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("product not found")))
+                return
+            }
+            nullable<dict> rawBody = json.asObject(body)
+            if (rawBody == null) {
+                onDone(ApiResponse(400, json.errorBody("JSON object required")))
+                return
+            }
+            dict b = rawBody
+            Product p = found
+            if ("sku" in b) {
+                p.sku = str(b["sku"])
+            }
+            if ("name" in b) {
+                p.name = str(b["name"])
+            }
+            if ("unitPrice" in b) {
+                p.unitPrice = (float)(b["unitPrice"])
+            }
+            if ("active" in b) {
+                p.active = (bool)(b["active"])
+            }
+            store.products.save(p, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(200, json.productToDict(p)))
+            })
+        })
+    }
+
+    public void delete(int id, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.products.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("product not found")))
+                return
+            }
+            store.products.remove(found, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(204, null))
+            })
+        })
+    }
+}

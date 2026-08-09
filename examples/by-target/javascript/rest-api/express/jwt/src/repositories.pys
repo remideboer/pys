@@ -1,0 +1,117 @@
+# Repository layer over callback mappers (same ports as memory, async Node style).
+
+import Product, Order, OrderLine from models
+import ProductMapper, OrderMapper, OrderLineMapper from mappers
+
+package interface ProductRepository {
+    void all(object onDone)
+    void get(int id, object onDone)
+    void add(string sku, string name, float unitPrice, object onDone)
+    void save(Product product, object onDone)
+    void remove(Product product, object onDone)
+}
+
+package interface OrderRepository {
+    void all(object onDone)
+    void get(int id, object onDone)
+    void add(string status, nullable<string> customerRef, object onDone)
+    void save(Order order, object onDone)
+    void remove(Order order, object onDone)
+}
+
+package interface OrderLineRepository {
+    void all(object onDone)
+    void forOrder(int orderId, object onDone)
+    void get(int orderId, int lineNumber, object onDone)
+    void add(OrderLine line, object onDone)
+    void save(OrderLine line, object onDone)
+    void remove(OrderLine line, object onDone)
+}
+
+package class DefaultProductRepository implements ProductRepository {
+    private ProductMapper mapper
+
+    public constructor(ProductMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public void all(object onDone) {
+        this.mapper.findAll(onDone)
+    }
+
+    public void get(int id, object onDone) {
+        this.mapper.findById(id, onDone)
+    }
+
+    public void add(string sku, string name, float unitPrice, object onDone) {
+        this.mapper.insert(sku, name, unitPrice, onDone)
+    }
+
+    public void save(Product product, object onDone) {
+        this.mapper.update(product, onDone)
+    }
+
+    public void remove(Product product, object onDone) {
+        this.mapper.delete(product, onDone)
+    }
+}
+
+package class DefaultOrderRepository implements OrderRepository {
+    private OrderMapper mapper
+
+    public constructor(OrderMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public void all(object onDone) {
+        this.mapper.findAll(onDone)
+    }
+
+    public void get(int id, object onDone) {
+        this.mapper.findById(id, onDone)
+    }
+
+    public void add(string status, nullable<string> customerRef, object onDone) {
+        this.mapper.insert(status, customerRef, onDone)
+    }
+
+    public void save(Order order, object onDone) {
+        this.mapper.update(order, onDone)
+    }
+
+    public void remove(Order order, object onDone) {
+        this.mapper.delete(order, onDone)
+    }
+}
+
+package class DefaultOrderLineRepository implements OrderLineRepository {
+    private OrderLineMapper mapper
+
+    public constructor(OrderLineMapper mapper) {
+        this.mapper = mapper
+    }
+
+    public void all(object onDone) {
+        this.mapper.findAll(onDone)
+    }
+
+    public void forOrder(int orderId, object onDone) {
+        this.mapper.findByOrder(orderId, onDone)
+    }
+
+    public void get(int orderId, int lineNumber, object onDone) {
+        this.mapper.findById(orderId, lineNumber, onDone)
+    }
+
+    public void add(OrderLine line, object onDone) {
+        this.mapper.insert(line, onDone)
+    }
+
+    public void save(OrderLine line, object onDone) {
+        this.mapper.update(line, onDone)
+    }
+
+    public void remove(OrderLine line, object onDone) {
+        this.mapper.delete(line, onDone)
+    }
+}

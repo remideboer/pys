@@ -19,6 +19,7 @@ mark it done here.
 | [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | **Done** | JWT auth layer (`examples/rest-api/shop/jwt`) |
 | [F-010](#f-010-javascript-dap-and-os-thread-tasks) | Emit / IDE | **Partial** | Node DAP **Done**; OS-thread JS tasks still deferred |
 | [F-011](#f-011-host-runtime-ensure) | IDE | **Done** | Create Project target + PATH probe / install prompt |
+| [F-012](#f-012-express-rest-shop) | Examples / REST shop | **Done** | Express JS shop under `by-target/javascript/rest-api/express` |
 
 ---
 
@@ -224,4 +225,18 @@ Create Project picks emit target; PATH probe + curated install prompt for
 Python (always) and Node (JavaScript). Visible `winget` / `brew` / docs only
 in trusted workspaces. Activation also probes Python (and Node when the
 workspace target is JavaScript).
+
+---
+
+## F-012: Express REST shop (JavaScript)
+
+| | |
+| --- | --- |
+| Status | **Done** |
+| Source | [`examples/by-target/javascript/rest-api/express/`](../examples/by-target/javascript/rest-api/express/) |
+| Related | [CER-050](evolution/CER-050-javascript-emit-target.md) §13; [ADR-030](adr/ADR-030-javascript-emit-target.md) |
+
+Node Express twin of the Python socket shop: memory (8190) → mysql2 (8191) →
+JWT writes (8192). Emit maps `express` (default import), `crypto`/`buffer`,
+and `json`/`time` shims. CI: memory suites + mysql transpile + jwt crypto.
 

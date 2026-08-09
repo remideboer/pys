@@ -1,0 +1,21 @@
+# Express JWT + MySQL shop REST API — phase 3 (JS by-target).
+
+import ServerConfig from config
+import AppContext, ShopApp from app
+
+ServerConfig cfg = ServerConfig()
+AppContext ctx = AppContext(cfg)
+ShopApp shop = ShopApp(ctx)
+object app = shop.build()
+
+print("shop REST (express/jwt) on " + cfg.listenHost + ":" + str(cfg.listenPort))
+ctx.store.db.connect((object err) => {
+    if (err != null) {
+        print("MySQL connect failed: " + str(err))
+        return
+    }
+    print("MySQL connected; JWT writes require Bearer token")
+    app.listen(cfg.listenPort, cfg.listenHost, () => {
+        print("listening")
+    })
+})

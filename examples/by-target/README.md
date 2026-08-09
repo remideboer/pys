@@ -11,6 +11,7 @@
 | [`python/mysql/`](python/mysql/) | Python | `mysql-connector-python` via `[dependencies]` → central repo |
 | [`javascript/mysql/`](javascript/mysql/) | JavaScript | `mysql2` via `[dependencies.npm]` → central npm cache |
 | [`javascript/gui_nodegui/`](javascript/gui_nodegui/) | JavaScript | [@nodegui/nodegui](https://github.com/nodegui/nodegui) (runs under **qode**) |
+| [`javascript/rest-api/express/`](javascript/rest-api/express/) | JavaScript | Express shop (memory → mysql → jwt); ports 8190–8192 |
 
 ## JavaScript deps (central repo)
 

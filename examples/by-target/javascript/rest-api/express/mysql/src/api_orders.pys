@@ -1,0 +1,135 @@
+# Order CRUD — callback style for mysql2.
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from store
+import Order from models
+
+package class OrderApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public void listAll(object onDone) {
+        JsonUtil json = this.json
+        this.store.orders.all((object err, object items) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            onDone(ApiResponse(200, json.ordersToList(items)))
+        })
+    }
+
+    public void getOne(int id, object onDone) {
+        JsonUtil json = this.json
+        this.store.orders.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("order not found")))
+                return
+            }
+            onDone(ApiResponse(200, json.orderToDict(found)))
+        })
+    }
+
+    public void create(object body, object onDone) {
+        JsonUtil json = this.json
+        nullable<dict> rawBody = json.asObject(body)
+        if (rawBody == null) {
+            onDone(ApiResponse(400, json.errorBody("JSON object required")))
+            return
+        }
+        dict b = rawBody
+        string status = "placed"
+        if ("status" in b) {
+            status = str(b["status"])
+        }
+        nullable<string> customerRef = null
+        if ("customerRef" in b) {
+            var raw = b["customerRef"]
+            if (raw != null) {
+                customerRef = str(raw)
+            }
+        }
+        this.store.orders.add(status, customerRef, (object err, object o) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            Order order = o
+            onDone(ApiResponse(201, json.orderToDict(order)).withLocation(
+                "/api/orders/" + str(order.id())
+            ))
+        })
+    }
+
+    public void update(int id, object body, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.orders.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("order not found")))
+                return
+            }
+            nullable<dict> rawBody = json.asObject(body)
+            if (rawBody == null) {
+                onDone(ApiResponse(400, json.errorBody("JSON object required")))
+                return
+            }
+            dict b = rawBody
+            Order o = found
+            if ("status" in b) {
+                o.status = str(b["status"])
+            }
+            if ("customerRef" in b) {
+                var raw = b["customerRef"]
+                if (raw == null) {
+                    o.customerRef = null
+                } else {
+                    o.customerRef = str(raw)
+                }
+            }
+            store.orders.save(o, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(200, json.orderToDict(o)))
+            })
+        })
+    }
+
+    public void delete(int id, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.orders.get(id, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("order not found")))
+                return
+            }
+            store.orders.remove(found, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(204, null))
+            })
+        })
+    }
+}

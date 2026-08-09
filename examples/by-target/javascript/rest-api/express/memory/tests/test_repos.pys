@@ -1,0 +1,34 @@
+# In-memory repository unit tests (no Express listen).
+
+import ShopStore from repositories
+
+function void assertTrue(string name, bool cond) {
+    if (!cond) {
+        print("FAIL " + name)
+    } else {
+        print("PASS " + name)
+    }
+}
+
+print("=== express shop memory repos ===")
+
+ShopStore store = ShopStore()
+assertTrue("seeded 3 products", len(store.products.all()) == 3)
+
+var p = store.products.add("BG-X", "Extra", 9.99)
+assertTrue("add id 4", p.id() == 4)
+assertTrue("get 4", store.products.get(4) != null)
+
+var o = store.orders.add("placed", "bob")
+assertTrue("order 1", o.id() == 1)
+var line = store.lines.addLine(o, p, 3)
+assertTrue("line 1", line.lineKey() == 1)
+assertTrue("snapshot sku", line.skuSnapshot == "BG-X")
+assertTrue("line total", line.lineTotal() == 29.97)
+assertTrue("forOrder count", len(store.lines.forOrder(1)) == 1)
+
+store.orders.remove(o)
+assertTrue("cascade lines", len(store.lines.forOrder(1)) == 0)
+assertTrue("order gone", store.orders.get(1) == null)
+
+print("=== repos done ===")

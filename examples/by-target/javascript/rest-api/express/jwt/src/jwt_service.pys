@@ -1,0 +1,65 @@
+# Teaching HS256 JWT via Node crypto (mirrors Python stdlib hmac shop).
+
+import crypto as crypto
+import buffer as buffer
+import json
+import time
+
+package class JwtService {
+    private string secret
+    private int ttlSec
+
+    public constructor(string secret, int ttlSec) {
+        this.secret = secret
+        this.ttlSec = ttlSec
+    }
+
+    private string b64urlJson(object value) {
+        object buf = buffer.Buffer.from(json.dumps(value), "utf8")
+        return buf.toString("base64url")
+    }
+
+    private object b64urlDecode(string s) {
+        return buffer.Buffer.from(s, "base64url")
+    }
+
+    public string issue(string subject) {
+        dict header = dict()
+        header["alg"] = "HS256"
+        header["typ"] = "JWT"
+        dict payload = dict()
+        payload["sub"] = subject
+        payload["iat"] = (int)(time.time())
+        payload["exp"] = (int)(time.time()) + this.ttlSec
+        string h = this.b64urlJson(header)
+        string p = this.b64urlJson(payload)
+        string signing = h + "." + p
+        object hmac = crypto.createHmac("sha256", this.secret)
+        hmac.update(signing)
+        string sig = hmac.digest("base64url")
+        return signing + "." + sig
+    }
+
+    public nullable<string> subjectOf(string token) {
+        var parts = token.split(".")
+        if (len(parts) != 3) {
+            return null
+        }
+        string signing = parts[0] + "." + parts[1]
+        object hmac = crypto.createHmac("sha256", this.secret)
+        hmac.update(signing)
+        string expected = hmac.digest("base64url")
+        if (expected != parts[2]) {
+            return null
+        }
+        object raw = this.b64urlDecode(parts[1])
+        dict payload = json.loads(raw.toString("utf8"))
+        if (!("exp" in payload) || !("sub" in payload)) {
+            return null
+        }
+        if ((int)(payload["exp"]) < (int)(time.time())) {
+            return null
+        }
+        return str(payload["sub"])
+    }
+}

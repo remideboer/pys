@@ -1,0 +1,88 @@
+# Domain entities — same shapes as examples/rest-api/shop (Express track).
+
+package entity Product identity(productId) {
+    protected fix int productId
+    public string sku
+    public string name
+    public float unitPrice
+    public bool active
+    public string createdAt
+
+    public constructor(
+        int productId,
+        string sku,
+        string name,
+        float unitPrice,
+        bool active,
+        string createdAt
+    ) {
+        this.productId = productId
+        this.sku = sku
+        this.name = name
+        this.unitPrice = unitPrice
+        this.active = active
+        this.createdAt = createdAt
+    }
+
+    public int id() {
+        return this.productId
+    }
+}
+
+package entity Order identity(orderId) {
+    protected fix int orderId
+    public string placedAt
+    public string status
+    public nullable<string> customerRef
+
+    public constructor(
+        int orderId,
+        string placedAt,
+        string status,
+        nullable<string> customerRef
+    ) {
+        this.orderId = orderId
+        this.placedAt = placedAt
+        this.status = status
+        this.customerRef = customerRef
+    }
+
+    public int id() {
+        return this.orderId
+    }
+}
+
+package entity OrderLine inherits Order identity(lineNumber) {
+    protected fix int lineNumber
+    public int productId
+    public string skuSnapshot
+    public float unitPrice
+    public int quantity
+
+    public constructor(
+        int orderId,
+        string placedAt,
+        string status,
+        nullable<string> customerRef,
+        int lineNumber,
+        int productId,
+        string skuSnapshot,
+        float unitPrice,
+        int quantity
+    ) {
+        super(orderId, placedAt, status, customerRef)
+        this.lineNumber = lineNumber
+        this.productId = productId
+        this.skuSnapshot = skuSnapshot
+        this.unitPrice = unitPrice
+        this.quantity = quantity
+    }
+
+    public int lineKey() {
+        return this.lineNumber
+    }
+
+    public float lineTotal() {
+        return this.unitPrice * (float) this.quantity
+    }
+}

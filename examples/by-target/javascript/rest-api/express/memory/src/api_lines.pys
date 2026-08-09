@@ -1,0 +1,92 @@
+# Order-line CRUD handlers (nested under /api/orders/{id}/lines).
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from repositories
+import Order, OrderLine, Product from models
+
+package class LineApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public ApiResponse listForOrder(int orderId) {
+        nullable<Order> order = this.store.orders.get(orderId)
+        if (order == null) {
+            return ApiResponse(404, this.json.errorBody("order not found"))
+        }
+        return ApiResponse(200, this.json.linesToList(this.store.lines.forOrder(orderId)))
+    }
+
+    public ApiResponse getOne(int orderId, int lineNumber) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("line not found"))
+        }
+        return ApiResponse(200, this.json.lineToDict(found))
+    }
+
+    public ApiResponse create(int orderId, object body) {
+        nullable<Order> order = this.store.orders.get(orderId)
+        if (order == null) {
+            return ApiResponse(404, this.json.errorBody("order not found"))
+        }
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        if (!("productId" in b) || !("quantity" in b)) {
+            return ApiResponse(400, this.json.errorBody("productId and quantity required"))
+        }
+        int productId = (int)(b["productId"])
+        int quantity = (int)(b["quantity"])
+        if (quantity <= 0) {
+            return ApiResponse(400, this.json.errorBody("quantity must be positive"))
+        }
+        nullable<Product> product = this.store.products.get(productId)
+        if (product == null) {
+            return ApiResponse(400, this.json.errorBody("unknown productId"))
+        }
+        OrderLine line = this.store.lines.addLine(order, product, quantity)
+        return ApiResponse(201, this.json.lineToDict(line)).withLocation(
+            "/api/orders/" + str(orderId) + "/lines/" + str(line.lineKey())
+        )
+    }
+
+    public ApiResponse update(int orderId, int lineNumber, object body) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("line not found"))
+        }
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        if (!("quantity" in b)) {
+            return ApiResponse(400, this.json.errorBody("quantity required"))
+        }
+        int quantity = (int)(b["quantity"])
+        if (quantity <= 0) {
+            return ApiResponse(400, this.json.errorBody("quantity must be positive"))
+        }
+        OrderLine line = found
+        line.quantity = quantity
+        this.store.lines.save(line)
+        return ApiResponse(200, this.json.lineToDict(line))
+    }
+
+    public ApiResponse delete(int orderId, int lineNumber) {
+        nullable<OrderLine> found = this.store.lines.get(orderId, lineNumber)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("line not found"))
+        }
+        this.store.lines.remove(found)
+        return ApiResponse(204, null)
+    }
+}

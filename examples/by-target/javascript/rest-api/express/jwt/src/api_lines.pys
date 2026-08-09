@@ -1,0 +1,165 @@
+# Order-line CRUD — callback style for mysql2.
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from store
+import Order, OrderLine, Product from models
+
+package class LineApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public void listForOrder(int orderId, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.orders.get(orderId, (object err, object order) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (order == null) {
+                onDone(ApiResponse(404, json.errorBody("order not found")))
+                return
+            }
+            store.lines.forOrder(orderId, (object err2, object items) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(200, json.linesToList(items)))
+            })
+        })
+    }
+
+    public void getOne(int orderId, int lineNumber, object onDone) {
+        JsonUtil json = this.json
+        this.store.lines.get(orderId, lineNumber, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("line not found")))
+                return
+            }
+            onDone(ApiResponse(200, json.lineToDict(found)))
+        })
+    }
+
+    public void create(int orderId, object body, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.orders.get(orderId, (object err, object order) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (order == null) {
+                onDone(ApiResponse(404, json.errorBody("order not found")))
+                return
+            }
+            nullable<dict> rawBody = json.asObject(body)
+            if (rawBody == null) {
+                onDone(ApiResponse(400, json.errorBody("JSON object required")))
+                return
+            }
+            dict b = rawBody
+            if (!("productId" in b) || !("quantity" in b)) {
+                onDone(ApiResponse(400, json.errorBody("productId and quantity required")))
+                return
+            }
+            int productId = (int)(b["productId"])
+            int quantity = (int)(b["quantity"])
+            if (quantity <= 0) {
+                onDone(ApiResponse(400, json.errorBody("quantity must be positive")))
+                return
+            }
+            store.products.get(productId, (object err2, object product) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                if (product == null) {
+                    onDone(ApiResponse(400, json.errorBody("unknown productId")))
+                    return
+                }
+                store.addLine(order, product, quantity, (object err3, object line) => {
+                    if (err3 != null) {
+                        onDone(ApiResponse(500, json.errorBody(str(err3))))
+                        return
+                    }
+                    OrderLine created = line
+                    onDone(ApiResponse(201, json.lineToDict(created)).withLocation(
+                        "/api/orders/" + str(orderId) + "/lines/" + str(created.lineKey())
+                    ))
+                })
+            })
+        })
+    }
+
+    public void update(int orderId, int lineNumber, object body, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.lines.get(orderId, lineNumber, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("line not found")))
+                return
+            }
+            nullable<dict> rawBody = json.asObject(body)
+            if (rawBody == null) {
+                onDone(ApiResponse(400, json.errorBody("JSON object required")))
+                return
+            }
+            dict b = rawBody
+            if (!("quantity" in b)) {
+                onDone(ApiResponse(400, json.errorBody("quantity required")))
+                return
+            }
+            int quantity = (int)(b["quantity"])
+            if (quantity <= 0) {
+                onDone(ApiResponse(400, json.errorBody("quantity must be positive")))
+                return
+            }
+            OrderLine line = found
+            line.quantity = quantity
+            store.lines.save(line, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(200, json.lineToDict(line)))
+            })
+        })
+    }
+
+    public void delete(int orderId, int lineNumber, object onDone) {
+        JsonUtil json = this.json
+        ShopStore store = this.store
+        store.lines.get(orderId, lineNumber, (object err, object found) => {
+            if (err != null) {
+                onDone(ApiResponse(500, json.errorBody(str(err))))
+                return
+            }
+            if (found == null) {
+                onDone(ApiResponse(404, json.errorBody("line not found")))
+                return
+            }
+            store.lines.remove(found, (object err2, object ignored) => {
+                if (err2 != null) {
+                    onDone(ApiResponse(500, json.errorBody(str(err2))))
+                    return
+                }
+                onDone(ApiResponse(204, null))
+            })
+        })
+    }
+}

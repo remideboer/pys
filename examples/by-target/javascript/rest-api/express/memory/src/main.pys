@@ -1,0 +1,19 @@
+# Express in-memory shop REST API — phase 1 (JS by-target).
+#
+# Run:
+#   python -m transpiler run examples/by-target/javascript/rest-api/express/memory/src/main.pys
+# Or Run Project on this silo's pys.toml.
+
+import ServerConfig from config
+import AppContext, ShopApp from app
+
+ServerConfig cfg = ServerConfig()
+AppContext ctx = AppContext()
+ShopApp shop = ShopApp(ctx)
+object app = shop.build()
+
+print("shop REST (express/memory) on " + cfg.listenHost + ":" + str(cfg.listenPort))
+print("seeded products=" + str(len(ctx.store.products.all())))
+app.listen(cfg.listenPort, cfg.listenHost, () => {
+    print("listening")
+})

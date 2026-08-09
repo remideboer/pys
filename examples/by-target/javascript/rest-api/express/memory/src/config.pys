@@ -1,0 +1,11 @@
+# Tunables for the Express in-memory shop.
+
+package class ServerConfig {
+    public string listenHost
+    public int listenPort
+
+    public constructor() {
+        this.listenHost = "127.0.0.1"
+        this.listenPort = 8190
+    }
+}

@@ -158,6 +158,87 @@ def test_js_emit_npm_mapped_import() -> None:
     assert 'from "@nodegui/nodegui"' in js
 
 
+def test_js_emit_express_default_import() -> None:
+    js = compile_pys('import express as express\nprint("x")\n', target="javascript")
+    assert 'import express from "express";' in js
+    assert "import * as express" not in js
+
+
+def test_js_emit_crypto_node_builtin() -> None:
+    js = compile_pys('import crypto as crypto\nprint("x")\n', target="javascript")
+    assert 'import * as crypto from "node:crypto";' in js
+
+
+def test_js_emit_json_shim() -> None:
+    js = compile_pys(
+        'import json\nstring s = json.dumps(dict())\nprint(s)\n',
+        target="javascript",
+    )
+    assert "JSON.stringify" in js
+    assert "JSON.parse" in js
+
+
+def test_js_emit_time_shim_includes_time() -> None:
+    js = compile_pys(
+        'import time\nfloat t = time.time()\nprint(t)\n',
+        target="javascript",
+    )
+    assert "time() { return Date.now() / 1000; }" in js
+    assert "sleep(seconds)" in js
+
+
+def test_js_emit_self_in_subscript_lvalue() -> None:
+    src = """
+package class Box {
+    private dict m
+    public constructor() {
+        this.m = dict()
+    }
+    private string keyOf(int a) {
+        return str(a)
+    }
+    public void put(int a, string v) {
+        dict m = this.m
+        m[this.keyOf(a)] = v
+        this.m = m
+    }
+}
+"""
+    js = compile_pys(src, target="javascript")
+    assert "m[this.keyOf(a)] = v;" in js
+    assert "m[self.keyOf" not in js
+
+
+def test_js_emit_dict_list_builtins_and_iter() -> None:
+    src = """
+dict d = dict()
+d[1] = "a"
+list xs = list()
+xs.append(1)
+loop (k in d) {
+    print(k)
+}
+d.pop(1)
+"""
+    js = compile_pys(src, target="javascript")
+    assert "let d = {};" in js or "d = {};" in js
+    assert "let xs = [];" in js or "xs = [];" in js
+    assert "_pys_iter(d)" in js
+    assert "_pys_dict_pop(d, 1)" in js
+
+
+def test_js_emit_package_entity_exports() -> None:
+    js = compile_pys(
+        "package entity Item identity(id) {\n"
+        "    protected fix int id\n"
+        "    public constructor(int id) { this.id = id }\n"
+        "}\n",
+        target="javascript",
+    )
+    assert "class Item" in js
+    assert "export { Item };" in js
+
+
 def test_js_emit_namespace_constructor_uses_new() -> None:
     js = compile_pys(
         'import nodegui as ng\nobject win = ng.QMainWindow()\n',

@@ -29,9 +29,11 @@ the extension Run button, without silently teaching wrong semantics.
    `[project].target` in `pys.toml` (default `python`) for bare `transpiler run`
    and **Run Project** on the manifest. Debug uses the same emit target
    (prepare_debug + thin launch adapters — F-010 item 1 Done).
-5. **Examples:** `examples/main.pys` is target-independent; MySQL/NodeGUI
-   under `examples/by-target/` (single `pys.toml` per silo with
-   `target = "javascript"` when applicable).
+5. **Examples:** `examples/main.pys` is target-independent; MySQL/NodeGUI/
+   Express REST under `examples/by-target/` (single `pys.toml` per silo with
+   `target = "javascript"` when applicable). Mapped npm includes
+   `express` (default import), `mysql2`, `nodegui`; builtins `crypto`→
+   `node:crypto`; teaching shims for `json` and `time`.
 
 ## Consequences
 

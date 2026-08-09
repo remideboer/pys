@@ -1387,6 +1387,29 @@ function activate(context) {
       vscode.window.showErrorMessage(`Dependency file not found: ${filePath}`);
       return;
     }
+    if (base === 'pys.toml') {
+      try {
+        const text = fs.readFileSync(filePath, 'utf8');
+        const hasNpm = /\[dependencies\.npm\]/.test(text);
+        const hasInterpreter = /\[interpreter\]/.test(text);
+        // Python package pins sit under [dependencies] but not [dependencies.npm].
+        const depsBlock = text.match(/\[dependencies\]([\s\S]*?)(?=\n\[|$)/);
+        const pythonDepLines = depsBlock
+          ? depsBlock[1]
+              .split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter((line) => line && !line.startsWith('#') && !line.startsWith('['))
+          : [];
+        if (hasNpm && !hasInterpreter && pythonDepLines.length === 0) {
+          vscode.window.showInformationMessage(
+            'This pys.toml only has [dependencies.npm]. No pys.lock — npm packages install on Run Project / Run into ~/.pys/repository/npm/.',
+          );
+          return;
+        }
+      } catch (_error) {
+        // Fall through to CLI lock for parse/read failures.
+      }
+    }
     const saved = await saveAllFiles();
     if (!saved) {
       vscode.window.showErrorMessage('Unable to save files before locking dependencies.');

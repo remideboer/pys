@@ -1,0 +1,110 @@
+# Express app factory — wires routes to ProductApi / OrderApi / LineApi.
+
+import express as express
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from repositories
+import ProductApi from api_products
+import OrderApi from api_orders
+import LineApi from api_lines
+
+package class AppContext {
+    public ShopStore store
+    public JsonUtil json
+    public ProductApi products
+    public OrderApi orders
+    public LineApi lines
+
+    public constructor() {
+        this.store = ShopStore()
+        this.json = JsonUtil()
+        this.products = ProductApi(this.store, this.json)
+        this.orders = OrderApi(this.store, this.json)
+        this.lines = LineApi(this.store, this.json)
+    }
+}
+
+function void send(object res, ApiResponse r) {
+    if (r.location != "") {
+        res.set("Location", r.location)
+    }
+    if (r.status == 204) {
+        res.status(204).send()
+        return
+    }
+    res.status(r.status).json(r.body)
+}
+
+package class ShopApp {
+    private AppContext ctx
+
+    public constructor(AppContext ctx) {
+        this.ctx = ctx
+    }
+
+    public object build() {
+        object app = express()
+        app.use(express.json())
+        AppContext ctx = this.ctx
+        JsonUtil json = ctx.json
+
+        app.get("/health", (object req, object res) => {
+            send(res, ApiResponse(200, json.healthOk()))
+        })
+
+        app.get("/api/products", (object req, object res) => {
+            send(res, ctx.products.listAll())
+        })
+        app.post("/api/products", (object req, object res) => {
+            send(res, ctx.products.create(req.body))
+        })
+        app.get("/api/products/:id", (object req, object res) => {
+            send(res, ctx.products.getOne((int)(req.params.id)))
+        })
+        app.put("/api/products/:id", (object req, object res) => {
+            send(res, ctx.products.update((int)(req.params.id), req.body))
+        })
+        app.delete("/api/products/:id", (object req, object res) => {
+            send(res, ctx.products.delete((int)(req.params.id)))
+        })
+
+        app.get("/api/orders", (object req, object res) => {
+            send(res, ctx.orders.listAll())
+        })
+        app.post("/api/orders", (object req, object res) => {
+            send(res, ctx.orders.create(req.body))
+        })
+        app.get("/api/orders/:id", (object req, object res) => {
+            send(res, ctx.orders.getOne((int)(req.params.id)))
+        })
+        app.put("/api/orders/:id", (object req, object res) => {
+            send(res, ctx.orders.update((int)(req.params.id), req.body))
+        })
+        app.delete("/api/orders/:id", (object req, object res) => {
+            send(res, ctx.orders.delete((int)(req.params.id)))
+        })
+
+        app.get("/api/orders/:id/lines", (object req, object res) => {
+            send(res, ctx.lines.listForOrder((int)(req.params.id)))
+        })
+        app.post("/api/orders/:id/lines", (object req, object res) => {
+            send(res, ctx.lines.create((int)(req.params.id), req.body))
+        })
+        app.get("/api/orders/:id/lines/:n", (object req, object res) => {
+            send(res, ctx.lines.getOne((int)(req.params.id), (int)(req.params.n)))
+        })
+        app.put("/api/orders/:id/lines/:n", (object req, object res) => {
+            send(res, ctx.lines.update((int)(req.params.id), (int)(req.params.n), req.body))
+        })
+        app.delete("/api/orders/:id/lines/:n", (object req, object res) => {
+            send(res, ctx.lines.delete((int)(req.params.id), (int)(req.params.n)))
+        })
+
+        app.use((object req, object res) => {
+            send(res, ApiResponse(404, json.errorBody("not found")))
+        })
+
+        return app
+    }
+}

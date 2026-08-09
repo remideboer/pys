@@ -1,0 +1,86 @@
+# Order CRUD handlers (Express body → ApiResponse).
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from repositories
+import Order from models
+
+package class OrderApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public ApiResponse listAll() {
+        return ApiResponse(200, this.json.ordersToList(this.store.orders.all()))
+    }
+
+    public ApiResponse getOne(int id) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("order not found"))
+        }
+        return ApiResponse(200, this.json.orderToDict(found))
+    }
+
+    public ApiResponse create(object body) {
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        string status = "placed"
+        if ("status" in b) {
+            status = str(b["status"])
+        }
+        nullable<string> customerRef = null
+        if ("customerRef" in b) {
+            var raw = b["customerRef"]
+            if (raw != null) {
+                customerRef = str(raw)
+            }
+        }
+        Order o = this.store.orders.add(status, customerRef)
+        return ApiResponse(201, this.json.orderToDict(o)).withLocation(
+            "/api/orders/" + str(o.id())
+        )
+    }
+
+    public ApiResponse update(int id, object body) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("order not found"))
+        }
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        Order o = found
+        if ("status" in b) {
+            o.status = str(b["status"])
+        }
+        if ("customerRef" in b) {
+            var raw = b["customerRef"]
+            if (raw == null) {
+                o.customerRef = null
+            } else {
+                o.customerRef = str(raw)
+            }
+        }
+        this.store.orders.save(o)
+        return ApiResponse(200, this.json.orderToDict(o))
+    }
+
+    public ApiResponse delete(int id) {
+        nullable<Order> found = this.store.orders.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("order not found"))
+        }
+        this.store.orders.remove(found)
+        return ApiResponse(204, null)
+    }
+}

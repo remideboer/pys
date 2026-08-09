@@ -1,0 +1,85 @@
+# Product CRUD handlers (Express body → ApiResponse).
+
+import ApiResponse from api_response
+import JsonUtil from json_util
+import ShopStore from repositories
+import Product from models
+
+package class ProductApi {
+    private ShopStore store
+    private JsonUtil json
+
+    public constructor(ShopStore store, JsonUtil json) {
+        this.store = store
+        this.json = json
+    }
+
+    public ApiResponse listAll() {
+        return ApiResponse(200, this.json.productsToList(this.store.products.all()))
+    }
+
+    public ApiResponse getOne(int id) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("product not found"))
+        }
+        return ApiResponse(200, this.json.productToDict(found))
+    }
+
+    public ApiResponse create(object body) {
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        if (!("sku" in b) || !("name" in b) || !("unitPrice" in b)) {
+            return ApiResponse(400, this.json.errorBody("sku, name, unitPrice required"))
+        }
+        string sku = str(b["sku"])
+        string name = str(b["name"])
+        float price = (float)(b["unitPrice"])
+        if (sku == "" || name == "") {
+            return ApiResponse(400, this.json.errorBody("sku and name must be non-empty"))
+        }
+        Product p = this.store.products.add(sku, name, price)
+        return ApiResponse(201, this.json.productToDict(p)).withLocation(
+            "/api/products/" + str(p.id())
+        )
+    }
+
+    public ApiResponse update(int id, object body) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("product not found"))
+        }
+        nullable<dict> rawBody = this.json.asObject(body)
+        if (rawBody == null) {
+            return ApiResponse(400, this.json.errorBody("JSON object required"))
+        }
+        dict b = rawBody
+        Product p = found
+        if ("sku" in b) {
+            p.sku = str(b["sku"])
+        }
+        if ("name" in b) {
+            p.name = str(b["name"])
+        }
+        if ("unitPrice" in b) {
+            p.unitPrice = (float)(b["unitPrice"])
+        }
+        if ("active" in b) {
+            p.active = (bool)(b["active"])
+        }
+        this.store.products.save(p)
+        return ApiResponse(200, this.json.productToDict(p))
+    }
+
+    public ApiResponse delete(int id) {
+        nullable<Product> found = this.store.products.get(id)
+        if (found == null) {
+            return ApiResponse(404, this.json.errorBody("product not found"))
+        }
+        this.store.products.remove(found)
+        return ApiResponse(204, null)
+    }
+}
