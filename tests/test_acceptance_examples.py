@@ -160,7 +160,12 @@ def test_root_teaching_examples_run_under_javascript(
         assert run_source(path, target="javascript") == 0, name
 
 
-def test_by_target_python_mysql_compiles() -> None:
-    path = ROOT / "examples" / "by-target" / "python" / "mysql" / "main.pys"
+def test_by_target_python_mysql_compiles(
+    mysql_connector_site: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Compile gate only — stub site; no live MySQL / no host-installed connector."""
+    silo = ROOT / "examples" / "by-target" / "python" / "mysql"
+    path = silo / "main.pys"
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(silo))
     modules = transpile_with_modules(path, target="python")
     assert "mysql.connector" in modules[path.stem]

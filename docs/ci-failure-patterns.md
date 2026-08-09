@@ -149,6 +149,13 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Prevent | Allow explicit run of files under source roots named `test`/`tests`; cover in `test_entrypoint_panic`; run shop/webserver suite gates before release |
 | Related | CER-025; ADR-017 |
 
+### 13. By-target Python MySQL compile needs stub site (CI vs local)
+
+| Symptom | `test_by_target_python_mysql_compiles` fails on Linux CI: `Cannot find module 'mysql.connector'`; may pass locally if the connector is installed on the host Python |
+| Cause | Acceptance transpile of `examples/by-target/python/mysql` used bare `transpile_with_modules` with no `mysql_connector_site` / `PYS_WORKSPACE_ROOT`; silo has `[dependencies]` but no lock and CI has no wheel |
+| Prevent | Same pattern as `test_shop_mysql_main_transpiles` / `test_example_database_shop_transpiles`: inject `mysql_connector_site`, set `PYS_WORKSPACE_ROOT` to the silo; never rely on a host-installed `mysql-connector-python` for compile gates. Before push: `python -m pytest -q tests/test_acceptance_examples.py` (and full `pytest -q` / `local_ci` on release) |
+| Related | CER-001 §4; ADR-002; examples/by-target |
+
 ---
 
 ## How to add a pattern
