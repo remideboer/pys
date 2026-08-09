@@ -1,26 +1,25 @@
-# PYS Language Support 0.0.89
+# PYS Language Support 0.0.90
 
-Trunk-based extension release. Tag: `extension-v0.0.89`.
+Trunk-based extension release. Tag: `extension-v0.0.90`.
 
-Host **runtime ensure**: probe Python/Node on PATH, prompt curated installs,
-and pick emit target when creating a project. Run `python tools/local_ci.py`
-before tagging.
+Express REST shop on the JavaScript target, plus JS emit fixes needed to run
+it from **Run Project**. Run `python tools/local_ci.py` before tagging.
 
 ## Highlights
 
-- **Create Project target:** QuickPick Python or JavaScript; writes
-  `[project].target` into the new `pys.toml`.
-- **PATH probe + install:** on activate, Create Project, Run, and Select Emit
-  Target — missing Python (always) or Node (JavaScript) offers **Install** with
-  a stable version list (`winget` / `brew` / docs; trusted workspace only,
-  ADR-001 / CER-051).
-- Continues 0.0.88: JavaScript emit, Run Project, unified `pys.toml` deps.
+- **Express shop examples:** `examples/by-target/javascript/rest-api/express/`
+  — memory → mysql2 → JWT (ports 8190–8192); layered OO, no DIY HTTP stack.
+- **JS emit:** map `express` (default import), `crypto` / `buffer`; `json` and
+  `time` shims; entity `export`; dict/`self.` subscript fixes.
+- **Deps Lock:** npm-only `pys.toml` explains that there is no `pys.lock`
+  (packages install on Run).
+- Continues 0.0.89: runtime ensure on Create Project / activate.
 
 ## Install
 
 - **Marketplace** (when published): `ext install remideboer.pys-language`
-- **ELO / offline:** download `pys-student-0.0.89.zip`, unzip, run `install.cmd`
+- **ELO / offline:** download `pys-student-0.0.90.zip`, unzip, run `install.cmd`
   (Windows) or `./install.sh` (macOS/Linux), then reload the editor.
 
-Requires Python 3.10+ on PATH (or install via the new prompt). For JavaScript
-Run/Debug, also install Node.js. The pack includes the bundled transpiler.
+Requires Python 3.10+ on PATH. For JavaScript Run/Debug, also install Node.js.
+The pack includes the bundled transpiler.
