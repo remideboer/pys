@@ -8,8 +8,23 @@
 const path = require('path');
 const fs = require('fs');
 
-const PYSTOML = `[project]
+const MAIN_SOURCE = `# Expected output:
+# Hello from PYS
+
+print("Hello from PYS")
+`;
+
+/**
+ * @param {'python' | 'javascript' | string} [target]
+ * @returns {string}
+ */
+function buildPysToml(target = 'python') {
+  const emit = String(target || 'python').trim().toLowerCase() === 'javascript'
+    ? 'javascript'
+    : 'python';
+  return `[project]
 main = "src/main.pys"
+target = "${emit}"
 
 [source_roots]
 main = "src"
@@ -26,19 +41,30 @@ version = ">=3.10"
 # [dependencies.npm]
 # mysql2 = "^3.11.0"
 `;
+}
 
-const MAIN_SOURCE = `# Expected output:
-# Hello from PYS
-
-print("Hello from PYS")
-`;
+/** Default template (python target) for tests / docs. */
+const PYSTOML = buildPysToml('python');
 
 /**
  * @param {string} projectRoot absolute path
- * @param {{ existsSync?: Function, mkdirSync?: Function, writeFileSync?: Function }} [io]
- * @returns {{ root: string, created: string[] }}
+ * @param {{ target?: string, existsSync?: Function, mkdirSync?: Function, writeFileSync?: Function } | object} [optionsOrIo]
+ * @param {{ existsSync?: Function, mkdirSync?: Function, writeFileSync?: Function }} [maybeIo]
+ * @returns {{ root: string, created: string[], target: string }}
  */
-function createPysProjectScaffold(projectRoot, io = fs) {
+function createPysProjectScaffold(projectRoot, optionsOrIo = fs, maybeIo) {
+  let options = {};
+  let io = fs;
+  if (optionsOrIo && typeof optionsOrIo.existsSync === 'function') {
+    io = optionsOrIo;
+  } else if (optionsOrIo && typeof optionsOrIo === 'object') {
+    options = optionsOrIo;
+    io = maybeIo && typeof maybeIo.existsSync === 'function' ? maybeIo : fs;
+  }
+  const emitTarget =
+    String(options.target || 'python').trim().toLowerCase() === 'javascript'
+      ? 'javascript'
+      : 'python';
   const root = path.resolve(projectRoot);
   if (!io.existsSync(root)) {
     io.mkdirSync(root, { recursive: true });
@@ -69,12 +95,14 @@ function createPysProjectScaffold(projectRoot, io = fs) {
     io.writeFileSync(mainPath, MAIN_SOURCE, 'utf8');
     created.push(path.join('src', 'main.pys'));
   }
-  io.writeFileSync(tomlPath, PYSTOML, 'utf8');
+  const toml = buildPysToml(emitTarget);
+  io.writeFileSync(tomlPath, toml, 'utf8');
   created.push('pys.toml');
-  return { root, created };
+  return { root, created, target: emitTarget };
 }
 
 module.exports = {
+  buildPysToml,
   createPysProjectScaffold,
   MAIN_SOURCE,
   PYSTOML,

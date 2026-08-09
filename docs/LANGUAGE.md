@@ -1105,9 +1105,11 @@ directory; lexical and realpath escapes are rejected. The IDE action **Set as
 entrypoint** writes this same field.
 
 Optional `[project].target` is `"python"` or `"javascript"` (default
-`python`). **Run Project** (context menu on `pys.toml`) runs `[project].main`
-with that target and does not use the workspace status-bar emit selector.
-Bare `python -m transpiler run <file>` without `--target` also reads
+`python`). **Create PYS Project** writes this field after a target QuickPick
+and may prompt to install missing Python / Node (ADR-001). **Run Project**
+(context menu on `pys.toml`) runs `[project].main` with that target and does
+not use the workspace status-bar emit selector. Bare
+`python -m transpiler run <file>` without `--target` also reads
 `[project].target` from the nearest `pys.toml`.
 
 Only the resolved entrypoint receives top-level `propagate`/panic semantics.

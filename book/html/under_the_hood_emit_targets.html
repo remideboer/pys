@@ -172,7 +172,9 @@ main = &quot;main.pys&quot;
 target = &quot;javascript&quot;
 </code></pre>
 <p><strong>Run Project</strong> (right-click <code>pys.toml</code>) uses <code>[project].target</code> (default
-<code>python</code>) and does not follow the status-bar selector. CLI:</p>
+<code>python</code>) and does not follow the status-bar selector. <strong>Create PYS Project</strong>
+also asks for this target and can prompt to install Python / Node when missing
+from PATH. CLI:</p>
 <pre><code class="language-text">python -m transpiler run examples/main.pys --target javascript
 </code></pre>
 <p>Without <code>--target</code>, <code>transpiler run</code> also reads <code>[project].target</code> from the

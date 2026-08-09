@@ -96,6 +96,9 @@ test('extension manifest exposes entrypoint command and result language support'
   assert.match(extension, /runProjectFromToml/);
   assert.match(extension, /readProjectTarget/);
   assert.match(extension, /skipEntrypointReconcile/);
+  assert.match(extension, /ensureRuntimesForTarget/);
+  assert.match(extension, /maybePromptHostRuntimesOnActivate/);
+  assert.match(extension, /require\('\.\/runtime-ensure'\)/);
   assert.match(extension, /diagnostic\.code === 'pys\.entrypoint-conflict'/);
   assert.match(extension, /Set this file as entrypoint/);
   assert.match(grammar, /punctuation\.definition\.decorator\.pys/);

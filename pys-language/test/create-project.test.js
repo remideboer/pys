@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const {
+  buildPysToml,
   createPysProjectScaffold,
   MAIN_SOURCE,
   PYSTOML,
@@ -14,19 +15,33 @@ test('createPysProjectScaffold writes src, tests, and unified pys.toml', () => {
   try {
     const result = createPysProjectScaffold(root);
     assert.equal(result.root, path.resolve(root));
+    assert.equal(result.target, 'python');
     assert.equal(
       fs.readFileSync(path.join(root, 'src', 'main.pys'), 'utf8'),
       MAIN_SOURCE,
     );
     assert.ok(fs.existsSync(path.join(root, 'tests', '.gitkeep')));
     assert.equal(fs.readFileSync(path.join(root, 'pys.toml'), 'utf8'), PYSTOML);
-    assert.match(PYSTOML, /\[project\]\nmain = "src\/main\.pys"/);
+    assert.match(PYSTOML, /\[project\]\nmain = "src\/main\.pys"\ntarget = "python"/);
     assert.match(PYSTOML, /\[interpreter\]/);
     assert.match(PYSTOML, /\[dependencies\]/);
     assert.ok(!fs.existsSync(path.join(root, 'pys.deps')));
     assert.ok(result.created.includes(path.join('src', 'main.pys')));
     assert.ok(result.created.includes('pys.toml'));
     assert.ok(!result.created.includes('pys.deps'));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('createPysProjectScaffold writes javascript target when requested', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pys-scaffold-js-'));
+  try {
+    const result = createPysProjectScaffold(root, { target: 'javascript' });
+    assert.equal(result.target, 'javascript');
+    const toml = fs.readFileSync(path.join(root, 'pys.toml'), 'utf8');
+    assert.match(toml, /target = "javascript"/);
+    assert.equal(toml, buildPysToml('javascript'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

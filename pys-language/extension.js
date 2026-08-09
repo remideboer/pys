@@ -23,6 +23,14 @@ const {
 } = require('./debug-map');
 const { createPysProjectScaffold } = require('./create-project');
 const {
+  installPlan,
+  probeNode,
+  probePython,
+  resolveToolchainNeeds,
+  stableVersionsFor,
+  terminalInstallLine,
+} = require('./runtime-ensure');
+const {
   findProjectManifest,
   normalizedRelativeMain,
   readProjectMain,
@@ -1206,7 +1214,100 @@ function activate(context) {
   }
 
   function getPythonExecutable() {
-    return process.platform === 'win32' ? 'python' : 'python3';
+    return probePython() || (process.platform === 'win32' ? 'python' : 'python3');
+  }
+
+  /** @type {Set<string>} session-local "don't ask again" for missing runtimes on Run */
+  const runtimePromptDismissed = new Set();
+
+  /**
+   * @param {'python' | 'node'} kind
+   * @param {{ force?: boolean }} [options]
+   * @returns {Promise<boolean>} true when the runtime is available (or install was started)
+   */
+  async function ensureRuntimeKind(kind, options = {}) {
+    const force = Boolean(options.force);
+    const found = kind === 'node' ? probeNode() : probePython();
+    if (found) {
+      return true;
+    }
+    if (!vscode.workspace.isTrusted) {
+      vscode.window.showErrorMessage(
+        kind === 'node'
+          ? 'Trust this workspace before installing Node.js.'
+          : 'Trust this workspace before installing Python.',
+      );
+      return false;
+    }
+    if (!force && runtimePromptDismissed.has(kind)) {
+      vscode.window.showErrorMessage(
+        kind === 'node'
+          ? 'Node.js was not found on PATH. Install Node, then reload the IDE.'
+          : 'Python was not found on PATH. Install Python, then reload the IDE.',
+      );
+      return false;
+    }
+    const label = kind === 'node' ? 'Node.js' : 'Python';
+    const choice = await vscode.window.showErrorMessage(
+      `${label} is not on PATH. Install a stable version now?`,
+      'Install',
+      'Not now',
+    );
+    if (choice !== 'Install') {
+      if (!force) {
+        runtimePromptDismissed.add(kind);
+      }
+      return false;
+    }
+    const versions = stableVersionsFor(kind);
+    const picked = await vscode.window.showQuickPick(
+      versions.map((v) => ({
+        label: v.label,
+        description: v.description,
+        detail: v.id,
+        versionId: v.id,
+      })),
+      {
+        title: `Select ${label} version`,
+        placeHolder: 'Stable releases shipped with the extension catalog',
+      },
+    );
+    if (!picked) {
+      return false;
+    }
+    const plan = installPlan(kind, picked.versionId, process.platform);
+    const term = vscode.window.createTerminal({
+      name: `Install ${label}`,
+    });
+    term.show();
+    term.sendText(terminalInstallLine(plan), true);
+    vscode.window.showInformationMessage(
+      `${plan.hint} After install completes, reload the window so PATH updates.`,
+    );
+    // Install is asynchronous in a terminal; Create/Run should not continue as if ready.
+    return false;
+  }
+
+  /**
+   * @param {string} emitTarget
+   * @param {{ force?: boolean }} [options]
+   * @returns {Promise<boolean>}
+   */
+  async function ensureRuntimesForTarget(emitTarget, options = {}) {
+    const needs = resolveToolchainNeeds(emitTarget);
+    if (needs.python) {
+      const ok = await ensureRuntimeKind('python', options);
+      if (!ok) {
+        return false;
+      }
+    }
+    if (needs.node) {
+      const ok = await ensureRuntimeKind('node', options);
+      if (!ok) {
+        return false;
+      }
+    }
+    return true;
   }
 
   function getBundledRoot() {
@@ -1376,6 +1477,10 @@ function activate(context) {
         return;
       }
     }
+    const emitTarget = options.emitTarget || getEmitTarget();
+    if (!(await ensureRuntimesForTarget(emitTarget))) {
+      return;
+    }
     const bundled = ensureBundledTranspiler();
     if (!bundled) {
       return;
@@ -1396,7 +1501,6 @@ function activate(context) {
       vscode.window.showErrorMessage('PYS file left the workspace before execution.');
       return;
     }
-    const emitTarget = options.emitTarget || getEmitTarget();
     const term = vscode.window.createTerminal({
       name: emitTarget === 'javascript' ? 'Run PYS (Node)' : 'Run PYS',
       cwd: workDir,
@@ -1454,6 +1558,9 @@ function activate(context) {
     }
     if (!vscode.workspace.isTrusted) {
       vscode.window.showErrorMessage('Trust this workspace before debugging PYS files.');
+      return;
+    }
+    if (!(await ensureRuntimesForTarget(emitTarget))) {
       return;
     }
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
@@ -1992,6 +2099,36 @@ function activate(context) {
       vscode.window.showErrorMessage('Trust this workspace before creating a PYS project.');
       return;
     }
+    const targetPick = await vscode.window.showQuickPick(
+      [
+        {
+          label: 'Python',
+          description: 'CPython emit / run (reference)',
+          detail: 'Writes [project].target = "python"',
+          target: 'python',
+        },
+        {
+          label: 'JavaScript',
+          description: 'Node.js emit / run',
+          detail: 'Writes [project].target = "javascript" (still needs Python for the transpiler)',
+          target: 'javascript',
+        },
+      ],
+      {
+        title: 'PYS project emit target',
+        placeHolder: 'Which backend should this project target?',
+      },
+    );
+    if (!targetPick) {
+      return;
+    }
+    const emitTarget = targetPick.target;
+    if (!(await ensureRuntimesForTarget(emitTarget, { force: true }))) {
+      vscode.window.showWarningMessage(
+        'Create Project cancelled until the required runtime is installed. Run Create PYS Project again after install.',
+      );
+      return;
+    }
     const folders = await vscode.window.showOpenDialog({
       canSelectFiles: false,
       canSelectFolders: true,
@@ -2002,12 +2139,12 @@ function activate(context) {
     if (!folders || !folders.length) {
       return;
     }
-    const target = folders[0].fsPath;
+    const folderPath = folders[0].fsPath;
     try {
-      const result = createPysProjectScaffold(target);
+      const result = createPysProjectScaffold(folderPath, { target: emitTarget });
       const open = 'Open Folder';
       const choice = await vscode.window.showInformationMessage(
-        `PYS project created in ${result.root} (src/, tests/, pys.toml).`,
+        `PYS project created in ${result.root} (src/, tests/, pys.toml, target=${result.target}).`,
         open,
       );
       if (choice === open) {
@@ -2067,6 +2204,9 @@ function activate(context) {
     );
     refreshEmitTargetUi();
     vscode.window.setStatusBarMessage(`PYS emit target: ${picked.label}`, 2500);
+    if (!(await ensureRuntimesForTarget(picked.target))) {
+      return;
+    }
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {
@@ -2230,6 +2370,41 @@ function activate(context) {
     // Compatibility alias for older keybindings and command URIs.
     vscode.commands.registerCommand('pys.setAsMainFile', setAsEntrypoint),
   );
+
+  /**
+   * On activate: offer Python install if missing; if workspace toml/setting
+   * targets JavaScript, offer Node too (once per session when dismissed).
+   */
+  async function maybePromptHostRuntimesOnActivate() {
+    if (!vscode.workspace.isTrusted) {
+      return;
+    }
+    await ensureRuntimeKind('python');
+    let needsNode = getEmitTarget() === 'javascript';
+    if (!needsNode) {
+      const folders = vscode.workspace.workspaceFolders || [];
+      for (const folder of folders) {
+        const tomlPath = path.join(folder.uri.fsPath, 'pys.toml');
+        if (!fs.existsSync(tomlPath)) {
+          continue;
+        }
+        try {
+          const emit = readProjectTarget(fs.readFileSync(tomlPath, 'utf8')) || 'python';
+          if (emit === 'javascript') {
+            needsNode = true;
+            break;
+          }
+        } catch (_error) {
+          // Invalid target: ignore on activate; Run Project will surface the error.
+        }
+      }
+    }
+    if (needsNode) {
+      await ensureRuntimeKind('node');
+    }
+  }
+
+  void maybePromptHostRuntimesOnActivate();
 
   // Markdown preview highlighter for ```pys fences (editor uses TextMate injection).
   return {

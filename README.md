@@ -594,7 +594,11 @@ Stdlib modules need no entry. Non-stdlib packages must be listed under
 Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
 editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
 **PYS** icon offers **Create PYS Project** (`src` / `tests` + unified `pys.toml`),
-including a runnable manifest-selected `src/main.pys`.
+including a runnable manifest-selected `src/main.pys`. Create Project asks for
+the emit **target** (Python / JavaScript) and prompts to install missing
+Python (always) or Node (JavaScript) via the OS package manager when PATH is
+empty (trusted workspace only — ADR-001 / CER-051). On activate, the extension
+also probes Python (and Node when the workspace target is JavaScript).
 
 - Put the authoritative entrypoint in `pys.toml`, for example
   `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.

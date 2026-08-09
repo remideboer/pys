@@ -18,6 +18,7 @@ mark it done here.
 | [F-008](#f-008-rest-shop-mysql) | Examples / REST shop | **Done** | MySQL-backed shop REST (`examples/rest-api/shop/mysql`) |
 | [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | **Done** | JWT auth layer (`examples/rest-api/shop/jwt`) |
 | [F-010](#f-010-javascript-dap-and-os-thread-tasks) | Emit / IDE | **Partial** | Node DAP **Done**; OS-thread JS tasks still deferred |
+| [F-011](#f-011-host-runtime-ensure) | IDE | **Done** | Create Project target + PATH probe / install prompt |
 
 ---
 
@@ -209,4 +210,18 @@ CI: transpile gate only (live DB is local/manual).
    **Still deferred.**
 
 Until item 2: JS `tasks` use the cooperative `_PysTaskGroup` trampoline.
+
+---
+
+## F-011: Host runtime ensure
+
+| | |
+| --- | --- |
+| Status | **Done** |
+| Source | [CER-051](evolution/CER-051-runtime-ensure.md); [ADR-001](adr/ADR-001-trust-boundaries.md) |
+
+Create Project picks emit target; PATH probe + curated install prompt for
+Python (always) and Node (JavaScript). Visible `winget` / `brew` / docs only
+in trusted workspaces. Activation also probes Python (and Node when the
+workspace target is JavaScript).
 

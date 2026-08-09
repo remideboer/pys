@@ -23,9 +23,16 @@ surface.
    by default.
 2. **Explicit Run / Debug:** allowed only in a trusted workspace; may install
    from a hashed lock and use runtime introspection.
-3. **Project files must not choose the interpreter binary** (`interpreter.path`
-   rejected); the operator chooses Python by how they invoke the tool.
-4. **Opt-in Go to Definition into locked `pys.deps`:** extension setting
+3. **Explicit host-runtime install (activate / Create Project / Run):** when
+   Python (always) or Node (JavaScript target) is missing from PATH, the
+   extension may prompt **Install** and run the OS package manager (`winget` /
+   `brew`) or open official docs in a **visible** terminal — only after Yes in
+   a trusted workspace. No silent download of foreign binaries into the
+   extension.
+4. **Project files must not choose the interpreter binary** (`interpreter.path`
+   rejected); the operator chooses Python by how they invoke the tool (or via
+   the explicit install prompt above).
+5. **Opt-in Go to Definition into locked `pys.deps`:** extension setting
    `pys.navigateLibrarySources` (default **false**) may pass
    `--library-sources` on **symbol lookup only**, so F12 can open Python
    sources from the hashed env. Diagnostics / save analysis stay fail-closed.
@@ -40,6 +47,9 @@ surface.
 - Extension packaging must keep shipping a bundled transpiler for helpers.
 - Library navigation is a deliberate privilege (setting + workspace trust), not
   the default edit path.
+- Host runtime install is operator-driven (curated version list + package
+  manager / docs), never analysis-time and never unattended on untrusted
+  folders.
 
 ## Rejected alternatives
 

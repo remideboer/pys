@@ -24,7 +24,9 @@ target = "javascript"
 ```
 
 **Run Project** (right-click `pys.toml`) uses `[project].target` (default
-`python`) and does not follow the status-bar selector. CLI:
+`python`) and does not follow the status-bar selector. **Create PYS Project**
+also asks for this target and can prompt to install Python / Node when missing
+from PATH. CLI:
 
 ```text
 python -m transpiler run examples/main.pys --target javascript

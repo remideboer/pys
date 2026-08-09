@@ -27,12 +27,13 @@ primary-sidebar PYS surface for project setup.
 ### Post-behavior
 
 - Activity bar **PYS** view with welcome + title **Create PYS Project**.
-- Scaffold: `src/main.pys`, `tests/.gitkeep`, `pys.toml`
-  (`[project].main` plus `main`/`test` source roots), and template `pys.deps`
-  (`[interpreter]` + empty `[dependencies]`).
+- Scaffold: `src/main.pys`, `tests/.gitkeep`, unified `pys.toml`
+  (`[project].main`, optional emit `target`, `main`/`test` source roots,
+  `[interpreter]` / `[dependencies]` comments). See **CER-051** for target
+  QuickPick + host runtime ensure.
 - The starter source has documented output and is immediately runnable through
   the same manifest entrypoint contract as CLI, Run Main, and Debug.
-- Pure scaffold helper unit-tested; extension **0.0.67**.
+- Pure scaffold helper unit-tested.
 
 ### Evidence
 
