@@ -1,6 +1,10 @@
 /**
- * PYS ↔ Python line-map helpers for Debug Adapter remapping (F-004 / UX maturity).
+ * PYS ↔ generated (Python or JavaScript) line-map helpers for DAP remapping.
  * Pure functions — unit-tested without VS Code.
+ *
+ * Sidecars may use ``py`` or ``js`` for the generated path / line keys.
+ * Registry indexes both under ``byGenerated`` (alias ``byPy``) so one tracker
+ * serves debugpy and pwa-node.
  */
 const fs = require('fs');
 const path = require('path');
@@ -31,38 +35,66 @@ function normalizePathKey(filePath) {
   return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
 }
 
+/** True for emitted debug targets (.py / .mjs / .js). */
+function isGeneratedSourcePath(filePath) {
+  const lower = String(filePath || '').toLowerCase();
+  return (
+    lower.endsWith('.py') || lower.endsWith('.mjs') || lower.endsWith('.js')
+  );
+}
+
+function generatedLineFromEntry(entry) {
+  if (!entry || typeof entry !== 'object') {
+    return null;
+  }
+  if (typeof entry.js === 'number') {
+    return entry.js;
+  }
+  if (typeof entry.py === 'number') {
+    return entry.py;
+  }
+  return null;
+}
+
 /**
  * Load sidecars from prepare_debug `maps` dict: stem -> pysmap.json path.
- * Returns { byPy, byPys, names, hidePrefixes } registries.
+ * Returns { byGenerated, byPy, byPys, names, hidePrefixes } registries.
+ * ``byPy`` / ``pysToPy`` / ``pyToPys`` remain Python-era aliases of generated.
  */
 function loadMapRegistry(mapFiles, readFileSync = fs.readFileSync) {
-  const byPy = new Map();
+  const byGenerated = new Map();
   const byPys = new Map();
   const names = Object.create(null);
   let hidePrefixes = [...DEFAULT_HIDE_PREFIXES];
   for (const mapPath of Object.values(mapFiles || {})) {
     const raw = JSON.parse(readFileSync(mapPath, 'utf8'));
+    const generatedPath = raw.js || raw.py;
     const record = {
       pys: raw.pys,
-      py: raw.py,
-      // pys line -> first py line
-      pysToPy: new Map(),
-      // py line -> pys line
-      pyToPys: new Map(),
+      generated: generatedPath,
+      py: generatedPath,
+      js: raw.js || null,
+      // pys line -> first generated line
+      pysToGenerated: new Map(),
+      // generated line -> pys line
+      generatedToPys: new Map(),
     };
+    // Backward-compatible aliases used by older call sites / tests.
+    record.pysToPy = record.pysToGenerated;
+    record.pyToPys = record.generatedToPys;
     for (const entry of raw.lines || []) {
-      const py = entry.py;
+      const gen = generatedLineFromEntry(entry);
       const pys = entry.pys;
-      if (typeof py !== 'number' || typeof pys !== 'number') {
+      if (typeof gen !== 'number' || typeof pys !== 'number') {
         continue;
       }
-      if (!record.pysToPy.has(pys)) {
-        record.pysToPy.set(pys, py);
+      if (!record.pysToGenerated.has(pys)) {
+        record.pysToGenerated.set(pys, gen);
       }
-      record.pyToPys.set(py, pys);
+      record.generatedToPys.set(gen, pys);
     }
-    if (raw.py) {
-      byPy.set(normalizePathKey(raw.py), record);
+    if (generatedPath) {
+      byGenerated.set(normalizePathKey(generatedPath), record);
     }
     if (raw.pys) {
       byPys.set(normalizePathKey(raw.pys), record);
@@ -79,55 +111,81 @@ function loadMapRegistry(mapFiles, readFileSync = fs.readFileSync) {
   for (const [emitted, display] of Object.entries(names)) {
     emittedByPys[display] = emitted;
   }
-  return { byPy, byPys, names, emittedByPys, hidePrefixes };
+  return {
+    byGenerated,
+    byPy: byGenerated,
+    byPys,
+    names,
+    emittedByPys,
+    hidePrefixes,
+  };
 }
 
-/** Map a .pys breakpoint line to a generated .py line (exact, else next mapped). */
+/** Map a .pys breakpoint line to a generated line (exact, else next mapped). */
 function mapPysBreakpoint(registry, pysPath, pysLine) {
   const record = registry.byPys.get(normalizePathKey(pysPath));
   if (!record) {
     return null;
   }
-  if (record.pysToPy.has(pysLine)) {
-    return { pyPath: record.py, pyLine: record.pysToPy.get(pysLine) };
+  const hit = (genLine) => ({
+    generatedPath: record.generated,
+    generatedLine: genLine,
+    pyPath: record.generated,
+    pyLine: genLine,
+  });
+  if (record.pysToGenerated.has(pysLine)) {
+    return hit(record.pysToGenerated.get(pysLine));
   }
   let best = null;
-  for (const [pys, py] of record.pysToPy.entries()) {
+  for (const [pys, gen] of record.pysToGenerated.entries()) {
     if (pys >= pysLine && (best === null || pys < best.pys)) {
-      best = { pys, py };
+      best = { pys, gen };
     }
   }
   if (best) {
-    return { pyPath: record.py, pyLine: best.py };
+    return hit(best.gen);
   }
   return null;
 }
 
-/** Map a generated .py stack line back to .pys when known. */
-function mapPyStackFrame(registry, pyPath, pyLine) {
-  const record = registry.byPy.get(normalizePathKey(pyPath));
+/** Map a generated stack line back to .pys when known. */
+function mapPyStackFrame(registry, generatedPath, generatedLine) {
+  const record = (registry.byGenerated || registry.byPy).get(
+    normalizePathKey(generatedPath),
+  );
   if (!record) {
     return null;
   }
-  if (record.pyToPys.has(pyLine)) {
-    return { pysPath: record.pys, pysLine: record.pyToPys.get(pyLine) };
+  if (record.generatedToPys.has(generatedLine)) {
+    return {
+      pysPath: record.pys,
+      pysLine: record.generatedToPys.get(generatedLine),
+    };
   }
   // Walk backward for nearest mapped line (stepping often lands mid-statement).
-  for (let line = pyLine; line >= 1; line -= 1) {
-    if (record.pyToPys.has(line)) {
-      return { pysPath: record.pys, pysLine: record.pyToPys.get(line) };
+  for (let line = generatedLine; line >= 1; line -= 1) {
+    if (record.generatedToPys.has(line)) {
+      return {
+        pysPath: record.pys,
+        pysLine: record.generatedToPys.get(line),
+      };
     }
   }
   return null;
 }
 
 /** Map only a generated line that has its own PYS statement origin. */
-function mapExactPyStackFrame(registry, pyPath, pyLine) {
-  const record = registry.byPy.get(normalizePathKey(pyPath));
-  if (!record || !record.pyToPys.has(pyLine)) {
+function mapExactPyStackFrame(registry, generatedPath, generatedLine) {
+  const record = (registry.byGenerated || registry.byPy).get(
+    normalizePathKey(generatedPath),
+  );
+  if (!record || !record.generatedToPys.has(generatedLine)) {
     return null;
   }
-  return { pysPath: record.pys, pysLine: record.pyToPys.get(pyLine) };
+  return {
+    pysPath: record.pys,
+    pysLine: record.generatedToPys.get(generatedLine),
+  };
 }
 
 function remapSetBreakpointsArgs(registry, args) {
@@ -148,11 +206,15 @@ function remapSetBreakpointsArgs(registry, args) {
     if (!mapped) {
       return logMessage === bp.logMessage ? bp : { ...bp, logMessage };
     }
-    return { ...bp, line: mapped.pyLine, logMessage };
+    return { ...bp, line: mapped.generatedLine, logMessage };
   });
   return {
     ...args,
-    source: { ...args.source, path: record.py, name: path.basename(record.py) },
+    source: {
+      ...args.source,
+      path: record.generated,
+      name: path.basename(record.generated),
+    },
     breakpoints,
   };
 }
@@ -162,9 +224,8 @@ function remapBreakpoint(registry, bp, preferredPysPath) {
     return bp;
   }
   const srcPath = (bp.source && bp.source.path) || '';
-  let pyPath = srcPath;
   let pysPath = preferredPysPath;
-  if (srcPath.toLowerCase().endsWith('.py')) {
+  if (isGeneratedSourcePath(srcPath)) {
     const mapped = mapPyStackFrame(registry, srcPath, bp.line);
     if (mapped) {
       return {
@@ -180,8 +241,12 @@ function remapBreakpoint(registry, bp, preferredPysPath) {
   }
   if (pysPath) {
     const record = registry.byPys.get(normalizePathKey(pysPath));
-    if (record && srcPath && normalizePathKey(srcPath) === normalizePathKey(record.py)) {
-      const mapped = mapPyStackFrame(registry, record.py, bp.line);
+    if (
+      record &&
+      srcPath &&
+      normalizePathKey(srcPath) === normalizePathKey(record.generated)
+    ) {
+      const mapped = mapPyStackFrame(registry, record.generated, bp.line);
       if (mapped) {
         return {
           ...bp,
@@ -222,7 +287,7 @@ function remapStackFrames(registry, frames) {
   }
   return frames.map((frame) => {
     const srcPath = frame.source && frame.source.path;
-    if (!srcPath || !srcPath.toLowerCase().endsWith('.py')) {
+    if (!srcPath || !isGeneratedSourcePath(srcPath)) {
       return frame;
     }
     const mapped = mapPyStackFrame(registry, srcPath, frame.line);
@@ -315,7 +380,7 @@ function rewriteExpressionIdentifiers(registry, expression) {
 }
 
 /**
- * Rewrite `{expr}` segments in a DAP logpoint message to emitted Python names.
+ * Rewrite `{expr}` segments in a DAP logpoint message to emitted names.
  * Plain text outside braces is unchanged. See VS Code / IntelliJ logpoints.
  */
 function rewriteLogMessageExpressions(registry, logMessage) {
@@ -397,6 +462,7 @@ module.exports = {
   DEFAULT_HIDE_PREFIXES,
   isWindowsAbsolutePath,
   normalizePathKey,
+  isGeneratedSourcePath,
   loadMapRegistry,
   mapPysBreakpoint,
   mapPyStackFrame,

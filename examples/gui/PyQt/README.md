@@ -1,6 +1,6 @@
 # Pokemon TCG (PyQt6) example — isolated silo
 
-Master–detail UI with PyQt6 from `pys.deps`. Click a catalog/collection/deck
+Master–detail UI with PyQt6 from `pys.toml` `[dependencies]`. Click a catalog/collection/deck
 row to see details instantly. Tk twin: `examples/gui/pokemontcg/`.
 
 ```bash

@@ -1,6 +1,0 @@
-[interpreter]
-	version: >=3.10
-
-[dependencies]
-	h2
-		version: 4.1.0

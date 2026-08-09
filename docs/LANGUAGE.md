@@ -4,9 +4,17 @@ Formal grammar: [`language.ebnf`](language.ebnf) (EBNF).
 Visual railroad diagrams: [`language-railroad.html`](language-railroad.html) (open in a browser).  
 Toolchain architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
-PYS is a typed teaching language that transpiles to Python. Prefer **brace style**
-(`{` … `}`), as in `examples/main.pys`. Indentation style and legacy `then:` / `do:`
-forms remain for compatibility (see Appendix A in the EBNF).
+PYS is a typed teaching language with a shared front end (lex → parse → sem)
+and **dual emit backends**: **Python** (reference — full surface, deps, DAP)
+and **JavaScript** / Node (teaching-core + DAP via js-debug; see
+[ADR-030](adr/ADR-030-javascript-emit-target.md)). Prefer **brace style**
+(`{` … `}`), as in `examples/main.pys`. Indentation style and legacy `then:` /
+`do:` forms remain for compatibility (see Appendix A in the EBNF).
+
+Select the backend with CLI `--target python|javascript` or the extension
+setting `pys.emitTarget`. Target-specific packages live under
+`examples/by-target/` (`pys.toml` `[dependencies]` / `[dependencies.npm]` →
+central repository).
 
 Statements end at newline by default. An optional `;` terminator is allowed
 after any statement; it is **required** only when two statements share one
@@ -595,9 +603,9 @@ Built-in recoverable parsers return results directly:
 - `parseInt(text)` → `result<int, string>`
 - `parseFloat(text)` → `result<float, string>`
 
-They succeed or fail according to the Python emit target's `int` / `float`
-constructors (a deliberate dependency: see the temperature-converter teaching
-note on “looks like” vs “is parseable”). Prefer them over bare `int(...)` /
+They succeed or fail according to the active emit target's number parsing
+(Python `int`/`float`, or the JS helpers `_pys_parse_int` /
+`_pys_parse_float`). Prefer them over bare `int(...)` /
 `float(...)` when the caller must handle bad text without crashing.
 
 Console I/O builtins (no import):
@@ -695,7 +703,7 @@ Rules:
    start — write `super(args)` when the parent constructor needs arguments.
    Subclasses may call public members of a **library** parent (for example
    `inherits QMainWindow` → `this.setWindowTitle(...)`) when that parent was
-   imported via `pys.deps` / the standard library.
+   imported via `pys.toml` `[dependencies]` / the standard library.
    Instance fields are accessed as `this.name` inside methods/constructors —
    bare field identifiers are an error.
 7. `closed` may mark a class that should not be subclassed further
@@ -1053,29 +1061,51 @@ Rules:
 | `global` | Any importer |
 | `module` | Explicit module scope (same file family) |
 
-### Project source roots (`pys.toml`)
+### Project manifest (`pys.toml`)
 
-Optional project-manifest (not a language keyword). Declares roots whose
-relative paths define package identity, and may declare the authoritative
-entrypoint:
+One file holds entrypoint, source roots, interpreter constraint, and
+dependencies (Python and optional npm):
 
 ```toml
 [project]
 main = "src/app.pys"
+# Optional emit/runtime target for Run Project and bare `transpiler run`
+# (default: python). Status-bar `pys.emitTarget` still applies to Run File.
+# target = "python"  # or "javascript"
 
 [source_roots]
 main = "src"
 test = "tests"
+
+[interpreter]
+version = ">=3.10"
+
+[dependencies]
+"mysql-connector-python" = { version = "8.0.33", build = "run" }
+
+[dependencies.npm]
+mysql2 = "^3.11.0"
 ```
 
 Without `[source_roots]`, same-folder remains the package rule. Mismatched
 packages emit `pys.package-mismatch` with a move-file quick fix in the IDE.
+
+Python pins require a sibling hashed `pys.lock` (ADR-002). npm pins install on
+Run into `~/.pys/repository/npm/<fingerprint>/` (no student-facing
+`package.json`). Legacy indented `pys.deps` / silo `package.json` still load
+with a deprecation warning.
 
 When `[project].main` exists, Run and Debug reject a different selected file.
 Without it, a directly invoked `.pys` file is the entrypoint. A bare directory
 run requires `[project].main`. The configured path must resolve to an existing
 `.pys` file inside the manifest directory; lexical and realpath escapes are
 rejected. The IDE action **Set as entrypoint** writes this same field.
+
+Optional `[project].target` is `"python"` or `"javascript"` (default
+`python`). **Run Project** (context menu on `pys.toml`) runs `[project].main`
+with that target and does not use the workspace status-bar emit selector.
+Bare `python -m transpiler run <file>` without `--target` also reads
+`[project].target` from the nearest `pys.toml`.
 
 Only the resolved entrypoint receives top-level `propagate`/panic semantics.
 Imported modules do not: top-level `propagate` in an imported file is a compile
@@ -1107,13 +1137,13 @@ import greet from toolbox       # one name
 import QApplication, QWidget from PyQt6.QtWidgets   # several names
 import all from toolbox         # all package/global exports
 import math                     # Python stdlib
-import tkinter as tk            # stdlib / pys.deps package with alias
-import mysql.connector          # package from pys.deps
+import tkinter as tk            # stdlib / locked package with alias
+import mysql.connector          # package from pys.toml [dependencies]
 ```
 
 - Local `.pys` modules: file / folder discovery; only `package` / `global`
   names are importable.
-- Python packages: stdlib or entries in `pys.deps` (see README). Alias `as` is
+- Python packages: stdlib or entries in `pys.toml` `[dependencies]` (see README). Alias `as` is
   for those packages.
 
 ---
@@ -1314,4 +1344,5 @@ For a full walkthrough, see `examples/main.pys`, `examples/classes.pys`, and
 | `examples/abstract_classes.pys` | Abstract classes / template method |
 | `examples/concurrency/` | Concurrency showcase (`main.pys` offline; `http/http_main.pys` live HTTPS package) |
 | `transpiler/language_spec.py` | Line translation rules |
-| `pys.deps` | External Python dependencies (not language syntax) |
+| `pys.toml` | Project entrypoint, source roots, and dependencies (not language syntax) |
+| `pys.lock` | Hashed Python lock sibling (ADR-002) |

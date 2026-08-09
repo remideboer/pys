@@ -122,6 +122,7 @@
 <ul>
 <li><a href="under_the_hood_entrypoint.html">12.1. From source file to running process</a></li>
 <li><a href="under_the_hood_memory.html">12.2. Processes, calls, and memory</a></li>
+<li><a href="under_the_hood_emit_targets.html">12.3. Emit targets: Python and JavaScript</a></li>
 </ul>
 <span class="section">13. Exercises</span>
 <ul>
@@ -153,17 +154,15 @@ apps. <strong>ttkbootstrap</strong> solves this: it&rsquo;s a theming layer buil
 color-variant styling for every standard widget, without inventing a
 new, incompatible widget API the way some alternatives do.</p>
 <p>ttkbootstrap is a third-party package. In a PYS project you declare it in
-<code>pys.deps</code> and lock it (same pattern as PyQt in the examples tree), then
+<code>pys.toml</code> and lock it (same pattern as PyQt in the examples tree), then
 run from that project folder so <code>PYS_WORKSPACE_ROOT</code> picks up the lock:</p>
-<pre><code class="language-text">[interpreter]
-    version: &gt;=3.10
+<pre><code class="language-toml">[interpreter]
+version = &quot;&gt;=3.10&quot;
 
 [dependencies]
-    ttkbootstrap
-        version: 1.10.1
-        build: run
+ttkbootstrap = { version = &quot;1.10.1&quot;, build = &quot;run&quot; }
 </code></pre>
-<pre><code class="language-bash">python -m transpiler deps lock pys.deps
+<pre><code class="language-bash">python -m transpiler deps lock
 python -m transpiler run main.pys
 </code></pre>
 <p>A complete silo is under

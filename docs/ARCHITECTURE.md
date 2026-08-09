@@ -1,6 +1,7 @@
 # Architecture
 
-How the PYS toolchain is structured and how a `.pys` file becomes running Python.
+How the PYS toolchain is structured and how a `.pys` file becomes running
+Python (reference) or JavaScript (Node MVP).
 
 Related docs: [LANGUAGE.md](LANGUAGE.md) · [CONCURRENCY.md](CONCURRENCY.md) · [pipeline-migration.md](pipeline-migration.md) · [evolution/](evolution/README.md) (code CERs) · [adr/](adr/README.md) (ADRs) · [TODO-FUTURE.md](TODO-FUTURE.md) (deferred work)
 
@@ -22,23 +23,31 @@ flowchart LR
   end
 
   subgraph runtime [Runtime]
-    Gen["Generated .py"]
+    GenPy["Generated .py"]
+    GenJs["Generated .mjs"]
     Py["Python 3.10+"]
+    Node["Node.js"]
     Repo["~/.pys/repository"]
   end
 
   PYS --> Ext
   PYS --> CLI
-  Ext --> CLI
+  Ext -->|"--target"| CLI
   CLI --> Deps
   Deps --> Repo
   CLI --> Pipe
-  Pipe --> Gen
-  Gen --> Py
+  Pipe --> GenPy
+  Pipe --> GenJs
+  GenPy --> Py
+  GenJs --> Node
   Repo -.-> Py
 ```
 
-Students edit `.pys`. Run/transpile goes through the CLI (or the extension wrapping it). Dependencies are resolved from `pys.deps` into a shared cache; generated Python then runs with that `PYTHONPATH`.
+Students edit `.pys`. Run/transpile goes through the CLI (or the extension
+wrapping it). Default emit target is **Python**; `--target javascript` emits
+ESM for **Node** (MVP surface — [ADR-030](adr/ADR-030-javascript-emit-target.md)).
+Dependencies are resolved from `pys.deps` into a shared cache for the Python
+backend; generated Python then runs with that `PYTHONPATH`.
 
 ---
 
@@ -60,7 +69,8 @@ flowchart TB
   end
 
   subgraph back [Back end]
-    Emit["emit/python.emit"]
+    EmitPy["emit/python.emit"]
+    EmitJs["emit/javascript.emit"]
     Over["emit/overloads"]
     Conc["concurrency.CONCURRENCY_PREAMBLE"]
     Imp["imports.make_resolver"]
@@ -77,26 +87,31 @@ flowchart TB
   Ide --> Imp
   Ide --> Parse
   Public --> Pipe["pipeline.compile_pys"]
-  Pipe --> Lex --> Parse --> AST --> Sem --> Emit
-  Emit --> Over
-  Emit --> Conc
-  Emit --> Imp
-  Emit --> Spec
+  Pipe --> Lex --> Parse --> AST --> Sem
+  Sem --> EmitPy
+  Sem --> EmitJs
+  EmitPy --> Over
+  EmitPy --> Conc
+  EmitPy --> Imp
+  EmitPy --> Spec
+  EmitJs --> Imp
   Imp --> Parse
 ```
 
 | Module | Role |
 | --- | --- |
-| `pipeline.py` | Orchestrates **lex → parse → sem → emit** |
+| `pipeline.py` | Orchestrates **lex → parse → sem → emit** (`target=`) |
 | `lex.py` | Tokens with line/column spans |
 | `parse.py` | Brace (and limited indent) recursive-descent → AST |
 | `ast_nodes.py` | Target-neutral statements / expressions |
 | `sem.py` | Semantic checks on the AST (types, access, tasks, arrays, …) |
-| `emit/python.py` | Python text from AST |
-| `emit/overloads.py` | Post-pass arity dispatch for overloaded methods |
-| `concurrency.py` | Shared tasks/await/shared/atomic preamble |
+| `emit/python.py` | Python text from AST (reference backend) |
+| `emit/javascript.py` | JavaScript (ESM) MVP from AST — [ADR-030](adr/ADR-030-javascript-emit-target.md) |
+| `npm_deps.py` | `package.json` → central `~/.pys/repository/npm/<digest>` (Run-time install) |
+| `emit/overloads.py` | Post-pass arity dispatch for overloaded methods (Python) |
+| `concurrency.py` | Shared tasks/await/shared/atomic preamble (Python) |
 | `imports.py` | AST-based `.pys` import resolution / visibility |
-| `deps.py` | `pys.deps` → `~/.pys/repository` |
+| `deps.py` | `pys.deps` → `~/.pys/repository` (Python run path) |
 | `transpiler.py` | Public `transpile` / `run_source` / `TranspileError` |
 | `language_spec.py` | Shared string helpers for emit; `LANGUAGE.translate_line` tests |
 | `ide.py` | Go-to-definition / diagnostics via AST pipeline |
@@ -114,11 +129,11 @@ flowchart TD
   Parse --> Tree["Module AST"]
   Tree --> Sem["3. Sem<br/>analyze"]
   Sem -->|fault| Err
-  Sem --> Emit["4. Emit Python"]
-  Emit --> Walk["Emitter.emit_module"]
-  Walk --> Over["rewrite_overloaded_methods"]
+  Sem --> Emit["4. Emit<br/>python | javascript"]
+  Emit --> Walk["emit_with_map"]
+  Walk --> Over["rewrite_overloaded_methods<br/>(Python)"]
   Walk --> ImpRes["imports.resolve<br/>when source_path set"]
-  Over --> Out["Python source string"]
+  Over --> Out["Backend source string"]
   ImpRes --> Out
 ```
 
@@ -126,8 +141,8 @@ flowchart TD
 
 1. **Lex** — Reject illegal tokens early (e.g. tabs).
 2. **Parse** — Prefer brace mode when `{`/`}` are present. Indent-mode (`then` / `func` / `repeat`) only when there are no braces. Failures raise `TranspileError` (no legacy fallback).
-3. **Sem** — Owns language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared/atomic capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set.
-4. **Emit** — Walk AST to Python; inject concurrency preamble and ABC/array imports as needed; resolve `.pys` imports via `ImportResolver`; rewrite method overloads.
+3. **Sem** — Owns language rules on the AST: `let`, bindings, const/fix, loop counters, typed interpolation, member access, sealed/interfaces, shared/atomic capture (Policy B), arrays, class modifiers, await placement/cycles, import-name access when `source_path` is set. Target-neutral (not rewritten per backend).
+4. **Emit** — Walk AST to Python (reference) or JavaScript MVP; inject concurrency preamble and ABC/array imports as needed on Python; resolve `.pys` imports via `ImportResolver`; rewrite method overloads (Python).
 
 ---
 
@@ -140,19 +155,31 @@ sequenceDiagram
   participant Deps as deps.py
   participant Pipe as compile_pys
   participant Py as python.exe
+  participant Node as node
 
-  User->>CLI: run path.pys
-  CLI->>Deps: find pys.deps / resolve packages
-  Deps-->>CLI: PYTHONPATH entries
-  CLI->>Pipe: compile_pys(source, source_path)
+  User->>CLI: run path.pys --target python|javascript
+  CLI->>Deps: find pys.deps / package.json
+  alt target python
+    Deps-->>CLI: PYTHONPATH (central repo)
+  else target javascript
+    Deps-->>CLI: ~/.pys/repository/npm/<digest> (on Run)
+  end
+  CLI->>Pipe: compile_pys(source, source_path, target)
   Note over Pipe: lex → parse → sem → emit
-  Pipe-->>CLI: Python text
-  CLI->>CLI: write temp .py (+ sibling modules)
-  CLI->>Py: exec with env PYTHONPATH
-  Py-->>User: stdout / traceback
+  alt target python
+    Pipe-->>CLI: Python text
+    CLI->>CLI: write temp .py (+ sibling modules)
+    CLI->>Py: exec with env PYTHONPATH
+    Py-->>User: stdout / traceback
+  else target javascript
+    Pipe-->>CLI: JavaScript ESM
+    CLI->>CLI: write .mjs under npm runs/ or temp
+    CLI->>Node: node|qode path.mjs
+    Node-->>User: stdout / traceback
+  end
 ```
 
-`transpile` stops after `compile_pys` and writes the requested `.py` file (no execute).
+`transpile` stops after `compile_pys` and writes the requested `.py` or `.mjs` file (no execute).
 
 ---
 
@@ -302,9 +329,9 @@ The extension packages a copy of the transpiler (`npm run prepare`). Diagnostics
 
 | Goal | Touch |
 | --- | --- |
-| New syntax | `lex` → `parse` → `ast_nodes` → `sem` (if checked) → `emit/python` · update `docs/language.ebnf` |
+| New syntax | `lex` → `parse` → `ast_nodes` → `sem` (if checked) → `emit/python` (+ `emit/javascript` MVP when in scope) · update `docs/language.ebnf` |
 | New semantic rule | Prefer `sem.py` + tests under `tests/test_sem.py` |
-| New backend | Add `emit/<target>.py` and a `target=` branch in `pipeline.compile_pys` |
+| New backend | Add `emit/<target>.py` and a `target=` branch in `pipeline.compile_pys` (JS MVP: [ADR-030](adr/ADR-030-javascript-emit-target.md); Java/C# still open) |
 | New dependency behavior | `deps.py` + `pys.deps` docs in the README |
 
 Characterization goldens: `tests/golden/` (regen only via `python tests/golden/regen.py`).

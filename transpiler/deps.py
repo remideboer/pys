@@ -23,12 +23,14 @@ from typing import Iterable
 from .workspace import WORKSPACE_ROOT_ENV
 
 DEPS_FILENAME = "pys.deps"
+MANIFEST_FILENAME = "pys.toml"
 LOCK_FILENAME = "pys.lock"
 REPO_ROOT_ENV = "PYS_REPO"
 DEFAULT_REPO = Path.home() / ".pys" / "repository"
 DEFAULT_INDEX_URL = "https://pypi.org/simple"
 # Safe version tokens for pip (no spaces, options, URLs, or env markers).
 _VERSION_RE = re.compile(r"^(?=.*\d)[A-Za-z0-9][A-Za-z0-9._+-]*$")
+_LEGACY_DEPS_WARNED: set[str] = set()
 
 
 @dataclass
@@ -105,7 +107,7 @@ def _workspace_stop_at(
 
 
 def find_deps_file(start: Path, *, stop_at: Path | None = None) -> Path | None:
-    """Walk upward from start (file or dir) looking for pys.deps.
+    """Walk upward for ``pys.toml`` (deps sections) or legacy ``pys.deps``.
 
     Discovery stops at ``stop_at``, ``PYS_WORKSPACE_ROOT``, or the nearest
     ``pys.toml`` project root — whichever applies first — so a nested project
@@ -132,15 +134,174 @@ def _find_deps_file_cached(start_key: str, bound_key: str | None) -> Path | None
                 directory.relative_to(bound)
             except ValueError:
                 break
+        toml = directory / MANIFEST_FILENAME
+        if toml.is_file():
+            if _toml_has_python_deps_sections(toml):
+                return toml
+            legacy = directory / DEPS_FILENAME
+            if legacy.is_file():
+                return legacy
+            # Project root without Python dep declarations — do not climb.
+            return None
         candidate = directory / DEPS_FILENAME
         if candidate.is_file():
             return candidate
         if bound is not None and directory == bound:
             break
-        # Stop at filesystem root-ish: when parent == self
         if directory.parent == directory:
             break
     return None
+
+
+def _warn_legacy_deps(path: Path) -> None:
+    key = str(path.resolve())
+    if key in _LEGACY_DEPS_WARNED:
+        return
+    _LEGACY_DEPS_WARNED.add(key)
+    import warnings
+
+    warnings.warn(
+        f"{path.name} is deprecated; declare [interpreter] / [dependencies] in "
+        f"{MANIFEST_FILENAME} instead (see docs/LANGUAGE.md).",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def _load_tomllib_data(text: str, *, label: str) -> dict:
+    try:
+        import tomllib
+    except ModuleNotFoundError as exc:  # pragma: no cover - py<3.11
+        raise DepsError(
+            f"Reading {label} requires Python 3.11+ (tomllib)."
+        ) from exc
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise DepsError(f"Invalid {label}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise DepsError(f"{label} must contain a TOML table")
+    return data
+
+
+def _toml_has_python_deps_sections(manifest: Path) -> bool:
+    try:
+        data = _load_tomllib_data(
+            manifest.read_text(encoding="utf-8"),
+            label=str(manifest),
+        )
+    except (OSError, DepsError):
+        return False
+    if "interpreter" in data:
+        return True
+    deps = data.get("dependencies")
+    if not isinstance(deps, dict):
+        return False
+    for name, _spec in deps.items():
+        if name == "npm":
+            continue
+        return True
+    # Explicit empty [dependencies] (no npm-only) still counts.
+    return "dependencies" in data and not deps
+
+
+def parse_deps_from_toml(text: str, *, source_path: Path | None = None) -> DepsConfig | None:
+    """Parse ``[interpreter]`` / ``[dependencies]`` from pys.toml (skip ``npm``)."""
+    label = str(source_path) if source_path else MANIFEST_FILENAME
+    data = _load_tomllib_data(text, label=label)
+    deps_raw = data.get("dependencies")
+    has_interpreter = "interpreter" in data
+    has_python_dep = False
+    if isinstance(deps_raw, dict):
+        has_python_dep = any(name != "npm" for name in deps_raw) or (
+            "dependencies" in data and not deps_raw
+        )
+    if not has_interpreter and not has_python_dep:
+        return None
+
+    config = DepsConfig(source_path=source_path)
+    interpreter = data.get("interpreter")
+    if interpreter is not None:
+        if not isinstance(interpreter, dict):
+            raise DepsError(f"{label}: [interpreter] must be a TOML table")
+        if "path" in interpreter:
+            raise DepsError(
+                f"{label}: interpreter.path is not allowed in project config. "
+                "Select Python explicitly, for example: "
+                "`/path/to/python -m transpiler run main.pys`."
+            )
+        for key in interpreter:
+            if key != "version":
+                raise DepsError(f"{label}: unknown interpreter key '{key}'")
+        raw_ver = interpreter.get("version")
+        if raw_ver is None:
+            pass
+        elif isinstance(raw_ver, str):
+            config.interpreter.version = (
+                None if raw_ver.strip().lower() in {"", "any"} else raw_ver.strip()
+            )
+        else:
+            raise DepsError(f"{label}: interpreter.version must be a string")
+
+    deps = data.get("dependencies")
+    if deps is None:
+        return config
+    if not isinstance(deps, dict):
+        raise DepsError(f"{label}: [dependencies] must be a TOML table")
+    for name, spec in deps.items():
+        if name == "npm":
+            continue
+        if not isinstance(name, str) or not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9_.+\-]*", name
+        ):
+            raise DepsError(f"{label}: invalid dependency name '{name}'")
+        dep = Dependency(name=name)
+        if isinstance(spec, str):
+            value = spec.strip()
+            if value.lower() in {"", "latest"}:
+                dep.version = None
+            elif not _VERSION_RE.fullmatch(value):
+                raise DepsError(
+                    f"{label}: invalid dependency version '{value}' for {name}. "
+                    "Use a simple version like '1.2.3' or 'latest'."
+                )
+            else:
+                dep.version = value
+        elif isinstance(spec, dict):
+            for key in spec:
+                if key not in {"version", "build"}:
+                    raise DepsError(
+                        f"{label}: unknown dependency key '{key}' for {name}"
+                    )
+            raw_ver = spec.get("version")
+            if raw_ver is None:
+                dep.version = None
+            elif isinstance(raw_ver, str):
+                value = raw_ver.strip()
+                if value.lower() in {"", "latest"}:
+                    dep.version = None
+                elif not _VERSION_RE.fullmatch(value):
+                    raise DepsError(
+                        f"{label}: invalid dependency version '{value}' for {name}."
+                    )
+                else:
+                    dep.version = value
+            else:
+                raise DepsError(f"{label}: version for {name} must be a string")
+            raw_build = spec.get("build")
+            if raw_build is not None:
+                if not isinstance(raw_build, str) or raw_build not in {"run", "test"}:
+                    raise DepsError(
+                        f"{label}: build for {name} must be 'run' or 'test'"
+                    )
+                dep.build = raw_build
+        else:
+            raise DepsError(
+                f"{label}: dependency '{name}' must be a version string or "
+                'inline table {{ version = "…", build = "run" }}'
+            )
+        config.dependencies.append(dep)
+    return config
 
 
 def parse_deps_text(text: str, *, source_path: Path | None = None) -> DepsConfig:
@@ -265,11 +426,40 @@ def parse_deps_text(text: str, *, source_path: Path | None = None) -> DepsConfig
     return config
 
 
+def _load_deps_from_path(path: Path) -> DepsConfig | None:
+    path = path.resolve()
+    text = path.read_text(encoding="utf-8")
+    if path.name == MANIFEST_FILENAME:
+        return parse_deps_from_toml(text, source_path=path)
+    if path.name == DEPS_FILENAME:
+        _warn_legacy_deps(path)
+        return parse_deps_text(text, source_path=path)
+    raise DepsError(
+        f"Dependency file must be named {MANIFEST_FILENAME} or {DEPS_FILENAME}: {path}"
+    )
+
+
 def load_deps(start: Path, *, stop_at: Path | None = None) -> DepsConfig | None:
+    """Load Python deps from ``pys.toml`` (preferred) or legacy ``pys.deps``."""
+    start = start.expanduser()
+    try:
+        start = start.resolve()
+    except OSError:
+        return None
+    if start.is_file() and start.name in {MANIFEST_FILENAME, DEPS_FILENAME}:
+        if start.name == MANIFEST_FILENAME:
+            cfg = _load_deps_from_path(start)
+            if cfg is not None:
+                return cfg
+            legacy = start.parent / DEPS_FILENAME
+            if legacy.is_file():
+                return _load_deps_from_path(legacy)
+            return None
+        return _load_deps_from_path(start)
     path = find_deps_file(start, stop_at=stop_at)
     if path is None:
         return None
-    return parse_deps_text(path.read_text(encoding="utf-8"), source_path=path)
+    return _load_deps_from_path(path)
 
 
 def _normalize_package_dir(name: str) -> str:
@@ -496,7 +686,7 @@ def _require_pinned_dependencies(config: DepsConfig, build: str = "run") -> list
         names = ", ".join(sorted(unpinned))
         raise DepsError(
             f"Run dependencies must use exact versions before locking: {names}. "
-            "Set `version: X.Y.Z` in pys.deps."
+            f"Set `version = \"X.Y.Z\"` under [dependencies] in {MANIFEST_FILENAME}."
         )
     return deps
 
@@ -515,7 +705,7 @@ def _lock_path(config: DepsConfig, lock_path: Path | None = None) -> Path:
     if lock_path is not None:
         return lock_path.resolve()
     if config.source_path is None:
-        raise DepsError("Cannot locate pys.lock without a source pys.deps path.")
+        raise DepsError("Cannot locate pys.lock without a source pys.toml / pys.deps path.")
     return config.source_path.resolve().with_name(LOCK_FILENAME)
 
 
@@ -551,7 +741,7 @@ def read_lock(path: Path) -> DepsLock:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise DepsError(
-            f"Missing {LOCK_FILENAME}. Run `python -m transpiler deps lock {DEPS_FILENAME}`."
+            f"Missing {LOCK_FILENAME}. Run `python -m transpiler deps lock {MANIFEST_FILENAME}`."
         ) from exc
     except (OSError, json.JSONDecodeError) as exc:
         raise DepsError(f"Invalid dependency lock {path}: {exc}") from exc
@@ -598,7 +788,10 @@ def validate_lock(lock: DepsLock, config: DepsConfig, build: str = "run") -> Non
     expected_python = f"{sys.version_info.major}.{sys.version_info.minor}"
     expected_platform = sysconfig.get_platform()
     if lock.deps_fingerprint != deps_fingerprint(config, build):
-        raise DepsError(f"{LOCK_FILENAME} is stale; regenerate it after changing {DEPS_FILENAME}.")
+        raise DepsError(
+            f"{LOCK_FILENAME} is stale; regenerate it after changing "
+            f"[dependencies] in {MANIFEST_FILENAME}."
+        )
     if lock.python != expected_python:
         raise DepsError(
             f"{LOCK_FILENAME} targets Python {lock.python}, running Python is {expected_python}."

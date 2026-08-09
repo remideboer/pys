@@ -1,9 +1,0 @@
-[interpreter]
-	version: >=3.10
-
-[dependencies]
-#	mysql-connector-python
-#		version: 8.0.33
-#
-	pyqt6
-		version: 6.11.0

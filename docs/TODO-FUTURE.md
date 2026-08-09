@@ -17,6 +17,7 @@ mark it done here.
 | [F-007](#f-007-webserver-full-spec-remainder) | Examples / webserver | **Done** | FR8 re-checkout, MockDownstream faults, 429 inbound shed, write timeout, manual 1k soak |
 | [F-008](#f-008-rest-shop-mysql) | Examples / REST shop | **Done** | MySQL-backed shop REST (`examples/rest-api/shop/mysql`) |
 | [F-009](#f-009-rest-shop-jwt) | Examples / REST shop | **Done** | JWT auth layer (`examples/rest-api/shop/jwt`) |
+| [F-010](#f-010-javascript-dap-and-os-thread-tasks) | Emit / IDE | **Partial** | Node DAP **Done**; OS-thread JS tasks still deferred |
 
 ---
 
@@ -187,3 +188,25 @@ CI: transpile gate only (live DB is local/manual).
 | Blocked by | ~~[F-008](#f-008-rest-shop-mysql)~~ |
 
 `POST /api/login` + Bearer gate on writes; MySQL persistence unchanged. Port 8092.
+
+---
+
+## F-010: JavaScript DAP and OS-thread tasks
+
+| | |
+| --- | --- |
+| Status | **Partial** (item 1 Done; item 2 Deferred) |
+| Source | [ADR-030](adr/ADR-030-javascript-emit-target.md); [CER-050](evolution/CER-050-javascript-emit-target.md) §9–10; [ADR-014](adr/ADR-014-pys-dap-stepping.md) |
+
+### Intent
+
+1. **Node DAP** — map breakpoints / stack / variables from emitted `.mjs` +
+   `.pysmap.json` back to `.pys` (parity with ADR-014 for Python). **Done**
+   (prepare_debug `--target javascript`, target-neutral `debug-map.js`,
+   `pwa-node` via `debug-launch.js`).
+2. **OS-thread (or worker) tasks** — real interleaving for shared-race teaching
+   demos; keep cooperative await as the default or document the switch.
+   **Still deferred.**
+
+Until item 2: JS `tasks` use the cooperative `_PysTaskGroup` trampoline.
+

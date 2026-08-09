@@ -69,8 +69,8 @@ Or just the extension suite: `cd pys-language && npm test`.
 
 | Symptom | `examples/main.pys failed to transpile: …` or `test_acceptance_*` / `test_examples_root_pys_transpile` |
 | Cause | Sem/parser now rejects code the showcase already uses (generics, ctors, named args, nullability, ordering, …) |
-| Prevent | After any sem assignability / call-binding change: transpile `examples/main.pys` and run `tests/test_acceptance_examples.py` before commit |
-| Related | CER-048 §2 (generic ctor vs unbound `T`); pipeline migration A5 |
+| Prevent | After any sem assignability / call-binding change: transpile `examples/main.pys` (also `--target javascript`) and run `tests/test_acceptance_examples.py` before commit |
+| Related | CER-048 §2 (generic ctor vs unbound `T`); CER-050 §6; pipeline migration A5; MySQL/GUI under `examples/by-target/` / `examples/gui/` |
 
 ### 2. `run_source` / deps inherit monorepo `pys.lock`
 
@@ -120,6 +120,27 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Cause | Added/removed `examples/patterns/**/*.pys` without updating folder counts |
 | Prevent | Update gate asserts in the same commit as new demos; run the gate + full pytest before done |
 | Related | CER-049; Feature maturity DoD §12 |
+
+### 9. Node DAP / prepare_debug JS / extension remap drift
+
+| Symptom | `test_prepare_debug` fails on missing `js` / `runtimeExecutable`; npm `debug-map` / `debug-launch` tests fail; Debug still Python-gated in extension |
+| Cause | JS emit maps use `js` keys but prepare/remap still assume `py`; launch adapter or tracker registered only for `python` |
+| Prevent | Same change set: `prepare_debug(..., target=javascript)`, target-neutral `debug-map.js`, `debug-launch.js` + tracker for `pwa-node`; run `python -m pytest -q` and `python tools/local_ci.py` |
+| Related | ADR-014; CER-014; CER-050 §10; F-010 item 1 |
+
+### 10. Still teaching `pys.deps` / silo `package.json`
+
+| Symptom | Docs/book/examples still show indented `pys.deps` or student `package.json`; create-project writes `pys.deps`; lock menus only on `pys.deps` |
+| Cause | Deps unified into `pys.toml` without a dependent hunt |
+| Prevent | Same change set: migrate corpus, create-project, menus, README/book/LANGUAGE/ADRs; `python tools/local_ci.py` |
+| Related | ADR-002; ADR-030; CER-050 §11 |
+
+### 11. Run Project / `[project].target` drift
+
+| Symptom | Right-click `pys.toml` missing **Run Project**; JS silos need status-bar emit; CLI `--target` default ignores toml |
+| Cause | Manifest target / `pys.runProject` landed without menus, silo tomls, or CLI default |
+| Prevent | Same change set: `load_project_emit_target`, extension menus (`navigation@0`), migrate by-target `target = "javascript"`, tests in `test_entrypoint_panic` + `project-main.test.js`; `python tools/local_ci.py` |
+| Related | ADR-030; CER-050 §12 |
 
 ---
 

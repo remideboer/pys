@@ -7,10 +7,9 @@ const {
   createPysProjectScaffold,
   MAIN_SOURCE,
   PYSTOML,
-  PYS_DEPS,
 } = require('../create-project');
 
-test('createPysProjectScaffold writes src, tests, pys.toml, and template pys.deps', () => {
+test('createPysProjectScaffold writes src, tests, and unified pys.toml', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pys-scaffold-'));
   try {
     const result = createPysProjectScaffold(root);
@@ -22,10 +21,12 @@ test('createPysProjectScaffold writes src, tests, pys.toml, and template pys.dep
     assert.ok(fs.existsSync(path.join(root, 'tests', '.gitkeep')));
     assert.equal(fs.readFileSync(path.join(root, 'pys.toml'), 'utf8'), PYSTOML);
     assert.match(PYSTOML, /\[project\]\nmain = "src\/main\.pys"/);
-    assert.equal(fs.readFileSync(path.join(root, 'pys.deps'), 'utf8'), PYS_DEPS);
+    assert.match(PYSTOML, /\[interpreter\]/);
+    assert.match(PYSTOML, /\[dependencies\]/);
+    assert.ok(!fs.existsSync(path.join(root, 'pys.deps')));
     assert.ok(result.created.includes(path.join('src', 'main.pys')));
     assert.ok(result.created.includes('pys.toml'));
-    assert.ok(result.created.includes('pys.deps'));
+    assert.ok(!result.created.includes('pys.deps'));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

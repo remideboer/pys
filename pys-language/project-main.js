@@ -17,7 +17,32 @@ function normalizedRelativeMain(projectRoot, filePath) {
 }
 
 function readProjectMain(text) {
+  return _readProjectStringField(text, 'main');
+}
+
+/**
+ * Optional `[project].target` — ``python`` | ``javascript``, or '' if absent.
+ * Invalid values throw.
+ */
+function readProjectTarget(text) {
+  const raw = _readProjectStringField(text, 'target');
+  if (!raw) {
+    return '';
+  }
+  const value = raw.trim().toLowerCase();
+  if (value !== 'python' && value !== 'javascript') {
+    throw new Error(
+      `[project].target must be "python" or "javascript", got ${JSON.stringify(raw)}`,
+    );
+  }
+  return value;
+}
+
+function _readProjectStringField(text, field) {
   let inProject = false;
+  const pattern = new RegExp(
+    `^${field}\\s*=\\s*(['"])(.*?)\\1\\s*(?:#.*)?$`,
+  );
   for (const line of String(text || '').split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) {
@@ -30,7 +55,7 @@ function readProjectMain(text) {
     if (!inProject) {
       continue;
     }
-    const match = /^main\s*=\s*(['"])(.*?)\1\s*(?:#.*)?$/.exec(trimmed);
+    const match = pattern.exec(trimmed);
     if (match) {
       return match[2].trim();
     }
@@ -127,6 +152,7 @@ module.exports = {
   findProjectManifest,
   normalizedRelativeMain,
   readProjectMain,
+  readProjectTarget,
   resolveManifestMain,
   setProjectMain,
 };

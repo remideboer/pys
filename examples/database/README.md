@@ -57,7 +57,7 @@ password=123456789
 database=shop
 ```
 
-Requires `mysql-connector-python` (repo root [`pys.deps`](../../pys.deps)).
+Requires `mysql-connector-python` (see [`examples/by-target/python/mysql/`](../by-target/python/mysql/) `pys.toml`).
 
 ## Schema + seed data
 

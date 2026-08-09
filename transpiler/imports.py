@@ -719,6 +719,13 @@ class ImportResolver:
         ):
             present = lock_declares_module(self.source_path, ref)
         if not present:
+            # npm packages known to the JS emitter (nodegui, mysql2, …)
+            from .emit.js_packages import JS_PACKAGE_MAP
+
+            if ref not in JS_PACKAGE_MAP:
+                return None
+            present = True
+        if not present:
             return None
 
         top = ref.split(".", 1)[0]
@@ -798,8 +805,10 @@ class ImportResolver:
             if external is not None:
                 return external
             _error(
-                f"Cannot find module '{module_ref}'. Expected a .pys file next to this source "
-                f"or a Python package from pys.deps / the standard library.",
+                f"Cannot find module '{module_ref}'. Expected a .pys file next to this source, "
+                f"a Python package from pys.toml [dependencies] / the standard library, or (for "
+                f"--target javascript) an npm-mapped name such as mysql2 / nodegui "
+                f"(declared in [dependencies.npm]; installed into ~/.pys/repository/npm on Run).",
                 line_number,
                 raw_line.rstrip(),
             )
@@ -807,7 +816,7 @@ class ImportResolver:
         if alias is not None:
             _error(
                 "Alias imports (`import … as …`) are only supported for Python packages "
-                "from pys.deps / the standard library.",
+                "from pys.toml [dependencies] / the standard library.",
                 line_number,
                 raw_line.rstrip(),
             )

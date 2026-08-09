@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
   normalizedRelativeMain,
   readProjectMain,
+  readProjectTarget,
   setProjectMain,
 } = require('../project-main');
 
@@ -23,6 +24,22 @@ test('setProjectMain adds and replaces project main without losing sections', ()
   assert.equal(readProjectMain(replaced), 'src/new.pys');
   assert.equal((replaced.match(/^main\s*=/gm) || []).length, 1);
   assert.match(replaced, /name = "demo"/);
+});
+
+test('readProjectTarget parses optional emit target', () => {
+  assert.equal(readProjectTarget('[project]\nmain = "a.pys"\n'), '');
+  assert.equal(
+    readProjectTarget('[project]\nmain = "a.pys"\ntarget = "javascript"\n'),
+    'javascript',
+  );
+  assert.equal(
+    readProjectTarget('[project]\ntarget = "Python"\nmain = "a.pys"\n'),
+    'python',
+  );
+  assert.throws(
+    () => readProjectTarget('[project]\ntarget = "ruby"\n'),
+    /python.*javascript/,
+  );
 });
 
 test('normalizedRelativeMain rejects paths outside the project', () => {
@@ -46,6 +63,15 @@ test('extension manifest exposes entrypoint command and result language support'
   const commands = manifest.contributes.commands.map((entry) => entry.command);
   assert.match(manifest.version, /^\d+\.\d+\.\d+$/);
   assert.ok(commands.includes('pys.setAsEntrypoint'));
+  assert.ok(commands.includes('pys.runProject'));
+
+  const editorContext = manifest.contributes.menus['editor/context'] || [];
+  const tomlRun = editorContext.find((entry) => entry.command === 'pys.runProject');
+  const tomlLock = editorContext.find((entry) => entry.command === 'pys.lockDeps');
+  assert.ok(tomlRun);
+  assert.ok(tomlLock);
+  assert.match(tomlRun.when, /pys\.toml/);
+  assert.equal(tomlRun.group, 'navigation@0');
 
   const grammar = fs.readFileSync(
     path.join(extensionRoot, 'syntaxes', 'pys.tmLanguage.json'),
@@ -67,6 +93,9 @@ test('extension manifest exposes entrypoint command and result language support'
     path.join(extensionRoot, 'extension.js'),
     'utf8',
   );
+  assert.match(extension, /runProjectFromToml/);
+  assert.match(extension, /readProjectTarget/);
+  assert.match(extension, /skipEntrypointReconcile/);
   assert.match(extension, /diagnostic\.code === 'pys\.entrypoint-conflict'/);
   assert.match(extension, /Set this file as entrypoint/);
   assert.match(grammar, /punctuation\.definition\.decorator\.pys/);
@@ -86,6 +115,20 @@ test('extension manifest exposes entrypoint command and result language support'
     manifest.contributes.configuration.properties['pys.navigateLibrarySources'].default,
     false,
   );
+  assert.deepEqual(
+    manifest.contributes.configuration.properties['pys.emitTarget'].enum,
+    ['python', 'javascript'],
+  );
+  assert.equal(
+    manifest.contributes.configuration.properties['pys.emitTarget'].default,
+    'python',
+  );
+  assert.match(extension, /pys\.selectEmitTarget/);
+  assert.match(extension, /require\('\.\/debug-launch'\)/);
+  assert.match(extension, /buildLaunchConfig/);
+  assert.match(extension, /debugAdapterTypes/);
+  assert.match(extension, /'--target'/);
+  assert.doesNotMatch(extension, /getEmitTarget\(\) !== 'python'/);
 
   const notes = fs.readFileSync(
     path.join(extensionRoot, 'RELEASE_NOTES.md'),

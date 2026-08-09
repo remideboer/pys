@@ -26,6 +26,7 @@ const {
   findProjectManifest,
   normalizedRelativeMain,
   readProjectMain,
+  readProjectTarget,
   resolveManifestMain,
   setProjectMain,
 } = require('./project-main');
@@ -34,6 +35,10 @@ const {
   debugModeOptions,
   isPysDebugSession,
 } = require('./debug-mode');
+const {
+  buildLaunchConfig,
+  debugAdapterTypes,
+} = require('./debug-launch');
 const {
   DEFAULT_MAX_SKIPS,
   PysStepFilter,
@@ -235,6 +240,26 @@ function activate(context) {
   const mainStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   mainStatus.command = 'pys.runMain';
   context.subscriptions.push(mainStatus);
+
+  const emitTargetStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 99);
+  emitTargetStatus.command = 'pys.selectEmitTarget';
+  context.subscriptions.push(emitTargetStatus);
+
+  function getEmitTarget() {
+    const raw = vscode.workspace.getConfiguration('pys').get('emitTarget', 'python');
+    return raw === 'javascript' ? 'javascript' : 'python';
+  }
+
+  function refreshEmitTargetUi() {
+    const target = getEmitTarget();
+    const label = target === 'javascript' ? 'Node' : 'Python';
+    emitTargetStatus.text = `$(symbol-misc) PYS → ${label}`;
+    emitTargetStatus.tooltip =
+      target === 'javascript'
+        ? 'Emit target: JavaScript (Node.js). Click to change.'
+        : 'Emit target: Python (CPython). Click to change.';
+    emitTargetStatus.show();
+  }
 
   function refreshMainFileUi() {
     const relative = getConfiguredMainRelative();
@@ -1150,6 +1175,9 @@ function activate(context) {
     if (event.affectsConfiguration('pys.mainFile')) {
       refreshMainFileUi();
     }
+    if (event.affectsConfiguration('pys.emitTarget')) {
+      refreshEmitTargetUi();
+    }
   }));
   const manifestWatcher = vscode.workspace.createFileSystemWatcher('**/pys.toml');
   context.subscriptions.push(
@@ -1166,6 +1194,7 @@ function activate(context) {
   }
 
   refreshMainFileUi();
+  refreshEmitTargetUi();
 
   async function saveAllFiles() {
     try {
@@ -1223,7 +1252,9 @@ function activate(context) {
 
   async function lockDepsFile(filePath) {
     if (!filePath) {
-      vscode.window.showErrorMessage('No pys.deps file selected. Right-click pys.deps in the explorer.');
+      vscode.window.showErrorMessage(
+        'No dependency file selected. Right-click pys.toml (or legacy pys.deps) in the explorer.',
+      );
       return;
     }
     if (!vscode.workspace.isTrusted) {
@@ -1237,12 +1268,14 @@ function activate(context) {
     }
     filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
     if (!filePath) {
-      vscode.window.showErrorMessage('pys.deps must resolve inside the workspace.');
+      vscode.window.showErrorMessage('Dependency file must resolve inside the workspace.');
       return;
     }
     const base = path.basename(filePath);
-    if (base !== 'pys.deps') {
-      vscode.window.showErrorMessage('Run Deps Lock only works on a pys.deps file.');
+    if (base !== 'pys.toml' && base !== 'pys.deps') {
+      vscode.window.showErrorMessage(
+        'Run Deps Lock only works on pys.toml (or legacy pys.deps).',
+      );
       return;
     }
     const bundled = ensureBundledTranspiler();
@@ -1260,7 +1293,7 @@ function activate(context) {
     }
     filePath = resolveWorkspaceFile(workspace.uri.fsPath, filePath);
     if (!filePath) {
-      vscode.window.showErrorMessage('pys.deps left the workspace before lock.');
+      vscode.window.showErrorMessage('Dependency file left the workspace before lock.');
       return;
     }
     const pythonExecutable = getPythonExecutable();
@@ -1281,7 +1314,8 @@ function activate(context) {
     let filePath = resolveFilePath(file);
     if (!filePath && vscode.window.activeTextEditor) {
       const active = vscode.window.activeTextEditor.document;
-      if (path.basename(active.uri.fsPath) === 'pys.deps') {
+      const base = path.basename(active.uri.fsPath);
+      if (base === 'pys.toml' || base === 'pys.deps') {
         filePath = active.uri.fsPath;
       }
     }
@@ -1313,7 +1347,7 @@ function activate(context) {
     return null;
   }
 
-  async function runPysFile(filePath) {
+  async function runPysFile(filePath, options = {}) {
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to run. Set an entrypoint or open a .pys file.');
       return;
@@ -1332,13 +1366,15 @@ function activate(context) {
       vscode.window.showErrorMessage('PYS file must resolve inside the workspace.');
       return;
     }
-    filePath = await reconcileConfiguredEntrypoint(
-      filePath,
-      workspace.uri.fsPath,
-      'Run',
-    );
-    if (!filePath) {
-      return;
+    if (!options.skipEntrypointReconcile) {
+      filePath = await reconcileConfiguredEntrypoint(
+        filePath,
+        workspace.uri.fsPath,
+        'Run',
+      );
+      if (!filePath) {
+        return;
+      }
     }
     const bundled = ensureBundledTranspiler();
     if (!bundled) {
@@ -1360,20 +1396,58 @@ function activate(context) {
       vscode.window.showErrorMessage('PYS file left the workspace before execution.');
       return;
     }
+    const emitTarget = options.emitTarget || getEmitTarget();
     const term = vscode.window.createTerminal({
-      name: 'Run PYS',
+      name: emitTarget === 'javascript' ? 'Run PYS (Node)' : 'Run PYS',
       cwd: workDir,
       env: buildRunEnv(bundled, workspace.uri.fsPath),
     });
     term.show();
     term.sendText(
-      `${pythonExecutable} -m transpiler run ${shellQuote(filePath)}`,
+      `${pythonExecutable} -m transpiler run ${shellQuote(filePath)} --target ${emitTarget}`,
       true
     );
   }
 
+  async function runProjectFromToml(file) {
+    const manifestPath = resolveTargetDepsFile(file);
+    if (!manifestPath || path.basename(manifestPath).toLowerCase() !== 'pys.toml') {
+      vscode.window.showErrorMessage('Select a pys.toml file to run the project.');
+      return;
+    }
+    let relativeMain = '';
+    let emitTarget = 'python';
+    try {
+      const text = fs.readFileSync(manifestPath, 'utf8');
+      relativeMain = readProjectMain(text);
+      emitTarget = readProjectTarget(text) || 'python';
+    } catch (error) {
+      const message = error && error.message ? String(error.message) : String(error);
+      vscode.window.showErrorMessage(message);
+      return;
+    }
+    if (!relativeMain) {
+      vscode.window.showErrorMessage(
+        'Set [project].main in pys.toml before using Run Project.',
+      );
+      return;
+    }
+    const mainPath = resolveManifestMain(manifestPath);
+    if (!mainPath || !fs.existsSync(mainPath)) {
+      vscode.window.showErrorMessage(
+        `Configured entrypoint does not exist: ${relativeMain}`,
+      );
+      return;
+    }
+    await runPysFile(mainPath, {
+      emitTarget,
+      skipEntrypointReconcile: true,
+    });
+  }
+
   async function debugPysFile(filePath, mode = 'pys') {
-    const debugMode = debugModeOptions(mode);
+    const emitTarget = getEmitTarget();
+    const debugMode = debugModeOptions(mode, emitTarget);
     if (!filePath) {
       vscode.window.showErrorMessage('No PYS file to debug. Set an entrypoint or open a .pys file.');
       return;
@@ -1419,15 +1493,17 @@ function activate(context) {
       return;
     }
 
-    const pythonExt = vscode.extensions.getExtension('ms-python.python');
-    if (!pythonExt) {
-      vscode.window.showErrorMessage(
-        'Install the Microsoft Python extension to debug PYS (source-level stepping uses debugpy).',
-      );
-      return;
-    }
-    if (!pythonExt.isActive) {
-      await pythonExt.activate();
+    if (emitTarget === 'python') {
+      const pythonExt = vscode.extensions.getExtension('ms-python.python');
+      if (!pythonExt) {
+        vscode.window.showErrorMessage(
+          'Install the Microsoft Python extension to debug PYS (source-level stepping uses debugpy).',
+        );
+        return;
+      }
+      if (!pythonExt.isActive) {
+        await pythonExt.activate();
+      }
     }
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pys-debug-'));
@@ -1437,7 +1513,15 @@ function activate(context) {
     try {
       prepared = await runJsonProcess(
         pythonExecutable,
-        ['-m', 'transpiler.ide', '--prepare-debug', outDir, filePath],
+        [
+          '-m',
+          'transpiler.ide',
+          '--prepare-debug',
+          outDir,
+          filePath,
+          '--target',
+          emitTarget,
+        ],
         { cwd: path.dirname(filePath), env },
         { timeoutMs: 60_000 },
       );
@@ -1490,23 +1574,14 @@ function activate(context) {
         preview: false,
       });
     }
-    const launchConfig = {
-      name: debugMode.sessionName,
-      type: 'python',
-      request: 'launch',
-      program: prepared.main,
-      cwd: prepared.cwd || path.dirname(filePath),
-      env: runEnv,
-      console: 'integratedTerminal',
-      // Student program is the launch target (not `transpiler run` subprocess).
-      // PYS mode runs to PYS breakpoints; explicit Python mode stops on entry.
-      justMyCode: debugMode.justMyCode,
-      stopOnEntry: debugMode.stopOnEntry,
-    };
-    // Prefer deps-resolved interpreter (same as Run) when prepare_debug returns it.
-    if (prepared.python) {
-      launchConfig.python = prepared.python;
-    }
+    // Student program is the launch target (not `transpiler run` subprocess).
+    const launchConfig = buildLaunchConfig({
+      prepared,
+      debugMode,
+      runEnv,
+      cwd: path.dirname(filePath),
+      emitTarget,
+    });
     const started = await vscode.debug.startDebugging(workspace, launchConfig);
     if (!started) {
       pendingPysDebug = null;
@@ -1673,171 +1748,176 @@ function activate(context) {
     }),
   );
 
-  context.subscriptions.push(
-    vscode.debug.registerDebugAdapterTrackerFactory('python', {
-      createDebugAdapterTracker(session) {
-        if (!isPysDebugSession(session.name)) {
-          return {};
+  function createPysDebugAdapterTracker(session) {
+    if (!isPysDebugSession(session.name)) {
+      return {};
+    }
+    if (pendingPysDebug) {
+      if (!pendingPysDebug.bpReqPysBySeq) {
+        pendingPysDebug.bpReqPysBySeq = new Map();
+      }
+      if (!pendingPysDebug.stepFilter) {
+        pendingPysDebug.stepFilter = new PysStepFilter({
+          enabled: pendingPysDebug.remapSource,
+        });
+      }
+      pysDebugSessions.set(session.id, pendingPysDebug);
+      pendingPysDebug = null;
+      void syncPysStepContexts(session);
+    }
+    return {
+      onWillReceiveMessage(message) {
+        const entry = pysDebugSessions.get(session.id);
+        if (!entry || !message) {
+          return;
         }
-        if (pendingPysDebug) {
-          if (!pendingPysDebug.bpReqPysBySeq) {
-            pendingPysDebug.bpReqPysBySeq = new Map();
-          }
-          if (!pendingPysDebug.stepFilter) {
-            pendingPysDebug.stepFilter = new PysStepFilter({
-              enabled: pendingPysDebug.remapSource,
-            });
-          }
-          pysDebugSessions.set(session.id, pendingPysDebug);
-          pendingPysDebug = null;
-          void syncPysStepContexts(session);
+        entry.stepFilter.observeRequest(message);
+        if (
+          message.command === 'stackTrace' &&
+          entry.captureStepProbe
+        ) {
+          entry.stepProbeRequestSeq = message.seq;
+          entry.captureStepProbe = false;
         }
-        return {
-          onWillReceiveMessage(message) {
-            const entry = pysDebugSessions.get(session.id);
-            if (!entry || !message) {
-              return;
-            }
-            entry.stepFilter.observeRequest(message);
-            if (
-              message.command === 'stackTrace' &&
-              entry.captureStepProbe
-            ) {
-              entry.stepProbeRequestSeq = message.seq;
-              entry.captureStepProbe = false;
-            }
-            if (message.command === 'setBreakpoints' && message.arguments) {
-              const src = message.arguments.source && message.arguments.source.path;
-              if (src && String(src).toLowerCase().endsWith('.pys')) {
-                entry.bpReqPysBySeq.set(message.seq, src);
-              }
-              message.arguments = remapSetBreakpointsArgs(
-                entry.registry,
-                message.arguments,
-              );
-            }
-            if (
-              entry.remapSource &&
-              message.command === 'evaluate' &&
-              message.arguments
-            ) {
-              const expr = message.arguments.expression;
-              const rewritten = rewriteEvaluateExpression(entry.registry, expr);
-              if (rewritten !== expr) {
-                message.arguments = {
-                  ...message.arguments,
-                  expression: rewritten,
-                };
-              }
-            }
-          },
-          onDidSendMessage(message) {
-            const entry = pysDebugSessions.get(session.id);
-            if (!entry || !message) {
-              return;
-            }
-            if (
-              entry.remapSource &&
-              message.type === 'response' &&
-              message.command === 'stackTrace' &&
-              message.body &&
-              message.body.stackFrames
-            ) {
-              const rawTop = message.body.stackFrames[0];
-              const rawPath = rawTop && rawTop.source && rawTop.source.path;
-              const exactLocation =
-                rawPath && typeof rawTop.line === 'number'
-                  ? mapExactPyStackFrame(
-                      entry.registry,
-                      rawPath,
-                      rawTop.line,
-                    )
-                  : null;
-              entry.stepFilter.recordTopFrame(
-                exactLocation
-                  ? {
-                      line: exactLocation.pysLine,
-                      source: { path: exactLocation.pysPath },
-                      generatedSource: {
-                        path: rawPath,
-                        line: rawTop.line,
-                      },
-                    }
-                  : null,
-              );
-              if (message.request_seq === entry.stepProbeRequestSeq) {
-                entry.stepProbeLocation =
-                  exactLocation && rawPath
-                    ? {
-                        ...exactLocation,
-                        pyPath: rawPath,
-                        pyLine: rawTop.line,
-                      }
-                    : null;
-                entry.stepProbeRequestSeq = null;
-              }
-              message.body.stackFrames = remapStackFrames(
-                entry.registry,
-                message.body.stackFrames,
-              );
-            }
-            if (
-              message.type === 'response' &&
-              message.command === 'setBreakpoints' &&
-              message.body
-            ) {
-              const pysPath = entry.bpReqPysBySeq.get(message.request_seq);
-              entry.bpReqPysBySeq.delete(message.request_seq);
-              message.body = remapSetBreakpointsResponse(
-                entry.registry,
-                message.body,
-                pysPath,
-              );
-            }
-            if (
-              entry.remapSource &&
-              message.type === 'event' &&
-              message.event === 'breakpoint' &&
-              message.body &&
-              message.body.breakpoint
-            ) {
-              message.body.breakpoint = remapBreakpoint(
-                entry.registry,
-                message.body.breakpoint,
-              );
-            }
-            if (
-              entry.remapSource &&
-              message.type === 'response' &&
-              message.command === 'variables' &&
-              message.body &&
-              message.body.variables
-            ) {
-              message.body.variables = remapVariables(
-                entry.registry,
-                message.body.variables,
-              );
-            }
-            if (
-              entry.remapSource &&
-              message.type === 'response' &&
-              message.command === 'evaluate' &&
-              message.body &&
-              typeof message.body.result === 'string'
-            ) {
-              message.body.result = formatPysDebugValue(message.body.result);
-            }
-            if (
-              message.type === 'event' &&
-              message.event === 'stopped'
-            ) {
-              void processPysStepStop(session, entry, message);
-            }
-          },
-        };
+        if (message.command === 'setBreakpoints' && message.arguments) {
+          const src = message.arguments.source && message.arguments.source.path;
+          if (src && String(src).toLowerCase().endsWith('.pys')) {
+            entry.bpReqPysBySeq.set(message.seq, src);
+          }
+          message.arguments = remapSetBreakpointsArgs(
+            entry.registry,
+            message.arguments,
+          );
+        }
+        if (
+          entry.remapSource &&
+          message.command === 'evaluate' &&
+          message.arguments
+        ) {
+          const expr = message.arguments.expression;
+          const rewritten = rewriteEvaluateExpression(entry.registry, expr);
+          if (rewritten !== expr) {
+            message.arguments = {
+              ...message.arguments,
+              expression: rewritten,
+            };
+          }
+        }
       },
-    }),
-  );
+      onDidSendMessage(message) {
+        const entry = pysDebugSessions.get(session.id);
+        if (!entry || !message) {
+          return;
+        }
+        if (
+          entry.remapSource &&
+          message.type === 'response' &&
+          message.command === 'stackTrace' &&
+          message.body &&
+          message.body.stackFrames
+        ) {
+          const rawTop = message.body.stackFrames[0];
+          const rawPath = rawTop && rawTop.source && rawTop.source.path;
+          const exactLocation =
+            rawPath && typeof rawTop.line === 'number'
+              ? mapExactPyStackFrame(
+                  entry.registry,
+                  rawPath,
+                  rawTop.line,
+                )
+              : null;
+          entry.stepFilter.recordTopFrame(
+            exactLocation
+              ? {
+                  line: exactLocation.pysLine,
+                  source: { path: exactLocation.pysPath },
+                  generatedSource: {
+                    path: rawPath,
+                    line: rawTop.line,
+                  },
+                }
+              : null,
+          );
+          if (message.request_seq === entry.stepProbeRequestSeq) {
+            entry.stepProbeLocation =
+              exactLocation && rawPath
+                ? {
+                    ...exactLocation,
+                    pyPath: rawPath,
+                    pyLine: rawTop.line,
+                  }
+                : null;
+            entry.stepProbeRequestSeq = null;
+          }
+          message.body.stackFrames = remapStackFrames(
+            entry.registry,
+            message.body.stackFrames,
+          );
+        }
+        if (
+          message.type === 'response' &&
+          message.command === 'setBreakpoints' &&
+          message.body
+        ) {
+          const pysPath = entry.bpReqPysBySeq.get(message.request_seq);
+          entry.bpReqPysBySeq.delete(message.request_seq);
+          message.body = remapSetBreakpointsResponse(
+            entry.registry,
+            message.body,
+            pysPath,
+          );
+        }
+        if (
+          entry.remapSource &&
+          message.type === 'event' &&
+          message.event === 'breakpoint' &&
+          message.body &&
+          message.body.breakpoint
+        ) {
+          message.body.breakpoint = remapBreakpoint(
+            entry.registry,
+            message.body.breakpoint,
+          );
+        }
+        if (
+          entry.remapSource &&
+          message.type === 'response' &&
+          message.command === 'variables' &&
+          message.body &&
+          message.body.variables
+        ) {
+          message.body.variables = remapVariables(
+            entry.registry,
+            message.body.variables,
+          );
+        }
+        if (
+          entry.remapSource &&
+          message.type === 'response' &&
+          message.command === 'evaluate' &&
+          message.body &&
+          typeof message.body.result === 'string'
+        ) {
+          message.body.result = formatPysDebugValue(message.body.result);
+        }
+        if (
+          message.type === 'event' &&
+          message.event === 'stopped'
+        ) {
+          void processPysStepStop(session, entry, message);
+        }
+      },
+    };
+  }
+
+  // Same tracker for debugpy (python) and js-debug (pwa-node).
+  for (const adapterType of debugAdapterTypes()) {
+    context.subscriptions.push(
+      vscode.debug.registerDebugAdapterTrackerFactory(adapterType, {
+        createDebugAdapterTracker: createPysDebugAdapterTracker,
+      }),
+    );
+  }
 
   context.subscriptions.push(
     vscode.debug.onDidChangeActiveDebugSession((session) => {
@@ -1927,7 +2007,7 @@ function activate(context) {
       const result = createPysProjectScaffold(target);
       const open = 'Open Folder';
       const choice = await vscode.window.showInformationMessage(
-        `PYS project created in ${result.root} (src/, tests/, pys.toml, pys.deps).`,
+        `PYS project created in ${result.root} (src/, tests/, pys.toml).`,
         open,
       );
       if (choice === open) {
@@ -1947,8 +2027,46 @@ function activate(context) {
     await lockDepsFile(resolveTargetDepsFile(file));
   }));
 
+  context.subscriptions.push(vscode.commands.registerCommand('pys.runProject', async (file) => {
+    await runProjectFromToml(file);
+  }));
+
   context.subscriptions.push(vscode.commands.registerCommand('pys.runFile', async (file) => {
     await runPysFile(resolveTargetPysFile(file));
+  }));
+
+  context.subscriptions.push(vscode.commands.registerCommand('pys.selectEmitTarget', async () => {
+    const current = getEmitTarget();
+    const picked = await vscode.window.showQuickPick(
+      [
+        {
+          label: 'Python',
+          description: 'CPython (reference backend)',
+          detail: 'python -m transpiler run … --target python',
+          target: 'python',
+        },
+        {
+          label: 'JavaScript',
+          description: 'Node.js MVP backend',
+          detail: 'python -m transpiler run … --target javascript',
+          target: 'javascript',
+        },
+      ],
+      {
+        title: 'PYS emit target',
+        placeHolder: current === 'javascript' ? 'Current: JavaScript' : 'Current: Python',
+      },
+    );
+    if (!picked) {
+      return;
+    }
+    await vscode.workspace.getConfiguration('pys').update(
+      'emitTarget',
+      picked.target,
+      vscode.ConfigurationTarget.Workspace,
+    );
+    refreshEmitTargetUi();
+    vscode.window.setStatusBarMessage(`PYS emit target: ${picked.label}`, 2500);
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('pys.debugFile', async (file) => {

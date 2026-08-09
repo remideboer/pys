@@ -9,6 +9,8 @@ process memory (lost on restart). No auth (see [`../jwt/`](../jwt/) later).
 python -m transpiler run examples/rest-api/shop/memory/src/main.pys
 ```
 
+Or right-click this folder’s `pys.toml` → **Run Project** (`[project].main`).
+
 Listens on `127.0.0.1:8090`. Seeds three board-game products.
 
 ## Tests

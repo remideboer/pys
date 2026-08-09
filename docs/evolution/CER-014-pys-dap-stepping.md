@@ -4,9 +4,9 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-03 |
-| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode + manifest entrypoint); 2026-08-05 (exact PYS-line step filtering + toolbar toggle) |
-| Commits | (F-004 increment; debug UX maturity; deps on Debug) |
-| Scope | `emit/python.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; `debug-step-filter.js`; docs |
+| Amended | 2026-08-03 (UX maturity / deps); 2026-08-04 (PYS-only default + Python depth mode + manifest entrypoint); 2026-08-05 (exact PYS-line step filtering + toolbar toggle); 2026-08-09 (Node DAP + target-neutral maps) |
+| Commits | (F-004 increment; debug UX maturity; deps on Debug; Node DAP) |
+| Scope | `emit/python.py`; `emit/javascript.py`; `pipeline.py`; `transpiler.py`; `ide.py`; `pys-language/extension.js`; `debug-map.js`; `debug-launch.js`; `debug-step-filter.js`; docs |
 | ADRs | [ADR-014](../adr/ADR-014-pys-dap-stepping.md) |
 
 ## Context
@@ -139,9 +139,31 @@ evaluate results, and inline values (extension ≥ 0.0.73).
 
 `pys-language/test/debug-map.test.js`.
 
+## Entry — Node DAP (JavaScript emit)
+
+### Pre-behavior
+
+Extension blocked Debug when `pys.emitTarget` was `javascript`. Maps and
+trackers assumed `.py` / `py` sidecar keys only.
+
+### Post-behavior
+
+- `prepare_debug(..., target="javascript")` emits `.mjs` + `js`-keyed
+  pysmaps; returns `runtimeExecutable` (node/qode); npm emit root matches Run.
+- `debug-map.js` indexes `py`|`js` under `byGenerated` (alias `byPy`).
+- `debug-launch.js` builds `python` vs `pwa-node` launch configs; extension
+  registers the **same** tracker factory for both adapters.
+- Advanced mode opens `.mjs` / uses `Debug PYS (Transpiled JavaScript)`.
+
+### Evidence
+
+`tests/test_prepare_debug.py`; `pys-language/test/debug-map.test.js`;
+`pys-language/test/debug-launch.test.js`; ADR-014 amend; F-010 item 1 Done.
+
 ## Trade-offs / deferred
 
 - No scalar unwrap of `_PysShared` / `_PysAtomic` in Variables.
-- `tasks` / ThreadPool thread debugging not specialized.
+- `tasks` / ThreadPool thread debugging not specialized (F-010 item 2 for JS
+  OS-thread/worker tasks).
 - Column / `end_line` spans still unused.
 - Custom standalone DAP server not built.

@@ -1,7 +1,0 @@
-[interpreter]
-	version: >=3.10
-
-[dependencies]
-	ttkbootstrap
-		version: 1.10.1
-		build: run

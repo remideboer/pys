@@ -58,3 +58,28 @@ def test_block_local_decl_in_if_does_not_leak(tmp_path: Path) -> None:
     assert "_pys_" in py
     assert re.search(r"(?m)^\s*y = 1\s*$", py) is None
     assert re.search(r"(?m)^\s*_pys_\w+_y = 1\s*$", py) is not None
+
+
+def test_foreach_binder_rewritten_in_indexed_assign(tmp_path: Path) -> None:
+    """`this.map[c.key()] = c` must mangle every use of loop binder `c` (CER-015)."""
+    src = tmp_path / "index_assign.pys"
+    src.write_text(
+        "class Item {\n"
+        "    private string id\n"
+        "    public constructor(string id) { this.id = id }\n"
+        "    public string getId() { return this.id }\n"
+        "}\n"
+        "class Bag {\n"
+        "    private dict<string, Item> byId\n"
+        "    public constructor(list<Item> items) {\n"
+        "        this.byId = dict()\n"
+        "        loop (Item c in items) {\n"
+        "            this.byId[c.getId()] = c\n"
+        "        }\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    py = transpile_with_modules(src)["index_assign"]
+    assert "self.byId[c.getId()]" not in py
+    assert re.search(r"self\.byId\[_pys_b\d+_c\.getId\(\)\] = _pys_b\d+_c", py)

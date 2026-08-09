@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   PYS_DEBUG_SESSION_NAME,
   PYTHON_DEBUG_SESSION_NAME,
+  JS_DEBUG_SESSION_NAME,
   debugModeOptions,
   isPysDebugSession,
 } = require('../debug-mode');
@@ -35,7 +36,20 @@ test('transpiled Python mode reveals internals and stops on entry', () => {
 test('both PYS debugger session names are recognized', () => {
   assert.equal(isPysDebugSession(PYS_DEBUG_SESSION_NAME), true);
   assert.equal(isPysDebugSession(PYTHON_DEBUG_SESSION_NAME), true);
+  assert.equal(isPysDebugSession(JS_DEBUG_SESSION_NAME), true);
   assert.equal(isPysDebugSession('Python: Current File'), false);
+});
+
+test('transpiled JavaScript advanced mode uses JS session name', () => {
+  assert.deepEqual(debugModeOptions('python', 'javascript'), {
+    mode: 'python',
+    sessionName: JS_DEBUG_SESSION_NAME,
+    justMyCode: false,
+    stopOnEntry: true,
+    remapSource: false,
+    revealGenerated: true,
+    pysOnlyStepping: false,
+  });
 });
 
 test('extension manifest contributes the explicit Python-depth command', () => {

@@ -30,8 +30,8 @@ def test_module_run_executes_and_prints(tmp_path: Path) -> None:
 
 
 def test_module_run_requires_dependency_lock(tmp_path: Path) -> None:
-    (tmp_path / "pys.deps").write_text(
-        "[dependencies]\n\tmysql-connector-python\n\t\tversion: 8.0.33\n",
+    (tmp_path / "pys.toml").write_text(
+        '[dependencies]\n"mysql-connector-python" = { version = "8.0.33" }\n',
         encoding="utf-8",
     )
     source = tmp_path / "hello.pys"

@@ -8,7 +8,11 @@ import pytest
 
 from transpiler import project_manifest
 from transpiler.ide import analyze_file, prepare_debug
-from transpiler.project_manifest import load_project_main, resolve_entrypoint
+from transpiler.project_manifest import (
+    load_project_emit_target,
+    load_project_main,
+    resolve_entrypoint,
+)
 from transpiler.transpiler import TranspileError, run_source
 
 
@@ -21,6 +25,30 @@ def test_manifest_main_is_contained_and_resolved(tmp_path: Path) -> None:
 
     assert load_project_main(manifest) == main.resolve()
     assert resolve_entrypoint(tmp_path) == main.resolve()
+    assert load_project_emit_target(manifest) == "python"
+    assert load_project_emit_target(main) == "python"
+
+
+def test_manifest_target_defaults_and_rejects_invalid(tmp_path: Path) -> None:
+    main = tmp_path / "main.pys"
+    main.write_text('print("ok")\n', encoding="utf-8")
+    manifest = tmp_path / "pys.toml"
+    manifest.write_text(
+        '[project]\nmain = "main.pys"\ntarget = "javascript"\n',
+        encoding="utf-8",
+    )
+    assert load_project_emit_target(manifest) == "javascript"
+    assert load_project_emit_target(main) == "javascript"
+
+    bad = tmp_path / "bad"
+    bad.mkdir()
+    (bad / "main.pys").write_text('print("x")\n', encoding="utf-8")
+    (bad / "pys.toml").write_text(
+        '[project]\nmain = "main.pys"\ntarget = "ruby"\n',
+        encoding="utf-8",
+    )
+    with pytest.raises(TranspileError, match=r"\[project\]\.target"):
+        load_project_emit_target(bad / "pys.toml")
 
 
 def test_manifest_main_cannot_escape_project(tmp_path: Path) -> None:

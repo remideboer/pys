@@ -62,8 +62,18 @@ test('mapPysBreakpoint exact and forward nearest', () => {
       { py: 12, pys: 3 },
     ],
   });
-  assert.deepEqual(mapPysBreakpoint(reg, PYS, 1), { pyPath: PY, pyLine: 10 });
-  assert.deepEqual(mapPysBreakpoint(reg, PYS, 2), { pyPath: PY, pyLine: 12 });
+  assert.deepEqual(mapPysBreakpoint(reg, PYS, 1), {
+    generatedPath: PY,
+    generatedLine: 10,
+    pyPath: PY,
+    pyLine: 10,
+  });
+  assert.deepEqual(mapPysBreakpoint(reg, PYS, 2), {
+    generatedPath: PY,
+    generatedLine: 12,
+    pyPath: PY,
+    pyLine: 12,
+  });
 });
 
 test('mapPyStackFrame exact and backward nearest', () => {
@@ -161,6 +171,70 @@ test('remapStackFrames rewrites .py frames to .pys', () => {
   ]);
   assert.equal(frames[0].source.path, PYS);
   assert.equal(frames[0].line, 4);
+});
+
+const JS = 'C:\\tmp\\dbg\\demo.mjs';
+
+test('loadMapRegistry indexes js sidecars under byGenerated', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    js: JS,
+    lines: [
+      { js: 10, pys: 1 },
+      { js: 11, pys: 2 },
+    ],
+  });
+  assert.equal(reg.byGenerated.has(normalizePathKey(JS)), true);
+  assert.equal(reg.byPy.has(normalizePathKey(JS)), true);
+  assert.equal(reg.byPys.has(normalizePathKey(PYS)), true);
+});
+
+test('mapPysBreakpoint works for js line keys', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    js: JS,
+    lines: [
+      { js: 10, pys: 1 },
+      { js: 12, pys: 3 },
+    ],
+  });
+  assert.deepEqual(mapPysBreakpoint(reg, PYS, 1), {
+    generatedPath: JS,
+    generatedLine: 10,
+    pyPath: JS,
+    pyLine: 10,
+  });
+});
+
+test('remapSetBreakpointsArgs rewrites .pys source to .mjs', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    js: JS,
+    lines: [{ js: 5, pys: 2 }],
+  });
+  const out = remapSetBreakpointsArgs(reg, {
+    source: { path: PYS, name: 'demo.pys' },
+    breakpoints: [{ line: 2 }],
+  });
+  assert.equal(out.source.path, JS);
+  assert.equal(out.breakpoints[0].line, 5);
+});
+
+test('remapStackFrames rewrites .mjs frames to .pys', () => {
+  const reg = registryFromSidecar({
+    version: 1,
+    pys: PYS,
+    js: JS,
+    lines: [{ js: 8, pys: 3 }],
+  });
+  const frames = remapStackFrames(reg, [
+    { id: 1, line: 8, source: { path: JS, name: 'demo.mjs' } },
+  ]);
+  assert.equal(frames[0].source.path, PYS);
+  assert.equal(frames[0].line, 3);
 });
 
 test('remapVariables renames _c_ captures and hides runtime helpers', () => {

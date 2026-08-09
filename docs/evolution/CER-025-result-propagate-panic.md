@@ -122,7 +122,8 @@ not be classified reliably as entrypoint or library code.
   entrypoint identity through the pipeline.
 - The extension reads and writes `[project].main`, exposes Set as entrypoint,
   watches manifest changes, and retains `pys.mainFile` only as a deprecated
-  no-manifest fallback.
+  no-manifest fallback. **Run Project** on `pys.toml` runs that main with
+  optional `[project].target` (default python; see CER-050 §12).
 - Syntax highlighting, hover, completion/snippets, diagnostics, and code
   actions cover the result surface. Extension version is `0.0.69`.
 

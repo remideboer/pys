@@ -19,21 +19,19 @@ color-variant styling for every standard widget, without inventing a
 new, incompatible widget API the way some alternatives do.
 
 ttkbootstrap is a third-party package. In a PYS project you declare it in
-`pys.deps` and lock it (same pattern as PyQt in the examples tree), then
+`pys.toml` and lock it (same pattern as PyQt in the examples tree), then
 run from that project folder so `PYS_WORKSPACE_ROOT` picks up the lock:
 
-```text
+```toml
 [interpreter]
-	version: >=3.10
+version = ">=3.10"
 
 [dependencies]
-	ttkbootstrap
-		version: 1.10.1
-		build: run
+ttkbootstrap = { version = "1.10.1", build = "run" }
 ```
 
 ```bash
-python -m transpiler deps lock pys.deps
+python -m transpiler deps lock
 python -m transpiler run main.pys
 ```
 

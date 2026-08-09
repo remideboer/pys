@@ -30,8 +30,8 @@ python examples/webserver/scripts/check_idempotency.py
 python -m pytest tests/test_webserver_idempotency_gate.py -q
 ```
 
-First HTTP/2 run installs locked `h2` (see `pys.deps` / `pys.lock`). On another
-OS/Python minor, refresh with `python -m transpiler deps lock examples/webserver/pys.deps`.
+First HTTP/2 run installs locked `h2` (see `pys.toml` / `pys.lock`). On another
+OS/Python minor, refresh with `python -m transpiler deps lock examples/webserver/pys.toml`.
 
 ## Run server
 

@@ -90,7 +90,11 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     assert patterns < session7 < under_the_hood
     assert under_the_hood < summary.index("# 13. Exercises")
 
-    for name in ("under_the_hood_entrypoint.md", "under_the_hood_memory.md"):
+    for name in (
+        "under_the_hood_entrypoint.md",
+        "under_the_hood_memory.md",
+        "under_the_hood_emit_targets.md",
+    ):
         text = (BOOK / name).read_text(encoding="utf-8")
         blocks = re.findall(r"```pys\n(.*?)```", text, flags=re.DOTALL)
         assert blocks, f"No PYS teaching blocks found in {name}"
@@ -104,15 +108,20 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
         "1",
         "9",
         "2",  # IdCounter.getTotal() after two constructions (static field)
+        "True",  # emit-targets Point equality demo
     ]
 
     index = (BOOK / "html" / "index.html").read_text(encoding="utf-8")
     assert 'href="under_the_hood_entrypoint.html"' in index
     assert 'href="under_the_hood_memory.html"' in index
+    assert 'href="under_the_hood_emit_targets.html"' in index
     entrypoint_html = (
         BOOK / "html" / "under_the_hood_entrypoint.html"
     ).read_text(encoding="utf-8")
     memory_html = (BOOK / "html" / "under_the_hood_memory.html").read_text(
+        encoding="utf-8"
+    )
+    emit_html = (BOOK / "html" / "under_the_hood_emit_targets.html").read_text(
         encoding="utf-8"
     )
     assert entrypoint_html.count('class="concept-diagram"') >= 2
@@ -122,6 +131,8 @@ def test_optional_computer_model_chapters_follow_the_core_course(capsys) -> None
     assert "Virtual address space" in memory_html
     assert "Thread 1" in memory_html
     assert "Shared runtime data" in memory_html
+    assert "javascript" in emit_html.lower()
+    assert "pys.emitTarget" in emit_html or "emitTarget" in emit_html
 
 
 def test_session_10_pattern_chapters_include_concept_diagrams() -> None:

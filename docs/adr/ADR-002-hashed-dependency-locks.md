@@ -4,6 +4,7 @@
 | --- | --- |
 | Status | Accepted |
 | Date | 2026-08-01 |
+| Amended | 2026-08-09 (deps live in `pys.toml`; lock remains sibling) |
 | Commits | `4446848` |
 | Code detail | [CER-001](../evolution/CER-001-security-boundaries.md) §6–7 |
 
@@ -15,16 +16,22 @@ can silently pick different bits than the author reviewed.
 
 ## Decision
 
-1. Every runnable project with deps keeps a committed **`pys.lock`** (URL +
-   SHA-256 per artifact, deps fingerprint, Python minor, platform).
+1. Every runnable project with Python deps keeps pins in **`pys.toml`**
+   (`[interpreter]` / `[dependencies]`) and a committed sibling **`pys.lock`**
+   (URL + SHA-256 per artifact, deps fingerprint, Python minor, platform).
 2. Install uses **`pip --require-hashes --no-deps`** into a lock-digest cache.
 3. Missing, stale, wrong-runtime, or bad-hash locks **fail closed** on run /
    transpile; unpinned run dependencies are rejected.
-4. Authors refresh locks explicitly: `python -m transpiler deps lock`.
+4. Authors refresh locks explicitly: `python -m transpiler deps lock`
+   (default `./pys.toml`).
+5. npm packages use the same `pys.toml` under `[dependencies.npm]` (central
+   npm cache; no student-facing `package.json`). Legacy `pys.deps` /
+   `package.json` still load with a deprecation warning.
 
 ## Consequences
 
-- Changing `pys.deps` without regenerating the lock is a hard error — intentional.
+- Changing `[dependencies]` without regenerating the lock is a hard error —
+  intentional.
 - Platform-specific locks may be needed when artifacts differ (document in
   project README / CI); do not weaken hashing to paper over that.
 - In this monorepo, a root `pys.lock` (often `win-amd64`) must not leak into

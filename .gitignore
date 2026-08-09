@@ -56,6 +56,10 @@ htmlcov/
 # Misc
 *.swp
 
+# JS emit / npm (target-dependent examples)
+**/node_modules/
+**/.pys_js_out/
+
 # PYS VS Code extension build output
 pys-language/bundled/
 pys-language/*.vsix

@@ -62,7 +62,9 @@ parent directory ⇒ same package (compat for flat examples).
   (requirements §4): name both packages/roots and suggest the mirrored path.
 - After F-006: `examples/webserver/` uses `src/` + `tests/` (done); product
   remainder closed as F-007 / CER-034.
-- Manifest filename is `pys.toml` (requirements); may coexist with `pys.deps`.
+- Manifest filename is `pys.toml` (requirements); it also holds
+  `[interpreter]` / `[dependencies]` / `[dependencies.npm]` (ADR-002 amend).
+  Legacy `pys.deps` is deprecated.
 
 ## Rejected alternatives
 

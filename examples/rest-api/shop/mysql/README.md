@@ -23,6 +23,8 @@ curl http://127.0.0.1:8091/health
 curl http://127.0.0.1:8091/api/products
 ```
 
+Or right-click this folder’s `pys.toml` → **Run Project**.
+
 Port **8091** (memory uses 8090).
 
 ## Tests (CI without live MySQL)

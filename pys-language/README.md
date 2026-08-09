@@ -11,7 +11,7 @@ bundled** in the VSIX — students do not `pip install` this repo.
 - Keyword / type completions and hover hints
 - Go to Definition / **Find Usages** (editor context menu on the identifier under the cursor)
   - Optional: settings → **PYS: Navigate Library Sources** (`pys.navigateLibrarySources`)
-    to F12 into Python files from the locked `pys.deps` env (trusted workspace only;
+    to F12 into Python files from the locked `pys.toml` / `pys.lock` env (trusted workspace only;
     off by default — ADR-001)
 - Language / file icons for `.pys`
 - Markdown ` ```pys ` fences: editor + preview highlighting
@@ -32,11 +32,11 @@ bundled** in the VSIX — students do not `pip install` this repo.
   surround with null check); debugger Variables show `null` not Python `None`
 - `result<T,E>`, `ok` / `error`, `propagate`, and result-pattern highlighting,
   completions, hovers, snippets, diagnostics, and entrypoint conflict fixes
-- Libraries: project `pys.deps` → shared `~/.pys/repository` (no venv)
-  - Right-click **`pys.deps`** → **PYS: Run Deps Lock** (runs `deps lock` / refreshes `pys.lock`)
+- Libraries: project `pys.toml` `[dependencies]` → shared `~/.pys/repository` (no venv)
+  - Right-click **`pys.toml`** → **PYS: Run Deps Lock** (runs `deps lock` / refreshes `pys.lock`)
 - **PYS activity bar** (sidebar icon): **Create PYS Project** — scaffolds a
   runnable `src/main.pys`, `tests/`, `pys.toml` (`[project].main` and
-  `[source_roots]`), and a template `pys.deps`
+  `[source_roots]`), and `[dependencies]` templates in the same file
 
 ## Install (students)
 

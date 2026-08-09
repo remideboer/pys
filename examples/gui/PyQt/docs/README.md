@@ -1,10 +1,10 @@
 # Pokemon TCG demo (PyQt6 + PYS) — isolated silo
 
-Type-safe OO PYS example using **PyQt6** from `pys.deps`: browse a
+Type-safe OO PYS example using **PyQt6** from `pys.toml`: browse a
 [TCGdex](https://tcgdex.dev/rest)-extracted card catalog, manage an owned
 collection with per-type stats, and build decks from owned cards.
 
-Self-contained folder (`domain` / `store` / `data` / `pys.deps`).
+Self-contained folder (`domain` / `store` / `data` / `pys.toml`).
 Tkinter twin: `examples/gui/pokemontcg/`.
 
 `PokemonQtApp inherits QMainWindow` — create `QApplication` in `main.pys` first,
@@ -40,5 +40,5 @@ python -m transpiler run examples/gui/PyQt/fetch_catalog.pys
 | `main.pys` | Entry — `PokemonQtApp` |
 | `ui.pys` | PyQt6 tabs master–detail |
 | `domain.pys` / `store.pys` | Typed domain + JSON I/O |
-| `pys.deps` | `pyqt6` |
+| `pys.toml` | `pyqt6` |
 | `data/` | `catalog.json`, `collection.json`, `decks.json` |

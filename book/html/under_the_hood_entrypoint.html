@@ -122,6 +122,7 @@
 <ul>
 <li><a href="under_the_hood_entrypoint.html">12.1. From source file to running process</a></li>
 <li><a href="under_the_hood_memory.html">12.2. Processes, calls, and memory</a></li>
+<li><a href="under_the_hood_emit_targets.html">12.3. Emit targets: Python and JavaScript</a></li>
 </ul>
 <span class="section">13. Exercises</span>
 <ul>
@@ -187,13 +188,14 @@ a role—“the main file”—not as required PYS function syntax.</p>
 Debug, and the editor from making different guesses:</p>
 <pre><code class="language-toml">[project]
 main = &quot;src/app.pys&quot;
+# Optional: target = &quot;javascript&quot;  # default is python (Run Project / bare run)
 
 [source_roots]
 main = &quot;src&quot;
 test = &quot;tests&quot;
 </code></pre>
-<p>With this manifest, <code>src/app.pys</code> is authoritative. Running the project
-directory executes that file. Trying to run another file as though it were the
+<p>With this manifest, <code>src/app.pys</code> is authoritative. <strong>Run Project</strong> (right-click
+<code>pys.toml</code>) executes that file. Trying to run another file as though it were the
 application is rejected; the editor can update the choice with <strong>Set as
 entrypoint</strong>.</p>
 <p>The configured path must:</p>

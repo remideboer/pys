@@ -1,0 +1,22 @@
+# JavaScript / Node MySQL demo (`mysql2` callback API — no await/tasks yet).
+# Setup: npm install
+# Run:   python -m transpiler run main.pys --target javascript
+# Needs the same local MySQL as examples/by-target/python/mysql (or edit options).
+
+import mysql2 as mysql
+
+object conn = mysql.createConnection(host="localhost", user="pys", password="123456789", database="combiteelt")
+
+conn.connect()
+conn.query("SELECT * FROM combiteelt.soort", (object err, object rows) => {
+    if (err != null) {
+        print(err)
+        conn.end()
+        return
+    }
+    print(rows)
+    loop (object x in rows) {
+        print("row: {x}")
+    }
+    conn.end()
+})

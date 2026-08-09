@@ -73,6 +73,7 @@ def _manifest_error(
     manifest: Path,
     code: str,
     suggested_fix: str | None = None,
+    tips: list[str] | None = None,
 ) -> None:
     from .transpiler import TranspileError
 
@@ -81,12 +82,34 @@ def _manifest_error(
         source_file=manifest,
         code=code,
         suggested_fix=suggested_fix,
-        tips=["Set `[project].main` to a contained `.pys` file."],
+        tips=tips
+        if tips is not None
+        else ["Set `[project].main` to a contained `.pys` file."],
     )
 
 
 def _parse_project_main_text(text: str, manifest: Path) -> str | None:
     """Return the optional `[project].main` string."""
+    project = _parse_project_table(text, manifest)
+    if project is None:
+        return None
+    raw = project.get("main")
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw.strip():
+        _manifest_error(
+            "`[project].main` must be a non-empty path string.",
+            manifest=manifest,
+            code="pys.entrypoint-main",
+        )
+    return raw.strip()
+
+
+EMIT_TARGETS = frozenset({"python", "javascript"})
+
+
+def _parse_project_table(text: str, manifest: Path) -> dict | None:
+    """Return the `[project]` table as a plain dict, or None if absent."""
     if sys.version_info >= (3, 11):
         import tomllib
 
@@ -107,19 +130,11 @@ def _parse_project_main_text(text: str, manifest: Path) -> str | None:
                 manifest=manifest,
                 code="pys.manifest-project",
             )
-        raw = project.get("main")
-        if raw is None:
-            return None
-        if not isinstance(raw, str) or not raw.strip():
-            _manifest_error(
-                "`[project].main` must be a non-empty path string.",
-                manifest=manifest,
-                code="pys.entrypoint-main",
-            )
-        return raw.strip()
+        return project
 
+    # Python < 3.11: line scan for string assignments only.
     in_project = False
-    project_main: str | None = None
+    project: dict[str, str] = {}
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
@@ -129,21 +144,76 @@ def _parse_project_main_text(text: str, manifest: Path) -> str | None:
             continue
         if in_project:
             match = _ROOT_ASSIGN.match(line)
-            if match and match.group(1) == "main":
-                if project_main is not None:
+            if match:
+                key = match.group(1)
+                if key in project:
                     _manifest_error(
-                        "`[project].main` may be declared only once.",
+                        f"`[project].{key}` may be declared only once.",
                         manifest=manifest,
                         code="pys.manifest-invalid",
                     )
-                project_main = match.group(2).strip()
+                project[key] = match.group(2).strip()
             elif re.match(r"^\s*main\s*=", line):
                 _manifest_error(
                     "`[project].main` must be a non-empty path string.",
                     manifest=manifest,
                     code="pys.entrypoint-main",
                 )
-    return project_main
+            elif re.match(r"^\s*target\s*=", line):
+                _manifest_error(
+                    "`[project].target` must be \"python\" or \"javascript\".",
+                    manifest=manifest,
+                    code="pys.manifest-target",
+                )
+    return project or None
+
+
+def _parse_project_emit_target_text(text: str, manifest: Path) -> str | None:
+    """Return optional `[project].target` (``python`` | ``javascript``)."""
+    project = _parse_project_table(text, manifest)
+    if project is None:
+        return None
+    raw = project.get("target")
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw.strip():
+        _manifest_error(
+            '`[project].target` must be "python" or "javascript".',
+            manifest=manifest,
+            code="pys.manifest-target",
+        )
+    value = raw.strip().lower()
+    if value not in EMIT_TARGETS:
+        _manifest_error(
+            f'`[project].target` must be "python" or "javascript", got {raw!r}.',
+            manifest=manifest,
+            code="pys.manifest-target",
+            suggested_fix='target = "python"',
+            tips=['Use target = "python" or target = "javascript".'],
+        )
+    return value
+
+
+@lru_cache(maxsize=64)
+def _load_project_emit_target_cached(manifest_path: str, text: str) -> str | None:
+    return _parse_project_emit_target_text(text, Path(manifest_path))
+
+
+def load_project_emit_target(start: Path) -> str:
+    """Emit target from nearest ``pys.toml`` ``[project].target``, else ``python``."""
+    path = start.expanduser()
+    try:
+        path = path.resolve()
+    except OSError:
+        return "python"
+    if path.is_file() and path.name == MANIFEST_NAME:
+        manifest = path
+    else:
+        manifest = find_manifest(path)
+    if manifest is None:
+        return "python"
+    text = manifest.read_text(encoding="utf-8")
+    return _load_project_emit_target_cached(str(manifest.resolve()), text) or "python"
 
 
 @lru_cache(maxsize=64)

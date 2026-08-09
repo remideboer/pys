@@ -14,21 +14,23 @@ main = "src/main.pys"
 [source_roots]
 main = "src"
 test = "tests"
+
+[interpreter]
+version = ">=3.10"
+
+[dependencies]
+# Add third-party packages here, then right-click pys.toml → PYS: Run Deps Lock
+# "example-package" = { version = "1.2.3" }
+
+# npm packages for --target javascript (optional):
+# [dependencies.npm]
+# mysql2 = "^3.11.0"
 `;
 
 const MAIN_SOURCE = `# Expected output:
 # Hello from PYS
 
 print("Hello from PYS")
-`;
-
-const PYS_DEPS = `[interpreter]
-\tversion: >=3.10
-
-[dependencies]
-# Add third-party packages here, then right-click this file → PYS: Run Deps Lock
-#\texample-package
-#\t\tversion: 1.2.3
 `;
 
 /**
@@ -69,9 +71,6 @@ function createPysProjectScaffold(projectRoot, io = fs) {
   }
   io.writeFileSync(tomlPath, PYSTOML, 'utf8');
   created.push('pys.toml');
-  const depsPath = path.join(root, 'pys.deps');
-  io.writeFileSync(depsPath, PYS_DEPS, 'utf8');
-  created.push('pys.deps');
   return { root, created };
 }
 
@@ -79,5 +78,4 @@ module.exports = {
   createPysProjectScaffold,
   MAIN_SOURCE,
   PYSTOML,
-  PYS_DEPS,
 };

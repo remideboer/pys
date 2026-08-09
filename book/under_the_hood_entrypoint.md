@@ -69,14 +69,15 @@ Debug, and the editor from making different guesses:
 ```toml
 [project]
 main = "src/app.pys"
+# Optional: target = "javascript"  # default is python (Run Project / bare run)
 
 [source_roots]
 main = "src"
 test = "tests"
 ```
 
-With this manifest, `src/app.pys` is authoritative. Running the project
-directory executes that file. Trying to run another file as though it were the
+With this manifest, `src/app.pys` is authoritative. **Run Project** (right-click
+`pys.toml`) executes that file. Trying to run another file as though it were the
 application is rejected; the editor can update the choice with **Set as
 entrypoint**.
 

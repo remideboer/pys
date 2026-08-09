@@ -1,8 +1,8 @@
 {
   "name": "pys-language",
   "displayName": "PYS Language Support",
-  "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.deps for libraries).",
-  "version": "0.0.86",
+  "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.toml for libraries).",
+  "version": "0.0.87",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -62,7 +62,13 @@
         "pys.navigateLibrarySources": {
           "type": "boolean",
           "default": false,
-          "description": "Go to Definition may open Python sources from the locked pys.deps environment (imports library packages). Off by default (ADR-001). Requires a trusted workspace."
+          "description": "Go to Definition may open Python sources from the locked pys.toml / pys.lock environment (imports library packages). Off by default (ADR-001). Requires a trusted workspace."
+        },
+        "pys.emitTarget": {
+          "type": "string",
+          "enum": ["python", "javascript"],
+          "default": "python",
+          "description": "Backend used when running or debugging .pys files: Python (CPython / debugpy) or JavaScript (Node.js / js-debug)."
         }
       }
     },
@@ -136,7 +142,7 @@
     "viewsWelcome": [
       {
         "view": "pys.sidebar",
-        "contents": "Create a PYS project with source roots (`src` / `tests`), `pys.toml`, and a template `pys.deps`.\n\n[Create PYS Project](command:pys.createProject)\n\nAfter editing dependencies, right-click `pys.deps` → **Run Deps Lock**."
+        "contents": "Create a PYS project with source roots (`src` / `tests`) and a `pys.toml` (entrypoint, deps).\n\n[Create PYS Project](command:pys.createProject)\n\nRight-click `pys.toml` → **Run Project** (uses `[project].main` / optional `target`). After editing `[dependencies]`, use **Run Deps Lock**."
       }
     ],
     "languages": [
@@ -220,7 +226,7 @@
       },
       {
         "command": "pys.debugTranspiledFile",
-        "title": "Debug Transpiled Python",
+        "title": "Debug Transpiled Output",
         "category": "PYS Advanced",
         "icon": "$(symbol-file)"
       },
@@ -243,6 +249,12 @@
         "icon": "$(new-folder)"
       },
       {
+        "command": "pys.runProject",
+        "title": "Run Project",
+        "category": "PYS",
+        "icon": "$(play)"
+      },
+      {
         "command": "pys.lockDeps",
         "title": "Run Deps Lock",
         "category": "PYS",
@@ -252,6 +264,12 @@
         "command": "pys.setAsEntrypoint",
         "title": "Set as entrypoint",
         "category": "PYS"
+      },
+      {
+        "command": "pys.selectEmitTarget",
+        "title": "Select Emit Target",
+        "category": "PYS",
+        "icon": "$(symbol-misc)"
       },
       {
         "command": "pys.clearAllBreakpoints",
@@ -376,8 +394,13 @@
       ],
       "editor/title": [
         {
+          "command": "pys.runProject",
+          "when": "resourceFilename == 'pys.toml' && !isInDiffEditor",
+          "group": "navigation@99"
+        },
+        {
           "command": "pys.lockDeps",
-          "when": "resourceFilename == 'pys.deps' && !isInDiffEditor",
+          "when": "(resourceFilename == 'pys.toml' || resourceFilename == 'pys.deps') && !isInDiffEditor",
           "group": "navigation@100"
         },
         {
@@ -415,8 +438,13 @@
       ],
       "editor/context": [
         {
+          "command": "pys.runProject",
+          "when": "resourceFilename == 'pys.toml'",
+          "group": "navigation@0"
+        },
+        {
           "command": "pys.lockDeps",
-          "when": "resourceFilename == 'pys.deps'",
+          "when": "resourceFilename == 'pys.toml' || resourceFilename == 'pys.deps'",
           "group": "navigation@1"
         },
         {
@@ -512,8 +540,13 @@
       ],
       "explorer/context": [
         {
+          "command": "pys.runProject",
+          "when": "resourceFilename == 'pys.toml'",
+          "group": "navigation@0"
+        },
+        {
           "command": "pys.lockDeps",
-          "when": "resourceFilename == 'pys.deps'",
+          "when": "resourceFilename == 'pys.toml' || resourceFilename == 'pys.deps'",
           "group": "navigation@1"
         },
         {
@@ -532,8 +565,12 @@
           "command": "pys.createProject"
         },
         {
+          "command": "pys.runProject",
+          "when": "resourceFilename == 'pys.toml'"
+        },
+        {
           "command": "pys.lockDeps",
-          "when": "resourceFilename == 'pys.deps'"
+          "when": "resourceFilename == 'pys.toml' || resourceFilename == 'pys.deps'"
         },
         {
           "command": "pys.debugTranspiledFile",
@@ -592,6 +629,7 @@
     "onCommand:pys.setAsEntrypoint",
     "onCommand:pys.setAsMainFile",
     "onCommand:pys.createProject",
+    "onCommand:pys.runProject",
     "onCommand:pys.lockDeps",
     "onCommand:pys.clearAllBreakpoints",
     "onCommand:pys.addLogpoint",

@@ -1,3 +1,6 @@
+[project]
+main = "src/main.pys"
+
 [source_roots]
 main = "src"
 test = "tests"

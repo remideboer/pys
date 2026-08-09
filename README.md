@@ -8,7 +8,7 @@ IDE run/debug path and a **didactic tutorial track** (not a keyword tour).
 
 PYS is a **bridge language**: typed, brace-shaped source that feels closer to
 **C# / Java**, while students still run on the familiar **Python** ecosystem
-(stdlib, PyPI via `pys.deps`, VS Code / Cursor).
+(stdlib, PyPI via `pys.toml` `[dependencies]`, VS Code / Cursor).
 
 | Principle | What it means in practice |
 | --- | --- |
@@ -174,13 +174,13 @@ for indentation when not using braces; tabs are illegal.
 ```pys
 import funcs                 # sibling .pys module (package/global exports)
 import interfaces
-import math                  # Python stdlib — no pys.deps entry
+import math                  # Python stdlib — no [dependencies] entry
 import tkinter as tk         # stdlib with alias
 # import all from funcs.pys
 # import hello from funcs.pys
 ```
 
-Third-party packages need a `pys.deps` entry next to the project (full
+Third-party packages need a `pys.toml` `[dependencies]` entry (full
 rules: [Dependency management](#dependency-management-pysdeps)):
 
 ```
@@ -193,8 +193,8 @@ rules: [Dependency management](#dependency-management-pysdeps)):
 		build: run
 ```
 
-Then lock once — CLI `python -m transpiler deps lock pys.deps`, or in the IDE
-right-click **`pys.deps`** → **PYS: Run Deps Lock** — and import:
+Then lock once — CLI `python -m transpiler deps lock`, or in the IDE
+right-click **`pys.toml`** → **PYS: Run Deps Lock** — and import:
 
 ```pys
 import mysql.connector
@@ -216,7 +216,7 @@ print("area=#f{area}")
 ```
 
 Same pattern with a PyPI package (requires `mysql-connector-python` in
-`pys.deps`), as in `examples/main.pys`:
+`pys.toml`), as in `examples/main.pys`:
 
 ```pys
 import mysql.connector
@@ -462,7 +462,7 @@ and **JIT cards**. Teacher notes: [`tutorials/TEACHER.md`](tutorials/TEACHER.md)
    unzip, run `install.cmd` (Windows) or `./install.sh`, then reload VS Code.
 4. Open a folder with `.pys` files and use **PYS: Run File**.
 
-Third-party libraries use **`pys.deps`** (no project venv) — see below. First Run may
+Third-party libraries use **`pys.toml`** (no project venv) — see below. First Run may
 download packages into `~/.pys/repository`.
 
 Maintainers: [`pys-language/PUBLISH.md`](pys-language/PUBLISH.md) (Marketplace + ELO zip).
@@ -493,6 +493,7 @@ F5 from `pys-language` after `npm run prepare`. Diagnostics still use a workspac
 ```bash
 python -m transpiler run tutorials/tasks/T1-sensor-log/1-worked.pys
 python -m transpiler run examples/main.pys
+python -m transpiler run examples/js_smoke.pys --target javascript
 ```
 
 ### Transpile only
@@ -501,13 +502,14 @@ python -m transpiler run examples/main.pys
 python -m transpiler transpile examples/main.pys .transpiled/main.py
 ```
 
-### Dependency management (`pys.deps`)
+### Dependency management (`pys.toml`)
 
 PYS does **not** use a project virtualenv or `requirements.txt`. Third-party
-packages for `.pys` programs are declared in a `pys.deps` file. Resolved
-environments live in a local **content-addressable dependency cache**: each
-locked tree is stored once under the SHA-256 digest of `pys.lock`, and any
-project with that same lock reuses the tree (no per-project copy). 
+packages for `.pys` programs are declared in the project’s **`pys.toml`**
+(`[interpreter]` / `[dependencies]`, and `[dependencies.npm]` for JavaScript).
+Resolved Python environments live in a local **content-addressable dependency
+cache**: each locked tree is stored once under the SHA-256 digest of `pys.lock`,
+and any project with that same lock reuses the tree (no per-project copy).
 
 Default cache root (`PYS_REPO` overrides):
 
@@ -520,10 +522,11 @@ Default cache root (`PYS_REPO` overrides):
 **How it works**
 
 1. On run/transpile, the tool walks upward from the `.pys` file until it finds
-   `pys.deps`.
+   a `pys.toml` with `[interpreter]` / `[dependencies]` (legacy `pys.deps` still
+   loads with a deprecation warning).
 2. It checks the optional `[interpreter]` version constraint against the
    Python executable that launched the transpiler.
-3. It verifies the committed `pys.lock` matches `pys.deps`, Python, and platform.
+3. It verifies the committed `pys.lock` matches those pins, Python, and platform.
 4. Every direct and transitive package is installed from the exact URL and
    SHA-256 in the lock, using pip `--require-hashes --no-deps`.
 5. The locked environment is addressed by lock digest in the cache and
@@ -544,55 +547,60 @@ Override the cache root with env `PYS_REPO` if needed.
 
 **Declare dependencies**
 
-Place `pys.deps` in the project root (or any parent of the `.pys` file):
+Put pins in `pys.toml` next to `[project]` / `[source_roots]`:
 
-```
+```toml
 [interpreter]
-	version: >=3.10
+version = ">=3.10"
 
 [dependencies]
-	matplotlib
-		version: 3.10.5
-	mysql-connector-python
-		version: 8.0.33
-		build: run
+matplotlib = { version = "3.10.5" }
+"mysql-connector-python" = { version = "8.0.33", build = "run" }
+
+# Optional — JavaScript emit target:
+# [dependencies.npm]
+# mysql2 = "^3.11.0"
 ```
 
 | Field | Meaning |
 | --- | --- |
-| package name (indented line) | PyPI name; required |
+| package key | PyPI name; required |
 | `version` | Exact version (e.g. `8.0.33`); required for Run dependencies |
 | `build` | `run`, `test`, or omit (= available for both) |
 
 `interpreter.path` is intentionally not supported in project-controlled
-`pys.deps`. To use another interpreter, invoke the transpiler with that Python:
+config. To use another interpreter, invoke the transpiler with that Python:
 `C:\Python311\python.exe -m transpiler run main.pys`.
 
 After changing dependencies, regenerate and commit the lock for the current
 Python/platform:
 
 ```bash
-python -m transpiler deps lock pys.deps
+python -m transpiler deps lock
+# or: python -m transpiler deps lock pys.toml
 ```
 
-In VS Code / Cursor, right-click **`pys.deps`** → **PYS: Run Deps Lock** (same
+In VS Code / Cursor, right-click **`pys.toml`** → **PYS: Run Deps Lock** (same
 command as the CLI).
 
 Run fails closed if the lock is missing, stale, has the wrong platform/Python,
 or contains an invalid hash.
 
-Stdlib modules need no entry. Non-stdlib packages must be listed in `pys.deps`
-before you `import` them from `.pys`.
+Stdlib modules need no entry. Non-stdlib packages must be listed under
+`[dependencies]` before you `import` them from `.pys`.
 
 ## VS Code Integration
 
 Install the **PYS Language** extension (bundled transpiler). Use **PYS: Run File** /
 editor Run controls — no workspace `.vscode/run_pys.py` required. The activity-bar
-**PYS** icon offers **Create PYS Project** (`src` / `tests` + `pys.toml` + template
-`pys.deps`), including a runnable manifest-selected `src/main.pys`.
+**PYS** icon offers **Create PYS Project** (`src` / `tests` + unified `pys.toml`),
+including a runnable manifest-selected `src/main.pys`.
 
 - Put the authoritative entrypoint in `pys.toml`, for example
   `[project]` / `main = "src/app.pys"`, or use **PYS: Set as entrypoint**.
+  Optional `target = "python"` | `"javascript"` (default python) drives
+  **Run Project** (right-click `pys.toml`) and bare `transpiler run` without
+  `--target`. Status-bar emit still applies to **Run File**.
   `pys.mainFile` remains only as a deprecated fallback for folders without a
   manifest.
 - Recoverable errors use `result<T,E>`, `ok` / `error`, exhaustive result
@@ -611,7 +619,8 @@ editor Run controls — no workspace `.vscode/run_pys.py` required. The activity
   Halts at user breakpoints (not top-level entry). **Clear All Breakpoints** on
   context / gutter / tab. Requires the Microsoft Python extension.
   Sample: [`examples/debug_step.pys`](examples/debug_step.pys).
-- Third-party imports resolve through `pys.deps` / `~/.pys/repository` on Run.
+- Third-party imports resolve through `pys.toml` `[dependencies]` /
+  `~/.pys/repository` on Run.
 
 ## How this transpiler works
 
@@ -626,11 +635,13 @@ The compiler pipeline is:
    interfaces, shared capture, arrays, await rules, …).
 4. **Emit** — [`transpiler/emit/python.py`](transpiler/emit/python.py) walks the AST to
    Python (overloads, concurrency preamble, `.pys` imports via
-   [`imports.py`](transpiler/imports.py)). The compile path is AST-only
+   [`imports.py`](transpiler/imports.py)), or [`emit/javascript.py`](transpiler/emit/javascript.py)
+   for the JavaScript MVP (`--target javascript` → Node; [ADR-030](docs/adr/ADR-030-javascript-emit-target.md)).
+   The compile path is AST-only
    ([`docs/pipeline-migration.md`](docs/pipeline-migration.md)).
 
 Public entry points (`transpile`, `run_source`) go through
-[`transpiler/pipeline.py`](transpiler/pipeline.py) (`compile_pys(..., target="python")`).
+[`transpiler/pipeline.py`](transpiler/pipeline.py) (`compile_pys(..., target="python"|"javascript")`).
 
 Characterization goldens under `tests/golden/` lock emit parity. Regenerate only
 via `python tests/golden/regen.py` (never in CI).
@@ -656,6 +667,6 @@ the deprecated `pys.mainFile` setting.
 1. Add/adjust grammar notes in [`docs/language.ebnf`](docs/language.ebnf).
 2. Extend the lexer / parser / AST as needed (`transpiler/lex.py`, `parse.py`,
    `ast_nodes.py`).
-3. Emit via `transpiler/emit/python.py` (or a future backend under `emit/`).
+3. Emit via `transpiler/emit/python.py` (or `emit/javascript.py` / a future backend under `emit/`).
 4. Add a golden under `tests/golden/ebnf/…` and run `python tests/golden/regen.py`.
 5. Run `python -m pytest -q`.

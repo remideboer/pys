@@ -11,6 +11,7 @@ import pytest
 
 from transpiler.deps import (
     DEFAULT_INDEX_URL,
+    MANIFEST_FILENAME,
     DepsLock,
     DepsError,
     Dependency,
@@ -22,6 +23,7 @@ from transpiler.deps import (
     generate_lock,
     load_deps,
     lookup_cached_dependency,
+    parse_deps_from_toml,
     parse_deps_text,
     prepend_pythonpath,
     read_lock,
@@ -57,6 +59,70 @@ def test_parse_deps_basic() -> None:
     assert config.dependencies[1] == Dependency("matplotlib", None, None)
     assert config.dependencies[2] == Dependency("my-lib", None, "test")
     assert config.dependencies[3].name == "my-other-lib"
+
+
+def test_parse_deps_from_toml_basic() -> None:
+    text = """
+[interpreter]
+version = ">=3.9"
+
+[dependencies]
+requests = { version = "2.32.3", build = "run" }
+pytest = { version = "8.3.2", build = "test" }
+
+[dependencies.npm]
+mysql2 = "^3.11.0"
+"""
+    config = parse_deps_from_toml(text)
+    assert config is not None
+    assert config.interpreter.version == ">=3.9"
+    assert [(d.name, d.version, d.build) for d in config.dependencies] == [
+        ("requests", "2.32.3", "run"),
+        ("pytest", "8.3.2", "test"),
+    ]
+
+
+def test_parse_deps_from_toml_rejects_interpreter_path() -> None:
+    with pytest.raises(DepsError, match="interpreter.path"):
+        parse_deps_from_toml('[interpreter]\npath = "./evil"\n')
+
+
+def test_parse_deps_from_toml_npm_only_returns_none() -> None:
+    assert (
+        parse_deps_from_toml(
+            '[project]\nmain = "main.pys"\n\n[dependencies.npm]\nmysql2 = "^3"\n'
+        )
+        is None
+    )
+
+
+def test_load_deps_prefers_pys_toml(tmp_path: Path) -> None:
+    (tmp_path / "pys.toml").write_text(
+        '[interpreter]\nversion = ">=3.10"\n\n'
+        '[dependencies]\n"demo-pkg" = { version = "1.0.0", build = "run" }\n',
+        encoding="utf-8",
+    )
+    (tmp_path / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n\told\n\t\tversion: 9.9.9\n",
+        encoding="utf-8",
+    )
+    config = load_deps(tmp_path / "main.pys", stop_at=tmp_path)
+    assert config is not None
+    assert config.source_path == (tmp_path / MANIFEST_FILENAME).resolve()
+    assert config.dependencies[0].name == "demo-pkg"
+
+
+def test_load_deps_legacy_pys_deps_warns(tmp_path: Path) -> None:
+    (tmp_path / "pys.deps").write_text(
+        "[interpreter]\n\tversion: any\n[dependencies]\n",
+        encoding="utf-8",
+    )
+    with pytest.warns(DeprecationWarning, match="pys.deps is deprecated"):
+        config = load_deps(tmp_path / "main.pys", stop_at=tmp_path)
+    assert config is not None
+    assert config.source_path and config.source_path.name == "pys.deps"
+    assert config.interpreter.version is None
+    assert config.dependencies == []
 
 
 def test_parse_rejects_unknown_section() -> None:
@@ -850,7 +916,16 @@ def test_library_type_definition_is_navigable(tmp_path: Path, monkeypatch: pytes
 
 
 def test_navigate_to_module_and_function(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from transpiler.deps import clear_filesystem_caches
     from transpiler.ide import analyze_file, lookup_symbol
+    from transpiler.pytypes import clear_filesystem_caches as clear_pytypes_caches
+
+    # Prior tests may have memoized module probes / imported mysql into sys.modules.
+    clear_filesystem_caches()
+    clear_pytypes_caches()
+    for key in list(sys.modules):
+        if key == "mysql" or key.startswith("mysql."):
+            del sys.modules[key]
 
     site = tmp_path / "site"
     pkg = site / "mysql" / "connector"

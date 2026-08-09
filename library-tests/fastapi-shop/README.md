@@ -20,7 +20,7 @@ mysql -u pys -p123456789 shop < examples/database/seed_boardgames.sql
 2. Lock deps (once per machine/platform):
 
 ```text
-python -m transpiler deps lock library-tests/fastapi-shop/pys.deps
+python -m transpiler deps lock library-tests/fastapi-shop/pys.toml
 ```
 
 ## Run
@@ -84,4 +84,4 @@ curl -s -X POST http://127.0.0.1:8093/api/products -H "Authorization: Bearer TOK
 | `src/routes_*.pys` | `@router.get` / `.post` / … |
 | `src/security.pys` | bcrypt + JWT |
 | `src/db.pys` | `ShopDatabase` (`MySQLCursor`) |
-| `pys.deps` | fastapi, uvicorn, mysql-connector, bcrypt, httpx |
+| `pys.toml` | fastapi, uvicorn, mysql-connector, bcrypt, httpx |

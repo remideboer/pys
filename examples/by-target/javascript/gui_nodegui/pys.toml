@@ -1,0 +1,6 @@
+[project]
+main = "main.pys"
+target = "javascript"
+
+[dependencies.npm]
+"@nodegui/nodegui" = "^0.67.0"

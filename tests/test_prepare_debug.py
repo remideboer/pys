@@ -124,3 +124,57 @@ def test_prepare_debug_rejects_outside_workspace(
     result = prepare_debug(outside, tmp_path / "dbg")
     assert result["ok"] is False
     assert "workspace" in result["error"]["message"].lower()
+
+
+def test_prepare_debug_javascript_writes_mjs_and_js_maps(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+
+    if shutil.which("node") is None:
+        pytest.skip("node not on PATH")
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    src = ws / "demo.pys"
+    src.write_text("int x = 1\nprint(x)\n", encoding="utf-8")
+    out = tmp_path / "dbg"
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(ws))
+    result = prepare_debug(src, out, target="javascript")
+    assert result["ok"] is True
+    assert result["target"] == "javascript"
+    main = Path(result["main"])
+    assert main.suffix == ".mjs"
+    assert main.is_file()
+    assert "let x = 1" in main.read_text(encoding="utf-8") or "x = 1" in main.read_text(
+        encoding="utf-8"
+    )
+    assert result["runtimeExecutable"]
+    assert "pythonpath_prepend" not in result
+    map_path = Path(result["maps"]["demo"])
+    sidecar = json.loads(map_path.read_text(encoding="utf-8"))
+    assert "js" in sidecar
+    assert Path(sidecar["js"]).resolve() == main.resolve()
+    assert any("js" in e and "pys" in e for e in sidecar["lines"])
+
+
+def test_prepare_debug_cli_javascript_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import shutil
+
+    if shutil.which("node") is None:
+        pytest.skip("node not on PATH")
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    src = ws / "a.pys"
+    src.write_text("print(1)\n", encoding="utf-8")
+    out = tmp_path / "out"
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(ws))
+    code = ide_main(
+        ["--prepare-debug", str(out), str(src), "--target", "javascript"]
+    )
+    assert code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["ok"] is True
+    assert payload["target"] == "javascript"
+    assert Path(payload["main"]).suffix == ".mjs"

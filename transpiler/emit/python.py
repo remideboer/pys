@@ -481,9 +481,17 @@ class _Emitter:
         elif isinstance(stmt, ArrayDecl):
             self._array_decl(stmt, indent)
         elif isinstance(stmt, AugAssignStmt):
-            name = self._lambda_rename.get(stmt.name, stmt.name)
-            shared = stmt.name in self.shared_vars
-            atomic = stmt.name in self.atomic_vars
+            name = self._rewrite_emitted_names(stmt.name)
+            shared = (
+                "[" not in stmt.name
+                and "." not in stmt.name
+                and stmt.name in self.shared_vars
+            )
+            atomic = (
+                "[" not in stmt.name
+                and "." not in stmt.name
+                and stmt.name in self.atomic_vars
+            )
             if shared or atomic:
                 if stmt.op == "++":
                     self._emit(indent, f"{name}.iadd(1)")
@@ -683,21 +691,14 @@ class _Emitter:
                 else self._expr(stmt.value, expected_type=expected)
             )
         if "." not in stmt.name and "[" not in stmt.name and stmt.name in self.shared_vars:
-            lhs = self._lambda_rename.get(stmt.name, stmt.name)
+            lhs = self._rewrite_emitted_names(stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
             return
         if "." not in stmt.name and "[" not in stmt.name and stmt.name in self.atomic_vars:
-            lhs = self._lambda_rename.get(stmt.name, stmt.name)
+            lhs = self._rewrite_emitted_names(stmt.name)
             self._emit(indent, f"{lhs}.set({value})")
             return
-        if "[" in stmt.name:
-            lhs = stmt.name
-        else:
-            lhs = (
-                self._lambda_rename.get(stmt.name, stmt.name)
-                if "." not in stmt.name
-                else stmt.name
-            )
+        lhs = self._rewrite_emitted_names(stmt.name)
         self._emit(indent, f"{lhs} = {value}")
 
     def _array_assign_value(self, lhs: str, value: Expr | None) -> str | None:
@@ -1435,6 +1436,17 @@ class _Emitter:
         self._lambda_rename = {**self._lambda_rename, name: mangled}
         self.debug_names[mangled] = name
         return mangled
+
+    def _rewrite_emitted_names(self, text: str) -> str:
+        """Apply brace/lambda renames to identifiers inside a string lvalue."""
+        if not text or not self._lambda_rename:
+            return text
+        out = text
+        for pys_name, emitted in sorted(
+            self._lambda_rename.items(), key=lambda kv: -len(kv[0])
+        ):
+            out = re.sub(rf"\b{re.escape(pys_name)}\b", emitted, out)
+        return out
 
     def _block(self, block: Block | None, indent: int, *, brace_scope: bool = False) -> None:
         if block is None or not block.statements:

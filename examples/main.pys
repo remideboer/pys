@@ -1,32 +1,11 @@
 # ── Imports ──────────────────────────────────────────────
+# Sibling .pys only — no third-party packages (target-independent showcase).
+# Target-specific demos (MySQL, GUI): examples/by-target/
 import funcs
 import interfaces
-import mysql.connector
-import tkinter as tk
 # also valid: import all from funcs.pys
 # also valid: import hello from funcs.pys
 # log() in interfaces.pys is module-private and NOT importable
-
-MySQLConnection mydb = mysql.connector.connect(host="localhost", user="pys", password="123456789", database="combiteelt")
-
-MySQLCursor mycursor = mydb.cursor()
-
-mycursor.execute("SELECT * FROM combiteelt.soort")
-
-# return type from fetchall() is known → declare it (IDE suggests this if omitted)
-list<tuple> result = mycursor.fetchall()
-print(result)
-loop (tuple x in result) {
-    print("ID: {x[0]}, Naam-NL: {x[1]}, Naam-LT: {x[2]}")
-}
-
-list<tuple<int, string, string>> result2 = mycursor.fetchall()
-print(result2)
-loop (tuple<int, string, string> x in result2) {
-    print("#i{x[0]} is an int, #s{x[1]} is a string, #s{x[2]} is a string")
-}
-mycursor.close()
-mydb.close()
 
 hello()
 print(PI)

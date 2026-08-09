@@ -665,15 +665,34 @@ def find_usages(
     )
 
 
-def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
-    """Transpile entry + imports into ``out_dir`` with ``*.pysmap.json`` sidecars.
+def prepare_debug(
+    source_path: Path,
+    out_dir: Path,
+    *,
+    target: str = "python",
+) -> dict[str, Any]:
+    """Transpile entry + imports with ``*.pysmap.json`` sidecars for DAP.
 
-    Run-class privilege: may use runtime introspection. Returns one JSON-ready
-    dict for the extension debug launch path.
+    Target-neutral prepare contract (loose coupling):
+    - ``main`` / ``cwd`` / ``maps`` always present on success
+    - Python adds ``python`` + ``pythonpath_prepend``
+    - JavaScript adds ``runtimeExecutable`` (node or qode)
+
+    Run-class privilege: may use runtime introspection / npm install.
     """
     from .imports import discover_imported_modules
     from .project_manifest import resolve_entrypoint
     from .transpiler import transpile_with_modules_and_maps
+
+    if target not in ("python", "javascript"):
+        return {
+            "ok": False,
+            "error": {
+                "message": f"Unsupported debug target {target!r}",
+                "line": None,
+                "column": None,
+            },
+        }
 
     source_path = source_path.resolve()
     workspace = workspace_root_from_env()
@@ -701,6 +720,7 @@ def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
         modules, maps, names = transpile_with_modules_and_maps(
             source_path,
             allow_runtime_introspection=True,
+            target=target,
         )
     except TranspileError as exc:
         return {"ok": False, "error": _error_dict(exc)}
@@ -717,8 +737,20 @@ def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
     ):
         pys_paths[path.stem] = path
 
-    map_files: dict[str, str] = {}
     hide_prefixes = ["_pys_", "__pys_", "_Pys"]
+
+    if target == "javascript":
+        return _prepare_debug_javascript(
+            source_path=source_path,
+            out_dir=out_dir,
+            modules=modules,
+            maps=maps,
+            names=names,
+            pys_paths=pys_paths,
+            hide_prefixes=hide_prefixes,
+        )
+
+    map_files: dict[str, str] = {}
     for stem, python_text in modules.items():
         py_path = out_dir / f"{stem}.py"
         py_path.write_text(python_text, encoding="utf-8")
@@ -768,11 +800,91 @@ def prepare_debug(source_path: Path, out_dir: Path) -> dict[str, Any]:
 
     return {
         "ok": True,
+        "target": "python",
         "main": str(out_dir / f"{source_path.stem}.py"),
         "cwd": str(source_path.parent),
         "maps": map_files,
         "pythonpath_prepend": os.pathsep.join(prepend_parts),
         "python": python_exe,
+    }
+
+
+def _prepare_debug_javascript(
+    *,
+    source_path: Path,
+    out_dir: Path,
+    modules: dict[str, str],
+    maps: dict[str, list],
+    names: dict[str, dict],
+    pys_paths: dict[str, Path],
+    hide_prefixes: list[str],
+) -> dict[str, Any]:
+    """Emit .mjs + js-keyed pysmaps; resolve node/qode like run_source."""
+    import shutil
+
+    from .npm_deps import (
+        NpmDepsError,
+        qode_executable,
+        resolve_npm_environment,
+        run_dir_for_source,
+    )
+
+    emit_root = out_dir
+    runtime_exe: str | None = None
+    try:
+        npm_root = resolve_npm_environment(source_path, install=True, quiet=True)
+    except NpmDepsError as exc:
+        return {
+            "ok": False,
+            "error": {
+                "message": str(exc),
+                "line": None,
+                "column": None,
+            },
+        }
+    if npm_root is not None:
+        emit_root = run_dir_for_source(npm_root, source_path)
+        runtime_exe = qode_executable(npm_root)
+
+    if runtime_exe is None:
+        runtime_exe = shutil.which("node")
+    if runtime_exe is None:
+        return {
+            "ok": False,
+            "error": {
+                "message": (
+                    "Node.js (`node`) was not found on PATH. Install Node.js "
+                    "to debug --target javascript programs."
+                ),
+                "line": None,
+                "column": None,
+            },
+        }
+
+    map_files: dict[str, str] = {}
+    for stem, js_text in modules.items():
+        js_path = emit_root / f"{stem}.mjs"
+        js_path.write_text(js_text, encoding="utf-8")
+        pys = pys_paths.get(stem)
+        sidecar = {
+            "version": 1,
+            "pys": str(pys.resolve()) if pys else "",
+            "js": str(js_path),
+            "lines": maps.get(stem, []),
+            "names": names.get(stem, {}),
+            "hidePrefixes": hide_prefixes,
+        }
+        map_path = emit_root / f"{stem}.pysmap.json"
+        map_path.write_text(json.dumps(sidecar), encoding="utf-8")
+        map_files[stem] = str(map_path)
+
+    return {
+        "ok": True,
+        "target": "javascript",
+        "main": str(emit_root / f"{source_path.stem}.mjs"),
+        "cwd": str(source_path.parent),
+        "maps": map_files,
+        "runtimeExecutable": runtime_exe,
     }
 
 
@@ -786,7 +898,8 @@ def main(argv: list[str] | None = None) -> int:
                         "ok": False,
                         "message": (
                             "Usage: python -m transpiler.ide "
-                            "--prepare-debug <outdir> <file.pys>"
+                            "--prepare-debug <outdir> <file.pys> "
+                            "[--target python|javascript]"
                         ),
                     }
                 )
@@ -794,7 +907,16 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         out_dir = Path(argv[1])
         path = Path(argv[2])
-        result = prepare_debug(path, out_dir)
+        target = "python"
+        rest = argv[3:]
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--target" and i + 1 < len(rest):
+                target = rest[i + 1]
+                i += 2
+            else:
+                i += 1
+        result = prepare_debug(path, out_dir, target=target)
         print(json.dumps(result))
         return 0 if result.get("ok") else 1
     if len(argv) >= 1 and argv[0] == "--refactor-plan":

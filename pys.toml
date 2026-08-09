@@ -1,0 +1,16 @@
+# Directions for the runner: where to find the interpreter and shared packages.
+# No venv — packages live in the central repo (~/.pys/repository), Maven-style.
+#
+# Target-specific packages (MySQL, GUI toolkits) live under
+# examples/by-target/** or examples/gui/** — not in this root file —
+# so examples/main.pys stays library-independent.
+
+[interpreter]
+version = ">=3.10"
+
+[dependencies]
+# Exact versions are required; run `python -m transpiler deps lock`.
+# build = "run" | "test"  (optional; omitted = available for both)
+
+# Example packages (commented so examples run without network on first clone):
+# matplotlib = { version = "3.10.5", build = "run" }

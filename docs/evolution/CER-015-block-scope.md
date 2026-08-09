@@ -34,7 +34,8 @@ showed that leaked local — the defect was language/emit, not DAP.
 - `_check_bindings` nests copies of `declared` / `types` / … for brace bodies;
   foreach / for-range binders exist only in the nested env.
 - Emit mangles brace-local names to `_pys_bN_<name>`, records `debug_names` for
-  DAP display, and applies renames in expressions and interpolated strings.
+  DAP display, and applies renames in expressions, interpolated strings, and
+  **string lvalues** (indexed / dotted assigns such as `this.map[c.getId()] = c`).
 - DAP: pysmap `names` must win over `hidePrefixes` (`_pys_`), otherwise
   Variables/inline values drop brace locals (CER-014 / extension 0.0.55).
 - Lambda capture defaults use the current outer rename (`_c_i=_pys_b1_i`).
@@ -42,5 +43,18 @@ showed that leaked local — the defect was language/emit, not DAP.
 
 ### Evidence
 
-`tests/test_block_scope.py`; lambda foreach capture; updated goldens
-`ebnf__control_flow__loops.py`, `fixtures__integration_core.py`.
+`tests/test_block_scope.py` (incl. indexed assign binder rewrite); lambda
+foreach capture; updated goldens `ebnf__control_flow__loops.py`,
+`fixtures__integration_core.py`.
+
+## Entry 2 — Indexed assign LHS skipped brace rename (2026-08-09)
+
+### Pre-behavior
+
+Assign emit used `stmt.name` verbatim when `"[" in name`, so
+`this.byId[c.getId()] = c` became `self.byId[c.getId()] = _pys_bN_c`.
+
+### Post-behavior
+
+`_rewrite_emitted_names` applies `_lambda_rename` to assign / aug-assign
+lvalues (same word-boundary pass as interpolations).

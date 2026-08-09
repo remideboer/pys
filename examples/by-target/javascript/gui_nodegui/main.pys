@@ -1,0 +1,52 @@
+# Celsius → Fahrenheit (NodeGUI / Qt native via Node.js).
+# Counterpart to examples/gui/temperature_tk (Tkinter).
+# Docs: https://github.com/nodegui/nodegui
+#
+# Setup: npm install
+# Run:   python -m transpiler run main.pys --target javascript
+
+import nodegui as ng
+
+function result<float, string> parseCelsius(string input) {
+    return parseFloat(input)
+}
+
+object win = ng.QMainWindow()
+win.setWindowTitle("Celsius to Fahrenheit")
+
+object central = ng.QWidget()
+object layout = ng.FlexLayout()
+central.setLayout(layout)
+
+object instructions = ng.QLabel()
+instructions.setText("Enter a temperature in Celsius:")
+layout.addWidget(instructions)
+
+object celsiusEntry = ng.QLineEdit()
+layout.addWidget(celsiusEntry)
+
+object resultLabel = ng.QLabel()
+resultLabel.setText("")
+layout.addWidget(resultLabel)
+
+object convertButton = ng.QPushButton()
+convertButton.setText("Convert")
+convertButton.addEventListener("clicked", () => {
+    result<float, string> parsed = parseCelsius(celsiusEntry.text())
+    switch (parsed) {
+        case ok(celsius): {
+            float fahrenheit = celsius * 9 / 5 + 32
+            resultLabel.setText(celsius + "°C is " + fahrenheit + "°F")
+        }
+        case error(message): {
+            resultLabel.setText("Error: " + message)
+        }
+    }
+})
+layout.addWidget(convertButton)
+
+win.setCentralWidget(central)
+win.resize(420, 200)
+win.show()
+# Retain the window so V8/GC does not close the native UI (NodeGUI convention).
+_pys_keep_alive(win)

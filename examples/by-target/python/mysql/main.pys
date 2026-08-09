@@ -1,0 +1,25 @@
+# Python MySQL demo (target-dependent).
+# Lock: python -m transpiler deps lock pys.deps
+# Run:  python -m transpiler run main.pys
+# Needs a local MySQL with database/table as below.
+
+import mysql.connector
+
+MySQLConnection mydb = mysql.connector.connect(host="localhost", user="pys", password="123456789", database="combiteelt")
+
+MySQLCursor mycursor = mydb.cursor()
+mycursor.execute("SELECT * FROM combiteelt.soort")
+
+list<tuple> result = mycursor.fetchall()
+print(result)
+loop (tuple x in result) {
+    print("ID: {x[0]}, Naam-NL: {x[1]}, Naam-LT: {x[2]}")
+}
+
+list<tuple<int, string, string>> result2 = mycursor.fetchall()
+print(result2)
+loop (tuple<int, string, string> x in result2) {
+    print("#i{x[0]} is an int, #s{x[1]} is a string, #s{x[2]} is a string")
+}
+mycursor.close()
+mydb.close()

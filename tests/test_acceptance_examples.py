@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 
 import pytest
@@ -49,7 +50,7 @@ def test_acceptance_concurrency_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     """Concurrency showcase must execute end-to-end (no GUI / DB)."""
     path = ROOT / "examples" / "concurrency" / "main.pys"
     # This example has no third-party dependencies. Bound its Run exactly as
-    # the extension does so it cannot inherit the unrelated root MySQL lock.
+    # the extension does so it cannot inherit an unrelated parent lock.
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(path.parent))
     assert run_source(path) == 0
 
@@ -76,9 +77,90 @@ def test_acceptance_pokemontcg_pyqt_compiles_gui_entry() -> None:
 
 
 def test_acceptance_main_showcase_compiles() -> None:
-    """Dense main.pys showcase must transpile (run needs MySQL)."""
+    """Dense main.pys showcase must transpile (library-independent)."""
     path = ROOT / "examples" / "main.pys"
     modules = transpile_with_modules(path)
-    main_py = modules["main"]
-    assert "import mysql.connector" in main_py or "mysql" in main_py
-    assert any("def " in text or "class " in text for text in modules.values())
+    assert path.stem in modules
+    assert modules[path.stem].strip()
+
+
+def test_acceptance_main_showcase_runs_python(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = ROOT / "examples" / "main.pys"
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(path.parent))
+    assert run_source(path, target="python") == 0
+
+
+@pytest.mark.skipif(
+    __import__("shutil").which("node") is None, reason="node not on PATH"
+)
+def test_acceptance_main_showcase_runs_javascript(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = ROOT / "examples" / "main.pys"
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(path.parent))
+    assert run_source(path, target="javascript") == 0
+
+
+def test_by_target_javascript_mysql_compiles() -> None:
+    path = ROOT / "examples" / "by-target" / "javascript" / "mysql" / "main.pys"
+    modules = transpile_with_modules(path, target="javascript")
+    js = modules[path.stem]
+    assert 'from "mysql2"' in js
+    assert "createConnection" in js
+
+
+def test_by_target_javascript_nodegui_compiles() -> None:
+    path = (
+        ROOT / "examples" / "by-target" / "javascript" / "gui_nodegui" / "main.pys"
+    )
+    modules = transpile_with_modules(path, target="javascript")
+    js = modules[path.stem]
+    assert "@nodegui/nodegui" in js
+    assert "QMainWindow" in js
+    assert "new ng.QMainWindow()" in js
+
+
+def test_resolve_js_runtime_prefers_qode_for_nodegui(tmp_path: Path) -> None:
+    from transpiler.transpiler import _resolve_js_runtime
+
+    npm_root = tmp_path / "npm-env"
+    (npm_root / "node_modules" / "@nodegui" / "nodegui").mkdir(parents=True)
+    qode_name = "qode.cmd" if os.name == "nt" else "qode"
+    qode = npm_root / "node_modules" / ".bin" / qode_name
+    qode.parent.mkdir(parents=True)
+    qode.write_text("", encoding="utf-8")
+    path = ROOT / "examples" / "by-target" / "javascript" / "gui_nodegui" / "main.pys"
+    exe = _resolve_js_runtime(path, npm_root=npm_root)
+    assert "qode" in exe.lower()
+
+
+def test_root_teaching_examples_run_under_javascript(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Teaching-core root examples exit 0 under --target javascript."""
+    import shutil
+
+    if shutil.which("node") is None:
+        pytest.skip("node not on PATH")
+    monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(ROOT / "examples"))
+    names = [
+        "data.pys",
+        "structs.pys",
+        "int_literals.pys",
+        "lambdas.pys",
+        "traits.pys",
+        "atomic.pys",
+        "results.pys",
+        "nullable.pys",
+    ]
+    for name in names:
+        path = ROOT / "examples" / name
+        assert run_source(path, target="javascript") == 0, name
+
+
+def test_by_target_python_mysql_compiles() -> None:
+    path = ROOT / "examples" / "by-target" / "python" / "mysql" / "main.pys"
+    modules = transpile_with_modules(path, target="python")
+    assert "mysql.connector" in modules[path.stem]

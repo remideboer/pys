@@ -14,6 +14,8 @@ Teaching users: `admin` / `admin123`, `clerk` / `clerk123`.
 python -m transpiler run examples/rest-api/shop/jwt/src/main.pys
 ```
 
+Or right-click this folder’s `pys.toml` → **Run Project**.
+
 Port **8092**.
 
 ```bash

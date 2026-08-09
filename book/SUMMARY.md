@@ -116,6 +116,7 @@
 
 - [12.1. From source file to running process](under_the_hood_entrypoint.md)
 - [12.2. Processes, calls, and memory](under_the_hood_memory.md)
+- [12.3. Emit targets: Python and JavaScript](under_the_hood_emit_targets.md)
 
 # 13. Exercises
 

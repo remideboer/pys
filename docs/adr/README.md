@@ -73,6 +73,7 @@ that belongs in a CER (or a commit message if too small to record).
 | [ADR-027](ADR-027-constructor-keyword.md) | Explicit `constructor` keyword | Accepted |
 | [ADR-028](ADR-028-open-override-closed.md) | Extension points `open` / `override` / `closed` | Accepted |
 | [ADR-029](ADR-029-static-members.md) | Class `static` members | Accepted |
+| [ADR-030](ADR-030-javascript-emit-target.md) | Dual emit backends (Python + JS MVP / Node) | Accepted |
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
 
