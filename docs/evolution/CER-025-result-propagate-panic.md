@@ -118,6 +118,8 @@ not be classified reliably as entrypoint or library code.
 - `project_manifest.resolve_entrypoint` validates contained `[project].main`
   paths and detects selected-file conflicts; the Python 3.10 fallback rejects
   non-string or duplicate main assignments instead of silently ignoring them.
+  Files under a `[source_roots]` entry named `test` / `tests` may still be
+  run explicitly (suite runners) without an entrypoint conflict.
 - Transpile, Run, Debug preparation, and passive analysis carry explicit
   entrypoint identity through the pipeline.
 - The extension reads and writes `[project].main`, exposes Set as entrypoint,

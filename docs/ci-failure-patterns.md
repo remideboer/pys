@@ -142,6 +142,13 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Prevent | Same change set: `load_project_emit_target`, extension menus (`navigation@0`), migrate by-target `target = "javascript"`, tests in `test_entrypoint_panic` + `project-main.test.js`; `python tools/local_ci.py` |
 | Related | ADR-030; CER-050 §12 |
 
+### 12. `[project].main` blocks test suite `run_source`
+
+| Symptom | Shop/webserver suite tests fail with `pys.entrypoint-conflict` after adding `[project].main` |
+| Cause | `resolve_entrypoint` treated every non-main `.pys` as a conflict, including `[source_roots] test = "tests"` |
+| Prevent | Allow explicit run of files under source roots named `test`/`tests`; cover in `test_entrypoint_panic`; run shop/webserver suite gates before release |
+| Related | CER-025; ADR-017 |
+
 ---
 
 ## How to add a pattern

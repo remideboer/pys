@@ -86,6 +86,28 @@ def test_configured_main_rejects_conflicting_selected_file(tmp_path: Path) -> No
         resolve_entrypoint(other)
 
 
+def test_test_source_root_file_may_run_beside_configured_main(
+    tmp_path: Path,
+) -> None:
+    """Files under `[source_roots] test = …` are runnable suites, not conflicts."""
+    src = tmp_path / "src"
+    tests = tmp_path / "tests"
+    src.mkdir()
+    tests.mkdir()
+    main = src / "main.pys"
+    suite = tests / "test_suite.pys"
+    main.write_text('print("main")\n', encoding="utf-8")
+    suite.write_text('print("suite")\n', encoding="utf-8")
+    (tmp_path / "pys.toml").write_text(
+        '[project]\nmain = "src/main.pys"\n'
+        '[source_roots]\nmain = "src"\ntest = "tests"\n',
+        encoding="utf-8",
+    )
+
+    assert resolve_entrypoint(suite) == suite.resolve()
+    assert resolve_entrypoint(tmp_path) == main.resolve()
+
+
 def test_directory_without_manifest_main_is_configuration_error(
     tmp_path: Path,
 ) -> None:

@@ -1,26 +1,29 @@
-# PYS Language Support 0.0.87
+# PYS Language Support 0.0.88
 
-Trunk-based extension release. Tag: `extension-v0.0.87`.
+Trunk-based extension release. Tag: `extension-v0.0.88`.
 
-Adds a selectable **JavaScript / Node** emit target for Run (MVP teaching
-surface). Python remains the reference backend and the only Debug target.
-Run `python tools/local_ci.py` before tagging.
+Ships the **JavaScript / Node** emit backend with teaching-core parity,
+unified `pys.toml` deps, **Run Project** from the manifest, and Debug for
+both Python and JavaScript. Run `python tools/local_ci.py` before tagging.
 
 ## Highlights
 
-- **Emit target selector:** workspace setting `pys.emitTarget`
-  (`python` | `javascript`), status bar `PYS → Python|Node`, and command
-  `pys.selectEmitTarget` (QuickPick).
-- **Run** passes `--target` to `python -m transpiler run …`. JavaScript
-  writes temp `.mjs` and executes with **Node** on PATH (ADR-030 / CER-050).
-- **Debug** stays Python-only; choosing JavaScript shows a clear message
-  instead of starting debugpy.
+- **JavaScript emit target:** `pys.emitTarget` / status bar selector; Run and
+  Debug pass `--target python|javascript` (ADR-030 / CER-050). Node DAP via
+  `pwa-node` + shared line-map remapping.
+- **Unified `pys.toml`:** `[interpreter]`, `[dependencies]`, and
+  `[dependencies.npm]` in one file; central npm cache under
+  `~/.pys/repository/npm/` (no student silo `package.json`).
+- **Run Project:** right-click `pys.toml` → **Run Project** runs
+  `[project].main` using optional `[project].target` (default `python`).
+- **Brace-scope fix:** indexed assigns such as `this.map[c.getId()] = c`
+  rewrite loop binders on the LHS (CER-015).
 
 ## Install
 
 - **Marketplace** (when published): `ext install remideboer.pys-language`
-- **ELO / offline:** download `pys-student-0.0.87.zip`, unzip, run `install.cmd`
+- **ELO / offline:** download `pys-student-0.0.88.zip`, unzip, run `install.cmd`
   (Windows) or `./install.sh` (macOS/Linux), then reload the editor.
 
-Requires Python 3.10+ on PATH. For JavaScript Run, also install Node.js.
+Requires Python 3.10+ on PATH. For JavaScript Run/Debug, also install Node.js.
 The pack includes the bundled transpiler.

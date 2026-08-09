@@ -275,6 +275,16 @@ def resolve_entrypoint(selected: Path) -> Path:
     configured = load_project_main(manifest) if manifest is not None else None
     if configured is not None:
         if choice.is_file() and choice != configured:
+            if _is_declared_test_source(choice):
+                if choice.suffix.lower() != ".pys":
+                    from .transpiler import TranspileError
+
+                    raise TranspileError(
+                        f"Entrypoint must be a `.pys` file: {choice}",
+                        source_file=choice,
+                        code="pys.entrypoint-suffix",
+                    )
+                return choice
             from .transpiler import TranspileError
 
             raise TranspileError(
@@ -308,6 +318,17 @@ def resolve_entrypoint(selected: Path) -> Path:
         suggested_fix='[project]\nmain = "main.pys"',
         tips=["Choose the project entry file explicitly."],
     )
+
+
+def _is_declared_test_source(file_path: Path) -> bool:
+    """True when ``file_path`` sits under a ``[source_roots]`` entry named test/tests."""
+    roots = source_roots_for(file_path)
+    if roots is None:
+        return False
+    found = roots.containing_root(file_path)
+    if found is None:
+        return False
+    return found[0].lower() in {"test", "tests"}
 
 
 def _parse_source_roots_text(text: str, project_root: Path) -> SourceRoots | None:

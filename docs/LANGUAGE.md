@@ -1095,11 +1095,14 @@ Run into `~/.pys/repository/npm/<fingerprint>/` (no student-facing
 `package.json`). Legacy indented `pys.deps` / silo `package.json` still load
 with a deprecation warning.
 
-When `[project].main` exists, Run and Debug reject a different selected file.
-Without it, a directly invoked `.pys` file is the entrypoint. A bare directory
-run requires `[project].main`. The configured path must resolve to an existing
-`.pys` file inside the manifest directory; lexical and realpath escapes are
-rejected. The IDE action **Set as entrypoint** writes this same field.
+When `[project].main` exists, Run and Debug reject a different selected file
+under the application source roots. Files under a declared
+`[source_roots]` entry named `test` / `tests` may still be run directly
+(suite entrypoints). Without `[project].main`, a directly invoked `.pys` file
+is the entrypoint. A bare directory run requires `[project].main`. The
+configured path must resolve to an existing `.pys` file inside the manifest
+directory; lexical and realpath escapes are rejected. The IDE action **Set as
+entrypoint** writes this same field.
 
 Optional `[project].target` is `"python"` or `"javascript"` (default
 `python`). **Run Project** (context menu on `pys.toml`) runs `[project].main`
