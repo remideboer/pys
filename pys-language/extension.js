@@ -273,6 +273,23 @@ function activate(context) {
   emitTargetStatus.command = 'pys.selectEmitTarget';
   context.subscriptions.push(emitTargetStatus);
 
+  const intellisenseStatus = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 98);
+  intellisenseStatus.command = 'pys.toggleIntellisense';
+  context.subscriptions.push(intellisenseStatus);
+
+  function intellisenseEnabled() {
+    return vscode.workspace.getConfiguration('pys').get('intellisense.enabled', true) !== false;
+  }
+
+  function refreshIntellisenseUi() {
+    const on = intellisenseEnabled();
+    intellisenseStatus.text = on ? '$(lightbulb) PYS IntelliSense' : '$(circle-slash) PYS IntelliSense Off';
+    intellisenseStatus.tooltip = on
+      ? 'Analysis-driven completions On — click to disable'
+      : 'IntelliSense Off (keywords only) — click to enable';
+    intellisenseStatus.show();
+  }
+
   function getEmitTarget() {
     const raw = vscode.workspace.getConfiguration('pys').get('emitTarget', 'python');
     return raw === 'javascript' ? 'javascript' : 'python';
@@ -565,21 +582,102 @@ function activate(context) {
     codeLensChange.fire();
   }
   context.subscriptions.push(vscode.languages.registerCompletionItemProvider({ language: 'pys' }, {
-    provideCompletionItems() {
+    async provideCompletionItems(document, position, token) {
       const items = [];
-      for (const keyword of PYS_KEYWORDS) {
-        const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
-        item.detail = 'PYS keyword';
-        items.push(item);
+      const pushStatic = () => {
+        for (const keyword of PYS_KEYWORDS) {
+          const item = new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword);
+          item.detail = 'PYS keyword';
+          item.sortText = `9_${keyword}`;
+          items.push(item);
+        }
+        for (const typeName of PYS_TYPES) {
+          const item = new vscode.CompletionItem(typeName, vscode.CompletionItemKind.TypeParameter);
+          item.detail = 'PYS type';
+          item.sortText = `4_${typeName}`;
+          items.push(item);
+        }
+      };
+      if (!intellisenseEnabled()) {
+        pushStatic();
+        return items;
       }
-      for (const typeName of PYS_TYPES) {
-        const item = new vscode.CompletionItem(typeName, vscode.CompletionItemKind.TypeParameter);
-        item.detail = 'PYS type';
-        items.push(item);
+      const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+      if (!workspace || document.uri.scheme !== 'file') {
+        pushStatic();
+        return items;
       }
-      return items;
-    }
-  }));
+      const spec = buildWorkspaceIdeProcessSpec(
+        context.extensionPath,
+        workspace.uri.fsPath,
+        document.uri.fsPath,
+        [
+          '--completions',
+          '--line',
+          String(position.line + 1),
+          '--column',
+          String(position.character + 1),
+          '--stdin',
+        ],
+      );
+      if (!spec) {
+        pushStatic();
+        return items;
+      }
+      try {
+        const parsed = await runJsonProcess(
+          process.platform === 'win32' ? 'python' : 'python3',
+          spec.args,
+          spec.options,
+          { signal: token?.isCancellationRequested ? undefined : undefined, stdin: document.getText(), timeoutMs: 4000 },
+        );
+        if (token.isCancellationRequested) {
+          return [];
+        }
+        const kindMap = {
+          variable: vscode.CompletionItemKind.Variable,
+          field: vscode.CompletionItemKind.Field,
+          method: vscode.CompletionItemKind.Method,
+          function: vscode.CompletionItemKind.Function,
+          class: vscode.CompletionItemKind.Class,
+          struct: vscode.CompletionItemKind.Struct,
+          enum: vscode.CompletionItemKind.Enum,
+          enumMember: vscode.CompletionItemKind.EnumMember,
+          module: vscode.CompletionItemKind.Module,
+          keyword: vscode.CompletionItemKind.Keyword,
+        };
+        for (const raw of parsed.items || []) {
+          const item = new vscode.CompletionItem(
+            raw.label,
+            kindMap[raw.kind] || vscode.CompletionItemKind.Text,
+          );
+          item.detail = raw.detail || '';
+          item.insertText = raw.insertText || raw.label;
+          item.sortText = raw.sortText || raw.label;
+          items.push(item);
+        }
+        if (!items.length) {
+          pushStatic();
+        }
+        return items;
+      } catch (_err) {
+        pushStatic();
+        return items;
+      }
+    },
+  }, '.'));
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pys.toggleIntellisense', async () => {
+      const cfg = vscode.workspace.getConfiguration('pys');
+      const next = !intellisenseEnabled();
+      await cfg.update('intellisense.enabled', next, vscode.ConfigurationTarget.Workspace);
+      refreshIntellisenseUi();
+    }),
+  );
+  refreshIntellisenseUi();
+  refreshEmitTargetUi();
+
   context.subscriptions.push(vscode.languages.registerHoverProvider({ language: 'pys' }, {
     provideHover(document, position) {
       const range = document.getWordRangeAtPosition(position);
@@ -935,6 +1033,21 @@ function activate(context) {
       const diagnostics = context.diagnostics || [];
       const actions = [];
 
+      const unknownType = diagnostics.find((diagnostic) => diagnostic.code === 'pys.unknown-type');
+      if (unknownType) {
+        const fix = new vscode.CodeAction(
+          'Create class from constructor call',
+          vscode.CodeActionKind.QuickFix,
+        );
+        fix.diagnostics = [unknownType];
+        fix.isPreferred = true;
+        fix.command = {
+          command: 'pys.generate.createClass',
+          title: 'Create Class from Call',
+        };
+        actions.push(fix);
+      }
+
       const entrypointConflict = diagnostics.find(
         (diagnostic) => diagnostic.code === 'pys.entrypoint-conflict',
       );
@@ -1245,6 +1358,9 @@ function activate(context) {
     }
     if (event.affectsConfiguration('pys.emitTarget')) {
       refreshEmitTargetUi();
+    }
+    if (event.affectsConfiguration('pys.intellisense')) {
+      refreshIntellisenseUi();
     }
   }));
   const manifestWatcher = vscode.workspace.createFileSystemWatcher('**/pys.toml');

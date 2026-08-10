@@ -126,6 +126,13 @@ test('extension manifest exposes entrypoint command and result language support'
     manifest.contributes.configuration.properties['pys.emitTarget'].default,
     'python',
   );
+  assert.equal(
+    manifest.contributes.configuration.properties['pys.intellisense.enabled'].default,
+    true,
+  );
+  assert.match(extension, /pys\.toggleIntellisense/);
+  assert.match(extension, /--completions/);
+  assert.match(extension, /pys\.generate\.createClass/);
   assert.match(extension, /pys\.selectEmitTarget/);
   assert.match(extension, /require\('\.\/debug-launch'\)/);
   assert.match(extension, /buildLaunchConfig/);

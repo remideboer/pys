@@ -329,6 +329,14 @@ function registerRefactoring(context, deps = {}) {
         '--param-type', String(ptype).trim() || 'int',
       ]);
     }],
+    ['pys.generate.createClass', async () => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      await runOp('create-class', editor.document, editor.selection, snap, async (_doc, sel) =>
+        posArgs(sel.active),
+      );
+    }],
   ];
 
   for (const [id, fn] of commands) {
@@ -389,6 +397,9 @@ function registerRefactoring(context, deps = {}) {
     'introduce-parameter': new vscode.MarkdownString(
       '**Introduce Parameter** (Add Parameter)\n\nPromote a local into an explicit API parameter.',
     ),
+    'create-class': new vscode.MarkdownString(
+      '**Create Class**\n\nGenerate a class with fields and constructor from named call arguments.',
+    ),
   };
 
   context.subscriptions.push(
@@ -412,6 +423,7 @@ function registerRefactoring(context, deps = {}) {
         add('Inline Function…', 'pys.refactor.inlineFunction', vscode.CodeActionKind.RefactorInline, 'inline-function');
         add('Safe Delete…', 'pys.refactor.safeDelete', vscode.CodeActionKind.Refactor, 'safe-delete');
         add('Introduce Parameter…', 'pys.refactor.introduceParameter', vscode.CodeActionKind.RefactorRewrite, 'introduce-parameter');
+        add('Create Class from Call…', 'pys.generate.createClass', vscode.CodeActionKind.QuickFix, 'create-class');
         add('Rename Symbol…', 'pys.refactor.rename', vscode.CodeActionKind.Refactor, 'rename');
         return actions;
       },
@@ -421,6 +433,7 @@ function registerRefactoring(context, deps = {}) {
         vscode.CodeActionKind.RefactorExtract,
         vscode.CodeActionKind.RefactorInline,
         vscode.CodeActionKind.RefactorRewrite,
+        vscode.CodeActionKind.QuickFix,
       ],
     }),
   );

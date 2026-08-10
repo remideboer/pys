@@ -937,6 +937,7 @@ def main(argv: list[str] | None = None) -> int:
                     "message": (
                             "Usage: python -m transpiler.ide <file.pys> [symbol] "
                             "[--library-sources] [--stdin] "
+                            "| <file.pys> --completions --line N --column N [--stdin] "
                             "| <file.pys> --usages <symbol> [--line N --column N] "
                             "| --refactor-plan <op> <file.pys> ..."
                         ),
@@ -956,6 +957,27 @@ def main(argv: list[str] | None = None) -> int:
             read_stdin = True
         else:
             filtered.append(arg)
+    if len(filtered) >= 1 and filtered[0] == "--completions":
+        line = column = 1
+        rest_flags = filtered[1:]
+        i = 0
+        while i < len(rest_flags):
+            if rest_flags[i] == "--line" and i + 1 < len(rest_flags):
+                line = int(rest_flags[i + 1])
+                i += 2
+            elif rest_flags[i] == "--column" and i + 1 < len(rest_flags):
+                column = int(rest_flags[i + 1])
+                i += 2
+            else:
+                i += 1
+        from .completions import completions_for_file
+
+        buffer_source = sys.stdin.read() if read_stdin else None
+        result = completions_for_file(
+            path, line=line, column=column, source=buffer_source
+        )
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 1
     if len(filtered) >= 2 and filtered[0] == "--usages":
         symbol = filtered[1]
         line = column = None
@@ -1087,6 +1109,14 @@ def _cli_refactor_plan(argv: list[str]) -> int:
                 column=column or 1,
                 param_name=opts.get("param_name", "param"),
                 param_type=opts.get("param_type", "int"),
+            )
+        elif op == "create-class":
+            from .refactor.create_class import plan_create_class
+
+            plan = plan_create_class(
+                path,
+                line=line or 1,
+                column=column or 1,
             )
         else:
             print(json.dumps({"ok": False, "message": f"Unknown refactor op {op!r}"}))

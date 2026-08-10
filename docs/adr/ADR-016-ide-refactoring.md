@@ -26,12 +26,16 @@ which is unsafe for Rename.
 4. Teaching catalog metadata (what/why) surfaces in CodeActions / preview.
 5. Extract into class/entity respects member kind order (ADR-015).
 6. Full Fowler catalog deferred ([F-005](../TODO-FUTURE.md#f-005-full-fowler-refactor-catalog)).
+7. **Create Class from call** (CER-056): educational stub generation for an
+   unresolved `Type(name: …)` call — not a Fowler refactor; lives beside the
+   educational core without expanding F-005.
 
 ## Consequences
 
 - Extension ≥ 0.0.57: RenameProvider, refactor CodeActions; context menu keeps
   common techniques flat and rarer ones under “More Refactorings” (≥ 0.0.63).
 - Preview dialog shows resulting code (diff) before apply (≥ 0.0.64).
+- Extension ≥ 0.0.97: analysis-driven completions + Create Class (CER-056).
 - Trust boundary unchanged (ADR-001).
 
 ## Rejected alternatives

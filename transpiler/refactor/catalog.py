@@ -55,6 +55,15 @@ CATALOG: dict[str, dict[str, Any]] = {
         "summary": "Add a parameter and thread a local or expression through call sites.",
         "why": "Make a dependency explicit at the API boundary instead of closing over hidden state.",
     },
+    "create-class": {
+        "title": "Create Class",
+        "fowler": "Introduce Class (generation)",
+        "summary": "Generate a class with fields and constructor from a named-argument constructor call.",
+        "why": (
+            "When a type is used before it exists, scaffold a matching class so students "
+            "can iterate on design without typing boilerplate first."
+        ),
+    },
 }
 
 

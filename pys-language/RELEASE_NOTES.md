@@ -1,22 +1,17 @@
-# PYS Language Support 0.0.96
+# PYS Language Support 0.0.97
 
-## Live diagnostics (unsaved buffer)
+## IntelliSense (analysis-driven)
 
-- Analyze uses the editor buffer (`--stdin`), not only the last saved file.
-- Errors clear/update ~300ms after typing — no save required.
+- After `.`, show accessible members (private only inside the type).
+- In-scope identifiers ranked near → far (locals, params, fields, types).
+- Status bar **PYS IntelliSense** toggles `pys.intellisense.enabled`.
 
-## Beginner-visible Error paint
+## Create Class from call
 
-- Error ranges get a red background highlight (plus overview ruler), not only a
-  thin squiggle.
-
-## `require` vs `requires`
-
-- Host obligations must be spelled `requires` (exact).
-- Typo `require` → clear error + quick fix to `requires`.
-- `require` is not highlighted as a keyword.
+- Unresolved `Student st = Student(naam="Jaap")` → lightbulb / command
+  **Create Class from Call** scaffolds fields + `public constructor(...)`.
+- Named arguments only in this release; literal types inferred when possible.
 
 ## Install
 
-Package with `vsce package` from `pys-language/`, then install the VSIX, or run
-`install-extension.bat` from the repo root. **Reload Window** after install.
+Package/install the VSIX or run `install-extension.bat`, then **Reload Window**.
