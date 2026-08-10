@@ -877,12 +877,10 @@ def test_missing_type_suggests_library_return(tmp_path: Path, monkeypatch: pytes
 def test_unknown_library_type_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from transpiler.transpiler import TranspileError, transpile
 
-    site = tmp_path / "site"
-    (site / "demo").mkdir(parents=True)
-    (site / "demo" / "__init__.py").write_text("x = 1\n", encoding="utf-8")
-    monkeypatch.setattr("transpiler.imports.ImportResolver._deps_paths", lambda self: [site])
+    # No imports: unknown types fail closed (student Character/Heritage case).
+    # Files with library imports keep soft-unverified types (CER-001 / CER-057).
     main = tmp_path / "main.pys"
-    main.write_text("import demo\nNoSuchType x = 1\n", encoding="utf-8")
+    main.write_text("NoSuchType x = 1\n", encoding="utf-8")
     with pytest.raises(TranspileError, match="Unknown type 'NoSuchType'"):
         transpile(
             main.read_text(encoding="utf-8"),

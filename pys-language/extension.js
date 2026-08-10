@@ -352,7 +352,7 @@ function activate(context) {
     const line = Number(parsed.line || 1);
     const column = Number(parsed.column || 1);
     const lineText = document.lineAt(Math.max(line - 1, 0)).text;
-    const startCol = Math.max(column - 1, 0);
+    let startCol = Math.max(column - 1, 0);
     let endCol = startCol + 1;
     const functionMatch = /\bfunction\b/.exec(lineText);
     if (String(parsed.message || '').includes('Class methods must not use `function`') && functionMatch) {
@@ -360,6 +360,22 @@ function activate(context) {
     } else if (String(parsed.message || '').includes('Remove `method`') && /\bmethod\b/.exec(lineText)) {
       const methodMatch = /\bmethod\b/.exec(lineText);
       endCol = methodMatch.index + methodMatch[0].length;
+    } else if (parsed.code === 'pys.unknown-type') {
+      const unknown = /Unknown type '([^']+)'/.exec(String(parsed.message || ''));
+      const typeName = unknown ? unknown[1] : '';
+      const found = typeName ? lineText.indexOf(typeName) : -1;
+      if (found >= 0) {
+        startCol = found;
+        endCol = found + typeName.length;
+      } else {
+        const rest = lineText.slice(startCol);
+        const word = rest.match(/^[A-Za-z_]\w*|[^\s]/);
+        if (word) {
+          endCol = startCol + word[0].length;
+        } else {
+          endCol = Math.max(lineText.length, startCol + 1);
+        }
+      }
     } else {
       const rest = lineText.slice(startCol);
       const word = rest.match(/^[A-Za-z_]\w*|[^\s]/);

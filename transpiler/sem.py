@@ -41,6 +41,7 @@ from .ast_nodes import (
     LambdaExpr,
     Literal,
     Member,
+    MethodDef,
     Module,
     PrintStmt,
     PropagateExpr,
@@ -49,7 +50,9 @@ from .ast_nodes import (
     ResultPattern,
     ReturnStmt,
     ContinueStmt,
+    SetLiteral,
     SharedDecl,
+    Slice,
     StructDef,
     SwitchCase,
     SwitchExpr,
@@ -58,7 +61,6 @@ from .ast_nodes import (
     TraitDef,
     TraitRequire,
     TraitUse,
-    TraitRequire,
     TupleLiteral,
     UnaryOp,
     WhileStmt,
@@ -926,7 +928,91 @@ def _known_library_type(type_name: str, resolver: Any) -> bool:
         if isinstance(cls, type):
             resolver.type_modules[base] = cls.__module__
             return True
+    if resolver.imported_modules:
+        # File already has library imports; opaque driver/framework types
+        # (e.g. MySQLCursor) stay unverified rather than false hard errors.
+        return True
     return False
+
+
+def _collect_type_atoms(type_name: str) -> list[str]:
+    """Nominal type names inside a (possibly generic / array / lambda) type string."""
+    t = (type_name or "").strip()
+    if not t:
+        return []
+    while t.endswith("[]"):
+        t = t[:-2].strip()
+    if _base_type_name(t) == "lambda":
+        atoms = ["lambda"]
+        parts = _parse_lambda_type_parts(t)
+        if parts is not None:
+            params, ret = parts
+            for p in params:
+                atoms.extend(_collect_type_atoms(p))
+            atoms.extend(_collect_type_atoms(ret))
+        return atoms
+    atoms: list[str] = []
+    base = _base_type_name(t)
+    if base:
+        atoms.append(base)
+    for arg in _extract_type_args(t):
+        atoms.extend(_collect_type_atoms(arg))
+    return atoms
+
+
+def _is_known_type_atom(
+    atom: str,
+    resolver: Any,
+    *,
+    class_names: set[str],
+    interfaces: set[str],
+    type_params: set[str] | None = None,
+) -> bool:
+    if not atom or atom in {"var", "const", "fix", "void"}:
+        return True
+    if type_params and atom in type_params:
+        return True
+    if atom in class_names or atom in interfaces:
+        return True
+    return _known_library_type(atom, resolver)
+
+
+def _reject_unknown_type_name(
+    type_name: str | None,
+    resolver: Any,
+    *,
+    class_names: set[str],
+    interfaces: set[str],
+    type_params: set[str] | None = None,
+    line: int = 1,
+    column: int = 1,
+    code_line: str = "",
+) -> None:
+    """Fail closed when a type annotation names something that does not exist."""
+    if not type_name or type_name in {"var", "const", "fix"}:
+        return
+    for atom in _collect_type_atoms(type_name):
+        if _is_known_type_atom(
+            atom,
+            resolver,
+            class_names=class_names,
+            interfaces=interfaces,
+            type_params=type_params,
+        ):
+            continue
+        _transpile_error(
+            f"Unknown type '{atom}'. Declare a class/interface, or import a library "
+            f"that defines it (via pys.deps).",
+            line,
+            column,
+            code_line or type_name,
+            code="pys.unknown-type",
+        )
+
+
+def _looks_like_type_callee(name: str) -> bool:
+    """PYS type/ctor names are PascalCase; camelCase/lowercase stay library-open."""
+    return bool(name) and name[0].isupper() and name[0].isalpha()
 
 
 def _check_library_types(
@@ -937,35 +1023,356 @@ def _check_library_types(
     class_names: set[str],
     interfaces: set[str],
 ) -> None:
-    """Reject unknown library types and require types on inferred library returns."""
+    """Reject unknown types at all annotation / type-name call sites; missing-type on library returns."""
     from .pytypes import _usage_tips_for, infer_call_return_info
 
     site_paths = resolver._deps_paths()
     local_types = dict(types)
 
+    def reject(
+        type_name: str | None,
+        *,
+        type_params: set[str] | None = None,
+        line: int = 1,
+        column: int = 1,
+        code_line: str = "",
+    ) -> None:
+        _reject_unknown_type_name(
+            type_name,
+            resolver,
+            class_names=class_names,
+            interfaces=interfaces,
+            type_params=type_params,
+            line=line,
+            column=column,
+            code_line=code_line,
+        )
+
+    def walk_expr(expr: Expr | None, *, type_params: set[str] | None = None) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, Call):
+            callee = expr.callee
+            if isinstance(callee, Identifier) and _looks_like_type_callee(callee.name):
+                reject(
+                    callee.name,
+                    type_params=type_params,
+                    line=callee.span.line if callee.span else (expr.span.line if expr.span else 1),
+                    column=callee.span.column if callee.span else (expr.span.column if expr.span else 1),
+                    code_line=callee.name,
+                )
+            walk_expr(expr.callee, type_params=type_params)
+            for arg in expr.args or []:
+                if isinstance(arg, KeywordArg):
+                    walk_expr(arg.value, type_params=type_params)
+                else:
+                    walk_expr(arg, type_params=type_params)
+            return
+        if isinstance(expr, Cast):
+            reject(
+                expr.type_name,
+                type_params=type_params,
+                line=expr.span.line if expr.span else 1,
+                column=expr.span.column if expr.span else 1,
+                code_line=expr.type_name,
+            )
+            walk_expr(expr.expr, type_params=type_params)
+            return
+        if isinstance(expr, (BinaryOp,)):
+            walk_expr(expr.left, type_params=type_params)
+            walk_expr(expr.right, type_params=type_params)
+            return
+        if isinstance(expr, UnaryOp):
+            walk_expr(expr.operand, type_params=type_params)
+            return
+        if isinstance(expr, Member):
+            walk_expr(expr.object, type_params=type_params)
+            return
+        if isinstance(expr, Index):
+            walk_expr(expr.object, type_params=type_params)
+            walk_expr(expr.index, type_params=type_params)
+            return
+        if isinstance(expr, Slice):
+            walk_expr(expr.object, type_params=type_params)
+            walk_expr(expr.start, type_params=type_params)
+            walk_expr(expr.stop, type_params=type_params)
+            walk_expr(expr.step, type_params=type_params)
+            return
+        if isinstance(expr, (ArrayLiteral, BraceLiteral, SetLiteral, TupleLiteral)):
+            for el in expr.elements or []:
+                walk_expr(el, type_params=type_params)
+            return
+        if isinstance(expr, DictLiteral):
+            for k, v in expr.entries or []:
+                walk_expr(k, type_params=type_params)
+                walk_expr(v, type_params=type_params)
+            return
+        if isinstance(expr, ArrayAlloc):
+            reject(
+                expr.elem_type,
+                type_params=type_params,
+                line=expr.span.line if expr.span else 1,
+                column=expr.span.column if expr.span else 1,
+                code_line=expr.elem_type,
+            )
+            return
+        if isinstance(expr, LambdaExpr):
+            for pt in expr.param_types or []:
+                reject(
+                    pt,
+                    type_params=type_params,
+                    line=expr.span.line if expr.span else 1,
+                    column=expr.span.column if expr.span else 1,
+                    code_line=pt,
+                )
+            # Lambda body may be Expr or Block depending on parse shape.
+            body = getattr(expr, "body", None)
+            if isinstance(body, Block):
+                walk_stmts(body.statements, type_params=type_params)
+            else:
+                walk_expr(body, type_params=type_params)
+            return
+        if isinstance(expr, AwaitExpr):
+            walk_expr(expr.target, type_params=type_params)
+            return
+        if isinstance(expr, PropagateExpr):
+            walk_expr(expr.operand, type_params=type_params)
+            return
+        if isinstance(expr, ResultCtor):
+            walk_expr(expr.value, type_params=type_params)
+            return
+        if isinstance(expr, SwitchExpr):
+            walk_expr(expr.subject, type_params=type_params)
+            for case in expr.cases or []:
+                for lab in case.labels or []:
+                    walk_expr(lab, type_params=type_params)
+                walk_expr(case.value, type_params=type_params)
+            return
+        if isinstance(expr, InterpolatedString):
+            for inner in _interpolation_inner_exprs(expr.raw or ""):
+                walk_expr(inner, type_params=type_params)
+            return
+        if isinstance(expr, KeywordArg):
+            walk_expr(expr.value, type_params=type_params)
+
+    def walk_method(method: MethodDef, *, type_params: set[str] | None = None) -> None:
+        line = method.span.line if method.span else 1
+        col = method.span.column if method.span else 1
+        if method.return_type:
+            reject(
+                method.return_type,
+                type_params=type_params,
+                line=line,
+                column=col,
+                code_line=method.return_type,
+            )
+        for pt in method.param_types or []:
+            reject(
+                pt,
+                type_params=type_params,
+                line=line,
+                column=col,
+                code_line=pt,
+            )
+        if method.body:
+            walk_stmts(method.body.statements, type_params=type_params)
+
+    def walk_stmts(
+        stmts: list[Any],
+        *,
+        type_params: set[str] | None = None,
+    ) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, AssignStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                if stmt.declare_type and stmt.declare_type not in {"var", "const", "fix"}:
+                    reject(
+                        stmt.declare_type,
+                        type_params=type_params,
+                        line=line,
+                        column=col,
+                        code_line=f"{stmt.declare_type} {stmt.name}",
+                    )
+                walk_expr(stmt.value, type_params=type_params)
+            elif isinstance(stmt, ArrayDecl):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                reject(
+                    stmt.elem_type,
+                    type_params=type_params,
+                    line=line,
+                    column=col,
+                    code_line=f"{stmt.elem_type} {stmt.name}",
+                )
+                walk_expr(stmt.value, type_params=type_params)
+            elif isinstance(stmt, (SharedDecl, AtomicDecl)):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                if stmt.declare_type:
+                    reject(
+                        stmt.declare_type,
+                        type_params=type_params,
+                        line=line,
+                        column=col,
+                        code_line=f"{stmt.declare_type} {stmt.name}",
+                    )
+                walk_expr(stmt.value, type_params=type_params)
+            elif isinstance(stmt, AugAssignStmt):
+                walk_expr(stmt.value, type_params=type_params)
+            elif isinstance(stmt, (PrintStmt, ReturnStmt, ExprStmt)):
+                walk_expr(getattr(stmt, "value", None) or getattr(stmt, "expr", None), type_params=type_params)
+            elif isinstance(stmt, IfStmt):
+                walk_expr(stmt.cond, type_params=type_params)
+                if stmt.then_body:
+                    walk_stmts(stmt.then_body.statements, type_params=type_params)
+                else_body = stmt.else_body
+                if isinstance(else_body, Block):
+                    walk_stmts(else_body.statements, type_params=type_params)
+                elif isinstance(else_body, IfStmt):
+                    walk_stmts([else_body], type_params=type_params)
+            elif isinstance(stmt, WhileStmt):
+                walk_expr(stmt.cond, type_params=type_params)
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, type_params=type_params)
+            elif isinstance(stmt, ForRangeStmt):
+                walk_expr(stmt.start, type_params=type_params)
+                walk_expr(stmt.stop, type_params=type_params)
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, type_params=type_params)
+            elif isinstance(stmt, ForEachStmt):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                if getattr(stmt, "var_type", None):
+                    reject(
+                        stmt.var_type,
+                        type_params=type_params,
+                        line=line,
+                        column=col,
+                        code_line=stmt.var_type,
+                    )
+                walk_expr(stmt.iterable, type_params=type_params)
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, type_params=type_params)
+            elif isinstance(stmt, RepeatStmt):
+                walk_expr(stmt.count, type_params=type_params)
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, type_params=type_params)
+            elif isinstance(stmt, SwitchStmt):
+                walk_expr(stmt.subject, type_params=type_params)
+                for case in stmt.cases or []:
+                    for lab in case.labels or []:
+                        walk_expr(lab, type_params=type_params)
+                    if case.body:
+                        walk_stmts(case.body.statements, type_params=type_params)
+                    walk_expr(case.value, type_params=type_params)
+            elif isinstance(stmt, Block):
+                walk_stmts(stmt.statements, type_params=type_params)
+            elif isinstance(stmt, FunctionDef):
+                line = stmt.span.line if stmt.span else 1
+                col = stmt.span.column if stmt.span else 1
+                if stmt.return_type:
+                    reject(
+                        stmt.return_type,
+                        type_params=type_params,
+                        line=line,
+                        column=col,
+                        code_line=stmt.return_type,
+                    )
+                for pt in stmt.param_types or []:
+                    reject(
+                        pt,
+                        type_params=type_params,
+                        line=line,
+                        column=col,
+                        code_line=pt,
+                    )
+                if stmt.body:
+                    walk_stmts(stmt.body.statements, type_params=type_params)
+            elif isinstance(stmt, ClassDef):
+                open_params = set(stmt.type_params or [])
+                for b in stmt.bases or []:
+                    reject(
+                        b,
+                        type_params=open_params,
+                        line=stmt.span.line if stmt.span else 1,
+                        column=stmt.span.column if stmt.span else 1,
+                        code_line=b,
+                    )
+                if stmt.parent:
+                    reject(
+                        stmt.parent,
+                        type_params=open_params,
+                        line=stmt.span.line if stmt.span else 1,
+                        column=stmt.span.column if stmt.span else 1,
+                        code_line=stmt.parent,
+                    )
+                for field in stmt.fields or []:
+                    reject(
+                        field.type_name,
+                        type_params=open_params,
+                        line=field.span.line if field.span else 1,
+                        column=field.span.column if field.span else 1,
+                        code_line=f"{field.type_name} {field.name}",
+                    )
+                    walk_expr(field.default, type_params=open_params)
+                for method in stmt.methods or []:
+                    walk_method(method, type_params=open_params)
+            elif isinstance(stmt, EntityDef):
+                if stmt.parent:
+                    reject(
+                        stmt.parent,
+                        line=stmt.span.line if stmt.span else 1,
+                        column=stmt.span.column if stmt.span else 1,
+                        code_line=stmt.parent,
+                    )
+                for field in stmt.fields or []:
+                    reject(
+                        field.type_name,
+                        line=field.span.line if field.span else 1,
+                        column=field.span.column if field.span else 1,
+                        code_line=f"{field.type_name} {field.name}",
+                    )
+                    walk_expr(field.default)
+                for method in stmt.methods or []:
+                    walk_method(method)
+            elif isinstance(stmt, (StructDef, DataDef)):
+                open_params = set(getattr(stmt, "type_params", None) or [])
+                for field in stmt.fields or []:
+                    reject(
+                        field.type_name,
+                        type_params=open_params,
+                        line=field.span.line if field.span else 1,
+                        column=field.span.column if field.span else 1,
+                        code_line=f"{field.type_name} {field.name}",
+                    )
+                    walk_expr(field.default, type_params=open_params)
+            elif isinstance(stmt, TraitDef):
+                for req in stmt.requires or []:
+                    line = stmt.span.line if stmt.span else 1
+                    col = stmt.span.column if stmt.span else 1
+                    if req.type_name:
+                        reject(req.type_name, line=line, column=col, code_line=req.type_name)
+                    for pt in req.param_types or []:
+                        reject(pt, line=line, column=col, code_line=pt)
+                for method in stmt.methods or []:
+                    walk_method(method)
+            elif isinstance(stmt, TasksBlock):
+                for task in stmt.tasks or []:
+                    if task.body:
+                        walk_stmts(task.body.statements, type_params=type_params)
+
+    # Existence checks across the module (fields, params, returns, nested, calls).
+    walk_stmts(body)
+
+    # Missing-type on top-level library returns (pre-behavior; keep top-level only).
     for stmt in body:
         if not isinstance(stmt, AssignStmt):
             continue
         line = stmt.span.line if stmt.span else 1
         col = stmt.span.column if stmt.span else 1
-
-        if stmt.declare_type and stmt.declare_type != "var":
-            base = _base_type_name(stmt.declare_type)
-            if (
-                base not in class_names
-                and base not in interfaces
-                and not _known_library_type(stmt.declare_type, resolver)
-            ):
-                _transpile_error(
-                    f"Unknown type '{base}'. Declare a class/interface, or import a library "
-                    f"that defines it (via pys.deps).",
-                    line,
-                    col,
-                    f"{stmt.declare_type} {stmt.name}",
-                    code="pys.unknown-type",
-                )
+        if stmt.declare_type and stmt.declare_type not in {"var", "const", "fix"}:
             local_types[stmt.name] = stmt.declare_type
-
         call = _call_receiver_method(stmt.value)
         if call is None:
             continue
@@ -984,7 +1391,6 @@ def _check_library_types(
         if stmt.declare_type:
             local_types[stmt.name] = stmt.declare_type
             continue
-        # Untyped assignment from a library call with a known return shape.
         if info.from_external and info.pys_type:
             tips = _usage_tips_for(info.pys_type, info.element_type, stmt.name)
             rhs = f"{recv}.{method}()" if method else f"{recv}()"
