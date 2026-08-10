@@ -692,16 +692,16 @@ the deprecated `pys.mainFile` setting.
 
 <a id="ref-4"></a>[4] R. Mason and G. Cooper, "Mindstorms robots and the application of cognitive
     load theory in introductory programming," Comput. Sci. Educ., vol. 23,
-    no. 4, pp. 296–314, 2013, doi: 10.1080/08993408.2013.847152.
+    no. 4, pp. 296–314, 2013, doi: [10.1080/08993408.2013.847152](https://doi.org/10.1080/08993408.2013.847152).
 
 <a id="ref-5"></a>[5] R. Duran, A. Zavgorodniaia, and J. Sorva, "Cognitive load theory in computing
     education research: A review," ACM Trans. Comput. Educ., vol. 22, no. 4,
-    2022, Art. no. 40, doi: 10.1145/3483843.
+    2022, Art. no. 40, doi: [10.1145/3483843](https://doi.org/10.1145/3483843).
 
 <a id="ref-6"></a>[6] J. Moons and C. De Backer, "The design and pilot evaluation of an interactive
     learning environment for introductory programming influenced by cognitive
     load theory and constructivism," Comput. Educ., vol. 60, no. 1, pp. 368–384,
-    2013, doi: 10.1016/j.compedu.2012.08.009.
+    2013, doi: [10.1016/j.compedu.2012.08.009](https://doi.org/10.1016/j.compedu.2012.08.009).
 
 <a id="ref-7"></a>[7] M. Kölling and B. Quig, "The BlueJ system and its pedagogy," Comput. Sci.
-    Educ., vol. 13, no. 4, pp. 249–268, 2003, doi: 10.1076/csed.13.4.249.17496.
+    Educ., vol. 13, no. 4, pp. 249–268, 2003, doi: [10.1076/csed.13.4.249.17496](https://doi.org/10.1076/csed.13.4.249.17496).
