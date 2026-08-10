@@ -88,6 +88,7 @@ Each record then uses:
 | [CER-051](CER-051-runtime-ensure.md) | Create Project target + host runtime install prompt | IDE |
 | [CER-052](CER-052-member-access-interpolation.md) | Enforce member access inside string interpolations | Language |
 | [CER-053](CER-053-brace-indentation.md) | Brace-mode indentation formatting (`pys.indent`) | Language |
+| [CER-054](CER-054-foreach-binder-types.md) | Foreach binder type required + element match | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 

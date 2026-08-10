@@ -10,7 +10,7 @@ Provide a way to access the elements of an aggregate object sequentially without
 
 ## Explanation
 
-`IntCollection.iterator()` returns an `ArrayIntIterator` that exposes `hasNext` / `next`. Language `loop (x in xs)` is sugar for the same idea on built-ins; this demo shows the OO roles.
+`IntCollection.iterator()` returns an `ArrayIntIterator` that exposes `hasNext` / `next`. Language `loop (T x in xs)` is sugar for the same idea on built-ins; this demo shows the OO roles.
 
 ## Classic structure (UML)
 

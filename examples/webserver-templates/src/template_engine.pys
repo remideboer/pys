@@ -26,7 +26,7 @@ package class TemplateEngine {
             return ""
         }
         string text = path.read_text(encoding="utf-8")
-        loop (key in context) {
+        loop (object key in context) {
             string token = "{{" + str(key) + "}}"
             string spaced = "{{ " + str(key) + " }}"
             string value = this.escape(str(context[key]))

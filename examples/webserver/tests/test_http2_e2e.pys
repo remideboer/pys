@@ -129,10 +129,10 @@ tasks {
                     rounds = 40
                 } else {
                     var events = h2conn.receive_data(data)
-                    loop (event in events) {
+                    loop (object event in events) {
                         if (type(event).__name__ == "ResponseReceived") {
                             string status = ""
-                            loop (pair in event.headers) {
+                            loop (object pair in event.headers) {
                                 if (str(pair[0]) == ":status") {
                                     status = str(pair[1])
                                 }

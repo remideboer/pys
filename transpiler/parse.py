@@ -3089,7 +3089,7 @@ def _parse_loop(p: _Tok):
 
     if has_in:
         var_type = ""
-        # Optional element type: `int x in`, `tuple x in`, `list<int> x in`
+        # Required element type: `int x in`, `tuple x in`, `list<int> x in`
         if (p.at(TokenKind.IDENT) or p.at(TokenKind.KEYWORD)) and not p.at_kw("in"):
             if p.peek(1).kind == TokenKind.LT or (
                 p.peek(1).kind in {TokenKind.IDENT, TokenKind.KEYWORD}
@@ -3112,6 +3112,22 @@ def _parse_loop(p: _Tok):
                             p.cur().column,
                         )
                     var_type = var_type + ("[]" * len(dims))
+        if not var_type:
+            # `loop (x in xs)` — binder type is mandatory (CER-054).
+            tok = p.cur()
+            name_hint = tok.text if tok.kind in {TokenKind.IDENT, TokenKind.KEYWORD} else "x"
+            raise FatalParseError(
+                "Foreach loop variable requires a type "
+                f"(write `loop (T {name_hint} in ...)`, where T matches the element type).",
+                tok.line,
+                tok.column,
+                code="pys.foreach-type-required",
+                tips=[
+                    "Example: `loop (int x in numbers)` for `int[]` / `list<int>`.",
+                    "The binder type must match the collection element type.",
+                ],
+                suggested_fix=f"loop (T {name_hint} in ...)",
+            )
         var = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         p.eat_kw("in")
         it = _parse_expression(p)

@@ -435,7 +435,8 @@ for_step         = identifier , ( "++" | "--" )
 
 while_loop       = "loop" , "(" , expression , ")" , block ;
 
-foreach_loop     = "loop" , "(" , [ type_name ] , identifier , "in" , expression , ")" , block ;
+(* Binder type is required and must match the iterable element type (CER-054). *)
+foreach_loop     = "loop" , "(" , type_name , identifier , "in" , expression , ")" , block ;
 
 rel_op           = "<" | "<=" | ">" | ">=" | "==" | "!=" | "<>" ;
 

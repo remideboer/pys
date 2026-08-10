@@ -901,10 +901,10 @@
     {
       id: 'foreach_loop',
       title: 'foreach_loop',
-      ebnf: '"loop" "(" [ type_name ] identifier "in" expression ")" block ;',
+      ebnf: '"loop" "(" type_name identifier "in" expression ")" block ;',
       node: Seq(
         T('loop'), T('('),
-        Opt(N('type_name')), N('identifier'), T('in'), N('expression'),
+        N('type_name'), N('identifier'), T('in'), N('expression'),
         T(')'), N('block')
       )
     },

@@ -215,7 +215,7 @@ dict d = dict()
 d[1] = "a"
 list xs = list()
 xs.append(1)
-loop (k in d) {
+loop (object k in d) {
     print(k)
 }
 d.pop(1)

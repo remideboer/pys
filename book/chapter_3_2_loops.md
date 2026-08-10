@@ -30,7 +30,7 @@ loop (n < 3) {
     n++
 }
 
-# foreach
+# foreach — binder type is required and must match the element type
 list<string> xs = ["a", "b"]
 loop (string x in xs) {
     print(x)
@@ -48,6 +48,28 @@ Output:
 2
 a
 b
+```
+
+### Foreach binder types
+
+The variable after `in` must declare the **element** type of the collection
+(`int` for `int[]` / `list<int>`, `string` for `list<string>`, and so on).
+Omitting the type, or naming the wrong type, is a compile error:
+
+```pys
+int[] nums = {1, 2, 3}
+# loop (x in nums) { }           # error: type required
+# loop (string x in nums) { }    # error: elements are int, not string
+loop (int x in nums) {
+    print(x)
+}
+```
+
+Compile error notes (for the commented lines):
+
+```text
+Foreach loop variable requires a type ...
+Type mismatch: foreach binder 'x' has type string, but elements of 'nums' are int.
 ```
 
 ## Why a C-style loop has one counter

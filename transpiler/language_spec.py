@@ -697,7 +697,7 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "loop_foreach",
-    r"loop\s*\(\s*(?:(?P<type>[A-Za-z_]\w*)\s+)?(?P<var>[A-Za-z_]\w*)\s+in\s+(?P<expr>.+?)\s*\)",
+    r"loop\s*\(\s*(?P<type>[A-Za-z_]\w*(?:\[\])*)\s+(?P<var>[A-Za-z_]\w*)\s+in\s+(?P<expr>.+?)\s*\)",
     lambda match: f"for {match.group('var')} in {_rewrite_plus_expr(match.group('expr').strip())}:",
 )
 LANGUAGE.add_regex(

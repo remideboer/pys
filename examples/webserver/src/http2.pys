@@ -28,7 +28,7 @@ package class Http2Server {
                 open = false
             } else {
                 var events = h2conn.receive_data(data)
-                loop (event in events) {
+                loop (object event in events) {
                     this._handleEvent(h2conn, event, router)
                 }
                 conn.settimeout(writeTimeoutSec)
@@ -48,7 +48,7 @@ package class Http2Server {
             string body = ""
             string correlationId = "corr-0"
             var headers = event.headers
-            loop (pair in headers) {
+            loop (object pair in headers) {
                 string name = str(pair[0]).lower()
                 string value = str(pair[1])
                 if (name == ":method") {

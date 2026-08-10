@@ -43,7 +43,7 @@ package class JsonUtil {
 
     public list productsToList(list<Product> items) {
         list out = []
-        loop (p in items) {
+        loop (Product p in items) {
             out.append(this.productToDict(p))
         }
         return out
@@ -65,7 +65,7 @@ package class JsonUtil {
 
     public list ordersToList(list<Order> items) {
         list out = []
-        loop (o in items) {
+        loop (Order o in items) {
             out.append(this.orderToDict(o))
         }
         return out
@@ -85,7 +85,7 @@ package class JsonUtil {
 
     public list linesToList(list<OrderLine> items) {
         list out = []
-        loop (line in items) {
+        loop (OrderLine line in items) {
             out.append(this.lineToDict(line))
         }
         return out

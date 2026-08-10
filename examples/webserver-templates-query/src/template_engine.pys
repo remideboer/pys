@@ -88,7 +88,7 @@ package class TemplateEngine {
         var pattern = re.compile(pat)
         string out = ""
         int last = 0
-        loop (m in pattern.finditer(text)) {
+        loop (object m in pattern.finditer(text)) {
             out = out + text[last:m.start()]
             var value = this.lookup(context, m.group(1))
             if (value == null) {
@@ -174,7 +174,7 @@ package class TemplateEngine {
                 kind = type(items).__name__
             }
             if (kind == "list" || kind == "tuple") {
-                loop (item in items) {
+                loop (object item in items) {
                     built = built + this.renderString(body, this.childContext(context, varName, item))
                 }
             }

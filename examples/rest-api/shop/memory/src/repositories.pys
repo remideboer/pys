@@ -58,7 +58,7 @@ package class InMemoryProductRepository implements ProductRepository {
         this.lock.acquire()
         dict m = this.byId
         list<Product> out = []
-        loop (key in m) {
+        loop (int key in m) {
             out.append(m[key])
         }
         this.lock.release()
@@ -134,7 +134,7 @@ package class InMemoryOrderRepository implements OrderRepository {
         this.lock.acquire()
         dict m = this.byId
         list<Order> out = []
-        loop (key in m) {
+        loop (int key in m) {
             out.append(m[key])
         }
         this.lock.release()
@@ -215,7 +215,7 @@ package class InMemoryOrderLineRepository implements OrderLineRepository {
         this.lock.acquire()
         dict m = this.byKey
         list<OrderLine> out = []
-        loop (key in m) {
+        loop (string key in m) {
             out.append(m[key])
         }
         this.lock.release()
@@ -226,7 +226,7 @@ package class InMemoryOrderLineRepository implements OrderLineRepository {
         this.lock.acquire()
         dict m = this.byKey
         list<OrderLine> out = []
-        loop (key in m) {
+        loop (string key in m) {
             OrderLine line = m[key]
             if (line.id() == orderId) {
                 out.append(line)
@@ -299,13 +299,13 @@ package class InMemoryOrderLineRepository implements OrderLineRepository {
         this.lock.acquire()
         dict m = this.byKey
         list<string> drop = []
-        loop (key in m) {
+        loop (string key in m) {
             OrderLine line = m[key]
             if (line.id() == orderId) {
                 drop.append(key)
             }
         }
-        loop (k in drop) {
+        loop (string k in drop) {
             m.pop(k)
         }
         this.byKey = m

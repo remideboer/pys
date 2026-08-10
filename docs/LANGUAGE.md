@@ -450,13 +450,17 @@ This prints `0, 10`, `1, 11`, and `2, 12`. Initialization and mutation remain
 ordinary visible statements; the narrow C-style form keeps its single-counter
 immutability guarantee. See [ADR-019](adr/ADR-019-single-counter-loops.md).
 
-**Foreach**:
+**Foreach** (binder type is required and must match the collection element
+type — `T[]`, `list<T>`, `set<T>`, `dict<K,V>` keys, or a uniform tuple):
 
 ```pys
 loop (tuple<string, string> row in rows) {
     print(row)
 }
 ```
+
+`loop (x in xs)` without a type, or a binder type that does not match the
+elements (e.g. `loop (string x in int[])`), is a compile error.
 
 Loop binders and any variables declared inside `{ … }` are **block-scoped**:
 they do not exist after the closing brace. A later `int row = 0` is a new

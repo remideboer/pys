@@ -1163,7 +1163,7 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
         "Conn db = demo.connect()\n"
         "Cursor cur = db.cursor()\n"
         "list rows = cur.fetchall()\n"
-        "loop (x in rows) {\n"
+        "loop (tuple x in rows) {\n"
         "    print(x)\n"
         "}\n",
         encoding="utf-8",
@@ -1172,10 +1172,7 @@ def test_untyped_library_hints_for_fetchall(tmp_path: Path, monkeypatch: pytest.
     assert analysis["ok"]
     codes = {h["code"] for h in analysis["hints"]}
     assert "pys.untyped-library" in codes
-    assert "pys.untyped-loop-var" in codes
     assert analysis["collection_element_types"].get("rows") == "tuple"
-    loop_hint = next(h for h in analysis["hints"] if h["code"] == "pys.untyped-loop-var")
-    assert loop_hint["suggested_loop"] == "loop (tuple x in rows)"
 
     # User already wrote generics → no untyped-library hint
     precise = tmp_path / "precise.pys"

@@ -1,5 +1,5 @@
 # Iterator — sequential access without exposing representation.
-# Language `loop (x in xs)` is sugar for the same idea on built-in collections.
+# Language `loop (T x in xs)` is sugar for the same idea on built-in collections.
 
 interface IntIterator {
     bool hasNext()

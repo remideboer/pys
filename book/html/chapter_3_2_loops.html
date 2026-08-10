@@ -164,7 +164,7 @@
     <span class="tok-ident">n</span><span class="tok-op">++</span>
 }
 
-<span class="tok-comment"># foreach</span>
+<span class="tok-comment"># foreach — binder type is required and must match the element type</span>
 <span class="tok-type">list</span><span class="tok-op">&lt;</span><span class="tok-type">string</span><span class="tok-op">&gt;</span> <span class="tok-ident">xs</span> <span class="tok-op">=</span> [<span class="tok-string">&quot;</span><span class="tok-string">a</span><span class="tok-string">&quot;</span>, <span class="tok-string">&quot;</span><span class="tok-string">b</span><span class="tok-string">&quot;</span>]
 <span class="tok-kw">loop</span> (<span class="tok-type">string</span> <span class="tok-ident">x</span> <span class="tok-kw">in</span> <span class="tok-ident">xs</span>) {
     <span class="tok-builtin">print</span>(<span class="tok-ident">x</span>)
@@ -178,6 +178,20 @@
 2
 a
 b
+</code></pre>
+<h3>Foreach binder types</h3>
+<p>The variable after <code>in</code> must declare the <strong>element</strong> type of the collection
+(<code>int</code> for <code>int[]</code> / <code>list&lt;int&gt;</code>, <code>string</code> for <code>list&lt;string&gt;</code>, and so on).
+Omitting the type, or naming the wrong type, is a compile error:</p>
+<pre><code class="language-pys"><span class="tok-type">int</span>[] <span class="tok-ident">nums</span> <span class="tok-op">=</span> {<span class="tok-number">1</span>, <span class="tok-number">2</span>, <span class="tok-number">3</span>}
+<span class="tok-comment"># loop (x in nums) { }           # error: type required</span>
+<span class="tok-comment"># loop (string x in nums) { }    # error: elements are int, not string</span>
+<span class="tok-kw">loop</span> (<span class="tok-type">int</span> <span class="tok-ident">x</span> <span class="tok-kw">in</span> <span class="tok-ident">nums</span>) {
+    <span class="tok-builtin">print</span>(<span class="tok-ident">x</span>)
+}</code></pre>
+<p>Compile error notes (for the commented lines):</p>
+<pre><code class="language-text">Foreach loop variable requires a type ...
+Type mismatch: foreach binder 'x' has type string, but elements of 'nums' are int.
 </code></pre>
 <h2>Why a C-style loop has one counter</h2>
 <p>PYS deliberately keeps the C-style form narrow. The initializer, condition,

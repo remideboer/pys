@@ -2634,6 +2634,71 @@ def _lookup_name_type(expr: str, types: dict[str, str]) -> str | None:
     return None
 
 
+def _iterable_element_type(coll_type: str | None) -> str | None:
+    """Element type for `T[]` / `list<T>` / `set<T>` / `dict<K,V>` (keys) / uniform tuple."""
+    if not coll_type:
+        return None
+    t = coll_type.strip()
+    null_inner = _nullable_inner(t)
+    if null_inner is not None:
+        return _iterable_element_type(null_inner)
+    if t.endswith("[]"):
+        return t[:-2]
+    base = t.split("<", 1)[0].strip() if "<" in t else t
+    args = _extract_type_args(t)
+    if base == "list" and len(args) == 1:
+        return args[0]
+    if base == "set" and len(args) == 1:
+        return args[0]
+    if base == "dict" and len(args) >= 1:
+        return args[0]
+    if base == "tuple" and args:
+        if len(set(args)) == 1:
+            return args[0]
+    return None
+
+
+def _foreach_iterable_decl_type(expr: Expr | None, types: dict[str, str]) -> str | None:
+    if isinstance(expr, Identifier):
+        return types.get(expr.name)
+    return None
+
+
+def _check_foreach_binder(stmt: ForEachStmt, types: dict[str, str]) -> None:
+    """Require binder type; when element type is known, it must match (CER-054)."""
+    line = stmt.span.line if stmt.span else 1
+    col = stmt.span.column if stmt.span else 1
+    binder = (stmt.var_type or "").strip()
+    if not binder:
+        _transpile_error(
+            f"Foreach loop variable '{stmt.var}' requires a type.",
+            line,
+            col,
+            code="pys.foreach-type-required",
+            tips=["Write `loop (T name in collection)` with T matching the element type."],
+            suggested_fix=f"loop (T {stmt.var} in …)",
+        )
+    coll_t = _foreach_iterable_decl_type(stmt.iterable, types)
+    elem = _iterable_element_type(coll_t)
+    if elem is None:
+        return
+    if elem != binder:
+        it_hint = (
+            stmt.iterable.name if isinstance(stmt.iterable, Identifier) else "…"
+        )
+        _transpile_error(
+            f"Type mismatch: foreach binder '{stmt.var}' has type {binder}, "
+            f"but elements of '{it_hint}' are {elem}.",
+            line,
+            col,
+            code="pys.foreach-type",
+            suggested_fix=f"loop ({elem} {stmt.var} in {it_hint})",
+            tips=[
+                f"Use `loop ({elem} {stmt.var} in {it_hint})`, or change the collection's element type.",
+            ],
+        )
+
+
 def _check_typed_interpolation(
     expr: Expr | None,
     types: dict[str, str],
@@ -3114,6 +3179,7 @@ def _check_bindings(
                     interfaces=interfaces,
                 )
         elif isinstance(stmt, ForEachStmt):
+            _check_foreach_binder(stmt, types)
             nested_declared = set(declared) | {stmt.var}
             nested_types = dict(types)
             if stmt.var_type:
