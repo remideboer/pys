@@ -1051,15 +1051,22 @@ function activate(context) {
 
       const unknownType = diagnostics.find((diagnostic) => diagnostic.code === 'pys.unknown-type');
       if (unknownType) {
+        const unknownMatch = /Unknown type '([^']+)'/.exec(String(unknownType.message || ''));
+        const typeName = unknownMatch ? unknownMatch[1] : '';
         const fix = new vscode.CodeAction(
-          'Create class from constructor call',
+          typeName ? `Create class '${typeName}'` : 'Create missing class',
           vscode.CodeActionKind.QuickFix,
         );
         fix.diagnostics = [unknownType];
         fix.isPreferred = true;
         fix.command = {
           command: 'pys.generate.createClass',
-          title: 'Create Class from Call',
+          title: typeName ? `Create class '${typeName}'` : 'Create missing class',
+          arguments: [{
+            line: unknownType.range.start.line,
+            character: unknownType.range.start.character,
+            typeName,
+          }],
         };
         actions.push(fix);
       }

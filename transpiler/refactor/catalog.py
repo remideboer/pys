@@ -58,10 +58,13 @@ CATALOG: dict[str, dict[str, Any]] = {
     "create-class": {
         "title": "Create Class",
         "fowler": "Introduce Class (generation)",
-        "summary": "Generate a class with fields and constructor from a named-argument constructor call.",
+        "summary": (
+            "Generate a class stub for an unresolved type name, or a typed class "
+            "with constructor from named-argument constructor calls."
+        ),
         "why": (
-            "When a type is used before it exists, scaffold a matching class so students "
-            "can iterate on design without typing boilerplate first."
+            "When a type is used before it exists (field, param, or call), scaffold "
+            "a matching class so students can iterate without typing boilerplate first."
         ),
     },
 }

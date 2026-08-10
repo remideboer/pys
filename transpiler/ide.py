@@ -1123,6 +1123,8 @@ def _cli_refactor_plan(argv: list[str]) -> int:
                 path,
                 line=line or 1,
                 column=column or 1,
+                source=source_text,
+                type_name=opts.get("type_name"),
             )
         else:
             print(json.dumps({"ok": False, "message": f"Unknown refactor op {op!r}"}))

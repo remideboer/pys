@@ -32,17 +32,18 @@ saw no members. Unresolved `Student(naam="…")` had no scaffold action.
   after `.` with visibility filtering)
 - Setting `pys.intellisense.enabled` + status bar toggle
 - `--refactor-plan create-class` + CodeAction on `pys.unknown-type` / command
-  `pys.generate.createClass` inserts a class with fields + constructor from
-  **named** arguments (literal types inferred)
+  `pys.generate.createClass` inserts a class stub from an unresolved **type
+  name** (field/param/return) or a class with fields + constructor from
+  **named** constructor arguments (literal types inferred)
 
 ### Evidence
 
 - `tests/test_completions.py`
-- `tests/test_create_class.py`
+- `tests/test_create_class.py` (named call + unknown field type + bare ctor)
 - `pys-language/test/project-main.test.js` (manifest + extension surface)
 
 ## Trade-offs
 
 - Signature Help deferred
-- Positional-only ctor calls are out of Create Class MVP
+- Bare / positional ctor calls scaffold an **empty** class (named args still fill fields)
 - Full Fowler generation catalog remains [F-005](../TODO-FUTURE.md#f-005-full-fowler-refactor-catalog)

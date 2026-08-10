@@ -355,7 +355,7 @@
       },
       {
         "command": "pys.generate.createClass",
-        "title": "Create Class from Call",
+        "title": "Create Class",
         "category": "PYS Generate"
       }
     ],

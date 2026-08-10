@@ -288,13 +288,39 @@ function registerRefactoring(context, deps = {}) {
         '--param-type', String(ptype).trim() || 'int',
       ]);
     }],
-    ['pys.generate.createClass', async () => {
+    ['pys.generate.createClass', async (positionHint) => {
       const editor = requirePysEditor();
       if (!editor) return;
       const snap = captureEditor(editor);
-      await runOp('create-class', editor.document, editor.selection, snap, async (_doc, sel) =>
-        posArgs(sel.active),
-      );
+      let pos = editor.selection.active;
+      let typeName = '';
+      if (positionHint && typeof positionHint === 'object') {
+        if (typeof positionHint.line === 'number' && typeof positionHint.character === 'number') {
+          pos = new vscode.Position(positionHint.line, positionHint.character);
+        }
+        if (typeof positionHint.typeName === 'string') {
+          typeName = positionHint.typeName.trim();
+        }
+      }
+      // Quick Fix / lightbulb may not pass args in every host — recover from diagnostics.
+      if (!typeName) {
+        const diags = vscode.languages.getDiagnostics(editor.document.uri) || [];
+        const unknown = diags.find((d) => d.code === 'pys.unknown-type');
+        if (unknown) {
+          const m = /Unknown type '([^']+)'/.exec(String(unknown.message || ''));
+          if (m) {
+            typeName = m[1];
+          }
+          pos = unknown.range.start;
+        }
+      }
+      await runOp('create-class', editor.document, editor.selection, snap, async (_doc, _sel) => {
+        const args = posArgs(pos);
+        if (typeName) {
+          args.push('--type-name', typeName);
+        }
+        return args;
+      });
     }],
   ];
 
@@ -369,7 +395,7 @@ function registerRefactoring(context, deps = {}) {
       '**Introduce Parameter** (Add Parameter)\n\nPromote a local into an explicit API parameter.',
     ),
     'create-class': new vscode.MarkdownString(
-      '**Create Class**\n\nGenerate a class with fields and constructor from named call arguments.',
+      '**Create Class**\n\nGenerate a class for an unresolved type (field/param) or from named constructor arguments.',
     ),
   };
 
@@ -394,7 +420,7 @@ function registerRefactoring(context, deps = {}) {
         add('Inline Function…', 'pys.refactor.inlineFunction', vscode.CodeActionKind.RefactorInline, 'inline-function');
         add('Safe Delete…', 'pys.refactor.safeDelete', vscode.CodeActionKind.Refactor, 'safe-delete');
         add('Introduce Parameter…', 'pys.refactor.introduceParameter', vscode.CodeActionKind.RefactorRewrite, 'introduce-parameter');
-        add('Create Class from Call…', 'pys.generate.createClass', vscode.CodeActionKind.QuickFix, 'create-class');
+        add('Create Class…', 'pys.generate.createClass', vscode.CodeActionKind.QuickFix, 'create-class');
         add('Rename Symbol…', 'pys.refactor.rename', vscode.CodeActionKind.Refactor, 'rename');
         return actions;
       },
