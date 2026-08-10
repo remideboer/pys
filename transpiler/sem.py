@@ -14,12 +14,14 @@ from .ast_nodes import (
     AugAssignStmt,
     AwaitExpr,
     BinaryOp,
+    BlankStmt,
     Block,
     BraceLiteral,
     BreakStmt,
     Call,
     Cast,
     ClassDef,
+    CommentStmt,
     DataDef,
     DictLiteral,
     EnumDef,
@@ -141,6 +143,7 @@ def analyze(
     warnings: list[TranspileWarning] = []
     module.analysis_warnings = warnings
     _reject_let(module)
+    _check_brace_indentation(module)
     _check_return_types(module.body)
     declared: set[str] = set()
     constants: set[str] = set()
@@ -383,6 +386,199 @@ def _transpile_warning(
             tips=tips,
         )
     )
+
+
+def _check_brace_indentation(module: Module) -> None:
+    """Fail closed on inconsistent / non-4-space indent in brace-mode source.
+
+    Structure still comes from `{ }` — this only enforces formatting so sibling
+    members and nested bodies stay aligned (educational; CER-053).
+    """
+    if not module.brace_mode:
+        return
+    lines = module.source.splitlines()
+
+    def _indent_of(node: Any) -> int | None:
+        if node is None or getattr(node, "span", None) is None:
+            return None
+        return max(int(node.span.column) - 1, 0)
+
+    def _line_text(line: int) -> str:
+        if 1 <= line <= len(lines):
+            return lines[line - 1]
+        return ""
+
+    def _line_leading_spaces(line: int) -> int:
+        text = _line_text(line)
+        return len(text) - len(text.lstrip(" "))
+
+    def _is_line_leader(node: Any) -> bool:
+        """True when this node starts the first non-space token on its line.
+
+        One-liners like ``public constructor() { this.x = 1 }`` must not treat
+        the inner assign as a nested indent level.
+        """
+        if node is None or getattr(node, "span", None) is None:
+            return False
+        return int(node.span.column) == _line_leading_spaces(node.span.line) + 1
+
+    def _check_node(node: Any, expected: int) -> None:
+        if node is None or isinstance(node, (CommentStmt, BlankStmt)):
+            return
+        if not _is_line_leader(node):
+            return
+        ind = _indent_of(node)
+        if ind is None or node.span is None:
+            return
+        if ind == expected:
+            return
+        line = node.span.line
+        code_line = _line_text(line)
+        stripped = code_line.lstrip(" \t")
+        suggested = (" " * expected) + stripped
+        _transpile_error(
+            f"Indentation error: expected {expected} spaces, found {ind}.",
+            line,
+            node.span.column,
+            code_line,
+            code="pys.indent",
+            suggested_fix=suggested,
+            tips=[
+                "Use 4 spaces per nested `{ }` level; keep siblings aligned.",
+                f"This line should start at column {expected + 1}.",
+            ],
+        )
+
+    def _check_list(nodes: list[Any] | None, expected: int) -> None:
+        if not nodes:
+            return
+        for node in nodes:
+            _check_node(node, expected)
+
+    def _walk_block(block: Block | None, parent_indent: int) -> None:
+        if block is None:
+            return
+        expected = parent_indent + 4
+        _check_list(block.statements, expected)
+        for stmt in block.statements:
+            if isinstance(stmt, (CommentStmt, BlankStmt)):
+                continue
+            # Never treat mid-line tokens (one-liner bodies) as a nest base.
+            if _is_line_leader(stmt):
+                stmt_indent = _indent_of(stmt)
+                if stmt_indent is None:
+                    stmt_indent = expected
+            else:
+                stmt_indent = expected
+            _walk_stmt(stmt, stmt_indent)
+
+    def _walk_stmt(stmt: Any, stmt_indent: int) -> None:
+        if isinstance(stmt, IfStmt):
+            _walk_block(stmt.then_body, stmt_indent)
+            else_body = stmt.else_body
+            if isinstance(else_body, IfStmt):
+                # Chained else-if node (if the parser ever emits it directly).
+                _check_node(else_body, stmt_indent)
+                if _is_line_leader(else_body):
+                    else_indent = _indent_of(else_body)
+                    _walk_stmt(
+                        else_body,
+                        else_indent if else_indent is not None else stmt_indent,
+                    )
+                else:
+                    _walk_stmt(else_body, stmt_indent)
+            elif (
+                isinstance(else_body, Block)
+                and len(else_body.statements) == 1
+                and isinstance(else_body.statements[0], IfStmt)
+                and else_body.span is None
+            ):
+                # `else if …` is parsed as else → synthetic Block → IfStmt
+                # (IfStmt span on the `if` keyword). Same nest level as outer if.
+                _walk_stmt(else_body.statements[0], stmt_indent)
+            else:
+                _walk_block(else_body, stmt_indent)
+        elif isinstance(stmt, (WhileStmt, ForRangeStmt, ForEachStmt, RepeatStmt)):
+            _walk_block(stmt.body, stmt_indent)
+        elif isinstance(stmt, FunctionDef):
+            _walk_block(stmt.body, stmt_indent)
+        elif isinstance(stmt, SwitchStmt):
+            for case in stmt.cases:
+                if case.span is not None and _is_line_leader(case):
+                    _check_node(case, stmt_indent + 4)
+                case_indent = stmt_indent + 4
+                if case.span is not None and _is_line_leader(case):
+                    ci = _indent_of(case)
+                    if ci is not None:
+                        case_indent = ci
+                if case.body is not None:
+                    _walk_block(case.body, case_indent)
+        elif isinstance(stmt, TasksBlock):
+            for task in stmt.tasks:
+                _check_node(task, stmt_indent + 4)
+                ti = stmt_indent + 4
+                if _is_line_leader(task):
+                    got = _indent_of(task)
+                    if got is not None:
+                        ti = got
+                if task.body is not None:
+                    _walk_block(task.body, ti)
+        elif isinstance(stmt, Block):
+            _walk_block(stmt, stmt_indent)
+        elif isinstance(stmt, ClassDef):
+            members = sorted(
+                list(stmt.fields) + list(stmt.methods),
+                key=lambda m: m.span.line if m.span else 0,
+            )
+            _check_list(members, stmt_indent + 4)
+            for method in stmt.methods:
+                mi = stmt_indent + 4
+                if _is_line_leader(method):
+                    got = _indent_of(method)
+                    if got is not None:
+                        mi = got
+                _walk_block(method.body, mi)
+        elif isinstance(stmt, EntityDef):
+            members = sorted(
+                list(stmt.fields) + list(stmt.methods),
+                key=lambda m: m.span.line if m.span else 0,
+            )
+            _check_list(members, stmt_indent + 4)
+            for method in stmt.methods:
+                mi = stmt_indent + 4
+                if _is_line_leader(method):
+                    got = _indent_of(method)
+                    if got is not None:
+                        mi = got
+                _walk_block(method.body, mi)
+        elif isinstance(stmt, (StructDef, DataDef)):
+            _check_list(stmt.fields, stmt_indent + 4)
+        elif isinstance(stmt, EnumDef):
+            _check_list(stmt.members, stmt_indent + 4)
+        elif isinstance(stmt, TraitDef):
+            _check_list(stmt.requires, stmt_indent + 4)
+            _check_list(stmt.methods, stmt_indent + 4)
+            for method in stmt.methods:
+                mi = stmt_indent + 4
+                if _is_line_leader(method):
+                    got = _indent_of(method)
+                    if got is not None:
+                        mi = got
+                _walk_block(method.body, mi)
+
+    # Top-level items start at column 1 (0 spaces).
+    _check_list(module.body, 0)
+    for stmt in module.body:
+        if isinstance(stmt, (CommentStmt, BlankStmt)):
+            continue
+        # Visibility/`global function` may put the node span mid-line.
+        if _is_line_leader(stmt):
+            ind = _indent_of(stmt)
+            if ind is None:
+                ind = 0
+        else:
+            ind = 0
+        _walk_stmt(stmt, ind)
 
 
 def _literal_int_value(expr: Expr | None) -> int | None:

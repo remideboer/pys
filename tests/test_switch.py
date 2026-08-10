@@ -165,20 +165,20 @@ print(total)
         ),
         (
             _DAY_ENUM
-            + "Day d = Day.MONDAY\nswitch (d) {\n  case NOPE:\n    pass\n  case MONDAY:\n    pass\n"
-            "  case FRIDAY:\n    pass\n  case SUNDAY:\n    pass\n  case TUESDAY:\n    pass\n"
-            "  case THURSDAY:\n    pass\n  case SATURDAY:\n    pass\n  case WEDNESDAY:\n    pass\n}\n",
+            + "Day d = Day.MONDAY\nswitch (d) {\n    case NOPE:\n        pass\n    case MONDAY:\n        pass\n"
+            "    case FRIDAY:\n        pass\n    case SUNDAY:\n        pass\n    case TUESDAY:\n        pass\n"
+            "    case THURSDAY:\n        pass\n    case SATURDAY:\n        pass\n    case WEDNESDAY:\n        pass\n}\n",
             r"Unknown enum member",
         ),
         (
             _DAY_ENUM
-            + "Day d = Day.MONDAY\nswitch (d) {\n  case MONDAY:\n    pass\n  case MONDAY:\n    pass\n"
-            "  case FRIDAY:\n    pass\n  case SUNDAY:\n    pass\n  case TUESDAY:\n    pass\n"
-            "  case THURSDAY:\n    pass\n  case SATURDAY:\n    pass\n  case WEDNESDAY:\n    pass\n}\n",
+            + "Day d = Day.MONDAY\nswitch (d) {\n    case MONDAY:\n        pass\n    case MONDAY:\n        pass\n"
+            "    case FRIDAY:\n        pass\n    case SUNDAY:\n        pass\n    case TUESDAY:\n        pass\n"
+            "    case THURSDAY:\n        pass\n    case SATURDAY:\n        pass\n    case WEDNESDAY:\n        pass\n}\n",
             r"Duplicate switch case",
         ),
         (
-            "int n = 1\nswitch (n) {\n  case 1:\n    pass\n  case \"x\":\n    pass\n}\n",
+            "int n = 1\nswitch (n) {\n    case 1:\n        pass\n    case \"x\":\n        pass\n}\n",
             r"cannot use string label",
         ),
     ],

@@ -1,15 +1,14 @@
 # Requirement sample: private fields must stay inaccessible outside the class.
 # Positive path (below) must transpile. Uncomment any NEGATIVE line → Access denied.
 #
-# Note (brace mode): leading spaces inside `{ }` or after a closed `}` are not
-# Python IndentationError — visibility is enforced by the analyzer, not indent.
+# Brace mode still requires consistent 4-space indentation inside `{ }` (pys.indent).
 
 class Rekenmachine {
     private fix int getalA
     private fix int getalB
 
     public constructor(int a, int b) {
-         this.getalA = a
+        this.getalA = a
         this.getalB = b
     }
 

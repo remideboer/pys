@@ -32,7 +32,8 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 9. **Railroad sync** — `docs/language-railroad.html` stays in sync with `docs/language.ebnf` whenever grammar/features change (same change set; the HTML is the navigable EBNF view, not an optional extra).
 10. **Project memory** — CER and/or ADR written or amended in the same change set (see `project-memory.mdc`).
 11. **No known maturity gaps left as “later”** unless the user **explicitly** defers them; if deferred, say so and list the gaps — never imply the feature is finished.
-12. **Preemptive CI analysis (considerable effort — mandatory)** — Before claiming the change set done, perform an explicit **ahead-of-time** pass aimed at preventing CI failures, not only repairing the last known miss class. Treat this as engineering work equal to the feature edit itself.
+12. **No tech debt / no bandaid patches (mandatory)** — Do **not** ship “quick fixes” in the engineering sense: one-off special cases, silent skips, corpus-only patches, TODOs that paper over a wrong design, or “make the suite green” hacks that leave the real hole open. Fixes must be **systematic and well designed**: correct the rule at the right layer (lex/parse/sem/emit/IDE), cover the full use-site / edge matrix with tests (including negatives), and leave the codebase healthier than before. Prefer a slightly larger correct change over a tiny debt-creating patch. (This is **not** about IDE diagnostic CodeActions in §4 — those remain required product UX when `suggested_fix` exists.)
+13. **Preemptive CI analysis (considerable effort — mandatory)** — Before claiming the change set done, perform an explicit **ahead-of-time** pass aimed at preventing CI failures, not only repairing the last known miss class. Treat this as engineering work equal to the feature edit itself.
 
     **A. Blast-radius map (think before / while coding)**  
     List what the change can break: transpile corpus, goldens, acceptance/`main.pys`, book SUMMARY order & `test_book_links`, folder/count gates (`test_patterns`, examples root), IDE/`pys-language` npm tests, locks/`PYS_WORKSPACE_ROOT`, railroad/EBNF, publish notes/version pins. Skim [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md) for matching rows and **apply their Prevent steps up front**.
@@ -46,7 +47,7 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
     **D. Close the loop**  
     If CI (or full pytest) still surprises you with a new failure mode, add a catalog row to `docs/ci-failure-patterns.md` in the fix commit and strengthen this checklist if a Prevent step was missing. Do not normalize “fix-forward after push.”
 
-13. **Extension release (when cutting a tag)** — bump `pys-language/package.json` version and rewrite [`pys-language/RELEASE_NOTES.md`](../../pys-language/RELEASE_NOTES.md) for that version in the **same** change set on `main` (notes must contain the version string; highlights are per-version only). Run `python tools/local_ci.py` before push/tag. Keep trunk green/releasable; tag only `extension-v<version>` from `main` tip. The publish workflow attaches the student zip + VSIX to a GitHub Release with those notes (Marketplace is optional when secrets exist). See [`pys-language/PUBLISH.md`](../../pys-language/PUBLISH.md) and [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
+14. **Extension release (when cutting a tag)** — bump `pys-language/package.json` version and rewrite [`pys-language/RELEASE_NOTES.md`](../../pys-language/RELEASE_NOTES.md) for that version in the **same** change set on `main` (notes must contain the version string; highlights are per-version only). Run `python tools/local_ci.py` before push/tag. Keep trunk green/releasable; tag only `extension-v<version>` from `main` tip. The publish workflow attaches the student zip + VSIX to a GitHub Release with those notes (Marketplace is optional when secrets exist). See [`pys-language/PUBLISH.md`](../../pys-language/PUBLISH.md) and [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
 
 ## How to work
 
@@ -55,6 +56,7 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 - When auditing an existing feature, report maturity honestly (what works / what’s missing) before adding more surface area.
 - **Analyse CI risk early** (plan and mid-implementation), not only after demos look good. Prefer preventing a red build over a clever post-hoc patch.
 - After structural or teaching-layout edits, run the **full** `python -m pytest -q`. Fix every failure in the same change set — do not land “feature done” and rely on remote CI to discover drift.
+- **Design the fix, don’t bandage it** (§12): if a hole appears (access, indent, locks, …), fix the mechanism and its regressions systematically — never leave “we’ll tidy later” debt or a special-case that only unblocks one sample.
 
 ## Anti-patterns
 
@@ -70,11 +72,13 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 ❌ Book SUMMARY renumbered / new session inserted but tests still assert old “# N. …” headings
 ❌ Only ran the narrow gate (e.g. test_patterns.py) and called DoD while full pytest would fail
 ❌ “CI will catch it” / fix-forward commits that should have been follow-through in the feature set
-❌ Treating DoD §12 as “remember SUMMARY tests” only — skipping blast-radius analysis for sem, goldens, locks, extension
+❌ Treating DoD §13 as “remember SUMMARY tests” only — skipping blast-radius analysis for sem, goldens, locks, extension
 ❌ Claiming done after a green mental model without `python -m pytest -q` (or local_ci when required)
 ❌ Shipping a fail-closed rule (private/protected, undeclared, …) with only happy-path tests — no denial corpus across use sites
+❌ Bandaid / tech-debt “quick fix”: special-case, silent skip, or suite-only patch that leaves the real hole open
 ✅ “Implemented” only when language + tests + IDE parity + docs + beginner book (+ HTML) + railroad + CER/ADR + teaching examples + preemptive CI analysis + green full local suite are in place
 ✅ Book chapter done only when every named concept is explained + exemplified (incl. non-golden cases) with visible results
 ✅ Structural / language / corpus changes include blast-radius map + grepped dependents + green full pytest (local_ci if extension) before done
 ✅ Access / visibility and other fail-closed rules include **negative** regressions (Access denied / Undeclared / …) for every relevant use site, not only one assign shape
+✅ Defects fixed systematically at the right layer with designed coverage — no deferred debt
 ```

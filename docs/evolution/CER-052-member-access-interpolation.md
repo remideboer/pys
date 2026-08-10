@@ -73,4 +73,5 @@ arg / interpolations / subclass `this.` while public API remains allowed.
 - Malformed `{…}` pieces that fail to parse are skipped here (other phases /
   emit remain responsible).
 - Brace mode does not revive Python IndentationError for mixed spaces inside
-  `{ }` — visibility is semantic, not indent-based.
+  `{ }` — visibility is semantic, not indent-based. **Formatting** of those
+  spaces is enforced separately by CER-053 (`pys.indent`).

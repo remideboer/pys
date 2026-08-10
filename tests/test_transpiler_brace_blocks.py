@@ -7,7 +7,10 @@ from transpiler.transpiler import TranspileError, transpile, transpile_with_modu
 
 
 def test_transpile_loop_with_braces() -> None:
-    source = """loop(int i=0; i<3; i++) {\nprint i\n}\n"""
+    source = """loop(int i=0; i<3; i++) {
+    print i
+}
+"""
     py = transpile(source)
     assert "for i in range(0, 3):" not in py
     assert "for _pys_b" in py and " in range(0, 3):" in py
@@ -208,7 +211,12 @@ def test_interface_access_modifier_is_rejected() -> None:
 
 
 def test_transpile_nested_brace_blocks() -> None:
-    source = """if (x < 0) {\nprint "negative"\n} else {\nprint "non-negative"\n}\n"""
+    source = """if (x < 0) {
+    print "negative"
+} else {
+    print "non-negative"
+}
+"""
     expected = (
         'def _pys_format(value):\n'
         '    return "null" if value is None else str(value)\n'

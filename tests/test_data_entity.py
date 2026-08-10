@@ -172,34 +172,34 @@ print(a == c)
     "source, match",
     [
         (
-            "entity E {\n  private fix int id\n  public constructor(int id) { this.id = id }\n}\n",
+            "entity E {\n    private fix int id\n    public constructor(int id) { this.id = id }\n}\n",
             r"identity",
         ),
         (
-            "entity E identity(id) {\n  private int id\n  public constructor(int id) { this.id = id }\n}\n",
+            "entity E identity(id) {\n    private int id\n    public constructor(int id) { this.id = id }\n}\n",
             r"fix",
         ),
         (
-            "entity E identity(missing) {\n  private fix int id\n  public constructor(int id) { this.id = id }\n}\n",
+            "entity E identity(missing) {\n    private fix int id\n    public constructor(int id) { this.id = id }\n}\n",
             r"identity field",
         ),
         (
-            "entity E identity(id) {\n  private fix int id\n}\n",
+            "entity E identity(id) {\n    private fix int id\n}\n",
             r"constructor",
         ),
         (
             "class C { public constructor() {} }\n"
             "entity E inherits C identity(id) {\n"
-            "  private fix int id\n"
-            "  public constructor(int id) { this.id = id }\n"
+            "    private fix int id\n"
+            "    public constructor(int id) { this.id = id }\n"
             "}\n",
             r"only inherit another entity",
         ),
         (
             "entity E identity(id) {\n"
-            "  private fix int id\n"
-            "  public constructor(int id) { this.id = id }\n"
-            "  public bool equals(E other) { return true }\n"
+            "    private fix int id\n"
+            "    public constructor(int id) { this.id = id }\n"
+            "    public bool equals(E other) { return true }\n"
             "}\n",
             r"equals",
         ),

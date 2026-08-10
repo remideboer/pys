@@ -9,6 +9,7 @@ alwaysApply: true
 - Split every task into the smallest possible working increment (max ~1 behavior/feature per commit).
 - Each increment must: compile, pass all tests, and be independently mergeable.
 - No speculative functionality (YAGNI). No half-finished abstractions.
+- **No tech debt / no bandaid “quick fixes”:** solve the defect at the right layer with a systematic design; do not paper over failures with special cases, silent skips, or “green the suite” hacks. (IDE diagnostic CodeActions are product UX, not this rule.)
 - When scope is unclear: implement the narrowest path that satisfies the tested behavior; report extension options instead of pre-building them.
 
 ## 2. Behavior Driven Development

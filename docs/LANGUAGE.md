@@ -20,7 +20,9 @@ Statements end at newline by default. An optional `;` terminator is allowed
 after any statement; it is **required** only when two statements share one
 physical line (`int x = 10; int y = 20`). A trailing `;` alone on a line is
 fine. Identifiers are case-sensitive. Use **4 spaces** for indentation when
-not using braces; tabs are illegal.
+not using braces; tabs are illegal. In **brace mode**, structure still comes
+from `{ }`, but sibling members and nested bodies must stay on a consistent
+4-space grid (`pys.indent` — transpile error with tip / IDE quick fix).
 
 ---
 

@@ -69,15 +69,15 @@ print(Priority.LOW == Priority.HIGH)
     [
         ("enum Foo {}\n", r"cannot be empty"),
         (
-            "enum Foo {\n  A = 1,\n  B\n}\n",
+            "enum Foo {\n    A = 1,\n    B\n}\n",
             r"fully implicit or fully explicit",
         ),
         (
-            "enum Foo {\n  A = 1,\n  B = 1\n}\n",
+            "enum Foo {\n    A = 1,\n    B = 1\n}\n",
             r"Duplicate enum value",
         ),
         (
-            'enum Foo {\n  A = 1,\n  B = "x"\n}\n',
+            'enum Foo {\n    A = 1,\n    B = "x"\n}\n',
             r"homogeneous",
         ),
         (
@@ -101,7 +101,7 @@ print(Priority.LOW == Priority.HIGH)
             r"Cannot compare enum",
         ),
         (
-            "enum Foo {\n  A\n  B\n}\n",
+            "enum Foo {\n    A\n    B\n}\n",
             r"separated by ','",
         ),
     ],
@@ -112,7 +112,7 @@ def test_enum_sa_rejections(source: str, match: str) -> None:
 
 
 def test_enum_naming_warning_still_compiles() -> None:
-    source = "enum Foo {\n  low,\n  HIGH\n}\n"
+    source = "enum Foo {\n    low,\n    HIGH\n}\n"
     tree = analyze(parse_program(source))
     assert any(w.code == "pys.enum-naming" for w in tree.analysis_warnings)
     warn = next(w for w in tree.analysis_warnings if w.code == "pys.enum-naming")
@@ -124,7 +124,7 @@ def test_enum_naming_warning_still_compiles() -> None:
 def test_analyze_file_includes_warnings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(tmp_path))
     path = tmp_path / "e.pys"
-    path.write_text("enum Foo {\n  low\n}\n", encoding="utf-8")
+    path.write_text("enum Foo {\n    low\n}\n", encoding="utf-8")
     result = analyze_file(path)
     assert result["ok"] is True
     assert result["error"] is None

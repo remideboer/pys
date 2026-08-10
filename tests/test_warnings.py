@@ -30,7 +30,7 @@ def test_transpile_warning_to_dict() -> None:
 
 
 def test_warnings_do_not_fail_compile() -> None:
-    source = "enum E {\n  soft\n}\n"
+    source = "enum E {\n    soft\n}\n"
     tree = analyze(parse_program(source))
     assert tree.analysis_warnings
     assert transpile(source)  # still emits
@@ -39,7 +39,7 @@ def test_warnings_do_not_fail_compile() -> None:
 def test_analyze_file_warnings_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(WORKSPACE_ROOT_ENV, str(tmp_path))
     path = tmp_path / "w.pys"
-    path.write_text("enum E {\n  soft\n}\n", encoding="utf-8")
+    path.write_text("enum E {\n    soft\n}\n", encoding="utf-8")
     result = analyze_file(path)
     assert result["ok"] is True
     assert isinstance(result["warnings"], list)

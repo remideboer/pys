@@ -253,6 +253,9 @@ outside world can call <code>c.bump()</code> and read <code>c.getValue()</code>,
 The same wall applies inside string interpolations: <code>"score={c.value}"</code>
 is a compile error (<code>Access denied</code>); use a public method such as
 <code>"{c.getValue()}"</code> instead.</p>
+<p>Brace bodies also keep a <strong>4-space grid</strong>: a field or statement shifted by
+one extra space is an <code>Indentation error</code> (<code>pys.indent</code>), even though <code>{ }</code>
+already decide nesting.</p>
 <h2>The constructor: assembling the machine</h2>
 <p>The <strong>constructor</strong> is a special part whose job is not the day-to-day
 purpose (counting), but <strong>building</strong> a ready-to-use machine.</p>

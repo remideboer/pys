@@ -163,6 +163,13 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Prevent | Keep `tests/test_member_access.py` green; for any new access/visibility rule, add **negative** cases for assign, print/read, decl RHS, call arg, string + typed interpolation, subclass; mirror `requirements/rekenmachine.pys` uncomment-to-fail lines. DoD §2 negative regressions. |
 | Related | CER-052; Feature maturity DoD §2; `tests/test_sem.py` interpolation cases |
 
+### 15. Brace indent grid (`pys.indent`) false positives / corpus 2-space fixtures
+
+| Symptom | Mass `Indentation error: expected N spaces, found M` on examples or SA rejection tests |
+| Cause | (a) `else if` / `global function` mid-line spans used as nest parents, or (b) test strings still use 2-space bodies after CER-053 |
+| Prevent | Keep synthetic `else if` and non–line-leader spans from shifting nest base (CER-053). Update rejection fixtures to 4-space so the *intended* SA error remains first. Run `tests/test_indent.py` + full `pytest -q`. |
+| Related | CER-053; `tests/test_indent.py` |
+
 ---
 
 ## How to add a pattern

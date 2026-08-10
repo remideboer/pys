@@ -271,15 +271,15 @@ print(after.inner.x)
     "source, match",
     [
         (
-            "struct S { int x\n int x }\n",
+            "struct S {\n    int x\n    int x\n}\n",
             r"Duplicate field",
         ),
         (
-            "struct S { int x = 1\n int y }\n",
+            "struct S {\n    int x = 1\n    int y\n}\n",
             r"without a default cannot follow",
         ),
         (
-            "struct S {\n  function int f() { return 1 }\n}\n",
+            "struct S {\n    function int f() { return 1 }\n}\n",
             r"Structs cannot contain `function`",
         ),
         (

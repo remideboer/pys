@@ -92,10 +92,10 @@ def test_rekenmachine_fixture_negative_lines_denied(commented: str, member: str)
     _deny(src, member)
 
 def test_rekenmachine_indented_toplevel_private_read_still_denied() -> None:
-    """Indented statements after class `}` stay top-level in brace mode — access still applies."""
+    """Top-level after `}` must stay at column 1; access checks still apply there."""
     source = _REKENMACHINE_CLASS + """
-    Rekenmachine rm = Rekenmachine(4, 5)
-    print(rm.getalA)
+Rekenmachine rm = Rekenmachine(4, 5)
+print(rm.getalA)
 """
     _deny(source, "getalA")
 

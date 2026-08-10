@@ -140,7 +140,7 @@ print(counter)
             r"mutate captured variable",
         ),
         (
-            "loop (int i in [1]) {\n  i = 2\n}\n",
+            "loop (int i in [1]) {\n    i = 2\n}\n",
             r"immutable",
         ),
         (

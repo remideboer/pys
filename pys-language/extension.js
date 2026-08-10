@@ -353,6 +353,7 @@ function activate(context) {
         || parsed.code === 'pys.null-non-nullable'
         || parsed.code === 'pys.nullable-use-before-check'
         || parsed.code === 'pys.var-as-type'
+        || parsed.code === 'pys.indent'
       )
     ) {
       const key = `${document.uri.toString()}:${line}:${parsed.code}`;
@@ -1029,6 +1030,25 @@ function activate(context) {
         const start = new vscode.Position(line.lineNumber, match.index);
         const end = new vscode.Position(line.lineNumber, match.index + 3);
         fix.edit.replace(document.uri, new vscode.Range(start, end), 'object');
+        actions.push(fix);
+      }
+
+      for (const diagnostic of diagnostics) {
+        if (diagnostic.code !== 'pys.indent') {
+          continue;
+        }
+        const key = `${document.uri.toString()}:${diagnostic.range.start.line + 1}:${diagnostic.code}`;
+        const meta = errorMeta.get(key);
+        const suggested = meta && meta.suggested_fix;
+        if (!suggested) {
+          continue;
+        }
+        const fix = new vscode.CodeAction('Fix indentation', vscode.CodeActionKind.QuickFix);
+        fix.diagnostics = [diagnostic];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        const line = document.lineAt(diagnostic.range.start.line);
+        fix.edit.replace(document.uri, line.range, suggested);
         actions.push(fix);
       }
 

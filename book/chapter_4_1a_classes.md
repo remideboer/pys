@@ -128,6 +128,10 @@ The same wall applies inside string interpolations: `"score={c.value}"`
 is a compile error (`Access denied`); use a public method such as
 `"{c.getValue()}"` instead.
 
+Brace bodies also keep a **4-space grid**: a field or statement shifted by
+one extra space is an `Indentation error` (`pys.indent`), even though `{ }`
+already decide nesting.
+
 ## The constructor: assembling the machine
 
 The **constructor** is a special part whose job is not the day-to-day
