@@ -13,6 +13,16 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 
 1. **Core behavior** — Happy path, edge cases, and rejection/error cases match the requirement / BDD scenario.
 2. **Tests** — Unit (and golden/acceptance where the repo uses them); no test that inherits unrelated monorepo `pys.lock` / deps (see CER-001 §4). After sem/call/type changes, spot-check `examples/main.pys` / `tests/test_acceptance_examples.py`. Evidence of green is **§12** (preemptive CI analysis + full local run), not a narrow demo gate alone. See [`docs/ci-failure-patterns.md`](../../docs/ci-failure-patterns.md).
+
+   **Negative / rejection regressions are mandatory** for every rule that is
+   supposed to **fail closed** (visibility/`Access denied`, undeclared names,
+   type mismatches, ordering, nullability, …). Happy-path-only coverage is not
+   DoD. For member access specifically: deny **and** allow cases must cover
+   multiple *use sites* (assign, read/print, typed decl RHS, call arguments,
+   string / typed interpolation, subclass `this.`, public API still OK) — a
+   single `car.make = …` denial is not enough (CER-052 hole). When a student
+   sample under `requirements/` reproduces a denial (e.g. `rekenmachine.pys`),
+   keep a regression that loads or mirrors that sample.
 3. **Tooling surface** — Lexer/parser/sem/emit (as applicable), plus IDE: highlighting, go-to on the symbols users navigate, hover/completions/snippets where the feature introduces keywords or types — at least parity with similar existing features (e.g. class).
 4. **Diagnostics maturity** — When a feature emits diagnostics: **Error** and/or **Warning** as appropriate, actionable **tips**, and **quick fixes** when a `suggested_fix` / edit is available (analyzer JSON + IDE CodeAction). Do not ship a warning-only rule without IDE Warning severity + tip/quick-fix plumbing.
 5. **Docs & teaching** — LANGUAGE / EBNF / tutorials updated when the user-facing surface changes.
@@ -62,7 +72,9 @@ For every language, toolchain, IDE, or product feature, the **default goal is a 
 ❌ “CI will catch it” / fix-forward commits that should have been follow-through in the feature set
 ❌ Treating DoD §12 as “remember SUMMARY tests” only — skipping blast-radius analysis for sem, goldens, locks, extension
 ❌ Claiming done after a green mental model without `python -m pytest -q` (or local_ci when required)
+❌ Shipping a fail-closed rule (private/protected, undeclared, …) with only happy-path tests — no denial corpus across use sites
 ✅ “Implemented” only when language + tests + IDE parity + docs + beginner book (+ HTML) + railroad + CER/ADR + teaching examples + preemptive CI analysis + green full local suite are in place
 ✅ Book chapter done only when every named concept is explained + exemplified (incl. non-golden cases) with visible results
 ✅ Structural / language / corpus changes include blast-radius map + grepped dependents + green full pytest (local_ci if extension) before done
+✅ Access / visibility and other fail-closed rules include **negative** regressions (Access denied / Undeclared / …) for every relevant use site, not only one assign shape
 ```

@@ -156,6 +156,13 @@ Or just the extension suite: `cd pys-language && npm test`.
 | Prevent | Same pattern as `test_shop_mysql_main_transpiles` / `test_example_database_shop_transpiles`: inject `mysql_connector_site`, set `PYS_WORKSPACE_ROOT` to the silo; never rely on a host-installed `mysql-connector-python` for compile gates. Before push: `python -m pytest -q tests/test_acceptance_examples.py` (and full `pytest -q` / `local_ci` on release) |
 | Related | CER-001 §4; ADR-002; examples/by-target |
 
+### 14. Member access denial only tested on one use site
+
+| Symptom | Private/protected field readable via `"…{obj.field}…"`, `print(obj.field)`, call args, etc., while `obj.field = …` correctly denies |
+| Cause | `_check_oop` / regression suite covered a single assign shape; other use sites (especially `InterpolatedString` raw text) skipped `check_member` |
+| Prevent | Keep `tests/test_member_access.py` green; for any new access/visibility rule, add **negative** cases for assign, print/read, decl RHS, call arg, string + typed interpolation, subclass; mirror `requirements/rekenmachine.pys` uncomment-to-fail lines. DoD §2 negative regressions. |
+| Related | CER-052; Feature maturity DoD §2; `tests/test_sem.py` interpolation cases |
+
 ---
 
 ## How to add a pattern

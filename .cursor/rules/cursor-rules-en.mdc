@@ -20,6 +20,7 @@ alwaysApply: true
 ## 3. Testing
 - Test pyramid: many unit tests, fewer integration tests, a small number of end-to-end/acceptance tests.
 - Every public function/method with non-trivial behavior gets at minimum: happy path, edge case, and failure/error case.
+- **Negative tests are required** for fail-closed language rules (access denied, undeclared, type/null errors, …): assert the compiler **rejects** illegal programs with the expected diagnostic — not only that legal programs compile. Cover every distinct use site that can bypass a check (reads, writes, interpolations, call args, subclasses).
 - No test may depend on execution order or shared mutable state.
 - Mock/stub only at system boundaries (I/O, network, time, randomness) — never mock own domain logic.
 - Regression: every bug fix starts with a failing test that reproduces the defect.

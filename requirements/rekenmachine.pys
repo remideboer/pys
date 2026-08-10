@@ -1,0 +1,33 @@
+# Requirement sample: private fields must stay inaccessible outside the class.
+# Positive path (below) must transpile. Uncomment any NEGATIVE line → Access denied.
+#
+# Note (brace mode): leading spaces inside `{ }` or after a closed `}` are not
+# Python IndentationError — visibility is enforced by the analyzer, not indent.
+
+class Rekenmachine {
+    private fix int getalA
+    private fix int getalB
+
+    public constructor(int a, int b) {
+         this.getalA = a
+        this.getalB = b
+    }
+
+    public int som() {
+        return this.getalA + this.getalB
+    }
+
+    public int vermenigvuldigd() {
+        return this.getalA * this.getalB
+    }
+}
+
+Rekenmachine rm = Rekenmachine(4, 5)
+print(rm.som())
+print(rm.vermenigvuldigd())
+
+# NEGATIVE — each of these must be Access denied (private in class Rekenmachine):
+# print(rm.getalA)
+# int leaked = rm.getalB
+# rm.getalA = 99
+# print("De som van {rm.getalA} en {rm.getalB} is: {rm.som()}")

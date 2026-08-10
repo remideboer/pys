@@ -38,10 +38,33 @@ interpolation, contradicting LANGUAGE member-access rules and teaching examples.
 
 ### Evidence
 
-- `tests/test_sem.py`:
-  - `test_sem_private_field_denied_in_string_interpolation`
-  - `test_sem_private_field_denied_in_typed_interpolation`
-  - `test_sem_public_method_allowed_in_string_interpolation`
+- `tests/test_sem.py` (interpolation-focused cases)
+- `tests/test_member_access.py` — negative matrix across use sites +
+  `requirements/rekenmachine.pys` fixture (uncomment-each-line denials)
+
+## 2. Negative corpus across use sites (DoD)
+
+### Pre-behavior
+
+Access tests mostly covered one assign shape (`car.make = …`). Interpolation
+and other reads could still compile — the VSIX 0.0.90 student sample slipped
+through.
+
+### Why it hurt
+
+Fail-closed rules with happy-path-only (or single-shape) tests regress silently.
+
+### Post-behavior
+
+DoD §2 and engineering ruleset §3 require **negative** regressions for
+fail-closed rules; member access must deny assign / print / decl RHS / call
+arg / interpolations / subclass `this.` while public API remains allowed.
+`requirements/rekenmachine.pys` documents uncomment-to-fail lines.
+
+### Evidence
+
+`tests/test_member_access.py`; `.cursor/rules/feature-maturity-dod.mdc` §2;
+`docs/ci-failure-patterns.md` pattern on access use-site coverage.
 
 ## Trade-offs
 
@@ -49,3 +72,5 @@ interpolation, contradicting LANGUAGE member-access rules and teaching examples.
   regex lowering). Re-parse is shared shape with emit, not a second semantics.
 - Malformed `{…}` pieces that fail to parse are skipped here (other phases /
   emit remain responsible).
+- Brace mode does not revive Python IndentationError for mixed spaces inside
+  `{ }` — visibility is semantic, not indent-based.
