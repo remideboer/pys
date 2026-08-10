@@ -161,3 +161,26 @@ class CatalogItem uses Printable(name: title) {
 
 CatalogItem item = CatalogItem("widget", 9.5)
 print(item.label())  # Item: widget
+
+# Multiple remaps; interpolated {this.x} / {this.y} rewrite to host fields.
+trait CoordPrinter {
+    requires int x
+    requires int y
+
+    void present() {
+        print("at {this.x},{this.y}")
+    }
+}
+
+class Point uses CoordPrinter(x: left, y: top) {
+    private int left
+    private int top
+
+    public constructor(int left, int top) {
+        this.left = left
+        this.top = top
+    }
+}
+
+Point pt = Point(3, 7)
+pt.present()  # at 3,7

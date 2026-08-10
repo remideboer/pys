@@ -1088,6 +1088,15 @@ class _JsEmitter:
             return self._literal(expr)
         if isinstance(expr, InterpolatedString):
             text = _translate_string_literal(expr.raw)
+            if self._trait_requires_remap:
+                for req, host in sorted(
+                    self._trait_requires_remap.items(), key=lambda kv: -len(kv[0])
+                ):
+                    text = re.sub(
+                        rf"\bthis\.{re.escape(req)}\b",
+                        f"this.{host}",
+                        text,
+                    )
             if text.startswith(("f'", 'f"', "F'", 'F"')):
                 inner = text[2:-1]
                 return "`" + inner.replace("{", "${") + "`"

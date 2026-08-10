@@ -30,7 +30,7 @@ class Point(Named):
         self.y = y
 
     def label(self):
-        return "({self.x},{self.y})"
+        return f"({_pys_format(self.x)},{_pys_format(self.y)})"
 
 p = Point(1, 2)
 print(_pys_format(p.label()))

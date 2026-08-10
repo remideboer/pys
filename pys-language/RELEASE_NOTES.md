@@ -1,22 +1,15 @@
-# PYS Language Support 0.0.94
+# PYS Language Support 0.0.95
 
-Trunk-based extension release. Tag: `extension-v0.0.94`.
+## Trait `uses` remaps inside string interpolations
 
-Foreach binders require a typed element that matches the collection. Run
-`python tools/local_ci.py` before tagging.
-
-## Highlights
-
-- **Foreach types:** `loop (T x in xs)` — binder type is required; must match
-  array/`list`/`set`/`dict` element types (`pys.foreach-type-required`,
-  `pys.foreach-type`). CER-054.
-- Continues 0.0.93: P-eyes icons; 0.0.91 access + indent.
+- Multi-remap `uses Trait(req: field, …)` already remapped `this.req` in ordinary
+  member access; **interpolations** (`"{this.req}"`) still emitted the trait
+  require name and crashed at runtime.
+- Python and JavaScript emit now rewrite remapped requires inside interpolated
+  strings (and f-string returns). Regression covers the calculator-style sample.
+- Teaching: `examples/traits.pys` + book traits chapter; CER-027 amended.
 
 ## Install
 
-- **Marketplace** (when published): `ext install remideboer.pys-language`
-- **ELO / offline:** download `pys-student-0.0.94.zip`, unzip, run `install.cmd`
-  (Windows) or `./install.sh` (macOS/Linux), then reload the editor.
-
-Requires Python 3.10+ on PATH. For JavaScript Run/Debug, also install Node.js.
-The pack includes the bundled transpiler.
+Package with `vsce package` from `pys-language/`, then install the VSIX, or run
+`install-extension.bat` from the repo root. **Reload Window** after install.

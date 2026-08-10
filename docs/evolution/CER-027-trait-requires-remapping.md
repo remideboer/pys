@@ -3,8 +3,8 @@
 | | |
 | --- | --- |
 | Status | Accepted |
-| Date | 2026-08-05 |
-| Scope | `ast_nodes.py` (`TraitUse`), `parse.py`, `sem.py`, `emit/python.py`; EBNF/railroad/LANGUAGE; `examples/traits.pys`; `tests/test_traits.py`; book / JIT / snippets |
+| Date | 2026-08-05 (amended 2026-08-10: interpolation emit) |
+| Scope | `ast_nodes.py` (`TraitUse`), `parse.py`, `sem.py`, `emit/python.py`, `emit/javascript.py`; EBNF/railroad/LANGUAGE; `examples/traits.pys`; `tests/test_traits.py`; book / JIT / snippets |
 | ADRs | [ADR-009](../adr/ADR-009-traits-composition.md) |
 | Requirement | [`requirements/trait_requires_remapping.md`](../../requirements/trait_requires_remapping.md) |
 
@@ -59,8 +59,8 @@ Parametrized remap error cases in `tests/test_traits.py`.
 
 ## 3. Emit rewrite
 
-**Symbols:** `_trait_requires_remap`; `Member` emit; flattened / mangled trait
-methods.
+**Symbols:** `_trait_requires_remap`; `Member` emit; interpolated-string emit;
+flattened / mangled trait methods.
 
 ### Pre-behavior
 
@@ -69,14 +69,44 @@ Flattened trait methods emitted `self.<requiresName>` literally.
 ### Post-behavior
 
 While emitting a trait method for a host, `self.<req>` becomes `self.<host>`
-for remapped requirements (fields and method calls). Trait method *names*
-remain unmapped. Collision helpers unchanged.
+for remapped requirements (fields and method calls). The same rewrite applies
+inside interpolated string holes (`{this.x}` → `self.<host>` after `this`→`self`;
+JS keeps `this.<host>`). Trait method *names* remain unmapped. Collision
+helpers unchanged.
 
 ### Evidence
 
-`test_requires_remap_runs_and_rewrites_emit`; example `CatalogItem` section.
+`test_requires_remap_runs_and_rewrites_emit`;
+`test_multi_requires_remap_in_interpolated_string`; example `CatalogItem` /
+`Point` + `CoordPrinter` sections.
+
+## 4. Interpolation hole (amend 2026-08-10)
+
+### Pre-behavior
+
+`Member` emit remapped requires, but `InterpolatedString` only did a textual
+`this`→`self` replace — so `print("{this.x}")` under `uses T(x: getalA)` still
+emitted `self.x` and failed at runtime. Multiple remaps were already legal in
+the grammar; the hole made multi-remap samples look broken.
+
+### Why it hurt
+
+Teaching samples like `Printer(x: getalA, y: getalB)` with interpolated
+`{this.x} {this.y}` crashed; students thought only one remap worked.
+
+### Post-behavior
+
+Python `_apply_trait_requires_remap_text` (and the JS `this.<req>` rewrite)
+runs on interpolated text while `_trait_requires_remap` is active. Legacy
+return special-case that skipped f-string rewrite was removed so returns use
+the same path.
+
+### Evidence
+
+`test_multi_requires_remap_in_interpolated_string` (emit asserts + run).
 
 ## Trade-offs
 
 - Remapping is host-side only; the trait source still writes `this.name`.
 - No syntax to rename offered trait methods (deliberate).
+- Remap RHS stays a host **member name**, not an arbitrary expression.

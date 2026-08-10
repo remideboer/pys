@@ -537,10 +537,6 @@ class _Emitter:
         elif isinstance(stmt, ReturnStmt):
             if stmt.value is None:
                 self._emit(indent, "return")
-            elif isinstance(stmt.value, InterpolatedString) and "this." in stmt.value.raw:
-                # Legacy return path skips f-string rewrite; only this.→self.
-                text = stmt.value.raw.replace("this.", "self.")
-                self._emit(indent, f"return {text}")
             else:
                 self._emit(indent, f"return {self._maybe_copy_struct(stmt.value)}")
         elif isinstance(stmt, PassStmt):
@@ -1491,6 +1487,24 @@ class _Emitter:
 
     # ---- expressions ----
 
+    def _apply_trait_requires_remap_text(self, text: str, *, recv: str = "self") -> str:
+        """Rewrite ``recv.req`` → ``recv.host`` for active trait requires remaps.
+
+        Member emit already remaps; interpolated ``{this.x}`` / ``{self.x}`` holes
+        are rewritten as plain text and must use the same map (CER-027).
+        """
+        if not self._trait_requires_remap:
+            return text
+        for req, host in sorted(
+            self._trait_requires_remap.items(), key=lambda kv: -len(kv[0])
+        ):
+            text = re.sub(
+                rf"\b{re.escape(recv)}\.{re.escape(req)}\b",
+                f"{recv}.{host}",
+                text,
+            )
+        return text
+
     def _expr(self, expr: Expr | None, *, expected_type: str | None = None) -> str:
         if expr is None:
             return ""
@@ -1499,6 +1513,7 @@ class _Emitter:
         if isinstance(expr, InterpolatedString):
             text = _translate_string_literal(expr.raw)
             text = re.sub(r"\bthis\b", "self", text)
+            text = self._apply_trait_requires_remap_text(text, recv="self")
             if self._lambda_rename:
                 for pys_name, emitted in sorted(
                     self._lambda_rename.items(), key=lambda kv: -len(kv[0])

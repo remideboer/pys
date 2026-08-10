@@ -815,9 +815,11 @@ Rules:
 3. The host class (or an ancestor) must supply each `requires` field/method
 4. **Requires remapping (opt-in):** `uses Trait(reqName: hostMember, …)` maps
    a trait `requires` name onto a differently named host member. Unmapped
-   requirements still match by exact name. Trait **methods** keep their names
-   on every host and cannot appear as remap left-hand sides (dependency
-   surface vs offered contract)
+   requirements still match by exact name. Multiple entries are allowed
+   (`x: a, y: b`). Remaps apply to member access **and** to `{this.req}` /
+   `#i{this.req}` holes inside interpolated strings. Trait **methods** keep
+   their names on every host and cannot appear as remap left-hand sides
+   (dependency surface vs offered contract)
 5. If two used traits define the same method name, the class must override it;
    call `TraitName.method(this)` from the override to pick a side
 6. See `examples/traits.pys` and JIT [J-trait](../tutorials/jit/J-trait.md)

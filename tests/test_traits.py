@@ -57,6 +57,7 @@ def test_traits_product_behavior() -> None:
         "overflow",
         "HEY/hi",
         "Item: widget",
+        "at 3,7",
     ]
 
 
@@ -164,6 +165,49 @@ print(Klant("Ada").label())
             [sys.executable, str(path)], capture_output=True, text=True, check=True
         )
     assert proc.stdout.strip() == "Item: Ada"
+
+
+def test_multi_requires_remap_in_interpolated_string() -> None:
+    """Multiple remaps + {this.x} holes must rewrite to host fields (CER-027)."""
+    source = """
+trait Printer {
+    requires int x
+    requires int y
+
+    void present() {
+        print("Ypphoee {this.x} {this.y}")
+    }
+}
+
+class Rekenmachine uses Printer(x: getalA, y: getalB) {
+    private fix int getalA
+    private fix int getalB
+
+    public constructor(int a, int b) {
+        this.getalA = a
+        this.getalB = b
+    }
+}
+
+Rekenmachine rm = Rekenmachine(4, 5)
+rm.present()
+"""
+    py = transpile(source)
+    ast.parse(py)
+    start = py.find("def present")
+    assert start >= 0
+    chunk = py[start : start + 350]
+    assert "self.getalA" in chunk
+    assert "self.getalB" in chunk
+    assert "self.x" not in chunk
+    assert "self.y" not in chunk
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.py"
+        path.write_text(py, encoding="utf-8")
+        proc = subprocess.run(
+            [sys.executable, str(path)], capture_output=True, text=True, check=True
+        )
+    assert proc.stdout.strip() == "Ypphoee 4 5"
 
 
 def test_partial_and_multi_trait_remap() -> None:

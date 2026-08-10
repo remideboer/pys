@@ -267,6 +267,33 @@ needs sits next to the gears that use it.</p>
 <p>Output:</p>
 <pre><code class="language-text">Item: widget
 </code></pre>
+<p>You can remap <strong>several</strong> requirements in one <code>uses</code> clause. Interpolated
+holes such as <code>{this.x}</code> also follow the remap (they must not keep looking
+up the trait’s require name on the host):</p>
+<pre><code class="language-pys"><span class="tok-kw">trait</span> <span class="tok-typename">CoordPrinter</span> {
+    <span class="tok-kw">requires</span> <span class="tok-type">int</span> <span class="tok-ident">x</span>
+    <span class="tok-kw">requires</span> <span class="tok-type">int</span> <span class="tok-ident">y</span>
+
+    <span class="tok-type">void</span> <span class="tok-ident">present</span>() {
+        <span class="tok-builtin">print</span>(<span class="tok-string">&quot;</span><span class="tok-string">at </span><span class="tok-interp">{this.x}</span><span class="tok-string">,</span><span class="tok-interp">{this.y}</span><span class="tok-string">&quot;</span>)
+    }
+}
+
+<span class="tok-kw">class</span> <span class="tok-typename">Point</span> <span class="tok-kw">uses</span> <span class="tok-typename">CoordPrinter</span>(<span class="tok-ident">x</span>: <span class="tok-kw">left</span>, <span class="tok-ident">y</span>: <span class="tok-ident">top</span>) {
+    <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-kw">left</span>
+    <span class="tok-mod">private</span> <span class="tok-type">int</span> <span class="tok-ident">top</span>
+
+    <span class="tok-mod">public</span> <span class="tok-ident">constructor</span>(<span class="tok-type">int</span> <span class="tok-kw">left</span>, <span class="tok-type">int</span> <span class="tok-ident">top</span>) {
+        <span class="tok-kw">this</span>.<span class="tok-kw">left</span> <span class="tok-op">=</span> <span class="tok-kw">left</span>
+        <span class="tok-kw">this</span>.<span class="tok-ident">top</span> <span class="tok-op">=</span> <span class="tok-ident">top</span>
+    }
+}
+
+<span class="tok-typename">Point</span> <span class="tok-ident">pt</span> <span class="tok-op">=</span> <span class="tok-typename">Point</span>(<span class="tok-number">3</span>, <span class="tok-number">7</span>)
+<span class="tok-ident">pt</span>.<span class="tok-ident">present</span>()</code></pre>
+<p>Output:</p>
+<pre><code class="language-text">at 3,7
+</code></pre>
 <p>Same bolt-on gearing, different wire label on the host: the trait still
 asks for <code>name</code> inside its methods; <code>uses Printable(name: title)</code> is the
 adapter that connects the host’s <code>title</code> drawer to that required wire.</p>

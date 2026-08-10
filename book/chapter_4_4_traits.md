@@ -150,6 +150,40 @@ Output:
 Item: widget
 ```
 
+You can remap **several** requirements in one `uses` clause. Interpolated
+holes such as `{this.x}` also follow the remap (they must not keep looking
+up the trait’s require name on the host):
+
+```pys
+trait CoordPrinter {
+    requires int x
+    requires int y
+
+    void present() {
+        print("at {this.x},{this.y}")
+    }
+}
+
+class Point uses CoordPrinter(x: left, y: top) {
+    private int left
+    private int top
+
+    public constructor(int left, int top) {
+        this.left = left
+        this.top = top
+    }
+}
+
+Point pt = Point(3, 7)
+pt.present()
+```
+
+Output:
+
+```text
+at 3,7
+```
+
 
 Same bolt-on gearing, different wire label on the host: the trait still
 asks for `name` inside its methods; `uses Printable(name: title)` is the
