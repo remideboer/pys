@@ -197,6 +197,13 @@ function runJsonProcess(command, args, options, settings = {}) {
       return;
     }
 
+    if (settings.stdin != null) {
+      child.stdin.on('error', () => {});
+      child.stdin.end(String(settings.stdin), 'utf8');
+    } else {
+      child.stdin.end();
+    }
+
     const collect = (chunks, streamName) => (chunk) => {
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       if (streamName === 'stdout') {

@@ -1,13 +1,20 @@
-# PYS Language Support 0.0.95
+# PYS Language Support 0.0.96
 
-## Trait `uses` remaps inside string interpolations
+## Live diagnostics (unsaved buffer)
 
-- Multi-remap `uses Trait(req: field, …)` already remapped `this.req` in ordinary
-  member access; **interpolations** (`"{this.req}"`) still emitted the trait
-  require name and crashed at runtime.
-- Python and JavaScript emit now rewrite remapped requires inside interpolated
-  strings (and f-string returns). Regression covers the calculator-style sample.
-- Teaching: `examples/traits.pys` + book traits chapter; CER-027 amended.
+- Analyze uses the editor buffer (`--stdin`), not only the last saved file.
+- Errors clear/update ~300ms after typing — no save required.
+
+## Beginner-visible Error paint
+
+- Error ranges get a red background highlight (plus overview ruler), not only a
+  thin squiggle.
+
+## `require` vs `requires`
+
+- Host obligations must be spelled `requires` (exact).
+- Typo `require` → clear error + quick fix to `requires`.
+- `require` is not highlighted as a keyword.
 
 ## Install
 

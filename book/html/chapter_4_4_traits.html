@@ -142,7 +142,8 @@ and it may expose those methods through the host’s outside channels.</p>
 <p>But the trait is not free-standing. It often has a <strong>socket that only
 works when certain wires are connected</strong>: <code>requires</code> lists what the host
 must supply (fields or methods) before the gearing can run. Without those
-wires, the part cannot be used.</p>
+wires, the part cannot be used. Spelling is exact — <code>require</code> (no <code>s</code>) is a
+compile error with a quick fix to <code>requires</code>.</p>
 <p>A trait is <strong>not</strong> a type — you cannot write <code>Printable p = …</code> or
 <code>implements Printable</code>. It is composition of behavior, not a new kind of
 machine you plug a caller cable into.</p>

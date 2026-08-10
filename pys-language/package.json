@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.toml for libraries).",
-  "version": "0.0.95",
+  "version": "0.0.96",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {

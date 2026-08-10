@@ -195,6 +195,26 @@ function activate(context) {
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
 
+  // Beginner-visible Error paint (full red background) in addition to squiggles.
+  const errorBackgroundDecoration = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(220, 50, 47, 0.45)',
+    overviewRulerColor: 'rgba(220, 50, 47, 0.9)',
+    overviewRulerLane: vscode.OverviewRulerLane.Right,
+  });
+  context.subscriptions.push(errorBackgroundDecoration);
+
+  function syncErrorDecorations(document) {
+    const diags = diagnosticCollection.get(document.uri) || [];
+    const ranges = diags
+      .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+      .map((d) => d.range);
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (editor.document.uri.toString() === document.uri.toString()) {
+        editor.setDecorations(errorBackgroundDecoration, ranges);
+      }
+    }
+  }
+
   function activeNormalPysEntry(session = vscode.debug.activeDebugSession) {
     if (!session || session.name !== PYS_DEBUG_SESSION_NAME) {
       return null;
@@ -354,6 +374,7 @@ function activate(context) {
         || parsed.code === 'pys.nullable-use-before-check'
         || parsed.code === 'pys.var-as-type'
         || parsed.code === 'pys.indent'
+        || parsed.code === 'pys.trait-require-typo'
       )
     ) {
       const key = `${document.uri.toString()}:${line}:${parsed.code}`;
@@ -414,14 +435,14 @@ function activate(context) {
   async function validateDocument(document) {
     if (document.languageId !== 'pys' || document.uri.scheme !== 'file') {
       diagnosticCollection.delete(document.uri);
-      refreshRunnableContext(document);
+      afterDiagnosticsUpdated(document);
       return;
     }
 
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
     if (!workspace) {
       diagnosticCollection.delete(document.uri);
-      refreshRunnableContext(document);
+      afterDiagnosticsUpdated(document);
       return;
     }
 
@@ -435,6 +456,7 @@ function activate(context) {
       context.extensionPath,
       workspacePath,
       document.uri.fsPath,
+      ['--stdin'],
     );
     if (!spec) {
       diagnosticCollection.delete(document.uri);
@@ -446,7 +468,7 @@ function activate(context) {
         pythonExecutable,
         spec.args,
         spec.options,
-        { signal: controller.signal },
+        { signal: controller.signal, stdin: document.getText() },
       );
       if (validateController !== controller) {
         return;
@@ -538,6 +560,7 @@ function activate(context) {
   ));
 
   function afterDiagnosticsUpdated(document) {
+    syncErrorDecorations(document);
     refreshRunnableContext(document);
     codeLensChange.fire();
   }
@@ -595,7 +618,7 @@ function activate(context) {
         enum: 'Closed nominal set: `enum HttpStatus { OK = 200 }`\nMembers: `HttpStatus.OK`. Use `.value` for the underlying int/string. Prefer SCREAMING_SNAKE_CASE names.',
         trait: 'Composable behavior (not a type): `trait Printable { requires string name\n  string label() { return this.name } }`\nCompose with `class C uses Printable { … }`.',
         uses: 'Compose traits onto a class: `class Product uses Printable { … }` or remap requires: `uses Printable(name: title)`.\nPlaced after `inherits` and before `implements`. Remapping applies only to `requires`, not trait method names.',
-        requires: 'Trait host obligation: `requires string name` or `requires int compareTo(Product other)`.\nThe using class (or ancestor) must supply it.',
+        requires: 'Trait host obligation: `requires string name` or `requires int compareTo(Product other)`.\nThe using class (or ancestor) must supply it. Spelling is exact — `require` (no s) is an error.',
         inherits: 'Subclass syntax: `class Truck inherits Car { ... }`',
         unless: 'Negated if: `unless (condition) { ... }` → `if not (condition):`',
         switch: 'Multi-way branch: statement `case L: …` (trailing `continue` = fall-through) or expression `case L, M => expr`. Exhaustive expressions need all enum members or `default`.',
@@ -983,6 +1006,22 @@ function activate(context) {
         }
       }
 
+      const requireTypo = diagnostics.find((diagnostic) => diagnostic.code === 'pys.trait-require-typo');
+      if (requireTypo) {
+        const key = `${document.uri.toString()}:${requireTypo.range.start.line + 1}:pys.trait-require-typo`;
+        const meta = errorMeta.get(key);
+        const suggested = (meta && meta.suggested_fix) || 'requires';
+        const fix = new vscode.CodeAction(
+          `Change \`require\` to \`${suggested}\``,
+          vscode.CodeActionKind.QuickFix,
+        );
+        fix.diagnostics = [requireTypo];
+        fix.isPreferred = true;
+        fix.edit = new vscode.WorkspaceEdit();
+        fix.edit.replace(document.uri, requireTypo.range, suggested);
+        actions.push(fix);
+      }
+
       const missingType = diagnostics.find((diagnostic) => diagnostic.code === 'pys.missing-type');
       if (missingType) {
         const suggested = (missingType.message.match(/Suggested declaration: `([^`]+)`/) || [])[1];
@@ -1178,6 +1217,7 @@ function activate(context) {
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
     refreshMainFileUi();
     if (editor && editor.document.languageId === 'pys') {
+      syncErrorDecorations(editor.document);
       refreshRunnableContext(editor.document);
       scheduleValidate(editor.document);
     } else {

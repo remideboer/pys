@@ -89,6 +89,7 @@ Each record then uses:
 | [CER-052](CER-052-member-access-interpolation.md) | Enforce member access inside string interpolations | Language |
 | [CER-053](CER-053-brace-indentation.md) | Brace-mode indentation formatting (`pys.indent`) | Language |
 | [CER-054](CER-054-foreach-binder-types.md) | Foreach binder type required + element match | Language |
+| [CER-055](CER-055-live-buffer-diagnostics.md) | Live buffer diagnostics + Error red paint | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 

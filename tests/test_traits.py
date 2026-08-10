@@ -167,6 +167,24 @@ print(Klant("Ada").label())
     assert proc.stdout.strip() == "Item: Ada"
 
 
+def test_require_singular_is_trait_require_typo() -> None:
+    """`require Type name` must fail closed — teach exact `requires` (CER-008)."""
+    source = """
+trait Presenter {
+    require int a
+
+    void present() {
+        print("{this.a}")
+    }
+}
+"""
+    with pytest.raises(TranspileError, match=r"Did you mean `requires`|pys\.trait-require-typo|requires Type name") as ei:
+        transpile(source)
+    err = ei.value
+    assert getattr(err, "code", None) == "pys.trait-require-typo" or "requires" in str(err)
+    assert getattr(err, "suggested_fix", None) == "requires"
+
+
 def test_multi_requires_remap_in_interpolated_string() -> None:
     """Multiple remaps + {this.x} holes must rewrite to host fields (CER-027)."""
     source = """

@@ -164,6 +164,14 @@ function runNodeFixture(source, settings = {}) {
   );
 }
 
+test('bounded helper runner writes settings.stdin to the child', async () => {
+  const parsed = await runNodeFixture(
+    "let data=''; process.stdin.on('data',c=>data+=c); process.stdin.on('end',()=>process.stdout.write(JSON.stringify({got:data})))",
+    { stdin: 'hello-buffer' },
+  );
+  assert.deepEqual(parsed, { got: 'hello-buffer' });
+});
+
 test('bounded helper runner parses exactly one JSON document', async () => {
   const parsed = await runNodeFixture(
     "process.stderr.write('note'); process.stdout.write(JSON.stringify({ok:true,value:42}))",

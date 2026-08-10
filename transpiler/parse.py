@@ -2398,6 +2398,29 @@ def _parse_trait(p: _Tok, visibility: str = "") -> TraitDef:
                 p.cur().line,
                 p.cur().column,
             )
+        # Singular `require` is a common typo for `requires` — fail closed with a tip.
+        if (
+            p.cur().kind in {TokenKind.IDENT, TokenKind.KEYWORD}
+            and p.cur().text == "require"
+        ):
+            nxt = p.peek(1)
+            type_like = nxt.text in _TYPES or nxt.kind in {
+                TokenKind.IDENT,
+                TokenKind.KEYWORD,
+            }
+            if type_like and nxt.kind != TokenKind.LPAREN:
+                raise FatalParseError(
+                    "Did you mean `requires`? Trait host obligations use "
+                    "`requires Type name` (exact spelling) — not a field declaration.",
+                    p.cur().line,
+                    p.cur().column,
+                    code="pys.trait-require-typo",
+                    tips=[
+                        "Write `requires int a` — the trait requires that field from "
+                        "the host class.",
+                    ],
+                    suggested_fix="requires",
+                )
         if p.at_kw("requires"):
             p.eat_kw("requires")
             req_type = _parse_type_name(p)

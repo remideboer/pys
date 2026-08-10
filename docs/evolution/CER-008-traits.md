@@ -27,6 +27,9 @@ No `trait` / `uses` / `requires`; only `interface` + single `inherits`.
 - IDE: TextMate, hover, snippets, go-to; extension ≥ 0.0.41.
 - Docs: LANGUAGE, EBNF, railroad, JIT `J-trait`, ADR-009.
 - Requires remapping (`uses Trait(req: host)`) — [CER-027](CER-027-trait-requires-remapping.md).
+- **Singular `require` is not legal:** diagnostic `pys.trait-require-typo`
+  (suggested_fix `requires`); not highlighted as a keyword — students must
+  learn the canonical spelling.
 
 ### Evidence
 

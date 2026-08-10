@@ -7,7 +7,8 @@ and it may expose those methods through the host’s outside channels.
 But the trait is not free-standing. It often has a **socket that only
 works when certain wires are connected**: `requires` lists what the host
 must supply (fields or methods) before the gearing can run. Without those
-wires, the part cannot be used.
+wires, the part cannot be used. Spelling is exact — `require` (no `s`) is a
+compile error with a quick fix to `requires`.
 
 A trait is **not** a type — you cannot write `Printable p = …` or
 `implements Printable`. It is composition of behavior, not a new kind of

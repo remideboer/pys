@@ -400,7 +400,14 @@ def analyze_file(
     source_path: Path,
     *,
     allow_runtime_introspection: bool = False,
+    source: str | None = None,
 ) -> dict:
+    """Analyze a ``.pys`` path for IDE diagnostics.
+
+    ``source_path`` is always used for workspace containment, manifests, and
+    symbol identity. When ``source`` is provided (unsaved editor buffer), that
+    text is analyzed instead of reading the file from disk.
+    """
     workspace_root = workspace_root_from_env()
     if workspace_root is not None:
         contained = resolve_workspace_path(source_path, workspace_root)
@@ -411,7 +418,8 @@ def analyze_file(
         source_path = contained
     else:
         source_path = source_path.resolve()
-    source = source_path.read_text(encoding="utf-8")
+    if source is None:
+        source = source_path.read_text(encoding="utf-8")
     error = None
     warnings: list[dict] = []
     is_entrypoint = False
@@ -927,11 +935,11 @@ def main(argv: list[str] | None = None) -> int:
                 {
                     "ok": False,
                     "message": (
-                        "Usage: python -m transpiler.ide <file.pys> [symbol] "
-                        "[--library-sources] "
-                        "| <file.pys> --usages <symbol> [--line N --column N] "
-                        "| --refactor-plan <op> <file.pys> ..."
-                    ),
+                            "Usage: python -m transpiler.ide <file.pys> [symbol] "
+                            "[--library-sources] [--stdin] "
+                            "| <file.pys> --usages <symbol> [--line N --column N] "
+                            "| --refactor-plan <op> <file.pys> ..."
+                        ),
                 }
             )
         )
@@ -939,10 +947,13 @@ def main(argv: list[str] | None = None) -> int:
     path = Path(argv[0])
     rest = list(argv[1:])
     allow_library_sources = False
+    read_stdin = False
     filtered: list[str] = []
     for arg in rest:
         if arg == "--library-sources":
             allow_library_sources = True
+        elif arg == "--stdin":
+            read_stdin = True
         else:
             filtered.append(arg)
     if len(filtered) >= 2 and filtered[0] == "--usages":
@@ -973,9 +984,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         # Diagnostics (no symbol) stay fail-closed. Symbol lookup may opt into
         # locked pys.deps imports via --library-sources (ADR-001).
+        buffer_source = sys.stdin.read() if read_stdin else None
         result = analyze_file(
             path,
             allow_runtime_introspection=bool(allow_library_sources and filtered),
+            source=buffer_source,
         )
     except Exception as exc:
         print(json.dumps({"ok": False, "error": {"message": f"{type(exc).__name__}: {exc}"}, "validated_types": [], "symbols": {}}))
