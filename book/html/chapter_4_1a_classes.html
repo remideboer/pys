@@ -249,7 +249,10 @@ get a new <em>object</em> — its own running copy of the machine.</p>
 
 <p>Try the contrast mentally: after <code>Counter c = Counter("demo")</code>, the
 outside world can call <code>c.bump()</code> and read <code>c.getValue()</code>, but
-<code>c.value = 99</code> is not allowed — there is no channel for that field.</p>
+<code>c.value = 99</code> is not allowed — there is no channel for that field.
+The same wall applies inside string interpolations: <code>"score={c.value}"</code>
+is a compile error (<code>Access denied</code>); use a public method such as
+<code>"{c.getValue()}"</code> instead.</p>
 <h2>The constructor: assembling the machine</h2>
 <p>The <strong>constructor</strong> is a special part whose job is not the day-to-day
 purpose (counting), but <strong>building</strong> a ready-to-use machine.</p>

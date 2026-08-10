@@ -1128,6 +1128,10 @@ Applies to functions, classes, structs, `data`, `entity`, enums, interfaces, and
 | `protected` | This class and subclasses |
 | `module` | Same module / teaching module boundary |
 
+These rules apply to every use site the analyzer sees — including member
+reads inside string interpolations (`"…{obj.field}…"` / `#s{obj.field}`), not
+only bare assigns and expression statements.
+
 ---
 
 ## 8. Imports

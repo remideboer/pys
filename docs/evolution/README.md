@@ -86,6 +86,7 @@ Each record then uses:
 | [CER-049](CER-049-gof-design-patterns-examples.md) | Pattern teaching examples + book Session 10 (incl. Multitier) | Examples |
 | [CER-050](CER-050-javascript-emit-target.md) | JavaScript emit target + Node run + extension selector | Emit / IDE |
 | [CER-051](CER-051-runtime-ensure.md) | Create Project target + host runtime install prompt | IDE |
+| [CER-052](CER-052-member-access-interpolation.md) | Enforce member access inside string interpolations | Language |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 

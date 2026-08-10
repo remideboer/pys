@@ -124,6 +124,9 @@ Breakdown:
 Try the contrast mentally: after `Counter c = Counter("demo")`, the
 outside world can call `c.bump()` and read `c.getValue()`, but
 `c.value = 99` is not allowed — there is no channel for that field.
+The same wall applies inside string interpolations: `"score={c.value}"`
+is a compile error (`Access denied`); use a public method such as
+`"{c.getValue()}"` instead.
 
 ## The constructor: assembling the machine
 

@@ -67,6 +67,66 @@ car.make = "Honda"
         _analyze(source)
 
 
+def test_sem_private_field_denied_in_string_interpolation() -> None:
+    """Private reads inside `{…}` interpolations must fail (not only bare assigns)."""
+    source = """class Rekenmachine {
+    private fix int getalA
+    private fix int getalB
+
+    public constructor(int a, int b) {
+        this.getalA = a
+        this.getalB = b
+    }
+
+    public int som() {
+        return this.getalA + this.getalB
+    }
+}
+
+Rekenmachine rm = Rekenmachine(4, 5)
+print("De som van {rm.getalA} en {rm.getalB} is: {rm.som()}")
+"""
+    with pytest.raises(TranspileError, match=r"Access denied: 'getalA' is private"):
+        _analyze(source)
+
+
+def test_sem_private_field_denied_in_typed_interpolation() -> None:
+    source = """class Car {
+    private string make
+
+    public constructor(string make) {
+        this.make = make
+    }
+}
+
+Car car = Car("Toyota")
+print("#s{car.make}")
+"""
+    with pytest.raises(TranspileError, match=r"Access denied: 'make' is private"):
+        _analyze(source)
+
+
+def test_sem_public_method_allowed_in_string_interpolation() -> None:
+    source = """class Rekenmachine {
+    private fix int getalA
+    private fix int getalB
+
+    public constructor(int a, int b) {
+        this.getalA = a
+        this.getalB = b
+    }
+
+    public int som() {
+        return this.getalA + this.getalB
+    }
+}
+
+Rekenmachine rm = Rekenmachine(4, 5)
+print("som = {rm.som()}")
+"""
+    _analyze(source)
+
+
 def test_sem_private_field_allowed_inside_defining_class() -> None:
     source = """class Car {
     private string make

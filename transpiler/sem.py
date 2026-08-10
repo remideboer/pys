@@ -63,6 +63,8 @@ from .ast_nodes import (
 )
 
 _TYPED_INTERP = re.compile(r"#([sficbo])\{([^}]+)\}")
+# Same shape as emit: plain `{expr}` (not `{{` / `}}` escapes).
+_PLAIN_INTERP = re.compile(r"(?<!\{)\{([^{}]+)\}(?!\})")
 _WIDTH_ALIASES = frozenset({"byte", "nibble", "int16", "int32", "int64", "dword"})
 _INT_LIKE = frozenset({"int"}) | _WIDTH_ALIASES
 _WIDTH_MAX: dict[str, int] = {
@@ -89,6 +91,38 @@ _INT_ARITH_BINOPS = frozenset({"//", "**"})
 def _is_simple_name(name: str) -> bool:
     """True for bare identifiers; false for member/index lvalues."""
     return "." not in name and "[" not in name
+
+
+def _interpolation_inner_exprs(raw: str) -> list[Expr]:
+    """Parse `{expr}` / `#i{expr}` pieces inside an interpolated string literal.
+
+    ``InterpolatedString`` stores only the literal text (not child Expr nodes),
+    so OOP / other expr walks must re-parse interpolations — same surface emit
+    already lowers to f-string pieces.
+    """
+    # Lazy import: parse never imports sem.
+    from .lex import LexError
+    from .parse import ParseError, _expr_from_text
+
+    text = raw.strip()
+    if (text.startswith('"') and text.endswith('"')) or (
+        text.startswith("'") and text.endswith("'")
+    ):
+        text = text[1:-1]
+    # Typed markers become plain braces (emit does the same).
+    text = _TYPED_INTERP.sub(lambda m: "{" + m.group(2) + "}", text)
+    text = text.replace("\\#", "#")
+    out: list[Expr] = []
+    for m in _PLAIN_INTERP.finditer(text):
+        inner = m.group(1).strip()
+        if not inner:
+            continue
+        try:
+            out.append(_expr_from_text(inner))
+        except (ParseError, LexError):
+            # Malformed pieces stay emit-time / other-check territory.
+            continue
+    return out
 
 
 def analyze(
@@ -3341,6 +3375,13 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             line = expr.span.line if expr.span else 1
             col = expr.span.column if expr.span else 1
             check_member(expr.object.name, expr.name, local_types, current_class, line, col)
+        if isinstance(expr, InterpolatedString):
+            # Interpolations are not AST children — walk re-parsed pieces so
+            # private/protected reads inside `"…{obj.field}…"` are enforced.
+            for piece in _interpolation_inner_exprs(expr.raw):
+                if expr.span is not None and piece.span is not None:
+                    piece.span = expr.span
+                walk_expr(piece, local_types, current_class)
         for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
             child = getattr(expr, attr, None)
             if isinstance(child, Expr):
