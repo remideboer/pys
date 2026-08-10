@@ -18,7 +18,7 @@ PYS is a **bridge language**: typed, brace-shaped source that feels closer to
 | Habits that transfer | camelCase, visibility, `const` / `fix`, member order — carry into C#/Java even when those compilers stay silent |
 | Prefer language forms over workaround annotations | Needs that belong in the language become keywords/declarations; `@` is for framework edges, not filling holes the grammar never grew |
 | Student-friendly project config | Project settings live in [TOML](https://toml.io/en/) (`pys.toml`) — obvious, comment-friendly tables that beginners can read without a JSON/YAML maze |
-| Protect cognitive load during programming | Learning to program already imposes high intrinsic load [1], [3], [5]. Do not add load via complex interfaces, unfamiliar workflows, or implicit toolchain knowledge that experts no longer notice (expert blind spot [2]). Prefer a short, visible edit → run → observe → debug cycle; hide or automate chrome that is not needed for the current task [4], [6], [7]. |
+| Protect cognitive load during programming | Learning to program already imposes high intrinsic load [[1]](#ref-1), [[3]](#ref-3), [[5]](#ref-5). Do not add load via complex interfaces, unfamiliar workflows, or implicit toolchain knowledge that experts no longer notice (expert blind spot [[2]](#ref-2)). Prefer a short, visible edit → run → observe → debug cycle; hide or automate chrome that is not needed for the current task [[4]](#ref-4), [[6]](#ref-6), [[7]](#ref-7). |
 | Educational failures | Parse/sem errors name the rule and how to fix it |
 | Fail closed at boundaries | Hashed `pys.lock`, no surprise workspace `PYTHONPATH`, Run uses the bundled toolchain |
 | Teach with whole tasks | Curriculum under `tutorials/` (4C/ID, faded scaffolding); `examples/` is a dense showcase, not lesson 1 |
@@ -681,27 +681,27 @@ the deprecated `pys.mainFile` setting.
 
 ## References
 
-[1] J. Sweller, "Cognitive load during problem solving: Effects on learning,"
+<a id="ref-1"></a>[1] J. Sweller, "Cognitive load during problem solving: Effects on learning,"
     Cogn. Sci., vol. 12, no. 2, pp. 257–285, 1988.
 
-[2] M. J. Nathan, K. R. Koedinger, and M. W. Alibali, "Expert blind spot among
+<a id="ref-2"></a>[2] M. J. Nathan, K. R. Koedinger, and M. W. Alibali, "Expert blind spot among
     preservice teachers," Amer. Educ. Res. J., vol. 40, no. 4, pp. 905–928, 2003.
 
-[3] S. Garner, "Reducing the cognitive load on novice programmers," in
+<a id="ref-3"></a>[3] S. Garner, "Reducing the cognitive load on novice programmers," in
     Proc. ED-MEDIA 2002, Denver, CO, USA, 2002, pp. 578–583.
 
-[4] R. Mason and G. Cooper, "Mindstorms robots and the application of cognitive
+<a id="ref-4"></a>[4] R. Mason and G. Cooper, "Mindstorms robots and the application of cognitive
     load theory in introductory programming," Comput. Sci. Educ., vol. 23,
     no. 4, pp. 296–314, 2013, doi: 10.1080/08993408.2013.847152.
 
-[5] R. Duran, A. Zavgorodniaia, and J. Sorva, "Cognitive load theory in computing
+<a id="ref-5"></a>[5] R. Duran, A. Zavgorodniaia, and J. Sorva, "Cognitive load theory in computing
     education research: A review," ACM Trans. Comput. Educ., vol. 22, no. 4,
     2022, Art. no. 40, doi: 10.1145/3483843.
 
-[6] J. Moons and C. De Backer, "The design and pilot evaluation of an interactive
+<a id="ref-6"></a>[6] J. Moons and C. De Backer, "The design and pilot evaluation of an interactive
     learning environment for introductory programming influenced by cognitive
     load theory and constructivism," Comput. Educ., vol. 60, no. 1, pp. 368–384,
     2013, doi: 10.1016/j.compedu.2012.08.009.
 
-[7] M. Kölling and B. Quig, "The BlueJ system and its pedagogy," Comput. Sci.
+<a id="ref-7"></a>[7] M. Kölling and B. Quig, "The BlueJ system and its pedagogy," Comput. Sci.
     Educ., vol. 13, no. 4, pp. 249–268, 2003, doi: 10.1076/csed.13.4.249.17496.
