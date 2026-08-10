@@ -56,6 +56,9 @@ htmlcov/
 # Misc
 *.swp
 
+# Local scratchpad drafts (not project memory — see docs/adr/README.md)
+requirements/
+
 # JS emit / npm (target-dependent examples)
 **/node_modules/
 **/.pys_js_out/

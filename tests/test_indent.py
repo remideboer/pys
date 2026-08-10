@@ -11,7 +11,7 @@ from transpiler.sem import analyze
 from transpiler.transpiler import TranspileError
 
 _REPO = Path(__file__).resolve().parents[1]
-_REKEN = _REPO / "requirements" / "rekenmachine.pys"
+_REKEN = _REPO / "tests" / "fixtures" / "rekenmachine.pys"
 
 
 def _analyze(source: str):

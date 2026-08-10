@@ -68,7 +68,7 @@ loop (string x in xs) {
 def test_rekenmachine_foreach_negative_wrong_type() -> None:
     from pathlib import Path
 
-    base = Path(__file__).resolve().parents[1] / "requirements" / "rekenmachine.pys"
+    base = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "rekenmachine.pys"
     text = base.read_text(encoding="utf-8")
     # Uncomment the documented wrong-type negative.
     bad = text.replace(

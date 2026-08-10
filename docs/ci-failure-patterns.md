@@ -160,7 +160,7 @@ Or just the extension suite: `cd pys-language && npm test`.
 
 | Symptom | Private/protected field readable via `"…{obj.field}…"`, `print(obj.field)`, call args, etc., while `obj.field = …` correctly denies |
 | Cause | `_check_oop` / regression suite covered a single assign shape; other use sites (especially `InterpolatedString` raw text) skipped `check_member` |
-| Prevent | Keep `tests/test_member_access.py` green; for any new access/visibility rule, add **negative** cases for assign, print/read, decl RHS, call arg, string + typed interpolation, subclass; mirror `requirements/rekenmachine.pys` uncomment-to-fail lines. DoD §2 negative regressions. |
+| Prevent | Keep `tests/test_member_access.py` green; for any new access/visibility rule, add **negative** cases for assign, print/read, decl RHS, call arg, string + typed interpolation, subclass; mirror `tests/fixtures/rekenmachine.pys` uncomment-to-fail lines. DoD §2 negative regressions. |
 | Related | CER-052; Feature maturity DoD §2; `tests/test_sem.py` interpolation cases |
 
 ### 15. Brace indent grid (`pys.indent`) false positives / corpus 2-space fixtures

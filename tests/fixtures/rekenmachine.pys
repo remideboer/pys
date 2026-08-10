@@ -1,0 +1,48 @@
+# Requirement sample: private fields must stay inaccessible outside the class.
+# Positive path (below) must transpile. Uncomment any NEGATIVE line → expected Error.
+#
+# Brace mode still requires consistent 4-space indentation inside `{ }` (pys.indent).
+# Foreach binders require a type matching the collection element type (pys.foreach-type).
+
+class Rekenmachine {
+    private fix int getalA
+    private fix int getalB
+
+    public constructor(int a, int b) {
+        this.getalA = a
+        this.getalB = b
+    }
+
+    public int som() {
+        var x = 5
+        return this.getalA + this.getalB
+    }
+
+    public int vermenigvuldigd() {
+        return this.getalA * this.getalB
+
+    }
+}
+
+Rekenmachine rm = Rekenmachine(4, 5)
+print(rm.som())
+print(rm.vermenigvuldigd())
+
+int[] arr = {3, 4, 5, 6}
+loop (int x in arr) {
+    print(x)
+
+}
+
+
+# NEGATIVE — each of these must be Access denied (private in class Rekenmachine):
+# print(rm.getalA)
+# int leaked = rm.getalB
+# rm.getalA = 99
+# print("De som van {rm.getalA} en {rm.getalB} is: {rm.som()}")
+
+# NEGATIVE — foreach type required / must match element type:
+# loop (x in arr) { print(x) }
+# loop (string x in arr) { print(x) }
+
+

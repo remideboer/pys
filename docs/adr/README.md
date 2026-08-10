@@ -77,8 +77,14 @@ that belongs in a CER (or a commit message if too small to record).
 
 Related: [`../ARCHITECTURE.md`](../ARCHITECTURE.md) · [`../evolution/`](../evolution/README.md).
 
-`requirements/` is a **temporary draft** folder. When a feature lands, copy
-rationale, comparisons, and full bibliographic references into permanent docs
-(ADRs, LANGUAGE, CONCURRENCY, DATA_ENTITY, book). A link from an ADR to a
-requirement file is provenance only — not a substitute for absorbing the text.
-See [`../../requirements/README.md`](../../requirements/README.md).
+`requirements/` is a **local gitignored scratchpad** for draft specs while
+designing a feature. It is **not** tracked and **not** permanent project memory.
+When a feature lands, **copy** lasting content into permanent homes under
+`docs/` (ADRs, LANGUAGE, CONCURRENCY, DATA_ENTITY, CERs) and the beginner
+`book/` — including rationale tables, cross-language comparisons, didactic
+notes, and **full bibliographic references**. An ADR “Source” path under
+`requirements/` is provenance only — if the folder is empty on another machine,
+permanent docs must still stand alone.
+
+Regression `.pys` samples that CI needs live under `tests/fixtures/` (e.g.
+`rekenmachine.pys`), not here.

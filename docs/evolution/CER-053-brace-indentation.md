@@ -11,7 +11,7 @@
 
 Brace mode ignores indentation for **structure**, so inconsistent spaces
 (e.g. class field at 5 spaces, method body line at 9) compiled silently.
-Students expected formatting errors (see `requirements/rekenmachine.pys`).
+Students expected formatting errors (see `tests/fixtures/rekenmachine.pys`).
 
 ## 1. Fail-closed 4-space grid in brace mode
 
@@ -38,7 +38,7 @@ habit; “indentation transpile error” appeared to have vanished.
 ### Evidence
 
 - `tests/test_indent.py` (rekenmachine lines 9/12 shapes, else-if, global fn)
-- Fixture `requirements/rekenmachine.pys` (aligned positive path)
+- Fixture `tests/fixtures/rekenmachine.pys` (aligned positive path)
 - Rejection corpora updated to 4-space so SA errors remain the first failure
 
 ## Trade-offs

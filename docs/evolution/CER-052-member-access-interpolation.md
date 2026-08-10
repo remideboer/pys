@@ -40,7 +40,7 @@ interpolation, contradicting LANGUAGE member-access rules and teaching examples.
 
 - `tests/test_sem.py` (interpolation-focused cases)
 - `tests/test_member_access.py` — negative matrix across use sites +
-  `requirements/rekenmachine.pys` fixture (uncomment-each-line denials)
+  `tests/fixtures/rekenmachine.pys` fixture (uncomment-each-line denials)
 
 ## 2. Negative corpus across use sites (DoD)
 
@@ -59,7 +59,7 @@ Fail-closed rules with happy-path-only (or single-shape) tests regress silently.
 DoD §2 and engineering ruleset §3 require **negative** regressions for
 fail-closed rules; member access must deny assign / print / decl RHS / call
 arg / interpolations / subclass `this.` while public API remains allowed.
-`requirements/rekenmachine.pys` documents uncomment-to-fail lines.
+`tests/fixtures/rekenmachine.pys` documents uncomment-to-fail lines.
 
 ### Evidence
 

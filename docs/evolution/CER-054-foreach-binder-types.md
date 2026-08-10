@@ -11,7 +11,7 @@
 
 `loop (x in xs)` and mismatched binders such as `loop (string x in int[])`
 compiled. Students expected an explicit element type that matches the
-collection (see `requirements/rekenmachine.pys`).
+collection (see `tests/fixtures/rekenmachine.pys`).
 
 ## 1. Required binder type
 
@@ -57,7 +57,7 @@ False sense of type safety; wrong teaching samples looked “valid.”
 
 - `tests/test_foreach_types.py` (required, mismatch, match, rekenmachine
   negative)
-- Fixture `requirements/rekenmachine.pys` (positive `int` binder; commented
+- Fixture `tests/fixtures/rekenmachine.pys` (positive `int` binder; commented
   negatives)
 
 ## Trade-offs

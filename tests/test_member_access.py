@@ -16,7 +16,7 @@ from transpiler.sem import analyze
 from transpiler.transpiler import TranspileError
 
 _REPO = Path(__file__).resolve().parents[1]
-_REKEN = _REPO / "requirements" / "rekenmachine.pys"
+_REKEN = _REPO / "tests" / "fixtures" / "rekenmachine.pys"
 
 _REKENMACHINE_CLASS = """\
 class Rekenmachine {
@@ -55,12 +55,12 @@ def _deny(source: str, member: str, access: str = "private") -> None:
         _analyze(source)
 
 
-# --- Given/When/Then: Rekenmachine teaching sample (requirements/rekenmachine.pys) ---
+# --- Given/When/Then: Rekenmachine teaching sample (tests/fixtures/rekenmachine.pys) ---
 
 
 def test_rekenmachine_fixture_compiles_without_external_private_use() -> None:
     """Given the requirements sample as written, When transpile, Then OK."""
-    assert _REKEN.is_file(), "requirements/rekenmachine.pys missing"
+    assert _REKEN.is_file(), "tests/fixtures/rekenmachine.pys missing"
     compile_pys(_REKEN.read_text(encoding="utf-8"))
 
 
@@ -84,7 +84,7 @@ def test_rekenmachine_fixture_external_print_is_access_denied() -> None:
     ids=["print_read", "typed_decl", "assign", "interpolation"],
 )
 def test_rekenmachine_fixture_negative_lines_denied(commented: str, member: str) -> None:
-    """Uncomment each documented NEGATIVE line from requirements/rekenmachine.pys."""
+    """Uncomment each documented NEGATIVE line from tests/fixtures/rekenmachine.pys."""
     raw = _REKEN.read_text(encoding="utf-8")
     assert commented in raw, f"fixture missing documented negative: {commented}"
     assert commented.startswith("# ")
