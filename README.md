@@ -1,5 +1,7 @@
 # PYS — teaching language that transpiles to Python
 
+> The programming language with eyes 👁👁!
+
 Write `.pys` programs with explicit types and brace blocks; run them through an
 on-demand transpile step to standard Python. Designed for classroom use with an
 IDE run/debug path and a **didactic tutorial track** (not a keyword tour).
@@ -14,7 +16,9 @@ PYS is a **bridge language**: typed, brace-shaped source that feels closer to
 | --- | --- |
 | Make the implicit explicit | Types on bindings, `identity(...)` for entities, `shared` / `atomic` for cross-task mutation, ordered class members |
 | Habits that transfer | camelCase, visibility, `const` / `fix`, member order — carry into C#/Java even when those compilers stay silent |
-| Real language forms, not annotations | No `@` decorators in `.pys`; needs become keywords or declarations |
+| Prefer language forms over workaround annotations | Needs that belong in the language become keywords/declarations; `@` is for framework edges, not filling holes the grammar never grew |
+| Student-friendly project config | Project settings live in [TOML](https://toml.io/en/) (`pys.toml`) — obvious, comment-friendly tables that beginners can read without a JSON/YAML maze |
+| Protect cognitive load during programming | Learning to program already imposes high intrinsic load [1], [3], [5]. Do not add load via complex interfaces, unfamiliar workflows, or implicit toolchain knowledge that experts no longer notice (expert blind spot [2]). Prefer a short, visible edit → run → observe → debug cycle; hide or automate chrome that is not needed for the current task [4], [6], [7]. |
 | Educational failures | Parse/sem errors name the rule and how to fix it |
 | Fail closed at boundaries | Hashed `pys.lock`, no surprise workspace `PYTHONPATH`, Run uses the bundled toolchain |
 | Teach with whole tasks | Curriculum under `tutorials/` (4C/ID, faded scaffolding); `examples/` is a dense showcase, not lesson 1 |
@@ -674,3 +678,30 @@ the deprecated `pys.mainFile` setting.
 3. Emit via `transpiler/emit/python.py` (or `emit/javascript.py` / a future backend under `emit/`).
 4. Add a golden under `tests/golden/ebnf/…` and run `python tests/golden/regen.py`.
 5. Run `python -m pytest -q`.
+
+## References
+
+[1] J. Sweller, "Cognitive load during problem solving: Effects on learning,"
+    Cogn. Sci., vol. 12, no. 2, pp. 257–285, 1988.
+
+[2] M. J. Nathan, K. R. Koedinger, and M. W. Alibali, "Expert blind spot among
+    preservice teachers," Amer. Educ. Res. J., vol. 40, no. 4, pp. 905–928, 2003.
+
+[3] S. Garner, "Reducing the cognitive load on novice programmers," in
+    Proc. ED-MEDIA 2002, Denver, CO, USA, 2002, pp. 578–583.
+
+[4] R. Mason and G. Cooper, "Mindstorms robots and the application of cognitive
+    load theory in introductory programming," Comput. Sci. Educ., vol. 23,
+    no. 4, pp. 296–314, 2013, doi: 10.1080/08993408.2013.847152.
+
+[5] R. Duran, A. Zavgorodniaia, and J. Sorva, "Cognitive load theory in computing
+    education research: A review," ACM Trans. Comput. Educ., vol. 22, no. 4,
+    2022, Art. no. 40, doi: 10.1145/3483843.
+
+[6] J. Moons and C. De Backer, "The design and pilot evaluation of an interactive
+    learning environment for introductory programming influenced by cognitive
+    load theory and constructivism," Comput. Educ., vol. 60, no. 1, pp. 368–384,
+    2013, doi: 10.1016/j.compedu.2012.08.009.
+
+[7] M. Kölling and B. Quig, "The BlueJ system and its pedagogy," Comput. Sci.
+    Educ., vol. 13, no. 4, pp. 249–268, 2003, doi: 10.1076/csed.13.4.249.17496.
