@@ -34,7 +34,13 @@ which is unsafe for Rename.
 
 - Extension ≥ 0.0.57: RenameProvider, refactor CodeActions; context menu keeps
   common techniques flat and rarer ones under “More Refactorings” (≥ 0.0.63).
-- Preview dialog shows resulting code (diff) before apply (≥ 0.0.64).
+- Refactor **apply** preview is **live in the editor** (temporary buffer apply;
+  orange = old span strikethrough, blue = new text) with Accept / Reject on the
+  changed line (CodeLens) plus a sticky input bar (≥ 0.0.101). Rename uses the
+  at-cursor rename widget. Beside webview / toast Accept are not the apply path.
+  Name prompts for extract/etc. may still use modal input.
+- Binding-aware rename covers field/method/`this`/interpolation/type+ctor sites
+  (CER-018).
 - Extension ≥ 0.0.97: analysis-driven completions + Create Class (CER-056).
 - Trust boundary unchanged (ADR-001).
 

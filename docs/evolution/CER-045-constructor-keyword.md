@@ -44,6 +44,16 @@ Class-name constructors blocked JS transfer and hid the “constructor” concep
   `fix` field (directly or via `this(...)` delegation).
 - **Evidence:** `tests/test_this_field_fix_ctor.py`.
 
+### 5. Omitted constructor access defaults to `module`
+
+- **Pre-behavior:** Bare `constructor(...)` failed (“access modifier required”).
+- **Why it hurt:** Top-level types already default to module scope without a
+  prefix; constructors felt inconsistent.
+- **Post-behavior:** Omitted `member_access` on `constructor` ⇒ `module`
+  (class and entity). Fields/methods still require an explicit modifier.
+  `public constructor(...)` remains the teaching default for exported APIs.
+- **Evidence:** `tests/test_constructor_keyword.py`.
+
 ## Trade-offs
 
 - One-shot break + migrate; no dual-form window.

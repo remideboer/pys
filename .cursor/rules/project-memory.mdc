@@ -77,7 +77,8 @@ touching the matching CER/ADR is incomplete.
   `abstract`, not `@abstractmethod`); reject direct instantiate; concrete
   subclasses must `override` inherited abstracts
 - Constructors (ADR-027 / CER-045): `public constructor(...)` on class and
-  entity — not type-name form; `this(...)` → `self.__init__(...)`; implicit
+  entity — not type-name form; omitted access defaults to `module` (same-file);
+  `this(...)` → `self.__init__(...)`; implicit
   `super().__init__()` when neither `super` nor `this` chaining; bare field
   ids require `this.`; uninitialized `fix` fields assigned on every ctor path
 - Extension points (ADR-028 / CER-046): methods closed by default; `open` /

@@ -700,7 +700,11 @@ Rules:
    Visibility is unordered within a section. See
    [Enforced member ordering](#enforced-member-ordering).
 3. Constructors use the explicit `constructor` keyword:
-   `public constructor(...)` (not the type name). See [ADR-027](adr/ADR-027-constructor-keyword.md).
+   `public constructor(...)` (not the type name). Omitting the access
+   modifier defaults to **`module`** (same-file teaching boundary), like a
+   top-level `class` without `global`/`package`. Write `public constructor`
+   when the type should be constructible from other modules. See
+   [ADR-027](adr/ADR-027-constructor-keyword.md).
 4. One superclass via `inherits` (alias `super` in the header); zero or more
    traits via `uses`; one or more interfaces via `implements`
 5. Header order: `inherits` → `uses` → `implements`

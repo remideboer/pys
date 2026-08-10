@@ -95,6 +95,121 @@ def test_rename_across_import(tmp_path: Path) -> None:
         assert "int greet = 0" in main_txt
 
 
+def test_rename_field_updates_this_and_not_unrelated(tmp_path: Path) -> None:
+    src = tmp_path / "calc.pys"
+    src.write_text(
+        "class Calc {\n"
+        "    private fix int getalA\n"
+        "    private fix int other\n"
+        "    public constructor(int a) {\n"
+        "        this.getalA = a\n"
+        "        this.other = 0\n"
+        "    }\n"
+        "    public int read() {\n"
+        "        return this.getalA\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    line = "    private fix int getalA"
+    col = line.index("getalA") + 1
+    plan = plan_rename(src, line=2, column=col, new_name="valueA")
+    assert plan.ok, [c.message for c in plan.conflicts]
+    out = apply_plan_to_files(plan)[str(src.resolve())]
+    assert "private fix int valueA" in out
+    assert "this.valueA = a" in out
+    assert "return this.valueA" in out
+    assert "this.other = 0" in out
+    assert "getalA" not in out
+
+
+def test_rename_method_updates_call_sites(tmp_path: Path) -> None:
+    src = tmp_path / "calc.pys"
+    src.write_text(
+        "class Calc {\n"
+        "    public int som() {\n"
+        "        return 1\n"
+        "    }\n"
+        "}\n"
+        "Calc rm = Calc()\n"
+        "print(rm.som())\n",
+        encoding="utf-8",
+    )
+    line = "    public int som() {"
+    col = line.index("som") + 1
+    plan = plan_rename(src, line=2, column=col, new_name="add")
+    assert plan.ok, [c.message for c in plan.conflicts]
+    out = apply_plan_to_files(plan)[str(src.resolve())]
+    assert "public int add()" in out
+    assert "print(rm.add())" in out
+    assert "som" not in out
+
+
+def test_rename_class_updates_type_and_ctor(tmp_path: Path) -> None:
+    src = tmp_path / "calc.pys"
+    src.write_text(
+        "class Rekenmachine {\n"
+        "    public constructor() {}\n"
+        "}\n"
+        "Rekenmachine rm = Rekenmachine()\n",
+        encoding="utf-8",
+    )
+    line = "class Rekenmachine {"
+    col = line.index("Rekenmachine") + 1
+    plan = plan_rename(src, line=1, column=col, new_name="Calculator")
+    assert plan.ok, [c.message for c in plan.conflicts]
+    out = apply_plan_to_files(plan)[str(src.resolve())]
+    assert "class Calculator {" in out
+    assert "Calculator rm = Calculator()" in out
+    assert "Rekenmachine" not in out
+
+
+def test_rename_field_updates_interpolation(tmp_path: Path) -> None:
+    src = tmp_path / "calc.pys"
+    src.write_text(
+        "class Calc {\n"
+        "    public fix int getalA\n"
+        "    public constructor(int a) {\n"
+        "        this.getalA = a\n"
+        "    }\n"
+        "}\n"
+        "Calc rm = Calc(1)\n"
+        'print("x={rm.getalA}")\n',
+        encoding="utf-8",
+    )
+    line = "    public fix int getalA"
+    col = line.index("getalA") + 1
+    plan = plan_rename(src, line=2, column=col, new_name="valueA")
+    assert plan.ok, [c.message for c in plan.conflicts]
+    out = apply_plan_to_files(plan)[str(src.resolve())]
+    assert 'print("x={rm.valueA}")' in out
+    assert "getalA" not in out
+
+
+def test_rename_resolves_caret_on_exclusive_end(tmp_path: Path) -> None:
+    """VS Code left-to-right selection parks the caret on the exclusive end column."""
+    from transpiler.refactor.refs import build_index, resolve_at
+
+    src = tmp_path / "c.pys"
+    src.write_text(
+        "class Calc {\n"
+        "    public fix int getalA\n"
+        "    public constructor(int a) {\n"
+        "        this.getalA = a\n"
+        "    }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    line = "    public fix int getalA"
+    start = line.index("getalA") + 1
+    end_exclusive = start + len("getalA")
+    idx = build_index(src)
+    assert resolve_at(idx, src, 2, start) is not None
+    assert resolve_at(idx, src, 2, end_exclusive) is not None
+    plan = plan_rename(src, line=2, column=end_exclusive, new_name="valueA")
+    assert plan.ok, [c.message for c in plan.conflicts]
+
+
 def test_extract_variable(tmp_path: Path) -> None:
     src = tmp_path / "e.pys"
     src.write_text("print(1 + 2)\n", encoding="utf-8")

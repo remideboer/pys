@@ -1614,13 +1614,10 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                 code="pys.ctor-extension",
             )
         if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
+            # Omitted access ⇒ module (same-file teaching boundary), like top-level
+            # types without global/package.
             if not access:
-                raise FatalParseError(
-                    "Entity members require an access modifier "
-                    "(e.g. `public constructor(...)`).",
-                    p.cur().line,
-                    p.cur().column,
-                )
+                access = "module"
             p.eat_kw("constructor")
             _require_member_phase(
                 p,
@@ -2208,6 +2205,10 @@ def _parse_class(
                 code="pys.static-ctor",
             )
         if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
+            # Omitted access ⇒ module (same-file teaching boundary), like top-level
+            # types without global/package.
+            if not access:
+                access = "module"
             p.eat_kw("constructor")
             _require_member_phase(
                 p,

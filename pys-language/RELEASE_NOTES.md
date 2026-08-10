@@ -1,16 +1,11 @@
-# PYS Language Support 0.0.97
+# PYS Language Support 0.0.101
 
-## IntelliSense (analysis-driven)
+## Rename + Accept / Reject stay put
 
-- After `.`, show accessible members (private only inside the type).
-- In-scope identifiers ranked near → far (locals, params, fields, types).
-- Status bar **PYS IntelliSense** toggles `pys.intellisense.enabled`.
-
-## Create Class from call
-
-- Unresolved `Student st = Student(naam="Jaap")` → lightbulb / command
-  **Create Class from Call** scaffolds fields + `public constructor(...)`.
-- Named arguments only in this release; literal types inferred when possible.
+- **Rename** uses the normal **at-cursor** rename field (same as F2) — no Beside
+  name dialog.
+- Live preview **Accept / Reject** stay on the changed line (**CodeLens**) and in
+  a sticky input bar (`ignoreFocusOut`) — no disappearing toast.
 
 ## Install
 

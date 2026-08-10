@@ -7480,6 +7480,10 @@ def _check_class_member_modifiers(body: list[Any]) -> None:
         for m in stmt.methods:
             if m.access:
                 continue
+            # Constructors default to module in the parser; other methods still
+            # require an explicit modifier.
+            if m.is_constructor:
+                continue
             line = m.span.line if m.span else (stmt.span.line if stmt.span else 1)
             _transpile_error(
                 "Class member declarations require an access modifier. Use public/private/protected/module.",

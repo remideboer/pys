@@ -16,8 +16,11 @@ word.
 
 ## Decision
 
-1. **Grammar:** `constructor_decl = { decorator } , member_access , "constructor" ,
-   "(" , [ parameter_list ] , ")" , block` — for both `class` and `entity`.
+1. **Grammar:** `constructor_decl = { decorator } , [ member_access ] ,
+   "constructor" , "(" , [ parameter_list ] , ")" , block` — for both `class`
+   and `entity`. Omitted `member_access` defaults to **`module`** (same-file
+   teaching boundary), matching top-level types without `global`/`package`.
+   Explicit `public` / `private` / `protected` / `module` remain valid.
 2. **Reject** the old class-name form with a FatalParseError tip to use
    `constructor`.
 3. **Chaining:** `this(args)` delegates to another constructor of the same type

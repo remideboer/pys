@@ -1037,7 +1037,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _cli_refactor_plan(argv: list[str]) -> int:
-    """``--refactor-plan <op> <file.pys> [--line N --column N] [op-args…]``."""
+    """``--refactor-plan <op> <file.pys> [--line N --column N] [--stdin] [op-args…]``."""
     from .refactor.plan import plan_to_dict
 
     if len(argv) < 2:
@@ -1047,15 +1047,20 @@ def _cli_refactor_plan(argv: list[str]) -> int:
     path = Path(argv[1])
     args = argv[2:]
     opts: dict[str, str] = {}
+    read_stdin = False
     i = 0
     while i < len(args):
-        if args[i].startswith("--") and i + 1 < len(args):
+        if args[i] == "--stdin":
+            read_stdin = True
+            i += 1
+        elif args[i].startswith("--") and i + 1 < len(args):
             opts[args[i][2:].replace("-", "_")] = args[i + 1]
             i += 2
         else:
             i += 1
     line = int(opts["line"]) if "line" in opts else None
     column = int(opts["column"]) if "column" in opts else None
+    source_text = sys.stdin.read() if read_stdin else None
     try:
         if op == "rename":
             from .refactor.rename import plan_rename
@@ -1065,6 +1070,7 @@ def _cli_refactor_plan(argv: list[str]) -> int:
                 line=line or 1,
                 column=column or 1,
                 new_name=opts.get("new_name", ""),
+                source_text=source_text,
             )
         elif op == "extract-variable":
             from .refactor.extract import plan_extract_variable

@@ -520,10 +520,10 @@
     {
       id: 'constructor_decl',
       title: 'constructor_decl',
-      ebnf: '{ decorator } member_access "constructor" "(" [ parameter_list ] ")" block ;',
+      ebnf: '{ decorator } [ member_access ] "constructor" "(" [ parameter_list ] ")" block ;',
       node: Seq(
         Star(N('decorator')),
-        N('member_access'),
+        Opt(N('member_access')),
         T('constructor'),
         T('('),
         Opt(N('parameter_list')),

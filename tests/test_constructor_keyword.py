@@ -99,3 +99,88 @@ entity Product identity(productId) {
     ast.parse(py)
     assert "def __init__(self, productId" in py
     assert "sku" in py.split("def __init__")[1].split("\n")[0]
+
+
+def test_bare_constructor_defaults_to_module() -> None:
+    from transpiler.parse import parse_program
+    from transpiler.ast_nodes import ClassDef
+
+    mod = parse_program(
+        """
+class Student {
+    private string name
+
+    constructor(string name) {
+        this.name = name
+    }
+}
+"""
+    )
+    cls = next(s for s in mod.body if isinstance(s, ClassDef))
+    ctor = next(m for m in cls.methods if m.is_constructor)
+    assert ctor.access == "module"
+    py = transpile(
+        """
+class Student {
+    private string name
+
+    constructor(string name) {
+        this.name = name
+    }
+}
+Student s = Student("Ada")
+print(s)
+"""
+    )
+    ast.parse(py)
+    assert "def __init__(self, name" in py
+
+
+def test_bare_entity_constructor_defaults_to_module() -> None:
+    from transpiler.parse import parse_program
+    from transpiler.ast_nodes import EntityDef
+
+    mod = parse_program(
+        """
+entity Item identity(id) {
+    protected fix int id
+    public string label
+
+    constructor(int id, string label) {
+        this.id = id
+        this.label = label
+    }
+}
+"""
+    )
+    ent = next(s for s in mod.body if isinstance(s, EntityDef))
+    ctor = next(m for m in ent.methods if m.is_constructor)
+    assert ctor.access == "module"
+    py = transpile(
+        """
+entity Item identity(id) {
+    protected fix int id
+    public string label
+
+    constructor(int id, string label) {
+        this.id = id
+        this.label = label
+    }
+}
+"""
+    )
+    ast.parse(py)
+    assert "def __init__(self, id" in py
+
+
+def test_method_still_requires_access_modifier() -> None:
+    with pytest.raises(TranspileError, match="access modifier"):
+        transpile(
+            """
+class Bad {
+    int oops() {
+        return 1
+    }
+}
+"""
+        )

@@ -19,6 +19,7 @@ def plan_rename(
     line: int,
     column: int,
     new_name: str,
+    source_text: str | None = None,
 ) -> RefactorPlan:
     meta = catalog_entry("rename-symbol")
     plan = RefactorPlan(
@@ -40,7 +41,7 @@ def plan_rename(
         )
         return plan
 
-    index = build_index(source_path)
+    index = build_index(source_path, entry_source=source_text)
     decl = resolve_at(index, source_path, line, column)
     if decl is None:
         plan.conflicts.append(

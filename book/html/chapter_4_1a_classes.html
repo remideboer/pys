@@ -261,7 +261,10 @@ already decide nesting.</p>
 purpose (counting), but <strong>building</strong> a ready-to-use machine.</p>
 <ul>
 <li>It is written with the <strong><code>constructor</code> keyword</strong>:
-  <code>public constructor(...)</code> (not the class name).</li>
+  <code>public constructor(...)</code> (not the class name). If you omit the access
+  word, it defaults to <strong><code>module</code></strong> (usable in this file only) — same idea
+  as a top-level <code>class</code> without <code>global</code> / <code>package</code>. Prefer
+  <code>public constructor</code> when other files should create instances.</li>
 <li>Creating an object looks like a call: <code>Counter("demo")</code>. That call
   <strong>runs the constructor once</strong>. The parameter (<code>label</code>) is material the
   assembly needs — a name plate for this counter.</li>

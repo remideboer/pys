@@ -186,8 +186,88 @@ function stripNl(line) {
   return { body: line, nl: '' };
 }
 
+/**
+ * @param {string} text
+ * @param {number} line1 1-based
+ * @param {number} col1 1-based
+ * @returns {number}
+ */
+function posToOffset(text, line1, col1) {
+  let line = 1;
+  let col = 1;
+  for (let i = 0; i < text.length; i++) {
+    if (line === line1 && col === col1) {
+      return i;
+    }
+    if (text[i] === '\n') {
+      line += 1;
+      col = 1;
+    } else {
+      col += 1;
+    }
+  }
+  if (line === line1 && col === col1) {
+    return text.length;
+  }
+  return text.length;
+}
+
+/**
+ * Map each edit to its span in the *after* text (top-down with delta).
+ * @param {string} original
+ * @param {object[]} edits
+ * @returns {Array<{
+ *   editIndex: number,
+ *   startAfter: number,
+ *   endAfter: number,
+ *   oldText: string,
+ *   newText: string,
+ * }>}
+ */
+function computeAfterSpans(original, edits) {
+  const sorted = edits.map((e, i) => ({ e, i })).sort((a, b) => {
+    const al = a.e.line || 1;
+    const bl = b.e.line || 1;
+    if (al !== bl) return al - bl;
+    return (a.e.column || 1) - (b.e.column || 1);
+  });
+  let delta = 0;
+  /** @type {ReturnType<typeof computeAfterSpans>} */
+  const spans = [];
+  for (const { e, i } of sorted) {
+    const kind = e.kind || 'replace';
+    const startOrig = posToOffset(original, e.line || 1, e.column || 1);
+    let endOrig = startOrig;
+    if (kind !== 'insert') {
+      endOrig = posToOffset(
+        original,
+        e.end_line || e.line || 1,
+        e.end_column || e.column || 1,
+      );
+    }
+    if (endOrig < startOrig) {
+      endOrig = startOrig;
+    }
+    const oldText = original.slice(startOrig, endOrig);
+    const newText = e.new_text == null ? '' : String(e.new_text);
+    const startAfter = startOrig + delta;
+    const endAfter = startAfter + newText.length;
+    spans.push({
+      editIndex: i,
+      startAfter,
+      endAfter,
+      oldText,
+      newText,
+    });
+    delta += newText.length - (endOrig - startOrig);
+  }
+  return spans;
+}
+
 module.exports = {
   applyEditsToText,
   applySelectedEdits,
   buildLineDiff,
+  posToOffset,
+  computeAfterSpans,
 };

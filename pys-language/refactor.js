@@ -1,7 +1,7 @@
 /**
- * Educational refactoring: plan via IDE process, centered modal preview/input, apply WorkspaceEdit.
- *
- * Editor context is captured *before* any webview modal (panels replace the Active tab).
+ * Educational refactoring: plan via IDE process; rename uses the at-cursor
+ * rename widget; other ops may prompt for a name; live orange/blue preview
+ * with sticky Accept/Reject (CodeLens + ignoreFocusOut bar).
  */
 const vscode = require('vscode');
 const {
@@ -12,8 +12,11 @@ const {
 const {
   captureEditor,
   showModalInput,
-  showModalPreview,
 } = require('./refactor-modal');
+const {
+  showLivePreview,
+  ensureCodeLensProvider,
+} = require('./refactor-live-preview');
 
 const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 
@@ -23,6 +26,7 @@ const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
  */
 function registerRefactoring(context, deps = {}) {
   const runJson = deps.runJsonProcess || runJsonProcess;
+  ensureCodeLensProvider(context);
 
   async function callRefactorPlan(document, op, extraArgs) {
     const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
@@ -35,10 +39,13 @@ function registerRefactoring(context, deps = {}) {
       vscode.window.showErrorMessage('PYS refactor: file is outside the workspace.');
       return null;
     }
-    const args = ['--refactor-plan', op, contained, ...extraArgs];
+    const args = ['--refactor-plan', op, contained, '--stdin', ...extraArgs];
     const envSpec = buildIdeProcessSpec(context.extensionPath, workspace.uri.fsPath, args);
     try {
-      return await runJson(PYTHON, envSpec.args, envSpec.options, {});
+      return await runJson(PYTHON, envSpec.args, envSpec.options, {
+        stdin: document.getText(),
+        timeoutMs: 15_000,
+      });
     } catch (err) {
       vscode.window.showErrorMessage(`PYS refactor failed: ${err.message || err}`);
       return null;
@@ -55,88 +62,11 @@ function registerRefactoring(context, deps = {}) {
   }
 
   /**
-   * @param {vscode.TextDocument} document
-   * @param {object} plan
-   * @param {ReturnType<typeof captureEditor>} editorSnap
+   * @param {object[]} edits
+   * @param {Iterable<number>} selectedIndices
    */
-  async function loadEditSources(document, edits) {
-    /** @type {Record<string, string>} */
-    const sources = {};
-    const paths = [...new Set((edits || []).map((e) => e.file).filter(Boolean))];
-    const docPath = document.uri.fsPath;
-    for (const filePath of paths) {
-      try {
-        if (filePath === docPath) {
-          sources[filePath] = document.getText();
-          continue;
-        }
-        // Path equality can differ by separators / casing on Windows.
-        const uri = vscode.Uri.file(filePath);
-        if (uri.fsPath === docPath) {
-          sources[filePath] = document.getText();
-          continue;
-        }
-        const other = await vscode.workspace.openTextDocument(uri);
-        sources[filePath] = other.getText();
-      } catch (_e) {
-        sources[filePath] = '';
-      }
-    }
-    return sources;
-  }
-
-  async function previewAndApply(document, plan, editorSnap) {
-    if (!plan) {
-      return;
-    }
-    const title = plan.title || plan.catalog_id || 'Refactor';
-    const summary = plan.summary || '';
-    const why = plan.why || '';
-    const conflicts = plan.conflicts || [];
-    const hard = conflicts.filter((c) => !c.soft);
-    const hardBlocked = hard.length > 0 && !plan.ok;
-    const edits = plan.edits || [];
-    const sources = hardBlocked ? {} : await loadEditSources(document, edits);
-
-    if (!hardBlocked && !edits.length) {
-      await showModalPreview(
-        context,
-        {
-          title,
-          summary: plan.message || 'Nothing to change.',
-          why,
-          conflicts,
-          edits: [],
-          sources: {},
-          hardBlocked: true,
-        },
-        editorSnap,
-      );
-      return;
-    }
-
-    const chosen = await showModalPreview(
-      context,
-      {
-        title,
-        summary,
-        why,
-        conflicts,
-        edits,
-        sources,
-        hardBlocked,
-      },
-      editorSnap,
-    );
-    if (chosen === null || hardBlocked) {
-      return;
-    }
-    if (!chosen.length) {
-      vscode.window.showWarningMessage(`${title}: no edit sites selected.`);
-      return;
-    }
-
-    const selected = new Set(chosen.map(Number));
+  function workspaceEditFromPlan(edits, selectedIndices) {
+    const selected = new Set([...selectedIndices].map(Number));
     const we = new vscode.WorkspaceEdit();
     for (let i = 0; i < edits.length; i++) {
       if (!selected.has(i)) {
@@ -155,12 +85,60 @@ function registerRefactoring(context, deps = {}) {
         we.replace(uri, new vscode.Range(start, end), e.new_text || '');
       }
     }
+    return we;
+  }
+
+  async function previewAndApply(document, plan, editorSnap) {
+    if (!plan) {
+      return;
+    }
+    const title = plan.title || plan.catalog_id || 'Refactor';
+    const why = plan.why || '';
+    const conflicts = plan.conflicts || [];
+    const hard = conflicts.filter((c) => !c.soft);
+    const hardBlocked = hard.length > 0 && !plan.ok;
+    const edits = plan.edits || [];
+
+    const chosen = await showLivePreview(
+      context,
+      {
+        title,
+        summary: plan.summary || '',
+        why,
+        conflicts,
+        edits,
+        hardBlocked,
+        message: plan.message || (!edits.length ? 'Nothing to change.' : ''),
+      },
+      document,
+    );
+    if (chosen === null || hardBlocked) {
+      return;
+    }
+    if (!chosen.indices.length) {
+      vscode.window.showWarningMessage(`${title}: no edit sites selected.`);
+      return;
+    }
+
+    if (chosen.alreadyApplied) {
+      try {
+        await vscode.window.showTextDocument(document.uri, {
+          viewColumn: editorSnap?.viewColumn || vscode.ViewColumn.Active,
+          preview: false,
+        });
+      } catch (_e) {
+        // ignore
+      }
+      // No toast — Accept already confirmed in the sticky preview UI.
+      return;
+    }
+
+    const we = workspaceEditFromPlan(edits, chosen.indices);
     const ok = await vscode.workspace.applyEdit(we);
     if (!ok) {
       vscode.window.showErrorMessage(`${title}: apply failed (WorkspaceEdit rejected).`);
       return;
     }
-    // Ensure the edited document is visible and saved-enough to see changes.
     try {
       await vscode.window.showTextDocument(document.uri, {
         viewColumn: editorSnap?.viewColumn || vscode.ViewColumn.Active,
@@ -169,9 +147,6 @@ function registerRefactoring(context, deps = {}) {
     } catch (_e) {
       // ignore
     }
-    vscode.window.showInformationMessage(
-      `${title} applied.${why ? ` Tip: ${why.slice(0, 120)}` : ''}`,
-    );
   }
 
   /**
@@ -182,7 +157,10 @@ function registerRefactoring(context, deps = {}) {
    * @param {(doc: vscode.TextDocument, sel: vscode.Selection) => string[] | Promise<string[]|null>} extraBuilder
    */
   async function runOp(op, document, selection, editorSnap, extraBuilder) {
-    const extra = await extraBuilder(document, selection);
+    // After a Beside name prompt, active editor.selection is often wrong —
+    // always prefer the pre-modal snap.
+    const sel = (editorSnap && editorSnap.selection) || selection;
+    const extra = await extraBuilder(document, sel);
     if (extra === null) {
       return;
     }
@@ -203,27 +181,8 @@ function registerRefactoring(context, deps = {}) {
     ['pys.refactor.rename', async () => {
       const editor = requirePysEditor();
       if (!editor) return;
-      const snap = captureEditor(editor);
-      const word = editor.document.getWordRangeAtPosition(editor.selection.active);
-      const current = word ? editor.document.getText(word) : '';
-      const name = await showModalInput(
-        context,
-        {
-          title: 'Rename Symbol',
-          prompt: 'New name (binding-aware — only this declaration’s references change)',
-          value: current,
-          placeholder: 'identifier',
-        },
-        snap,
-      );
-      if (name === null || !String(name).trim()) {
-        return;
-      }
-      await runOp('rename', editor.document, editor.selection, snap, async (_doc, sel) => [
-        ...posArgs(sel.active),
-        '--new-name',
-        String(name).trim(),
-      ]);
+      // Native at-cursor rename input (same widget as F2).
+      await vscode.commands.executeCommand('editor.action.rename');
     }],
     ['pys.refactor.extractVariable', async () => {
       const editor = requirePysEditor();
@@ -364,16 +323,28 @@ function registerRefactoring(context, deps = {}) {
             || 'Rename failed';
           throw new Error(msg);
         }
-        const we = new vscode.WorkspaceEdit();
-        for (const e of plan.edits || []) {
-          const uri = vscode.Uri.file(e.file);
-          const range = new vscode.Range(
-            new vscode.Position(e.line - 1, e.column - 1),
-            new vscode.Position(e.end_line - 1, e.end_column - 1),
-          );
-          we.replace(uri, range, e.new_text || '');
+        const edits = plan.edits || [];
+        const chosen = await showLivePreview(
+          context,
+          {
+            title: plan.title || 'Rename Symbol',
+            summary: plan.summary || '',
+            why: plan.why || '',
+            conflicts: plan.conflicts || [],
+            edits,
+            hardBlocked: false,
+            message: plan.message || '',
+          },
+          document,
+        );
+        if (chosen === null) {
+          return null;
         }
-        return we;
+        // Live preview already mutated the buffer on Accept.
+        if (chosen.alreadyApplied) {
+          return new vscode.WorkspaceEdit();
+        }
+        return workspaceEditFromPlan(edits, chosen.indices);
       },
     }),
   );

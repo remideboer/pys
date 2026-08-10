@@ -245,8 +245,9 @@ abstract_method_decl = member_access , [ "open" ] , "abstract" , return_type , i
    redundant open is allowed; closed/override on abstract is an error.
    Abstract methods share the method section (after constructors). *)
 
-constructor_decl = { decorator } , member_access , "constructor" ,
+constructor_decl = { decorator } , [ member_access ] , "constructor" ,
                    "(" , [ parameter_list ] , ")" , block ;
+(* Omitted member_access defaults to module (same-file teaching boundary). *)
 
 (* Class methods MUST use member_access; "function" / "func" inside a class is illegal.
    Constructors use the explicit `constructor` keyword (ADR-027), not the type name. *)

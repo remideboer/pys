@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.toml for libraries).",
-  "version": "0.0.97",
+  "version": "0.0.101",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -463,59 +463,59 @@
           "group": "navigation@1"
         },
         {
-          "command": "pys.refactor.rename",
-          "when": "resourceExtname == .pys",
-          "group": "pys.refactor@1"
-        },
-        {
-          "command": "pys.refactor.extractVariable",
-          "when": "resourceExtname == .pys",
-          "group": "pys.refactor@2"
-        },
-        {
-          "command": "pys.refactor.extractFunction",
-          "when": "resourceExtname == .pys",
-          "group": "pys.refactor@3"
-        },
-        {
-          "submenu": "pys.refactor.more",
-          "when": "resourceExtname == .pys",
-          "group": "pys.refactor@4"
-        },
-        {
           "command": "pys.findUsages",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@0"
-        },
-        {
-          "command": "pys.runFile",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@1"
-        },
-        {
-          "command": "pys.debugFile",
           "when": "resourceExtname == .pys",
           "group": "navigation@2"
         },
         {
-          "command": "pys.debugTranspiledFile",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@2.5"
-        },
-        {
-          "command": "pys.addLogpoint",
+          "command": "pys.refactor.rename",
           "when": "resourceExtname == .pys",
           "group": "navigation@3"
         },
         {
-          "command": "pys.clearAllBreakpoints",
+          "command": "pys.refactor.extractVariable",
           "when": "resourceExtname == .pys",
           "group": "navigation@4"
         },
         {
-          "command": "pys.setAsEntrypoint",
+          "command": "pys.refactor.extractFunction",
           "when": "resourceExtname == .pys",
           "group": "navigation@5"
+        },
+        {
+          "submenu": "pys.refactor.more",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@6"
+        },
+        {
+          "command": "pys.runFile",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@1"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@2"
+        },
+        {
+          "command": "pys.debugTranspiledFile",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@2.5"
+        },
+        {
+          "command": "pys.addLogpoint",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@3"
+        },
+        {
+          "command": "pys.clearAllBreakpoints",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@4"
+        },
+        {
+          "command": "pys.setAsEntrypoint",
+          "when": "resourceExtname == .pys",
+          "group": "1_run@5"
         }
       ],
       "pys.refactor.more": [

@@ -1,9 +1,10 @@
 """Binding-aware reference index for Find Usages and refactoring."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from ..ast_nodes import (
     ArrayDecl,
@@ -18,7 +19,6 @@ from ..ast_nodes import (
     EntityDef,
     EnumDef,
     Expr,
-    FieldDecl,
     ForEachStmt,
     ForRangeStmt,
     FunctionDef,
@@ -26,6 +26,7 @@ from ..ast_nodes import (
     IfStmt,
     ImportStmt,
     Index,
+    InterpolatedString,
     LambdaExpr,
     Member,
     Module,
@@ -44,6 +45,33 @@ from ..imports import discover_imported_modules
 from ..lex import KEYWORDS, tokenize
 from ..parse import parse_program
 from ..workspace import resolve_workspace_path, workspace_root_from_env
+
+# Skip type-name uses for builtins / width aliases (not user type bindings).
+_PRIMITIVE_TYPES = frozenset(
+    {
+        "int",
+        "float",
+        "char",
+        "string",
+        "bool",
+        "void",
+        "object",
+        "byte",
+        "short",
+        "long",
+        "ubyte",
+        "ushort",
+        "uint",
+        "ulong",
+    }
+)
+
+_HOLE_RE = re.compile(r"\{([^{}]+)\}")
+_BASE_TYPE_RE = re.compile(
+    r"^(?:nullable|list|dict|set|array)<\s*([A-Za-z_]\w*)",
+    re.IGNORECASE,
+)
+_IDENT_TYPE_RE = re.compile(r"^([A-Za-z_]\w*)")
 
 
 @dataclass(frozen=True)
@@ -68,6 +96,8 @@ class RefSite:
 @dataclass
 class _Scope:
     bindings: dict[str, DeclKey] = field(default_factory=dict)
+    # Local / param binding → nominal type name (for Member resolution).
+    var_types: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -78,10 +108,15 @@ class RefIndex:
     at_position: dict[tuple[str, int, int], DeclKey] = field(default_factory=dict)
     modules: dict[str, Module] = field(default_factory=dict)
     sources: dict[str, str] = field(default_factory=dict)
+    # (type_name, member_name) → field/method DeclKey
+    type_members: dict[tuple[str, str], DeclKey] = field(default_factory=dict)
+    # child type → parent type (inherits)
+    type_parents: dict[str, str] = field(default_factory=dict)
+    # Stack of enclosing class/entity names while walking members.
+    enclosing_types: list[str] = field(default_factory=list)
 
     def sites_for(self, decl: DeclKey) -> list[RefSite]:
         return list(self.sites_by_decl.get(decl, []))
-
 
 def _file_key(path: Path) -> str:
     return str(path.resolve())
@@ -182,6 +217,307 @@ def _use_ident(index: RefIndex, scopes: list[_Scope], file: str, expr: Identifie
     )
 
 
+def _base_type_name(type_str: str | None) -> str | None:
+    if not type_str:
+        return None
+    text = type_str.strip()
+    if not text:
+        return None
+    m = _BASE_TYPE_RE.match(text)
+    if m:
+        return m.group(1)
+    # Strip array suffix: int[], Rekenmachine[]
+    if "[" in text:
+        text = text.split("[", 1)[0].strip()
+    m2 = _IDENT_TYPE_RE.match(text)
+    return m2.group(1) if m2 else None
+
+
+def _lookup_var_type(scopes: list[_Scope], name: str) -> str | None:
+    for scope in reversed(scopes):
+        if name in scope.var_types:
+            return scope.var_types[name]
+    return None
+
+
+def _lookup_member(index: RefIndex, type_name: str, attr: str) -> DeclKey | None:
+    seen: set[str] = set()
+    cur: str | None = type_name
+    while cur and cur not in seen:
+        seen.add(cur)
+        hit = index.type_members.get((cur, attr))
+        if hit is not None:
+            return hit
+        cur = index.type_parents.get(cur)
+    return None
+
+
+def _receiver_type(index: RefIndex, scopes: list[_Scope], obj: Expr | None) -> str | None:
+    if obj is None:
+        return None
+    if isinstance(obj, Identifier):
+        if obj.name in {"self", "this"}:
+            return index.enclosing_types[-1] if index.enclosing_types else None
+        typed = _lookup_var_type(scopes, obj.name)
+        if typed:
+            return typed
+        # Bare type name used as value (rare); Call path handles ctors.
+        decl = _lookup(scopes, obj.name)
+        if decl is not None and decl.kind in {"class", "entity", "struct", "data", "enum"}:
+            return obj.name
+        return None
+    if isinstance(obj, Call) and isinstance(obj.callee, Identifier):
+        name = obj.callee.name
+        decl = _lookup(scopes, name)
+        if decl is not None and decl.kind in {"class", "entity", "struct", "data"}:
+            return name
+        if name[:1].isupper():
+            return name
+    if isinstance(obj, Member):
+        # Chained a.b.c — only resolve when b is a field with a known type later; MVP skip.
+        return None
+    return None
+
+
+def _member_name_span(source: str, approx: Span, name: str) -> Span:
+    """Prefer the identifier after '.' on the same line as ``approx``."""
+    mspan = _recover_name_span(source, Span(approx.line, approx.column), name)
+    try:
+        line = source.splitlines()[approx.line - 1]
+        search_from = max(approx.column - 1, 0)
+        dot = line.find(".", search_from)
+        if dot < 0:
+            dot = line.rfind(".", 0, min(len(line), search_from + 80))
+        if dot >= 0:
+            rest = line[dot + 1 :]
+            if rest.startswith(name) and (len(rest) == len(name) or not rest[len(name)].isalnum() and rest[len(name)] != "_"):
+                col = dot + 2
+                return Span(approx.line, col, approx.line, col + len(name))
+    except Exception:
+        pass
+    return mspan
+
+
+def _add_use_site(
+    index: RefIndex,
+    *,
+    file: str,
+    span: Span,
+    name: str,
+    decl: DeclKey,
+) -> None:
+    _add_site(
+        index,
+        RefSite(
+            file=file,
+            line=span.line,
+            column=span.column,
+            end_column=_span_end_col(span, name),
+            kind="use",
+            decl=decl,
+        ),
+    )
+
+
+def _use_type_name(
+    index: RefIndex,
+    scopes: list[_Scope],
+    file: str,
+    type_str: str | None,
+    approx: Span,
+) -> None:
+    base = _base_type_name(type_str)
+    if not base or base in KEYWORDS or base in _PRIMITIVE_TYPES:
+        return
+    decl = _lookup(scopes, base)
+    if decl is None or decl.kind not in {"class", "entity", "struct", "data", "enum"}:
+        return
+    source = index.sources.get(file, "")
+    span = _recover_name_span(source, approx, base)
+    _add_use_site(index, file=file, span=span, name=base, decl=decl)
+
+
+def _bind_var_type(scopes: list[_Scope], name: str, type_str: str | None) -> None:
+    base = _base_type_name(type_str)
+    if base and base not in _PRIMITIVE_TYPES and name:
+        scopes[-1].var_types[name] = base
+
+
+def _use_member_attr(
+    index: RefIndex,
+    scopes: list[_Scope],
+    file: str,
+    expr: Member,
+) -> None:
+    source = index.sources.get(file, "")
+    sp = expr.span or Span(1, 1)
+    mspan = _member_name_span(source, sp, expr.name)
+    rtype = _receiver_type(index, scopes, expr.object)
+    if rtype:
+        decl = _lookup_member(index, rtype, expr.name)
+        if decl is not None:
+            _add_use_site(index, file=file, span=mspan, name=expr.name, decl=decl)
+            return
+    # Attribute name may be an enum member (Color.RED).
+    for decl in index.sites_by_decl:
+        if decl.name == expr.name and decl.kind == "enum_member" and decl.file == file:
+            _add_use_site(index, file=file, span=mspan, name=expr.name, decl=decl)
+            return
+
+
+def _use_lvalue_path(
+    index: RefIndex,
+    scopes: list[_Scope],
+    file: str,
+    path: str,
+    approx: Span,
+) -> None:
+    """Record uses for dotted assign targets like ``self.getalA`` / ``rm.field``."""
+    if "." not in path or "[" in path:
+        return
+    parts = path.split(".")
+    if len(parts) != 2:
+        return
+    head, attr = parts[0], parts[1]
+    if head in {"self", "this"}:
+        rtype = index.enclosing_types[-1] if index.enclosing_types else None
+    else:
+        rtype = _lookup_var_type(scopes, head)
+    if not rtype:
+        return
+    decl = _lookup_member(index, rtype, attr)
+    if decl is None:
+        return
+    source = index.sources.get(file, "")
+    mspan = _member_name_span(source, approx, attr)
+    _add_use_site(index, file=file, span=mspan, name=attr, decl=decl)
+
+
+def _try_parse_expr(text: str) -> Expr | None:
+    try:
+        from .. import parse as parse_mod
+
+        tokens = tokenize(text.strip())
+        p = parse_mod._Tok(tokens)
+        return parse_mod._parse_expression(p)
+    except Exception:
+        return None
+
+
+def _walk_interp_hole(
+    index: RefIndex,
+    scopes: list[_Scope],
+    file: str,
+    hole: str,
+    *,
+    line: int,
+    hole_col: int,
+) -> None:
+    """Walk a ``{expr}`` hole; spans remapped onto the host string line."""
+    expr = _try_parse_expr(hole)
+    if expr is None:
+        return
+
+    def remap_span(name: str, prefer_after_dot: bool = False) -> Span:
+        idx = -1
+        if prefer_after_dot:
+            dot = hole.rfind("." + name)
+            if dot >= 0:
+                idx = dot + 1
+        if idx < 0:
+            idx = hole.find(name)
+        if idx < 0:
+            return Span(line, hole_col, line, hole_col + len(name))
+        col = hole_col + idx
+        return Span(line, col, line, col + len(name))
+
+    def walk(node: Expr | None) -> None:
+        if node is None:
+            return
+        if isinstance(node, Identifier):
+            if node.name in {"self", "this"} or node.name in KEYWORDS:
+                return
+            decl = _lookup(scopes, node.name)
+            if decl is None:
+                return
+            _add_use_site(index, file=file, span=remap_span(node.name), name=node.name, decl=decl)
+            return
+        if isinstance(node, Member):
+            walk(node.object)
+            rtype = _receiver_type(index, scopes, node.object)
+            if rtype:
+                decl = _lookup_member(index, rtype, node.name)
+                if decl is not None:
+                    _add_use_site(
+                        index,
+                        file=file,
+                        span=remap_span(node.name, prefer_after_dot=True),
+                        name=node.name,
+                        decl=decl,
+                    )
+                    return
+            for decl in index.sites_by_decl:
+                if decl.name == node.name and decl.kind == "enum_member" and decl.file == file:
+                    _add_use_site(
+                        index,
+                        file=file,
+                        span=remap_span(node.name, prefer_after_dot=True),
+                        name=node.name,
+                        decl=decl,
+                    )
+                    return
+            return
+        if isinstance(node, Call):
+            walk(node.callee)
+            for a in node.args or []:
+                val = getattr(a, "value", None) if type(a).__name__ == "KeywordArg" else a
+                if isinstance(val, Expr):
+                    walk(val)
+                elif isinstance(a, Expr):
+                    walk(a)
+            return
+        if isinstance(node, BinaryOp):
+            walk(node.left)
+            walk(node.right)
+            return
+        if isinstance(node, UnaryOp):
+            walk(node.operand)
+            return
+        if isinstance(node, Index):
+            walk(node.object)
+            walk(node.index)
+            return
+
+    walk(expr)
+
+
+def _walk_interpolated_string(
+    index: RefIndex,
+    scopes: list[_Scope],
+    file: str,
+    expr: InterpolatedString,
+) -> None:
+    raw = expr.raw or ""
+    sp = expr.span or Span(1, 1)
+    for m in _HOLE_RE.finditer(raw):
+        hole = m.group(1)
+        # ``raw`` starts at ``sp.column``; group(1) is the hole body offset in raw.
+        hole_col = sp.column + m.start(1)
+        _walk_interp_hole(
+            index,
+            scopes,
+            file,
+            hole,
+            line=sp.line,
+            hole_col=hole_col,
+        )
+
+
+def _register_type_member(index: RefIndex, type_name: str, member_name: str, decl: DeclKey) -> None:
+    if type_name and member_name and member_name != "__init__":
+        index.type_members[(type_name, member_name)] = decl
+
+
 def _walk_expr(index: RefIndex, scopes: list[_Scope], file: str, expr: Expr | None) -> None:
     if expr is None:
         return
@@ -206,36 +542,10 @@ def _walk_expr(index: RefIndex, scopes: list[_Scope], file: str, expr: Expr | No
         return
     if isinstance(expr, Member):
         _walk_expr(index, scopes, file, expr.object)
-        # Attribute name may be an enum member (Color.RED).
-        for decl, sites in index.sites_by_decl.items():
-            if decl.name == expr.name and decl.kind == "enum_member" and decl.file == file:
-                sp = expr.span or Span(1, 1)
-                # Member token is after the dot — recover
-                source = index.sources.get(file, "")
-                mspan = _recover_name_span(source, Span(sp.line, sp.column), expr.name)
-                # Prefer token after '.' on same line
-                try:
-                    line = source.splitlines()[sp.line - 1]
-                    dot = line.find(".", sp.column - 1)
-                    if dot >= 0:
-                        rest = line[dot + 1 :]
-                        if rest.startswith(expr.name):
-                            col = dot + 2
-                            mspan = Span(sp.line, col, sp.line, col + len(expr.name))
-                except Exception:
-                    pass
-                _add_site(
-                    index,
-                    RefSite(
-                        file=file,
-                        line=mspan.line,
-                        column=mspan.column,
-                        end_column=_span_end_col(mspan, expr.name),
-                        kind="use",
-                        decl=decl,
-                    ),
-                )
-                break
+        _use_member_attr(index, scopes, file, expr)
+        return
+    if isinstance(expr, InterpolatedString):
+        _walk_interpolated_string(index, scopes, file, expr)
         return
     if isinstance(expr, Index):
         _walk_expr(index, scopes, file, expr.object)
@@ -293,6 +603,7 @@ def _walk_expr(index: RefIndex, scopes: list[_Scope], file: str, expr: Expr | No
             if isinstance(pair, tuple) and len(pair) == 2:
                 _walk_expr(index, scopes, file, pair[0])
                 _walk_expr(index, scopes, file, pair[1])
+
 
 
 def _walk_block(
@@ -356,10 +667,17 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
         span = stmt.name_span or _recover_name_span(source, approx, stmt.name)
         _declare(index, scopes, file=file, name=stmt.name, span=span, kind="function")
         scopes.append(_Scope())
-        for pname in stmt.params:
+        for i, pname in enumerate(stmt.params):
             # Param spans approximate: recover on function line
             psp = _recover_name_span(source, span, pname)
             _declare(index, scopes, file=file, name=pname, span=psp, kind="param")
+            ptypes = getattr(stmt, "param_types", None) or []
+            if i < len(ptypes):
+                _use_type_name(index, scopes, file, ptypes[i], span)
+                _bind_var_type(scopes, pname, ptypes[i])
+        ret = getattr(stmt, "return_type", None)
+        if ret:
+            _use_type_name(index, scopes, file, ret, span)
         _walk_block(index, scopes, file, stmt.body, nest=False)
         scopes.pop()
         return
@@ -368,20 +686,43 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
         span = stmt.name_span or _recover_name_span(source, approx, stmt.name)
         kind = "class" if isinstance(stmt, ClassDef) else "entity"
         _declare(index, scopes, file=file, name=stmt.name, span=span, kind=kind)
+        parent = getattr(stmt, "parent", "") or ""
+        if parent:
+            index.type_parents[stmt.name] = parent
+            _use_type_name(index, scopes, file, parent, span)
+        for base in getattr(stmt, "bases", None) or []:
+            if base:
+                _use_type_name(index, scopes, file, base, span)
         scopes.append(_Scope())
+        index.enclosing_types.append(stmt.name)
         for f in stmt.fields or []:
             fspan = f.name_span or _recover_name_span(source, f.span or span, f.name)
-            _declare(index, scopes, file=file, name=f.name, span=fspan, kind="field")
+            fdecl = _declare(index, scopes, file=file, name=f.name, span=fspan, kind="field")
+            _register_type_member(index, stmt.name, f.name, fdecl)
+            ftype = getattr(f, "type_name", None) or getattr(f, "type", None)
+            if ftype:
+                _use_type_name(index, scopes, file, ftype, fspan)
+                _bind_var_type(scopes, f.name, ftype)
             _walk_expr(index, scopes, file, f.default)
         for m in stmt.methods or []:
             mspan = m.name_span or _recover_name_span(source, m.span or span, m.name)
-            _declare(index, scopes, file=file, name=m.name, span=mspan, kind="method")
+            # Constructors parse as ``__init__``; keep decl kind method for sites.
+            mdecl = _declare(index, scopes, file=file, name=m.name, span=mspan, kind="method")
+            _register_type_member(index, stmt.name, m.name, mdecl)
             scopes.append(_Scope())
-            for pname in m.params:
+            for i, pname in enumerate(m.params):
                 psp = _recover_name_span(source, mspan, pname)
                 _declare(index, scopes, file=file, name=pname, span=psp, kind="param")
+                ptypes = getattr(m, "param_types", None) or []
+                if i < len(ptypes):
+                    _use_type_name(index, scopes, file, ptypes[i], mspan)
+                    _bind_var_type(scopes, pname, ptypes[i])
+            ret = getattr(m, "return_type", None)
+            if ret:
+                _use_type_name(index, scopes, file, ret, mspan)
             _walk_block(index, scopes, file, m.body, nest=False)
             scopes.pop()
+        index.enclosing_types.pop()
         scopes.pop()
         return
     if isinstance(stmt, (StructDef, DataDef, EnumDef)):
@@ -393,11 +734,23 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
             for mem in stmt.members or []:
                 mspan = mem.name_span or _recover_name_span(source, mem.span or span, mem.name)
                 _declare(index, scopes, file=file, name=mem.name, span=mspan, kind="enum_member")
+        else:
+            for f in getattr(stmt, "fields", None) or []:
+                fname = getattr(f, "name", "") or ""
+                if not fname:
+                    continue
+                fspan = getattr(f, "name_span", None) or _recover_name_span(
+                    source, getattr(f, "span", None) or span, fname
+                )
+                fdecl = _declare(index, scopes, file=file, name=fname, span=fspan, kind="field")
+                _register_type_member(index, stmt.name, fname, fdecl)
         return
     if isinstance(stmt, AssignStmt) and stmt.declare_type is not None:
         approx = stmt.name_span or stmt.span or Span(1, 1)
         span = stmt.name_span or _recover_name_span(source, approx, stmt.name)
+        _use_type_name(index, scopes, file, stmt.declare_type, approx)
         _declare(index, scopes, file=file, name=stmt.name, span=span, kind="var")
+        _bind_var_type(scopes, stmt.name, stmt.declare_type)
         _walk_expr(index, scopes, file, stmt.value)
         return
     if isinstance(stmt, AssignStmt):
@@ -418,6 +771,14 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
                         decl=decl,
                     ),
                 )
+        else:
+            _use_lvalue_path(
+                index,
+                scopes,
+                file,
+                stmt.name,
+                stmt.span or Span(1, 1),
+            )
         _walk_expr(index, scopes, file, stmt.value)
         return
     if isinstance(stmt, ArrayDecl):
@@ -430,6 +791,10 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
         approx = stmt.name_span or stmt.span or Span(1, 1)
         span = stmt.name_span or _recover_name_span(source, approx, stmt.name)
         _declare(index, scopes, file=file, name=stmt.name, span=span, kind="var")
+        dtype = getattr(stmt, "type_name", None) or getattr(stmt, "declare_type", None)
+        if dtype:
+            _use_type_name(index, scopes, file, dtype, approx)
+            _bind_var_type(scopes, stmt.name, dtype)
         _walk_expr(index, scopes, file, stmt.value)
         return
     if isinstance(stmt, AugAssignStmt):
@@ -449,6 +814,14 @@ def _walk_stmt(index: RefIndex, scopes: list[_Scope], file: str, stmt: Any) -> N
                         decl=decl,
                     ),
                 )
+        else:
+            _use_lvalue_path(
+                index,
+                scopes,
+                file,
+                stmt.name,
+                stmt.span or Span(1, 1),
+            )
         _walk_expr(index, scopes, file, stmt.value)
         return
     if isinstance(stmt, PrintStmt):
@@ -552,8 +925,12 @@ def _collect_exports(path: Path, mod: Module) -> dict[str, DeclKey]:
     return out
 
 
-def build_index(entry: Path) -> RefIndex:
-    """Build binding-aware index for ``entry`` and its resolved .pys import graph."""
+def build_index(entry: Path, *, entry_source: str | None = None) -> RefIndex:
+    """Build binding-aware index for ``entry`` and its resolved .pys import graph.
+
+    When ``entry_source`` is set (IDE ``--stdin`` live buffer), that text is used
+    for ``entry`` instead of reading the file from disk.
+    """
     entry = entry.resolve()
     index = RefIndex()
     index.export_bindings = {}  # type: ignore[attr-defined]
@@ -566,7 +943,10 @@ def build_index(entry: Path) -> RefIndex:
         if path in modules:
             return modules[path]
         try:
-            text = path.read_text(encoding="utf-8")
+            if path == entry and entry_source is not None:
+                text = entry_source
+            else:
+                text = path.read_text(encoding="utf-8")
             mod = parse_program(text)
         except Exception:
             return None
@@ -619,19 +999,24 @@ def build_index(entry: Path) -> RefIndex:
 
 
 def resolve_at(index: RefIndex, file: Path | str, line: int, column: int) -> DeclKey | None:
-    """Resolve declaration under cursor (1-based line/column)."""
+    """Resolve declaration under cursor (1-based line/column).
+
+    ``end_column`` on sites is exclusive (span end). A caret sitting on that
+    exclusive end — typical after a left-to-right word selection in the IDE —
+    still resolves to the site.
+    """
     fk = _file_key(Path(file))
     # Exact match
     decl = index.at_position.get((fk, line, column))
     if decl is not None:
         return decl
-    # Cursor inside an identifier: find site covering column
+    # Cursor inside an identifier (or on its exclusive end column).
     best: RefSite | None = None
     for sites in index.sites_by_decl.values():
         for site in sites:
             if site.file != fk or site.line != line:
                 continue
-            if site.column <= column < site.end_column:
+            if site.column <= column <= site.end_column:
                 if best is None or site.column > best.column:
                     best = site
     return best.decl if best else None
