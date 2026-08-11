@@ -194,6 +194,8 @@ function resolveMainFilePath() {
 function activate(context) {
   const { registerRefactoring } = require('./refactor');
   registerRefactoring(context);
+  const { registerSyntaxColorSettings } = require('./syntax-colors-ui');
+  context.subscriptions.push(registerSyntaxColorSettings(vscode));
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
 

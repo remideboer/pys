@@ -82,17 +82,22 @@ test('method declaration keeps override + return type', () => {
 });
 
 test('package.json defaults share one color for primitive and class types', () => {
+  // Full scheme → package.json wiring is covered in syntax-colors.test.js.
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),
   );
-  const rules =
+  const darkRules =
     manifest.contributes.configurationDefaults['editor.tokenColorCustomizations']['[*Dark*]']
       .textMateRules;
-  const typeRule = rules.find(
+  const typeRule = darkRules.find(
     (r) => Array.isArray(r.scope) && r.scope.includes('storage.type.primitive.pys'),
   );
-  assert.ok(typeRule, 'dark theme should color storage.type.primitive.pys');
+  assert.ok(typeRule);
   assert.ok(typeRule.scope.includes('entity.name.type.pys'));
   assert.ok(typeRule.scope.includes('entity.name.type.class.pys'));
-  assert.ok(typeRule.settings && typeRule.settings.foreground);
+  assert.match(typeRule.settings.foreground, /^#[0-9A-Fa-f]{6}$/);
+  const props = manifest.contributes.configuration.properties;
+  assert.equal(props['pys.syntaxColors.types'].type, 'string');
+  assert.equal(props['pys.syntaxColors.types'].format, 'color');
+  assert.equal(props['pys.syntaxColors.types'].default, typeRule.settings.foreground);
 });

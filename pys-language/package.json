@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
+    "apply-syntax-colors": "node scripts/apply-syntax-colors.js",
     "prepare-bundle": "node scripts/prepare-bundle.js",
     "prepare": "npm run prepare-bundle",
     "vscode:prepublish": "npm run prepare-bundle",
@@ -66,7 +67,10 @@
         },
         "pys.emitTarget": {
           "type": "string",
-          "enum": ["python", "javascript"],
+          "enum": [
+            "python",
+            "javascript"
+          ],
           "default": "python",
           "description": "Backend used when running or debugging .pys files: Python (CPython / debugpy) or JavaScript (Node.js / js-debug)."
         },
@@ -74,6 +78,55 @@
           "type": "boolean",
           "default": true,
           "description": "Analysis-driven IntelliSense: in-scope identifiers, member completion after `.`, and Create Class suggestions. Toggle from the status bar."
+        },
+        "pys.syntaxColors.comments": {
+          "type": "string",
+          "format": "color",
+          "default": "#6272A4",
+          "order": 20,
+          "markdownDescription": "Color for comments. Change to override built-in theme colors for all themes; use **Reset Setting** to restore per-theme extension defaults."
+        },
+        "pys.syntaxColors.strings": {
+          "type": "string",
+          "format": "color",
+          "default": "#007328",
+          "order": 22,
+          "markdownDescription": "Color for string literals. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+        },
+        "pys.syntaxColors.numbers": {
+          "type": "string",
+          "format": "color",
+          "default": "#FFB86C",
+          "order": 21,
+          "markdownDescription": "Color for numbers, booleans, and escapes. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+        },
+        "pys.syntaxColors.functions": {
+          "type": "string",
+          "format": "color",
+          "default": "#20AAE0",
+          "order": 23,
+          "markdownDescription": "Color for functions and methods. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+        },
+        "pys.syntaxColors.types": {
+          "type": "string",
+          "format": "color",
+          "default": "#20E0CA",
+          "order": 24,
+          "markdownDescription": "Color for types (classes, primitives, structs, …). In Settings, click the color square next to the hex to open the picker. Or run **PYS: Customize Syntax Colors** for swatch + hex + **Use color** (live editor update). **Reset Setting** restores extension defaults."
+        },
+        "pys.syntaxColors.languageConstants": {
+          "type": "string",
+          "format": "color",
+          "default": "#BD93F9",
+          "order": 25,
+          "markdownDescription": "Color for `this` / `super` and named constants. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+        },
+        "pys.syntaxColors.keywords": {
+          "type": "string",
+          "format": "color",
+          "default": "#FF79C6",
+          "order": 26,
+          "markdownDescription": "Color for keywords, storage modifiers, and decorators. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
         }
       }
     },
@@ -83,13 +136,42 @@
           "textMateRules": [
             {
               "scope": [
-                "punctuation.definition.decorator.pys",
-                "entity.name.function.decorator.pys",
-                "meta.function.decorator.pys"
+                "comment.line.number-sign.pys",
+                "comment.block.pys"
               ],
               "settings": {
-                "foreground": "#FF79C6",
-                "fontStyle": "bold"
+                "foreground": "#6272A4"
+              }
+            },
+            {
+              "scope": [
+                "constant.numeric.integer.pys",
+                "constant.numeric.float.pys",
+                "constant.numeric.hex.pys",
+                "constant.numeric.binary.pys",
+                "constant.language.pys",
+                "constant.character.escape.pys"
+              ],
+              "settings": {
+                "foreground": "#FFB86C"
+              }
+            },
+            {
+              "scope": [
+                "string.quoted.double.pys",
+                "string.quoted.single.pys"
+              ],
+              "settings": {
+                "foreground": "#007328"
+              }
+            },
+            {
+              "scope": [
+                "entity.name.function.pys",
+                "support.function.pys"
+              ],
+              "settings": {
+                "foreground": "#20AAE0"
               }
             },
             {
@@ -104,7 +186,29 @@
                 "entity.name.type.enum.pys"
               ],
               "settings": {
-                "foreground": "#8BE9FD"
+                "foreground": "#20E0CA"
+              }
+            },
+            {
+              "scope": [
+                "variable.language.pys",
+                "variable.other.constant.pys"
+              ],
+              "settings": {
+                "foreground": "#BD93F9"
+              }
+            },
+            {
+              "scope": [
+                "keyword.control.pys",
+                "keyword.operator.pys",
+                "storage.modifier.pys",
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#FF79C6"
               }
             }
           ]
@@ -113,13 +217,42 @@
           "textMateRules": [
             {
               "scope": [
-                "punctuation.definition.decorator.pys",
-                "entity.name.function.decorator.pys",
-                "meta.function.decorator.pys"
+                "comment.line.number-sign.pys",
+                "comment.block.pys"
               ],
               "settings": {
-                "foreground": "#9A1B6B",
-                "fontStyle": "bold"
+                "foreground": "#6C664B"
+              }
+            },
+            {
+              "scope": [
+                "constant.numeric.integer.pys",
+                "constant.numeric.float.pys",
+                "constant.numeric.hex.pys",
+                "constant.numeric.binary.pys",
+                "constant.language.pys",
+                "constant.character.escape.pys"
+              ],
+              "settings": {
+                "foreground": "#A34D14"
+              }
+            },
+            {
+              "scope": [
+                "string.quoted.double.pys",
+                "string.quoted.single.pys"
+              ],
+              "settings": {
+                "foreground": "#846E15"
+              }
+            },
+            {
+              "scope": [
+                "entity.name.function.pys",
+                "support.function.pys"
+              ],
+              "settings": {
+                "foreground": "#14710A"
               }
             },
             {
@@ -134,7 +267,29 @@
                 "entity.name.type.enum.pys"
               ],
               "settings": {
-                "foreground": "#267F99"
+                "foreground": "#036A96"
+              }
+            },
+            {
+              "scope": [
+                "variable.language.pys",
+                "variable.other.constant.pys"
+              ],
+              "settings": {
+                "foreground": "#644AC9"
+              }
+            },
+            {
+              "scope": [
+                "keyword.control.pys",
+                "keyword.operator.pys",
+                "storage.modifier.pys",
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#A3144D"
               }
             }
           ]
@@ -143,13 +298,42 @@
           "textMateRules": [
             {
               "scope": [
-                "punctuation.definition.decorator.pys",
-                "entity.name.function.decorator.pys",
-                "meta.function.decorator.pys"
+                "comment.line.number-sign.pys",
+                "comment.block.pys"
               ],
               "settings": {
-                "foreground": "#FFFF00",
-                "fontStyle": "bold"
+                "foreground": "#9AA5CE"
+              }
+            },
+            {
+              "scope": [
+                "constant.numeric.integer.pys",
+                "constant.numeric.float.pys",
+                "constant.numeric.hex.pys",
+                "constant.numeric.binary.pys",
+                "constant.language.pys",
+                "constant.character.escape.pys"
+              ],
+              "settings": {
+                "foreground": "#FFB86C"
+              }
+            },
+            {
+              "scope": [
+                "string.quoted.double.pys",
+                "string.quoted.single.pys"
+              ],
+              "settings": {
+                "foreground": "#01720C"
+              }
+            },
+            {
+              "scope": [
+                "entity.name.function.pys",
+                "support.function.pys"
+              ],
+              "settings": {
+                "foreground": "#1575BE"
               }
             },
             {
@@ -165,6 +349,29 @@
               ],
               "settings": {
                 "foreground": "#00FFFF"
+              }
+            },
+            {
+              "scope": [
+                "variable.language.pys",
+                "variable.other.constant.pys"
+              ],
+              "settings": {
+                "foreground": "#BD93F9"
+              }
+            },
+            {
+              "scope": [
+                "keyword.control.pys",
+                "keyword.operator.pys",
+                "storage.modifier.pys",
+                "punctuation.definition.decorator.pys",
+                "entity.name.function.decorator.pys",
+                "meta.function.decorator.pys"
+              ],
+              "settings": {
+                "foreground": "#FF79C6",
+                "fontStyle": "bold"
               }
             }
           ]
@@ -397,6 +604,12 @@
         "command": "pys.toggleIntellisense",
         "title": "Toggle IntelliSense",
         "category": "PYS"
+      },
+      {
+        "command": "pys.customizeSyntaxColors",
+        "title": "Customize Syntax Colors",
+        "category": "PYS",
+        "icon": "$(symbol-color)"
       },
       {
         "command": "pys.generate.createClass",
@@ -651,6 +864,9 @@
         {
           "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys || editorLangId == pys"
+        },
+        {
+          "command": "pys.customizeSyntaxColors"
         }
       ]
     },

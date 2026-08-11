@@ -37,7 +37,8 @@ Until activation, **static** contributions (highlighting, menus, settings schema
 This is the bulk of the file:
 
 - **`configuration`** — Settings UI (`pys.emitTarget`, `pys.intellisense.enabled`, library nav, etc.). JS reads these via `vscode.workspace.getConfiguration('pys')`.
-- **`configurationDefaults`** — Default token colors for decorators (dark/light/HC).
+- **`configurationDefaults`** — Default token colors for PYS TextMate scopes (dark/light/HC) from `syntax-color-schemes.md`.
+- **`pys.syntaxColors.*`** (`format: color`) — Settings UI pickers; explicit values override those defaults (CER-061).
 - **`viewsContainers` / `views` / `viewsWelcome`** — Activity-bar **PYS** sidebar + “Create Project” welcome.
 - **`languages`** — Registers language id `pys` for `*.pys`, points at `language-configuration.json` (brackets, comments).
 - **`grammars`** — TextMate: `syntaxes/pys.tmLanguage.json` + markdown fence injection.

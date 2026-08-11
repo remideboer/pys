@@ -25,7 +25,13 @@ user types used `entity.name.type.pys`.
 - Builtins → **`storage.type.primitive.pys`** (Java-style primitive scope; `var` stays `storage.type.pys`)
 - Extension `configurationDefaults` force the **same foreground** for
   `storage.type.primitive.pys` and `entity.name.type*.pys` (dark / light / HC)
-- Modifiers remain `storage.modifier.pys` (distinct color)
+  from the canonical palette in
+  [`pys-language/syntax-color-schemes.md`](../../pys-language/syntax-color-schemes.md)
+  (usage-first lines under `theme: dark|light|high-contrast`; applied by
+  `scripts/apply-syntax-colors.js` during `npm run prepare-bundle`)
+  (Cyan for types; Pink for modifiers/keywords)
+- Modifiers remain `storage.modifier.pys` (Pink — distinct from Cyan types)
+- End-user color overrides: Settings pickers — [CER-061](CER-061-syntax-color-settings-ui.md)
 
 ### Evidence
 
