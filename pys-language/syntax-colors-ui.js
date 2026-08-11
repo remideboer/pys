@@ -8,7 +8,7 @@
 const {
   ROLE_SCOPES,
   THEME_KEYS,
-} = require('./scripts/apply-syntax-colors.js');
+} = require('./syntax-color-roles.js');
 
 /** role id → setting key under `pys` configuration section */
 const ROLE_SETTING_KEYS = {

@@ -67,6 +67,18 @@ CATALOG: dict[str, dict[str, Any]] = {
             "a matching class so students can iterate without typing boilerplate first."
         ),
     },
+    "create-static-method": {
+        "title": "Create Static Method",
+        "fowler": "Introduce Method (generation)",
+        "summary": (
+            "Insert a `public static` method stub on a class from an unresolved "
+            "`TypeName.method(...)` call, inferring parameter and return types."
+        ),
+        "why": (
+            "Static helpers are often called before they exist; scaffold a matching "
+            "signature so students can fill the body next."
+        ),
+    },
 }
 
 

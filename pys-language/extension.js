@@ -191,13 +191,41 @@ function resolveMainFilePath() {
   return resolveWorkspaceFile(workspacePath, candidate);
 }
 
+/** Prefer probed absolute path; skip Windows Store stubs via runtime-ensure. */
+function resolvePythonExecutable() {
+  return probePython() || (process.platform === 'win32' ? 'python' : 'python3');
+}
+
+function isPysSourceDocument(document) {
+  if (!document || document.uri.scheme !== 'file') {
+    return false;
+  }
+  if (document.languageId === 'pys') {
+    return true;
+  }
+  return document.uri.fsPath.toLowerCase().endsWith('.pys');
+}
+
+function workspaceFolderForDocument(document) {
+  const byUri = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (byUri) {
+    return byUri;
+  }
+  const folders = vscode.workspace.workspaceFolders;
+  return folders && folders[0] ? folders[0] : null;
+}
+
 function activate(context) {
   const { registerRefactoring } = require('./refactor');
   registerRefactoring(context);
   const { registerInClassBodyContext } = require('./in-class-body');
   registerInClassBodyContext(vscode, context);
-  const { registerSyntaxColorSettings } = require('./syntax-colors-ui');
-  context.subscriptions.push(registerSyntaxColorSettings(vscode));
+  try {
+    const { registerSyntaxColorSettings } = require('./syntax-colors-ui');
+    context.subscriptions.push(registerSyntaxColorSettings(vscode));
+  } catch (error) {
+    console.error('PYS syntax color settings failed to load:', error);
+  }
   const diagnosticCollection = vscode.languages.createDiagnosticCollection('pys');
   context.subscriptions.push(diagnosticCollection);
 
@@ -348,7 +376,9 @@ function activate(context) {
   }
 
   function appendTips(message, tips) {
-    if (!usageTipsEnabled() || !tips || !tips.length) {
+    // Language/diagnostic tips always show. Optional library "usage tips" stay
+    // behind pys.libraryTyping.usageTips (those arrive as separate Hint diags).
+    if (!tips || !tips.length) {
       return message;
     }
     return `${message}\n${tips.map((tip) => `Tip: ${tip}`).join('\n')}`;
@@ -373,6 +403,22 @@ function activate(context) {
       if (found >= 0) {
         startCol = found;
         endCol = found + typeName.length;
+      } else {
+        const rest = lineText.slice(startCol);
+        const word = rest.match(/^[A-Za-z_]\w*|[^\s]/);
+        if (word) {
+          endCol = startCol + word[0].length;
+        } else {
+          endCol = Math.max(lineText.length, startCol + 1);
+        }
+      }
+    } else if (parsed.code === 'pys.undefined-static-method') {
+      const m = /Undefined static method '([^']+)'/.exec(String(parsed.message || ''));
+      const methodName = m ? m[1] : '';
+      const found = methodName ? lineText.indexOf(methodName) : -1;
+      if (found >= 0) {
+        startCol = found;
+        endCol = found + methodName.length;
       } else {
         const rest = lineText.slice(startCol);
         const word = rest.match(/^[A-Za-z_]\w*|[^\s]/);
@@ -416,6 +462,7 @@ function activate(context) {
         || parsed.code === 'pys.trait-require-typo'
         || parsed.code === 'pys.abstract-method'
         || (parsed.code === 'pys.unknown-type' && parsed.suggested_fix === 'create-class')
+        || (parsed.code === 'pys.undefined-static-method' && parsed.suggested_fix === 'create-static-method')
       )
     ) {
       const key = `${document.uri.toString()}:${line}:${parsed.code}`;
@@ -474,21 +521,27 @@ function activate(context) {
   }
 
   async function validateDocument(document) {
-    if (document.languageId !== 'pys' || document.uri.scheme !== 'file') {
+    if (!isPysSourceDocument(document)) {
       diagnosticCollection.delete(document.uri);
       afterDiagnosticsUpdated(document);
       return;
     }
 
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    const workspace = workspaceFolderForDocument(document);
     if (!workspace) {
-      diagnosticCollection.delete(document.uri);
+      diagnosticCollection.set(document.uri, [
+        new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 1),
+          'PYS diagnostics need an open workspace folder.',
+          vscode.DiagnosticSeverity.Error,
+        ),
+      ]);
       afterDiagnosticsUpdated(document);
       return;
     }
 
     const workspacePath = workspace.uri.fsPath;
-    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonExecutable = resolvePythonExecutable();
 
     validateController?.abort();
     const controller = new AbortController();
@@ -500,7 +553,13 @@ function activate(context) {
       ['--stdin'],
     );
     if (!spec) {
-      diagnosticCollection.delete(document.uri);
+      diagnosticCollection.set(document.uri, [
+        new vscode.Diagnostic(
+          new vscode.Range(0, 0, 0, 1),
+          'PYS diagnostics skipped: file is outside the workspace root (ADR-001).',
+          vscode.DiagnosticSeverity.Error,
+        ),
+      ]);
       afterDiagnosticsUpdated(document);
       return;
     }
@@ -550,10 +609,11 @@ function activate(context) {
       if (error && error.code === 'CANCELLED') {
         return;
       }
+      const detail = error && error.message ? String(error.message).slice(0, 240) : '';
       diagnosticCollection.set(document.uri, [
         new vscode.Diagnostic(
           new vscode.Range(0, 0, 0, 1),
-          `PYS diagnostics failed (${error.code || 'PROCESS_ERROR'}).`,
+          `PYS diagnostics failed (${error.code || 'PROCESS_ERROR'}${detail ? `: ${detail}` : ''}). Python: ${pythonExecutable}`,
           vscode.DiagnosticSeverity.Error,
         ),
       ]);
@@ -626,7 +686,7 @@ function activate(context) {
         pushStatic();
         return items;
       }
-      const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+      const workspace = workspaceFolderForDocument(document);
       if (!workspace || document.uri.scheme !== 'file') {
         pushStatic();
         return items;
@@ -650,7 +710,7 @@ function activate(context) {
       }
       try {
         const parsed = await runJsonProcess(
-          process.platform === 'win32' ? 'python' : 'python3',
+          resolvePythonExecutable(),
           spec.args,
           spec.options,
           { signal: token?.isCancellationRequested ? undefined : undefined, stdin: document.getText(), timeoutMs: 4000 },
@@ -834,12 +894,12 @@ function activate(context) {
   }
 
   async function locateSymbol(document, symbol, token) {
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    const workspace = workspaceFolderForDocument(document);
     if (!workspace || !symbol) {
       return null;
     }
     const workspacePath = workspace.uri.fsPath;
-    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonExecutable = resolvePythonExecutable();
     const extra = [symbol];
     // Opt-in: resolve into locked pys.deps Python (ADR-001). Diagnostics stay fail-closed.
     const navigateLibs = vscode.workspace.getConfiguration('pys').get('navigateLibrarySources', false);
@@ -892,12 +952,12 @@ function activate(context) {
   }));
 
   async function findSymbolUsages(document, symbol, token, position) {
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    const workspace = workspaceFolderForDocument(document);
     if (!workspace || !symbol) {
       return [];
     }
     const workspacePath = workspace.uri.fsPath;
-    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonExecutable = resolvePythonExecutable();
     const extra = ['--usages', symbol];
     if (position) {
       extra.push('--line', String(position.line + 1), '--column', String(position.character + 1));
@@ -977,12 +1037,12 @@ function activate(context) {
   }
 
   async function fetchValidatedTypes(document, token) {
-    const workspace = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0];
+    const workspace = workspaceFolderForDocument(document);
     if (!workspace) {
       return [];
     }
     const workspacePath = workspace.uri.fsPath;
-    const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonExecutable = resolvePythonExecutable();
     const spec = buildWorkspaceIdeProcessSpec(
       context.extensionPath,
       workspacePath,
@@ -1077,6 +1137,40 @@ function activate(context) {
               line: unknownType.range.start.line,
               character: unknownType.range.start.character,
               typeName,
+            }],
+          };
+          actions.push(fix);
+        }
+      }
+
+      const undefStatic = diagnostics.find(
+        (diagnostic) => diagnostic.code === 'pys.undefined-static-method',
+      );
+      if (undefStatic) {
+        const key = `${document.uri.toString()}:${undefStatic.range.start.line + 1}:pys.undefined-static-method`;
+        const meta = errorMeta.get(key);
+        if (meta && meta.suggested_fix === 'create-static-method') {
+          const methodMatch = /Undefined static method '([^']+)' in class ([A-Za-z_]\w*)/.exec(
+            String(undefStatic.message || ''),
+          );
+          const methodName = methodMatch ? methodMatch[1] : '';
+          const className = methodMatch ? methodMatch[2] : '';
+          const fix = new vscode.CodeAction(
+            methodName && className
+              ? `Create static method '${methodName}' on ${className}`
+              : 'Create static method',
+            vscode.CodeActionKind.QuickFix,
+          );
+          fix.diagnostics = [undefStatic];
+          fix.isPreferred = true;
+          fix.command = {
+            command: 'pys.generate.createStaticMethod',
+            title: 'Create static method',
+            arguments: [{
+              line: undefStatic.range.start.line,
+              character: undefStatic.range.start.character,
+              className,
+              methodName,
             }],
           };
           actions.push(fix);
@@ -1386,23 +1480,23 @@ function activate(context) {
     }
   }));
   context.subscriptions.push(vscode.workspace.onDidOpenTextDocument((document) => {
-    if (document.languageId === 'pys') {
+    if (isPysSourceDocument(document)) {
       scheduleValidate(document);
     }
   }));
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
-    if (event.document.languageId === 'pys') {
+    if (isPysSourceDocument(event.document)) {
       scheduleValidate(event.document);
     }
   }));
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument((document) => {
-    if (document.languageId === 'pys') {
+    if (isPysSourceDocument(document)) {
       scheduleValidate(document);
     }
   }));
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) => {
     refreshMainFileUi();
-    if (editor && editor.document.languageId === 'pys') {
+    if (editor && isPysSourceDocument(editor.document)) {
       syncErrorDecorations(editor.document);
       refreshRunnableContext(editor.document);
       scheduleValidate(editor.document);
@@ -1412,16 +1506,24 @@ function activate(context) {
   }));
 
   // Optimistic: show Run/Debug until the first validation reports an Error.
-  if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === 'pys') {
+  if (vscode.window.activeTextEditor && isPysSourceDocument(vscode.window.activeTextEditor.document)) {
     vscode.commands.executeCommand('setContext', 'pys.fileRunnable', true);
   } else {
     vscode.commands.executeCommand('setContext', 'pys.fileRunnable', false);
   }
 
+  // Documents already open at activate (typical after Reload Window) never get
+  // onDidOpenTextDocument — validate them now or diagnostics stay empty.
+  for (const document of vscode.workspace.textDocuments) {
+    if (isPysSourceDocument(document)) {
+      scheduleValidate(document);
+    }
+  }
+
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration('pys.libraryTyping')) {
       for (const document of vscode.workspace.textDocuments) {
-        if (document.languageId === 'pys') {
+        if (isPysSourceDocument(document)) {
           scheduleValidate(document);
         }
       }
@@ -1445,7 +1547,7 @@ function activate(context) {
   );
 
   for (const document of vscode.workspace.textDocuments) {
-    if (document.languageId === 'pys') {
+    if (isPysSourceDocument(document)) {
       scheduleValidate(document);
     }
   }
@@ -1463,7 +1565,7 @@ function activate(context) {
   }
 
   function getPythonExecutable() {
-    return probePython() || (process.platform === 'win32' ? 'python' : 'python3');
+    return resolvePythonExecutable();
   }
 
   /** @type {Set<string>} session-local "don't ask again" for missing runtimes on Run */

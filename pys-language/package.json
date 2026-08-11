@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.toml for libraries).",
-  "version": "0.0.101",
+  "version": "0.0.103",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -619,6 +619,11 @@
       {
         "command": "pys.generate.createClass",
         "title": "Create Class",
+        "category": "PYS Generate"
+      },
+      {
+        "command": "pys.generate.createStaticMethod",
+        "title": "Create Static Method",
         "category": "PYS Generate"
       },
       {

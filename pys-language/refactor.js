@@ -357,6 +357,49 @@ function registerRefactoring(context, deps = {}) {
         return args;
       });
     }],
+    ['pys.generate.createStaticMethod', async (positionHint) => {
+      const editor = requirePysEditor();
+      if (!editor) return;
+      const snap = captureEditor(editor);
+      let pos = editor.selection.active;
+      let className = '';
+      let methodName = '';
+      if (positionHint && typeof positionHint === 'object') {
+        if (typeof positionHint.line === 'number' && typeof positionHint.character === 'number') {
+          pos = new vscode.Position(positionHint.line, positionHint.character);
+        }
+        if (typeof positionHint.className === 'string') {
+          className = positionHint.className.trim();
+        }
+        if (typeof positionHint.methodName === 'string') {
+          methodName = positionHint.methodName.trim();
+        }
+      }
+      if (!className || !methodName) {
+        const diags = vscode.languages.getDiagnostics(editor.document.uri) || [];
+        const hit = diags.find((d) => d.code === 'pys.undefined-static-method');
+        if (hit) {
+          const m = /Undefined static method '([^']+)' in class ([A-Za-z_]\w*)/.exec(
+            String(hit.message || ''),
+          );
+          if (m) {
+            methodName = methodName || m[1];
+            className = className || m[2];
+          }
+          pos = hit.range.start;
+        }
+      }
+      await runOp('create-static-method', editor.document, editor.selection, snap, async (_doc, _sel) => {
+        const args = posArgs(pos);
+        if (className) {
+          args.push('--class-name', className);
+        }
+        if (methodName) {
+          args.push('--method-name', methodName);
+        }
+        return args;
+      });
+    }],
   ];
 
   for (const [id, fn] of commands) {
@@ -387,6 +430,9 @@ function registerRefactoring(context, deps = {}) {
     ),
     'create-class': new vscode.MarkdownString(
       '**Create Class**\n\nGenerate a class for an unresolved type (field/param) or from named constructor arguments.',
+    ),
+    'create-static-method': new vscode.MarkdownString(
+      '**Create Static Method**\n\nInsert `public static` on the class for an unresolved `TypeName.method(...)` call.',
     ),
   };
 

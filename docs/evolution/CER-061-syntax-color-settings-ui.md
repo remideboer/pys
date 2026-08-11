@@ -42,11 +42,17 @@ color picker (same UX as other IDE color fields).
   arrays are replaced as a unit
 - **Reset Setting** clears the `pys.syntaxColors.*` value; activation sync
   removes managed overrides so per-theme extension defaults return
+- **Packaging:** `ROLE_SCOPES` / `THEME_KEYS` live in packaged
+  `syntax-color-roles.js`. Runtime UI must **not** `require('./scripts/…')` —
+  `.vscodeignore` excludes `scripts/` from the VSIX; that crash killed
+  `activate` (grammar still worked; diagnostics never registered).
 
 ### Evidence
 
 - `pys-language/test/syntax-colors.test.js` (merge + package settings)
+- `pys-language/test/packaging-runtime.test.js` (no `./scripts/` requires)
 - Manual: Command Palette → **PYS: Customize Syntax Colors**
+- Cursor exthost: `Extension activated success: remideboer.pys-language`
 
 ## Trade-offs
 

@@ -76,7 +76,7 @@ function resolveToolchainNeeds(target) {
 /**
  * @param {string[]} names
  * @param {{ spawnSync?: typeof spawnSync, platform?: NodeJS.Platform }} [opts]
- * @returns {string | null} first command that exits 0
+ * @returns {string | null} first usable command (absolute path on Windows when known)
  */
 function probeCommand(names, opts = {}) {
   const run = opts.spawnSync || spawnSync;
@@ -93,7 +93,19 @@ function probeCommand(names, opts = {}) {
         shell: false,
       });
       if (where && where.status === 0 && String(where.stdout || '').trim()) {
-        return name;
+        const lines = String(where.stdout || '')
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        // Prefer real installs over the Microsoft Store alias stub
+        // (WindowsApps\python.exe), which prints and exits without running.
+        const preferred = lines.find((line) => !/\\WindowsApps\\/i.test(line));
+        if (preferred) {
+          return preferred;
+        }
+        if (lines[0]) {
+          return lines[0];
+        }
       }
       continue;
     }
@@ -103,7 +115,7 @@ function probeCommand(names, opts = {}) {
       shell: false,
     });
     if (which && which.status === 0 && String(which.stdout || '').trim()) {
-      return name;
+      return String(which.stdout).trim().split(/\r?\n/)[0];
     }
   }
   return null;

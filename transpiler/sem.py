@@ -3786,6 +3786,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     class_names: set[str] = set()
     interfaces: set[str] = set()
     class_members: dict[str, dict[str, str]] = {}
+    class_static_members: dict[str, set[str]] = {}
     class_parents: dict[str, str | None] = {}
     class_implements: dict[str, list[str]] = {}
     traits = _trait_map(body)
@@ -3835,11 +3836,16 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             if stmt.sealed or stmt.closed:
                 sealed.add(stmt.name)
             members: dict[str, str] = {}
+            static_names: set[str] = set()
             for f in stmt.fields:
                 members[f.name] = f.access or "public"
+                if f.is_static:
+                    static_names.add(f.name)
             for m in stmt.methods:
                 if not m.is_constructor:
                     members[m.name] = m.access or "public"
+                    if m.is_static:
+                        static_names.add(m.name)
             # Flatten trait methods into the host's member map (public).
             for use in stmt.uses:
                 tname = use.name
@@ -3849,6 +3855,8 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 for m in trait.methods:
                     members.setdefault(m.name, "public")
             class_members[stmt.name] = members
+            if static_names:
+                class_static_members[stmt.name] = static_names
         elif isinstance(stmt, StructDef):
             # Struct fields are always public; type export uses top_visibility.
             class_members[stmt.name] = {f.name: "public" for f in stmt.fields}
@@ -3984,7 +3992,17 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
     def receiver_type(recv: str, local_types: dict[str, str], current_class: str | None) -> str | None:
         if recv in {"this", "self"}:
             return current_class
-        return local_types.get(recv)
+        if recv in local_types:
+            return local_types.get(recv)
+        # Type-level access: ClassName.member (no local shadowing the type name).
+        if recv in class_members or recv in interfaces or recv in class_names:
+            return recv
+        return None
+
+    def is_type_name_receiver(recv: str, local_types: dict[str, str]) -> bool:
+        if recv in local_types:
+            return False
+        return recv in class_members or recv in interfaces or recv in class_names
 
     def check_member(
         recv: str,
@@ -3994,10 +4012,14 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         line: int,
         column: int,
         code: str = "",
+        *,
+        as_call: bool = False,
+        assign_type: str | None = None,
     ) -> None:
         # Synthesized accessors on atomic variables (not class members).
         if recv in atomic_names and member in {"get", "compareAndSet"}:
             return
+        type_level = is_type_name_receiver(recv, local_types)
         recv_t = receiver_type(recv, local_types, current_class)
         if not recv_t:
             return
@@ -4009,6 +4031,20 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
         if defining_cls is None or access is None:
             # Strict missing-member errors only for types declared in PYS source.
             if recv_t in class_members or recv_t in interfaces:
+                if type_level and as_call and recv_t in class_names:
+                    _transpile_error(
+                        f"Undefined static method '{member}' in class {recv_t}.",
+                        line,
+                        column,
+                        code or f"{recv}.{member}",
+                        code="pys.undefined-static-method",
+                        suggested_fix="create-static-method",
+                        tips=[
+                            f"Add `public static … {member}(…)` to class {recv_t}, "
+                            "or call an existing instance method on a value.",
+                        ],
+                    )
+                    return
                 _transpile_error(
                     f"'{member}' is not a member of declared type {recv_t}.",
                     line,
@@ -4032,6 +4068,33 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                     code or f"{recv}.{member}",
                 )
             return
+        if type_level and recv_t in class_names:
+            statics = class_static_members.get(recv_t, set())
+            # Inherited statics: walk parents
+            if member not in statics:
+                cur: str | None = recv_t
+                seen_s: set[str] = set()
+                found_static = False
+                while cur and cur not in seen_s:
+                    seen_s.add(cur)
+                    if member in class_static_members.get(cur, set()):
+                        found_static = True
+                        break
+                    cur = class_parents.get(cur)
+                if not found_static:
+                    _transpile_error(
+                        f"'{member}' is an instance member of class {recv_t}; "
+                        f"cannot access it as {recv_t}.{member}.",
+                        line,
+                        column,
+                        code or f"{recv}.{member}",
+                        code="pys.instance-member-via-type",
+                        tips=[
+                            f"Call it on an instance of {recv_t}, or declare the "
+                            f"member `static` on class {recv_t}.",
+                        ],
+                    )
+                    return
         allowed = False
         if access == "public":
             allowed = True
@@ -4053,8 +4116,41 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
             code or f"{recv}.{member}",
         )
 
-    def walk_expr(expr: Expr | None, local_types: dict[str, str], current_class: str | None) -> None:
+    def walk_expr(
+        expr: Expr | None,
+        local_types: dict[str, str],
+        current_class: str | None,
+        *,
+        assign_type: str | None = None,
+    ) -> None:
         if expr is None:
+            return
+        if isinstance(expr, Call):
+            callee = expr.callee
+            if isinstance(callee, Member) and isinstance(callee.object, Identifier):
+                line = callee.span.line if callee.span else 1
+                col = callee.span.column if callee.span else 1
+                # Prefer the member name column (TypeName.method).
+                if callee.object.span is not None:
+                    col = callee.object.span.column + len(callee.object.name)
+                    # Skip '.' and spaces between type and member.
+                    # (span text not available; typical `Type.method`)
+                    col += 1
+                check_member(
+                    callee.object.name,
+                    callee.name,
+                    local_types,
+                    current_class,
+                    line,
+                    col,
+                    as_call=True,
+                    assign_type=assign_type,
+                )
+            else:
+                walk_expr(callee, local_types, current_class)
+            for a in expr.args or []:
+                if isinstance(a, Expr):
+                    walk_expr(a, local_types, current_class)
             return
         if isinstance(expr, Member) and isinstance(expr.object, Identifier):
             line = expr.span.line if expr.span else 1
@@ -4067,7 +4163,7 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                 if expr.span is not None and piece.span is not None:
                     piece.span = expr.span
                 walk_expr(piece, local_types, current_class)
-        for attr in ("left", "right", "operand", "value", "expr", "cond", "callee", "object", "index"):
+        for attr in ("left", "right", "operand", "value", "expr", "cond", "object", "index"):
             child = getattr(expr, attr, None)
             if isinstance(child, Expr):
                 walk_expr(child, local_types, current_class)
@@ -4097,7 +4193,8 @@ def _check_oop(body: list[Any], *, types: dict[str, str], resolver: Any | None =
                     inferred = _infer_type(stmt.value)
                     if inferred:
                         local_types[stmt.name] = inferred
-                walk_expr(stmt.value, local_types, current_class)
+                decl = stmt.declare_type if stmt.declare_type and stmt.declare_type != "var" else None
+                walk_expr(stmt.value, local_types, current_class, assign_type=decl)
             elif isinstance(stmt, (PrintStmt, ReturnStmt)):
                 walk_expr(stmt.value, local_types, current_class)
             elif isinstance(stmt, ExprStmt):

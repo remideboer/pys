@@ -34,10 +34,25 @@ thin squiggles on 1–2 character tokens (e.g. `require` vs `requires`).
   (`TextEditorDecorationType`) + overview ruler mark.
 - `require Type name` → `pys.trait-require-typo` + quick fix to `requires`;
   `require` is **not** a keyword / not highlighted.
+- **Activate:** validate every already-open `.pys` tab (Reload Window restores
+  editors before `onDidOpenTextDocument`, so without this pass diagnostics stay
+  empty until the user edits).
+- **Python probe:** IDE helpers (diagnostics, completions, go-to, usages) spawn
+  via `probePython()` absolute path and **skip** `WindowsApps\python.exe` Store
+  stubs. Bare `python` on Cursor's PATH can hit the stub and return empty
+  stdout → silent/empty diagnostics.
+- Failures that previously cleared the collection with no message (no folder,
+  containment miss, spawn failure) now surface a visible Error at (0,0) with
+  detail / interpreter path.
+- **Activate must succeed:** a failed `activate` (e.g. missing packaged module)
+  leaves language mode/highlighting intact but registers no diagnostic
+  providers — see CER-061 packaging note.
 
 ### Evidence
 
 - `tests/test_ide_stdin_analyze.py`
+- `pys-language/extension.js` activate loop over `workspace.textDocuments`
+- `pys-language/test/runtime-ensure.test.js` (WindowsApps skip + absolute path)
 - `tests/test_traits.py::test_require_singular_is_trait_require_typo`
 - `pys-language/test/ide-process.test.js` (stdin write)
 

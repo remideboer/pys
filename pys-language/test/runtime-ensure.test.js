@@ -28,7 +28,7 @@ test('stable version catalogs expose curated ids', () => {
   assert.equal(stableVersionsFor('node'), STABLE_NODE_VERSIONS);
 });
 
-test('probeCommand returns first successful name', () => {
+test('probeCommand returns first successful absolute path on Windows', () => {
   const calls = [];
   const spawnSync = (cmd, args) => {
     calls.push([cmd, ...args]);
@@ -39,10 +39,28 @@ test('probeCommand returns first successful name', () => {
   };
   assert.equal(
     probeCommand(['python', 'python3'], { spawnSync, platform: 'win32' }),
-    'python3',
+    'C:\\Python\\python3.exe',
   );
   assert.deepEqual(calls[0], ['where', 'python']);
   assert.deepEqual(calls[1], ['where', 'python3']);
+});
+
+test('probeCommand skips WindowsApps Store stub', () => {
+  const spawnSync = (cmd, args) => {
+    if (cmd === 'where' && args[0] === 'python') {
+      return {
+        status: 0,
+        stdout:
+          'C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\r\n'
+          + 'C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python311\\python.exe\r\n',
+      };
+    }
+    return { status: 1, stdout: '' };
+  };
+  assert.equal(
+    probeCommand(['python'], { spawnSync, platform: 'win32' }),
+    'C:\\Users\\me\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+  );
 });
 
 test('probePython / probeNode order by platform', () => {

@@ -1,11 +1,12 @@
-# PYS Language Support 0.0.101
+# PYS Language Support 0.0.103
 
-## Rename + Accept / Reject stay put
+## Fix: extension activation (diagnostics were dead)
 
-- **Rename** uses the normal **at-cursor** rename field (same as F2) — no Beside
-  name dialog.
-- Live preview **Accept / Reject** stay on the changed line (**CodeLens**) and in
-  a sticky input bar (`ignoreFocusOut`) — no disappearing toast.
+- Packaged VSIX excludes `scripts/`, but syntax-color UI required
+  `./scripts/apply-syntax-colors.js` → **activate crashed** on every open of a
+  `.pys` file. Language mode/highlighting still worked; Run/diagnostics did not.
+- Role maps now live in packaged `syntax-color-roles.js`. Syntax-color setup is
+  isolated so a UI failure cannot kill diagnostics.
 
 ## Install
 

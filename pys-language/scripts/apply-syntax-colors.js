@@ -10,65 +10,16 @@
 const fs = require("fs");
 const path = require("path");
 
+const {
+  ROLE_SCOPES,
+  THEME_KEYS,
+} = require('../syntax-color-roles.js');
+
 const extensionRoot = path.join(__dirname, "..");
 const schemesPath = path.join(extensionRoot, "syntax-color-schemes.md");
 const packagePath = path.join(extensionRoot, "package.json");
 
-/** role → TextMate scopes (color names like Yellow are never keys). */
-const ROLE_SCOPES = {
-  comments: {
-    scope: ["comment.line.number-sign.pys", "comment.block.pys"],
-  },
-  strings: {
-    scope: ["string.quoted.double.pys", "string.quoted.single.pys"],
-  },
-  numbers: {
-    scope: [
-      "constant.numeric.integer.pys",
-      "constant.numeric.float.pys",
-      "constant.numeric.hex.pys",
-      "constant.numeric.binary.pys",
-      "constant.language.pys",
-      "constant.character.escape.pys",
-    ],
-  },
-  functions: {
-    scope: ["entity.name.function.pys", "support.function.pys"],
-  },
-  types: {
-    scope: [
-      "storage.type.primitive.pys",
-      "entity.name.type.pys",
-      "entity.name.type.class.pys",
-      "entity.name.type.interface.pys",
-      "entity.name.type.struct.pys",
-      "entity.name.type.data.pys",
-      "entity.name.type.entity.pys",
-      "entity.name.type.enum.pys",
-    ],
-  },
-  "language-constants": {
-    scope: ["variable.language.pys", "variable.other.constant.pys"],
-  },
-  keywords: {
-    scope: [
-      "keyword.control.pys",
-      "keyword.operator.pys",
-      "storage.modifier.pys",
-      "punctuation.definition.decorator.pys",
-      "entity.name.function.decorator.pys",
-      "meta.function.decorator.pys",
-    ],
-  },
-};
-
 const REQUIRED_ROLES = Object.keys(ROLE_SCOPES);
-
-const THEME_KEYS = {
-  dark: "[*Dark*]",
-  light: "[*Light*]",
-  "high-contrast": "[*HighContrast*]",
-};
 
 /** role → package.json setting id (Settings UI color pickers). */
 const ROLE_PACKAGE_SETTINGS = {

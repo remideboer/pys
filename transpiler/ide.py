@@ -1126,6 +1126,17 @@ def _cli_refactor_plan(argv: list[str]) -> int:
                 source=source_text,
                 type_name=opts.get("type_name"),
             )
+        elif op == "create-static-method":
+            from .refactor.create_static_method import plan_create_static_method
+
+            plan = plan_create_static_method(
+                path,
+                line=line or 1,
+                column=column or 1,
+                source=source_text,
+                class_name=opts.get("class_name"),
+                method_name=opts.get("method_name"),
+            )
         else:
             print(json.dumps({"ok": False, "message": f"Unknown refactor op {op!r}"}))
             return 2

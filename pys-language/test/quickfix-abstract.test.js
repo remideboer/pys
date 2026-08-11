@@ -49,6 +49,11 @@ test('extension offers make-abstract and gates create-class on sentinel', () => 
   assert.match(src, /findEnclosingClassHeader/);
   assert.match(src, /suggested_fix === 'create-class'/);
   assert.match(src, /require\('\.\/class-header'\)/);
+  assert.match(src, /pys\.undefined-static-method/);
+  assert.match(src, /suggested_fix === 'create-static-method'/);
+  assert.match(src, /pys\.generate\.createStaticMethod/);
+  assert.match(src, /workspace\.textDocuments/);
+  assert.match(src, /scheduleValidate\(document\)/);
 });
 
 test('refactor catalog no longer always-on Create Class QuickFix', () => {
