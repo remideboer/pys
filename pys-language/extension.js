@@ -634,6 +634,67 @@ function activate(context) {
     }, 300);
   }
 
+  async function formatPysDocument(document, token) {
+    if (!isPysSourceDocument(document)) {
+      return [];
+    }
+    const workspace = workspaceFolderForDocument(document);
+    if (!workspace) {
+      return [];
+    }
+    const pythonExecutable = resolvePythonExecutable();
+    const spec = buildWorkspaceIdeProcessSpec(
+      context.extensionPath,
+      workspace.uri.fsPath,
+      document.uri.fsPath,
+      ['--format', '--stdin'],
+    );
+    if (!spec) {
+      return [];
+    }
+    try {
+      const parsed = await runJsonProcess(
+        pythonExecutable,
+        spec.args,
+        spec.options,
+        {
+          signal: token,
+          stdin: document.getText(),
+          timeoutMs: 15_000,
+        },
+      );
+      if (!parsed || !parsed.ok || typeof parsed.text !== 'string') {
+        return [];
+      }
+      if (parsed.text === document.getText()) {
+        return [];
+      }
+      const fullRange = new vscode.Range(
+        document.positionAt(0),
+        document.positionAt(document.getText().length),
+      );
+      return [vscode.TextEdit.replace(fullRange, parsed.text)];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: 'pys' },
+      { provideDocumentFormattingEdits: formatPysDocument },
+    ),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pys.formatDocument', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || !isPysSourceDocument(editor.document)) {
+        return;
+      }
+      await vscode.commands.executeCommand('editor.action.formatDocument');
+    }),
+  );
+
   function provideCodeLenses(document, token) {
     const diags = diagnosticCollection.get(document.uri) || [];
     if (diags.some((d) => d.severity === vscode.DiagnosticSeverity.Error)) {

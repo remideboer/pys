@@ -37,6 +37,35 @@ from . import sem as sem_mod
 from .transpiler import TranspileError, TranspileWarning
 from .workspace import resolve_workspace_path, workspace_root_from_env
 
+
+def format_file(source_path: Path, *, source: str | None = None) -> dict[str, Any]:
+    """Pretty-print a contained `.pys` file. Parse failure → ``ok: false`` (no text)."""
+    from .format import format_source
+    from .parse import FatalParseError
+
+    workspace_root = workspace_root_from_env()
+    try:
+        contained = resolve_workspace_path(source_path, workspace_root)
+    except Exception as exc:
+        return {"ok": False, "error": {"message": str(exc)}}
+    if contained is None:
+        return {
+            "ok": False,
+            "error": {"message": f"Source path resolves outside the workspace: {source_path}"},
+        }
+    try:
+        text = source if source is not None else contained.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {"ok": False, "error": {"message": str(exc)}}
+    try:
+        formatted = format_source(text)
+    except (FatalParseError, SyntaxError, ValueError) as exc:
+        return {"ok": False, "error": {"message": str(exc)}}
+    if formatted is None:
+        return {"ok": False, "error": {"message": "Format requires a successful brace-mode parse."}}
+    return {"ok": True, "text": formatted}
+
+
 _PRIMITIVES = {
     "int",
     "float",
@@ -937,6 +966,7 @@ def main(argv: list[str] | None = None) -> int:
                     "message": (
                             "Usage: python -m transpiler.ide <file.pys> [symbol] "
                             "[--library-sources] [--stdin] "
+                            "| <file.pys> --format [--stdin] "
                             "| <file.pys> --completions --line N --column N [--stdin] "
                             "| <file.pys> --usages <symbol> [--line N --column N] "
                             "| --refactor-plan <op> <file.pys> ..."
@@ -957,6 +987,11 @@ def main(argv: list[str] | None = None) -> int:
             read_stdin = True
         else:
             filtered.append(arg)
+    if len(filtered) >= 1 and filtered[0] == "--format":
+        buffer_source = sys.stdin.read() if read_stdin else None
+        result = format_file(path, source=buffer_source)
+        print(json.dumps(result))
+        return 0 if result.get("ok") else 1
     if len(filtered) >= 1 and filtered[0] == "--completions":
         line = column = 1
         rest_flags = filtered[1:]

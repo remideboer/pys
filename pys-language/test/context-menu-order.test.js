@@ -17,6 +17,7 @@ test('editor/context order: run, refactor, find usages, generate, reveal, extra'
   const byCmd = (id) => ctx.find((e) => e.command === id || e.submenu === id);
   assert.equal(byCmd('pys.runFile').group, '0_run@1');
   assert.equal(byCmd('pys.debugFile').group, '0_run@2');
+  assert.equal(byCmd('pys.formatDocument').group, '1_modification@1');
   assert.equal(byCmd('pys.refactor.rename').group, '1_pys_refactor@1');
   assert.equal(byCmd('pys.refactor.extractFunction').group, '1_pys_refactor@2');
   assert.equal(byCmd('pys.refactor.extractMethod').group, '1_pys_refactor@2');
@@ -46,6 +47,13 @@ test('editor/context order: run, refactor, find usages, generate, reveal, extra'
   const more = manifest.contributes.menus['pys.refactor.more'].map((e) => e.command);
   assert.ok(more.includes('pys.refactor.extractVariable'));
   assert.ok(!ctx.some((e) => e.command === 'pys.refactor.extractVariable'));
+
+  const formatCmd = manifest.contributes.commands.find((c) => c.command === 'pys.formatDocument');
+  assert.equal(formatCmd.title, 'Reformat Code in File');
+  assert.match(
+    fs.readFileSync(path.join(root, 'extension.js'), 'utf8'),
+    /registerDocumentFormattingEditProvider/,
+  );
 });
 
 test('isOffsetInClassBody detects class vs top-level function', () => {

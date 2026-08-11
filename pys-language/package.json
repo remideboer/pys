@@ -2,7 +2,7 @@
   "name": "pys-language",
   "displayName": "PYS Language Support",
   "description": "Syntax highlighting, snippets, and Run for the PYS teaching language (transpiler bundled; pys.toml for libraries).",
-  "version": "0.0.104",
+  "version": "0.0.106",
   "publisher": "remideboer",
   "license": "MIT",
   "repository": {
@@ -561,6 +561,12 @@
         "icon": "$(references)"
       },
       {
+        "command": "pys.formatDocument",
+        "title": "Reformat Code in File",
+        "category": "PYS",
+        "icon": "$(symbol-namespace)"
+      },
+      {
         "command": "pys.moveToSuggestedPackagePath",
         "title": "Move File to Suggested Package Path",
         "category": "PYS"
@@ -773,6 +779,11 @@
           "command": "pys.debugFile",
           "when": "resourceExtname == .pys",
           "group": "0_run@2"
+        },
+        {
+          "command": "pys.formatDocument",
+          "when": "resourceExtname == .pys",
+          "group": "1_modification@1"
         },
         {
           "command": "pys.refactor.rename",

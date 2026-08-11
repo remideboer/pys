@@ -1,11 +1,10 @@
-# PYS Language Support 0.0.104
+# PYS Language Support 0.0.106
 
-## Fix: `Type.method()` highlighting
+## Formatter: Java-sparse blank lines
 
-- Method declarations required a return type to be followed by whitespace, so
-  `greet()` is no longer split into type `gree` + method `t`.
-- Call sites `Character.greet()` use class color on the type and function color
-  on the method (`meta.method-call.static.pys`).
+- Do not echo source blank lines inside classes/methods.
+- Blank only between field blocks and methods, between methods, and between
+  top-level types/functions — fields stay packed (Java baseline).
 
 ## Install
 
