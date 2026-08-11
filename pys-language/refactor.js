@@ -1,7 +1,7 @@
 /**
- * Educational refactoring: plan via IDE process; rename uses the at-cursor
- * rename widget; other ops may prompt for a name; live orange/blue preview
- * with sticky Accept/Reject (CodeLens + ignoreFocusOut bar).
+ * Educational refactoring: plan via IDE process; rename prompts for a name;
+ * other ops may prompt for a name; live orange/blue preview with sticky
+ * Accept/Reject (CodeLens + ignoreFocusOut bar).
  */
 const vscode = require('vscode');
 const {
@@ -181,8 +181,35 @@ function registerRefactoring(context, deps = {}) {
     ['pys.refactor.rename', async () => {
       const editor = requirePysEditor();
       if (!editor) return;
-      // Native at-cursor rename input (same widget as F2).
-      await vscode.commands.executeCommand('editor.action.rename');
+      const snap = captureEditor(editor);
+      const pos = snap.selection.active;
+      const word = editor.document.getWordRangeAtPosition(pos);
+      if (!word) {
+        vscode.window.showErrorMessage('PYS rename: no symbol at the cursor.');
+        return;
+      }
+      const oldName = editor.document.getText(word);
+      const name = await showModalInput(
+        context,
+        {
+          title: 'Rename Symbol',
+          prompt: `New name for '${oldName}'`,
+          value: oldName,
+        },
+        snap,
+      );
+      if (name === null || !String(name).trim()) {
+        return;
+      }
+      const trimmed = String(name).trim();
+      if (trimmed === oldName) {
+        return;
+      }
+      await runOp('rename', editor.document, editor.selection, snap, async (_doc, sel) => [
+        ...posArgs(sel.active),
+        '--new-name',
+        trimmed,
+      ]);
     }],
     ['pys.refactor.extractVariable', async () => {
       const editor = requirePysEditor();
@@ -328,52 +355,8 @@ function registerRefactoring(context, deps = {}) {
     context.subscriptions.push(vscode.commands.registerCommand(id, fn));
   }
 
-  context.subscriptions.push(
-    vscode.languages.registerRenameProvider({ language: 'pys' }, {
-      async prepareRename(document, position) {
-        const word = document.getWordRangeAtPosition(position);
-        if (!word) {
-          throw new Error('No symbol to rename');
-        }
-        return word;
-      },
-      async provideRenameEdits(document, position, newName) {
-        const plan = await callRefactorPlan(document, 'rename', [
-          ...posArgs(position),
-          '--new-name',
-          newName,
-        ]);
-        if (!plan || !plan.ok) {
-          const msg = (plan && plan.conflicts && plan.conflicts[0] && plan.conflicts[0].message)
-            || (plan && plan.message)
-            || 'Rename failed';
-          throw new Error(msg);
-        }
-        const edits = plan.edits || [];
-        const chosen = await showLivePreview(
-          context,
-          {
-            title: plan.title || 'Rename Symbol',
-            summary: plan.summary || '',
-            why: plan.why || '',
-            conflicts: plan.conflicts || [],
-            edits,
-            hardBlocked: false,
-            message: plan.message || '',
-          },
-          document,
-        );
-        if (chosen === null) {
-          return null;
-        }
-        // Live preview already mutated the buffer on Accept.
-        if (chosen.alreadyApplied) {
-          return new vscode.WorkspaceEdit();
-        }
-        return workspaceEditFromPlan(edits, chosen.indices);
-      },
-    }),
-  );
+  // No RenameProvider: that would add a second built-in "Rename Symbol" to the
+  // context menu. F2 is rebound to pys.refactor.rename in package.json.
 
   const catalogDocs = {
     'extract-variable': new vscode.MarkdownString(
@@ -420,7 +403,6 @@ function registerRefactoring(context, deps = {}) {
         add('Inline Function…', 'pys.refactor.inlineFunction', vscode.CodeActionKind.RefactorInline, 'inline-function');
         add('Safe Delete…', 'pys.refactor.safeDelete', vscode.CodeActionKind.Refactor, 'safe-delete');
         add('Introduce Parameter…', 'pys.refactor.introduceParameter', vscode.CodeActionKind.RefactorRewrite, 'introduce-parameter');
-        add('Rename Symbol…', 'pys.refactor.rename', vscode.CodeActionKind.Refactor, 'rename');
         return actions;
       },
     }, {

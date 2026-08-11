@@ -13,7 +13,7 @@ const {
 test('refactor.js module file exists and exports registerRefactoring', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'refactor.js'), 'utf8');
   assert.match(src, /function registerRefactoring/);
-  assert.match(src, /registerRenameProvider/);
+  assert.doesNotMatch(src, /registerRenameProvider/);
   assert.match(src, /CodeActionKind\.RefactorExtract/);
   assert.match(src, /showLivePreview/);
   assert.doesNotMatch(src, /showModalPreview/);
@@ -31,7 +31,8 @@ test('refactor name prompts stay modal; apply preview is live in editor', () => 
   assert.match(main, /showModalInput/);
   assert.match(main, /captureEditor/);
   assert.match(main, /refactor-live-preview/);
-  assert.match(main, /editor\.action\.rename/);
+  assert.match(main, /pys\.refactor\.rename/);
+  assert.doesNotMatch(main, /editor\.action\.rename/);
   assert.match(main, /--stdin/);
   const live = fs.readFileSync(path.join(__dirname, '..', 'refactor-live-preview.js'), 'utf8');
   assert.match(live, /createTextEditorDecorationType/);
@@ -55,12 +56,28 @@ test('refactor menu items sit in navigation under Go to Definition peers', () =>
   const rename = ctx.find((e) => e.command === 'pys.refactor.rename');
   const more = ctx.find((e) => e.submenu === 'pys.refactor.more');
   const find = ctx.find((e) => e.command === 'pys.findUsages');
+  const run = ctx.find((e) => e.command === 'pys.runFile');
+  const debug = ctx.find((e) => e.command === 'pys.debugFile');
   assert.ok(rename);
   assert.ok(more);
   assert.ok(find);
+  assert.ok(run);
+  assert.ok(debug);
+  assert.equal(run.group, '0_run@1');
+  assert.equal(debug.group, '0_run@2');
   assert.match(rename.group, /^navigation@/);
   assert.match(more.group, /^navigation@/);
   assert.match(find.group, /^navigation@/);
+  // Catalog CodeAction must not re-add Rename Symbol (duplicate of context entry).
+  const refactorSrc = fs.readFileSync(path.join(__dirname, '..', 'refactor.js'), 'utf8');
+  assert.doesNotMatch(
+    refactorSrc,
+    /add\('Rename Symbol…',\s*'pys\.refactor\.rename'/,
+  );
+  const f2 = (manifest.contributes.keybindings || []).find(
+    (k) => k.command === 'pys.refactor.rename' && String(k.key).toLowerCase() === 'f2',
+  );
+  assert.ok(f2, 'F2 should invoke PYS rename (no built-in RenameProvider menu)');
 });
 
 test('computeAfterSpans maps rename sites onto after-text offsets', () => {

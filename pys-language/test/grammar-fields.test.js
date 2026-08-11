@@ -30,7 +30,8 @@ test('field declaration highlights builtin and user types', () => {
   assert.equal(builtin[1], 'private');
   assert.equal(builtin[4], 'string');
   assert.equal(builtin[6], 'name');
-  assert.equal(captures['4'].name, 'storage.type.pys');
+  assert.equal(captures['4'].name, 'storage.type.primitive.pys');
+  assert.notEqual(captures['4'].name, 'storage.modifier.pys');
 
   const user = '    private Heritage heritage'.match(re);
   assert.ok(user, 'private Heritage heritage should match field pattern');
@@ -64,7 +65,7 @@ test('typed declaration does not treat private as a type', () => {
 });
 
 test('method declaration keeps override + return type', () => {
-  const { match } = findDecl('meta.method.declaration.pys');
+  const { match, captures } = findDecl('meta.method.declaration.pys');
   const re = toRegExp(match);
   const m = '    public override string toString(){'.match(re);
   assert.ok(m);
@@ -72,9 +73,26 @@ test('method declaration keeps override + return type', () => {
   assert.equal(m[4], 'override');
   assert.equal(m[5], 'string');
   assert.equal(m[7], 'toString');
+  assert.equal(captures['5'].name, 'storage.type.primitive.pys');
 
   const bare = '    greet(){'.match(re);
   assert.ok(bare, 'bare greet() should match method pattern (omitted access)');
   assert.equal(bare[1], undefined);
   assert.equal(bare[7], 'greet');
+});
+
+test('package.json defaults share one color for primitive and class types', () => {
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),
+  );
+  const rules =
+    manifest.contributes.configurationDefaults['editor.tokenColorCustomizations']['[*Dark*]']
+      .textMateRules;
+  const typeRule = rules.find(
+    (r) => Array.isArray(r.scope) && r.scope.includes('storage.type.primitive.pys'),
+  );
+  assert.ok(typeRule, 'dark theme should color storage.type.primitive.pys');
+  assert.ok(typeRule.scope.includes('entity.name.type.pys'));
+  assert.ok(typeRule.scope.includes('entity.name.type.class.pys'));
+  assert.ok(typeRule.settings && typeRule.settings.foreground);
 });

@@ -94,6 +94,7 @@ Each record then uses:
 | [CER-057](CER-057-unknown-type-sites.md) | Fail-closed unknown types at all use sites | Language / IDE |
 | [CER-058](CER-058-member-access-module-default.md) | Omitted class/entity member access ⇒ `module` | Language |
 | [CER-059](CER-059-abstract-create-class-quickfixes.md) | Make class abstract QF + Create Class QF scoping | IDE |
+| [CER-060](CER-060-java-like-type-highlighting.md) | Primitive/type TextMate scopes (Java-like colors) | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 

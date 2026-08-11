@@ -189,7 +189,7 @@
           "match": "\\b(int|float|char|string|bool|byte|nibble|int16|int32|int64|dword)(?:\\[(\\d*)\\])+\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "2": {
               "name": "constant.numeric.integer.pys"
@@ -210,7 +210,7 @@
               "name": "storage.modifier.pys"
             },
             "3": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "4": {
               "name": "variable.other.constant.pys"
@@ -228,7 +228,7 @@
               "name": "storage.modifier.pys"
             },
             "3": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "4": {
               "name": "entity.name.type.pys"
@@ -246,7 +246,7 @@
               "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "3": {
               "name": "variable.other.pys"
@@ -261,7 +261,7 @@
               "name": "storage.modifier.pys"
             },
             "2": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "3": {
               "name": "variable.other.pys"
@@ -313,7 +313,7 @@
               "name": "punctuation.definition.typeparameters.begin.pys"
             },
             "6": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "7": {
               "name": "punctuation.definition.typeparameters.end.pys"
@@ -376,7 +376,7 @@
               "name": "keyword.control.pys"
             },
             "3": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "4": {
               "name": "entity.name.function.pys"
@@ -403,7 +403,7 @@
               "name": "punctuation.definition.typeparameters.begin.pys"
             },
             "6": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "7": {
               "name": "punctuation.definition.typeparameters.end.pys"
@@ -500,7 +500,7 @@
               "name": "storage.modifier.pys"
             },
             "4": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "5": {
               "name": "entity.name.type.pys"
@@ -527,7 +527,7 @@
               "name": "storage.modifier.pys"
             },
             "5": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "6": {
               "name": "entity.name.type.pys"
@@ -542,7 +542,7 @@
           "match": "\\b(var)\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "2": {
               "name": "variable.other.pys"
@@ -554,7 +554,7 @@
           "match": "\\b(?:((?:result|nullable|list|dict|tuple|set|lambda)\\s*<[^>\\n]+>|int|float|char|string|bool|object|byte|nibble|int16|int32|int64|dword)|((?!public\\b|private\\b|protected\\b|module\\b|global\\b|package\\b|static\\b|open\\b|override\\b|closed\\b|abstract\\b|constructor\\b|struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|else\\b|loop\\b|while\\b|for\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b|import\\b|from\\b|switch\\b|case\\b|default\\b|this\\b|super\\b|true\\b|false\\b|null\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "2": {
               "name": "entity.name.type.pys"
@@ -577,7 +577,7 @@
           "match": "\\belse\\s+if\\b"
         },
         {
-          "name": "storage.type.pys",
+          "name": "storage.type.primitive.pys",
           "match": "\\bvar\\b"
         },
         {
@@ -589,7 +589,7 @@
     "types": {
       "patterns": [
         {
-          "name": "storage.type.pys",
+          "name": "storage.type.primitive.pys",
           "match": "\\b(?:var|int|float|char|bool|str|string|void|object|list|dict|tuple|set|result|nullable)\\b"
         }
       ]
@@ -601,7 +601,7 @@
           "begin": "\\b((?:list|dict|tuple|set)|(?:[A-Z][A-Za-z0-9_]*))\\s*(<)(?=\\s*(?:int|float|char|string|bool|list|dict|tuple|set|[A-Z][A-Za-z0-9_]*)\\b)",
           "beginCaptures": {
             "1": {
-              "name": "storage.type.pys"
+              "name": "storage.type.primitive.pys"
             },
             "2": {
               "name": "punctuation.definition.typeparameters.begin.pys"

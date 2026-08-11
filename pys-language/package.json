@@ -91,6 +91,21 @@
                 "foreground": "#FF79C6",
                 "fontStyle": "bold"
               }
+            },
+            {
+              "scope": [
+                "storage.type.primitive.pys",
+                "entity.name.type.pys",
+                "entity.name.type.class.pys",
+                "entity.name.type.interface.pys",
+                "entity.name.type.struct.pys",
+                "entity.name.type.data.pys",
+                "entity.name.type.entity.pys",
+                "entity.name.type.enum.pys"
+              ],
+              "settings": {
+                "foreground": "#8BE9FD"
+              }
             }
           ]
         },
@@ -106,6 +121,21 @@
                 "foreground": "#9A1B6B",
                 "fontStyle": "bold"
               }
+            },
+            {
+              "scope": [
+                "storage.type.primitive.pys",
+                "entity.name.type.pys",
+                "entity.name.type.class.pys",
+                "entity.name.type.interface.pys",
+                "entity.name.type.struct.pys",
+                "entity.name.type.data.pys",
+                "entity.name.type.entity.pys",
+                "entity.name.type.enum.pys"
+              ],
+              "settings": {
+                "foreground": "#267F99"
+              }
             }
           ]
         },
@@ -120,6 +150,21 @@
               "settings": {
                 "foreground": "#FFFF00",
                 "fontStyle": "bold"
+              }
+            },
+            {
+              "scope": [
+                "storage.type.primitive.pys",
+                "entity.name.type.pys",
+                "entity.name.type.class.pys",
+                "entity.name.type.interface.pys",
+                "entity.name.type.struct.pys",
+                "entity.name.type.data.pys",
+                "entity.name.type.entity.pys",
+                "entity.name.type.enum.pys"
+              ],
+              "settings": {
+                "foreground": "#00FFFF"
               }
             }
           ]
@@ -315,7 +360,7 @@
       },
       {
         "command": "pys.refactor.rename",
-        "title": "Rename",
+        "title": "Rename Symbol",
         "category": "PYS Refactor"
       },
       {
@@ -463,6 +508,16 @@
           "group": "navigation@1"
         },
         {
+          "command": "pys.runFile",
+          "when": "resourceExtname == .pys",
+          "group": "0_run@1"
+        },
+        {
+          "command": "pys.debugFile",
+          "when": "resourceExtname == .pys",
+          "group": "0_run@2"
+        },
+        {
           "command": "pys.findUsages",
           "when": "resourceExtname == .pys",
           "group": "navigation@2"
@@ -488,34 +543,24 @@
           "group": "navigation@6"
         },
         {
-          "command": "pys.runFile",
+          "command": "pys.debugTranspiledFile",
           "when": "resourceExtname == .pys",
           "group": "1_run@1"
         },
         {
-          "command": "pys.debugFile",
+          "command": "pys.addLogpoint",
           "when": "resourceExtname == .pys",
           "group": "1_run@2"
         },
         {
-          "command": "pys.debugTranspiledFile",
-          "when": "resourceExtname == .pys",
-          "group": "1_run@2.5"
-        },
-        {
-          "command": "pys.addLogpoint",
+          "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys",
           "group": "1_run@3"
         },
         {
-          "command": "pys.clearAllBreakpoints",
-          "when": "resourceExtname == .pys",
-          "group": "1_run@4"
-        },
-        {
           "command": "pys.setAsEntrypoint",
           "when": "resourceExtname == .pys",
-          "group": "1_run@5"
+          "group": "1_run@4"
         }
       ],
       "pys.refactor.more": [
@@ -619,6 +664,11 @@
         "command": "pys.debugFile",
         "key": "ctrl+shift+d",
         "when": "resourceExtname == .pys"
+      },
+      {
+        "command": "pys.refactor.rename",
+        "key": "f2",
+        "when": "editorTextFocus && editorLangId == pys && !editorReadonly"
       },
       {
         "command": "pys.runMain",
