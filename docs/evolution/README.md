@@ -92,6 +92,8 @@ Each record then uses:
 | [CER-055](CER-055-live-buffer-diagnostics.md) | Live buffer diagnostics + Error red paint | IDE |
 | [CER-056](CER-056-intellisense-completions.md) | IntelliSense completions + Create Class | IDE |
 | [CER-057](CER-057-unknown-type-sites.md) | Fail-closed unknown types at all use sites | Language / IDE |
+| [CER-058](CER-058-member-access-module-default.md) | Omitted class/entity member access ⇒ `module` | Language |
+| [CER-059](CER-059-abstract-create-class-quickfixes.md) | Make class abstract QF + Create Class QF scoping | IDE |
 
 Related architecture overview: [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 

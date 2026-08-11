@@ -621,22 +621,22 @@ def test_class_method_keyword_is_illegal() -> None:
         transpile(source)
 
 
-def test_class_members_require_access_modifier() -> None:
+def test_class_members_default_access_to_module() -> None:
     source = """class Car {
     int year
-}
-"""
-    with pytest.raises(TranspileError, match="access modifier"):
-        transpile(source)
 
-    source_method = """class Car {
     drive() {
         print("driving")
     }
 }
 """
-    with pytest.raises(TranspileError, match="access modifier"):
-        transpile(source_method)
+    from transpiler.parse import parse_program
+
+    tree = parse_program(source)
+    cls = next(s for s in tree.body if getattr(s, "name", None) == "Car")
+    assert next(f for f in cls.fields if f.name == "year").access == "module"
+    assert next(m for m in cls.methods if m.name == "drive").access == "module"
+    transpile(source)
 
 
 def test_transpile_overloaded_methods() -> None:

@@ -173,14 +173,33 @@ entity Item identity(id) {
     assert "def __init__(self, id" in py
 
 
-def test_method_still_requires_access_modifier() -> None:
-    with pytest.raises(TranspileError, match="access modifier"):
-        transpile(
-            """
+def test_bare_method_defaults_to_module() -> None:
+    from transpiler.parse import parse_program
+
+    src = """
 class Bad {
     int oops() {
         return 1
     }
 }
 """
-        )
+    tree = parse_program(src)
+    cls = next(s for s in tree.body if getattr(s, "name", None) == "Bad")
+    method = next(m for m in cls.methods if m.name == "oops")
+    assert method.access == "module"
+    transpile(src)
+
+
+def test_bare_field_defaults_to_module() -> None:
+    from transpiler.parse import parse_program
+
+    src = """
+class Car {
+    int year
+}
+"""
+    tree = parse_program(src)
+    cls = next(s for s in tree.body if getattr(s, "name", None) == "Car")
+    field = next(f for f in cls.fields if f.name == "year")
+    assert field.access == "module"
+    transpile(src)

@@ -220,6 +220,11 @@ def _parse_static_kw(p: "_Tok") -> bool:
     return False
 
 
+def _member_access_or_module(access: str) -> str:
+    """Omitted class/entity member access defaults to module (CER-058)."""
+    return access if access else "module"
+
+
 _PACKRAT_FAIL = object()
 
 
@@ -1616,8 +1621,7 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
         if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
             # Omitted access ⇒ module (same-file teaching boundary), like top-level
             # types without global/package.
-            if not access:
-                access = "module"
+            access = _member_access_or_module(access)
             p.eat_kw("constructor")
             _require_member_phase(
                 p,
@@ -1685,13 +1689,7 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     type_name += "[]"
         mname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
         if p.at(TokenKind.LPAREN):
-            if not access:
-                raise FatalParseError(
-                    "Entity methods require an access modifier "
-                    f"(e.g. `public {mname}(...)`).",
-                    member_sp.line,
-                    member_sp.column,
-                )
+            access = _member_access_or_module(access)
             if is_fix:
                 raise FatalParseError(
                     "`fix` applies to fields, not methods.",
@@ -1734,13 +1732,7 @@ def _parse_entity(p: _Tok, visibility: str = "") -> EntityDef:
                     member_sp.column,
                     code="pys.field-extension",
                 )
-            if not access:
-                raise FatalParseError(
-                    "Entity fields require an access modifier "
-                    f"(e.g. `private fix int {mname}`).",
-                    member_sp.line,
-                    member_sp.column,
-                )
+            access = _member_access_or_module(access)
             if not type_name:
                 raise FatalParseError(
                     f"Entity field '{mname}' requires a type.",
@@ -2037,13 +2029,7 @@ def _parse_class(
                     member_sp.column,
                     code="pys.decorator-target",
                 )
-            if not access:
-                raise FatalParseError(
-                    "Class fields require an access modifier "
-                    "(e.g. `public const int MAX = 10`).",
-                    p.cur().line,
-                    p.cur().column,
-                )
+            access = _member_access_or_module(access)
             p.eat_kw("const")
             type_name = _parse_type_name(p)
             fname = p.eat(TokenKind.IDENT, TokenKind.KEYWORD).text
@@ -2077,13 +2063,7 @@ def _parse_class(
                     member_sp.column,
                     code="pys.decorator-target",
                 )
-            if not access:
-                raise FatalParseError(
-                    "Class fields require an access modifier "
-                    "(e.g. `private fix int id`).",
-                    p.cur().line,
-                    p.cur().column,
-                )
+            access = _member_access_or_module(access)
             p.eat_kw("fix")
             type_name = _parse_type_name(p)
             if p.at(TokenKind.LBRACK):
@@ -2138,13 +2118,7 @@ def _parse_class(
                     member_sp.column,
                     code="pys.abstract-extension",
                 )
-            if not access:
-                raise FatalParseError(
-                    "Abstract methods require an access modifier "
-                    "(e.g. `public abstract string get(int index)`).",
-                    p.cur().line,
-                    p.cur().column,
-                )
+            access = _member_access_or_module(access)
             ret = _parse_type_name(p)
             if p.at(TokenKind.LBRACK):
                 p.eat(TokenKind.LBRACK)
@@ -2207,8 +2181,7 @@ def _parse_class(
         if p.at_kw("constructor") and p.peek(1).kind == TokenKind.LPAREN:
             # Omitted access ⇒ module (same-file teaching boundary), like top-level
             # types without global/package.
-            if not access:
-                access = "module"
+            access = _member_access_or_module(access)
             p.eat_kw("constructor")
             _require_member_phase(
                 p,
@@ -2292,6 +2265,7 @@ def _parse_class(
                 # Redundant closed is allowed on instance methods; on static it is noise
                 # but not polymorphism — treat like standalone closed (ok / ignore).
                 pass
+            access = _member_access_or_module(access)
             _require_member_phase(
                 p,
                 phase,
@@ -2337,6 +2311,7 @@ def _parse_class(
                     member_sp.column,
                     code="pys.decorator-target",
                 )
+            access = _member_access_or_module(access)
             _require_member_phase(
                 p,
                 phase,

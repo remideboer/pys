@@ -694,7 +694,9 @@ package class BigCart inherits Cart {
 
 Rules:
 
-1. Members need an access modifier: `public` / `private` / `protected` / `module`
+1. Members may omit an access modifier: omitted ⇒ **`module`** (same-file).
+   Write `public` / `private` / `protected` / `module` when you want a
+   different boundary (CER-058).
 2. **Member kind order** (parse-enforced): `const` fields → `fix` fields →
    mutable fields → constructors → methods (including `abstract` methods).
    Visibility is unordered within a section. See
@@ -959,7 +961,8 @@ Rules (summary):
 1. **`data`**: fields only (implicitly `fix` + public); implicit ctor like
    `struct`; copy on assign/call/return; `==` / hash / string form over **all**
    fields; no `inherits` / `uses` / `implements` / hand `equals`
-2. **`entity`**: explicit ctor; fields need `member_access`; root requires
+2. **`entity`**: explicit ctor; optional `member_access` on fields/methods
+   (omit ⇒ `module`); root requires
    `identity(...)`; every identity field must be `fix`; **body order**
    (parse-enforced): identity fields → other `fix` → mutable → constructors →
    methods; `==` / hash / string form over identity fields only (parent keys

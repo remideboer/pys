@@ -31,10 +31,13 @@ saw no members. Unresolved `Student(naam="…")` had no scaffold action.
   returns ranked items (locals → params → fields → types → keywords; members
   after `.` with visibility filtering)
 - Setting `pys.intellisense.enabled` + status bar toggle
-- `--refactor-plan create-class` + CodeAction on `pys.unknown-type` / command
-  `pys.generate.createClass` inserts a class stub from an unresolved **type
-  name** (field/param/return) or a class with fields + constructor from
+- `--refactor-plan create-class` + preferred CodeAction when
+  `pys.unknown-type` carries `suggested_fix=create-class` (annotations /
+  instantiate only; see [CER-059](CER-059-abstract-create-class-quickfixes.md));
+  command `pys.generate.createClass` inserts a class stub from an unresolved
+  **type name** (field/param/return) or a class with fields + constructor from
   **named** constructor arguments (literal types inferred)
+- Catalog CodeActions no longer always-offer Create Class as a QuickFix
 
 ### Evidence
 

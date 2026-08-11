@@ -18,6 +18,10 @@ test('refactor.js module file exists and exports registerRefactoring', () => {
   assert.match(src, /showLivePreview/);
   assert.doesNotMatch(src, /showModalPreview/);
   assert.doesNotMatch(src, /refactor-inline-preview/);
+  assert.doesNotMatch(
+    src,
+    /add\('Create Class…',\s*'pys\.generate\.createClass',\s*vscode\.CodeActionKind\.QuickFix/,
+  );
 });
 
 test('refactor name prompts stay modal; apply preview is live in editor', () => {

@@ -50,8 +50,10 @@ Class-name constructors blocked JS transfer and hid the “constructor” concep
 - **Why it hurt:** Top-level types already default to module scope without a
   prefix; constructors felt inconsistent.
 - **Post-behavior:** Omitted `member_access` on `constructor` ⇒ `module`
-  (class and entity). Fields/methods still require an explicit modifier.
-  `public constructor(...)` remains the teaching default for exported APIs.
+  (class and entity). `public constructor(...)` remains the teaching default
+  for exported APIs.
+- **Superseded for fields/methods:** [CER-058](CER-058-member-access-module-default.md)
+  extends the same omit⇒`module` rule to **all** class/entity members.
 - **Evidence:** `tests/test_constructor_keyword.py`.
 
 ## Trade-offs

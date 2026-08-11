@@ -39,9 +39,9 @@ Worked teaching shape (requirement): `AbstractList` owns `size` / shared
    direct `AbstractName(...)` rejected.
 2. Header modifiers: `[closed | abstract]` — mutually exclusive
    ([ADR-028](ADR-028-open-override-closed.md); formerly `sealed`).
-3. Abstract methods: only inside an abstract class; require `member_access` +
-   `abstract` + return type; no `{` body. Abstract methods are **implicitly
-   open** sockets for `override` (ADR-028).
+3. Abstract methods: only inside an abstract class; optional `member_access`
+   (omit ⇒ `module`) + `abstract` + return type; no `{` body. Abstract methods
+   are **implicitly open** sockets for `override` (ADR-028).
 4. **`void`** is a return type; `void` methods must not `return expr`.
 5. Concrete subclasses must **`override`** every inherited abstract method
    (name + arity; return type when both known). Intermediate abstract ancestors
@@ -56,6 +56,8 @@ Worked teaching shape (requirement): `AbstractList` owns `size` / shared
 
 - Distinct from `interface` (no fields/bodies) and `trait` (not a type).
 - IDE: keywords/`void`, hover, snippets; extension ≥ 0.0.42.
+- Abstract method on a concrete class: preferred QuickFix makes the enclosing
+  class `abstract` ([CER-059](../evolution/CER-059-abstract-create-class-quickfixes.md)).
 - Pedagogy: JIT `J-abstract`; example `examples/abstract_classes.pys`.
 
 ## Rejected alternatives

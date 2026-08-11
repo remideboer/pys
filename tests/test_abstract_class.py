@@ -192,3 +192,15 @@ class Box inherits Shape {
     assert "Shape" in (analysis.get("symbols") or {})
     hit = lookup_symbol(analysis, "Shape")
     assert hit is not None
+
+
+def test_abstract_method_in_concrete_class_suggests_make_abstract() -> None:
+    src = """
+class Character {
+    public abstract int greet()
+}
+"""
+    with pytest.raises(TranspileError, match="abstract class") as caught:
+        transpile(src)
+    assert caught.value.code == "pys.abstract-method"
+    assert caught.value.suggested_fix == "abstract class Character"

@@ -487,8 +487,8 @@
           ]
         },
         {
-          "name": "meta.method.declaration.pys",
-          "match": "\\b(public|private|protected|module)\\s+(?:(abstract)\\s+)?(?:((?:result|nullable)\\s*<[^>\\n]+>|int|float|char|string|bool|void|byte|nibble|int16|int32|int64|dword)\\s+)?([A-Za-z_]\\w*)\\s*(?=\\()",
+          "name": "meta.field.declaration.pys",
+          "match": "(?:\\b(public|private|protected|module)\\s+)?(?:(static)\\s+)?(?:(fix|const)\\s+)?(?:((?:result|nullable|list|dict|tuple|set|lambda)\\s*<[^>\\n]+>|int|float|char|string|bool|void|object|byte|nibble|int16|int32|int64|dword)|((?!public\\b|private\\b|protected\\b|module\\b|global\\b|package\\b|static\\b|fix\\b|const\\b|open\\b|override\\b|closed\\b|abstract\\b|constructor\\b|struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|if\\b|else\\b|loop\\b|while\\b|for\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b|import\\b|from\\b|switch\\b|case\\b|default\\b|this\\b|super\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b(?!\\s*\\()",
           "captures": {
             "1": {
               "name": "storage.modifier.pys"
@@ -497,9 +497,42 @@
               "name": "storage.modifier.pys"
             },
             "3": {
-              "name": "storage.type.pys"
+              "name": "storage.modifier.pys"
             },
             "4": {
+              "name": "storage.type.pys"
+            },
+            "5": {
+              "name": "entity.name.type.pys"
+            },
+            "6": {
+              "name": "variable.other.pys"
+            }
+          }
+        },
+        {
+          "name": "meta.method.declaration.pys",
+          "match": "(?:\\b(public|private|protected|module)\\s+)?(?:(static)\\s+)?(?:(abstract)\\s+)?(?:(open|override(?:\\s+closed)?|closed)\\s+)?(?:((?:result|nullable|list|dict|tuple|set|lambda)\\s*<[^>\\n]+>|int|float|char|string|bool|void|object|byte|nibble|int16|int32|int64|dword)|((?!public\\b|private\\b|protected\\b|module\\b|static\\b|abstract\\b|open\\b|override\\b|closed\\b|constructor\\b|struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|if\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b|print\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))?\\s*([A-Za-z_]\\w*)\\s*(?=\\()",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.pys"
+            },
+            "2": {
+              "name": "storage.modifier.pys"
+            },
+            "3": {
+              "name": "storage.modifier.pys"
+            },
+            "4": {
+              "name": "storage.modifier.pys"
+            },
+            "5": {
+              "name": "storage.type.pys"
+            },
+            "6": {
+              "name": "entity.name.type.pys"
+            },
+            "7": {
               "name": "entity.name.function.pys"
             }
           }
@@ -518,7 +551,7 @@
         },
         {
           "name": "meta.typed.declaration.pys",
-          "match": "\\b(?:((?:result|nullable)\\s*<[^>\\n]+>|int|float|char|string|bool|object|byte|nibble|int16|int32|int64|dword)|((?!struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|loop\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
+          "match": "\\b(?:((?:result|nullable|list|dict|tuple|set|lambda)\\s*<[^>\\n]+>|int|float|char|string|bool|object|byte|nibble|int16|int32|int64|dword)|((?!public\\b|private\\b|protected\\b|module\\b|global\\b|package\\b|static\\b|open\\b|override\\b|closed\\b|abstract\\b|constructor\\b|struct\\b|data\\b|entity\\b|enum\\b|class\\b|interface\\b|trait\\b|function\\b|func\\b|var\\b|const\\b|fix\\b|if\\b|else\\b|loop\\b|while\\b|for\\b|return\\b|shared\\b|atomic\\b|tasks\\b|task\\b|nullable\\b|result\\b|object\\b|import\\b|from\\b|switch\\b|case\\b|default\\b|this\\b|super\\b|true\\b|false\\b|null\\b)[A-Za-z_]\\w*(?:\\s*<[^>\\n]+>)?))\\s+([A-Za-z_]\\w*)\\b",
           "captures": {
             "1": {
               "name": "storage.type.pys"

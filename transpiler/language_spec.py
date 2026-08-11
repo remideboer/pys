@@ -516,15 +516,9 @@ def _default_value_for_type(type_name: str) -> str:
     return defaults.get(type_name, "None")
 
 
-def _raise_missing_member_access_modifier(match: Match[str]) -> str:
-    raise ValueError(
-        "Class member declarations require an access modifier: public/private/protected/module."
-    )
-
-
 def _translate_member_decl(match: Match[str]) -> str:
     name = match.group("name")
-    expr = match.group("expr")
+    expr = match.group("expr") if "expr" in match.re.groupindex else None
     if expr is None:
         return f"{name} = {_default_value_for_type(match.group('type'))}"
     return f"{name} = {_rewrite_plus_expr(expr.strip())}"
@@ -766,9 +760,9 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add("class", "class {name}", "class {name}:")
 LANGUAGE.add_regex(
-    "member_decl_missing_modifier",
-    r"(?P<type>int|float|char|string|bool)\s+(?P<name>[A-Za-z_]\w*)$",
-    _raise_missing_member_access_modifier,
+    "member_decl_module_default",
+    r"(?P<type>int|float|char|string|bool|[A-Za-z_]\w*(?:\[\])?)\s+(?P<name>[A-Za-z_]\w*)(?:\s*=\s*(?P<expr>.+))?$",
+    _translate_member_decl,
 )
 LANGUAGE.add_regex(
     "access_member_decl",
@@ -777,6 +771,8 @@ LANGUAGE.add_regex(
 )
 LANGUAGE.add_regex(
     "method_def",
+    # Legacy line translator: require access (or use AST pipeline for bare
+    # methods — optional access without a return type would also match print()).
     r"(?:public|private|protected|module)\s+(?:(?P<rtype>[A-Za-z_]\w*(?:\[\])?)\s+)?(?P<name>[A-Za-z_]\w*)\s*\((?P<args>.*?)\)",
     _translate_function,
 )

@@ -274,9 +274,8 @@ def test_sem_unsized_array_ok() -> None:
     _analyze("int[] nums = [2, 3, 5, 8]\n")
 
 
-def test_sem_class_requires_access_modifier() -> None:
-    with pytest.raises(TranspileError, match="access modifier"):
-        _analyze("class Car {\n    int year\n}\n")
+def test_sem_class_bare_field_defaults_to_module() -> None:
+    _analyze("class Car {\n    int year\n}\n")
 
 
 def test_sem_class_rejects_function_keyword() -> None:

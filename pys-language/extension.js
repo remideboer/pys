@@ -101,6 +101,8 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
+const { findEnclosingClassHeader } = require('./class-header');
+
 function highlightPysForMarkdown(code) {
   // Keep whitespace as its own tokens so formatting survives preview.
   const tokenPattern =
@@ -408,6 +410,8 @@ function activate(context) {
         || parsed.code === 'pys.var-as-type'
         || parsed.code === 'pys.indent'
         || parsed.code === 'pys.trait-require-typo'
+        || parsed.code === 'pys.abstract-method'
+        || (parsed.code === 'pys.unknown-type' && parsed.suggested_fix === 'create-class')
       )
     ) {
       const key = `${document.uri.toString()}:${line}:${parsed.code}`;
@@ -1051,24 +1055,66 @@ function activate(context) {
 
       const unknownType = diagnostics.find((diagnostic) => diagnostic.code === 'pys.unknown-type');
       if (unknownType) {
-        const unknownMatch = /Unknown type '([^']+)'/.exec(String(unknownType.message || ''));
-        const typeName = unknownMatch ? unknownMatch[1] : '';
-        const fix = new vscode.CodeAction(
-          typeName ? `Create class '${typeName}'` : 'Create missing class',
-          vscode.CodeActionKind.QuickFix,
-        );
-        fix.diagnostics = [unknownType];
-        fix.isPreferred = true;
-        fix.command = {
-          command: 'pys.generate.createClass',
-          title: typeName ? `Create class '${typeName}'` : 'Create missing class',
-          arguments: [{
-            line: unknownType.range.start.line,
-            character: unknownType.range.start.character,
-            typeName,
-          }],
-        };
-        actions.push(fix);
+        const unknownKey = `${document.uri.toString()}:${unknownType.range.start.line + 1}:pys.unknown-type`;
+        const unknownMeta = errorMeta.get(unknownKey);
+        if (unknownMeta && unknownMeta.suggested_fix === 'create-class') {
+          const unknownMatch = /Unknown type '([^']+)'/.exec(String(unknownType.message || ''));
+          const typeName = unknownMatch ? unknownMatch[1] : '';
+          const fix = new vscode.CodeAction(
+            typeName ? `Create class '${typeName}'` : 'Create missing class',
+            vscode.CodeActionKind.QuickFix,
+          );
+          fix.diagnostics = [unknownType];
+          fix.isPreferred = true;
+          fix.command = {
+            command: 'pys.generate.createClass',
+            title: typeName ? `Create class '${typeName}'` : 'Create missing class',
+            arguments: [{
+              line: unknownType.range.start.line,
+              character: unknownType.range.start.character,
+              typeName,
+            }],
+          };
+          actions.push(fix);
+        }
+      }
+
+      const abstractMethod = diagnostics.find((diagnostic) => diagnostic.code === 'pys.abstract-method');
+      if (abstractMethod) {
+        const abstractKey = `${document.uri.toString()}:${abstractMethod.range.start.line + 1}:pys.abstract-method`;
+        const abstractMeta = errorMeta.get(abstractKey);
+        const suggested = abstractMeta && abstractMeta.suggested_fix;
+        const classMatch = suggested
+          ? /^abstract class ([A-Za-z_]\w*)$/.exec(String(suggested))
+          : null;
+        const className = classMatch ? classMatch[1] : '';
+        const header = findEnclosingClassHeader(document, abstractMethod.range.start.line, className);
+        if (header && !header.alreadyAbstract) {
+          const fix = new vscode.CodeAction(
+            className ? `Make class '${className}' abstract` : 'Make class abstract',
+            vscode.CodeActionKind.QuickFix,
+          );
+          fix.diagnostics = [abstractMethod];
+          fix.isPreferred = true;
+          fix.edit = new vscode.WorkspaceEdit();
+          if (header.closed) {
+            fix.edit.replace(
+              document.uri,
+              new vscode.Range(
+                new vscode.Position(header.line, header.closedIndex),
+                new vscode.Position(header.line, header.closedIndex + 'closed '.length),
+              ),
+              'abstract ',
+            );
+          } else {
+            fix.edit.insert(
+              document.uri,
+              new vscode.Position(header.line, header.classIndex),
+              'abstract ',
+            );
+          }
+          actions.push(fix);
+        }
       }
 
       const entrypointConflict = diagnostics.find(

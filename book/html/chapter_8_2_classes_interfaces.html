@@ -176,9 +176,14 @@
 <td><code>interface</code></td>
 </tr>
 <tr>
-<td><code>public</code> / <code>private</code> / <code>protected</code></td>
-<td>same idea</td>
-<td>same idea</td>
+<td><code>public</code> / <code>private</code> / <code>protected</code> / <code>module</code></td>
+<td>same idea (<code>internal</code> ≈ <code>module</code>)</td>
+<td>same idea (package-private ≈ <code>module</code>)</td>
+</tr>
+<tr>
+<td>Omitted member access</td>
+<td>defaults to <code>module</code> (same-file)</td>
+<td>package-private when omitted (Java) / explicit preferred (C#)</td>
 </tr>
 <tr>
 <td><code>package</code> (type export)</td>

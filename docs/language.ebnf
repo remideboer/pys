@@ -217,20 +217,22 @@ class_body       = "{" ,
 (* Kind order is grammar-level (parse FatalParseError). Visibility is
    unordered within a section. See ADR-015 / LANGUAGE § Enforced member ordering. *)
 
-const_field_decl = member_access , [ "static" ] , "const" , primitive_type , identifier ,
+const_field_decl = [ member_access ] , [ "static" ] , "const" , primitive_type , identifier ,
                    "=" , expression ;
-fix_field_decl   = member_access , [ "static" ] , "fix" , type_name , identifier ,
+fix_field_decl   = [ member_access ] , [ "static" ] , "fix" , type_name , identifier ,
                    [ "=" , expression ] ;
-field_decl       = member_access , [ "static" ] , type_name , identifier ,
+field_decl       = [ member_access ] , [ "static" ] , type_name , identifier ,
                    [ "=" , expression ] ;
 (* field_decl is mutable only; const / fix occupy earlier sections.
-   Optional static = class-wide storage (ADR-029); static const is allowed but redundant. *)
+   Optional static = class-wide storage (ADR-029); static const is allowed but redundant.
+   Omitted member_access defaults to module (CER-058). *)
 
-method_decl      = { decorator } , member_access , [ "static" ] ,
+method_decl      = { decorator } , [ member_access ] , [ "static" ] ,
                    [ method_extension_modifier ] ,
                    [ return_type ] , identifier ,
                    "(" , [ parameter_list ] , ")" , block ;
-(* static methods have no this; static cannot combine with open/override (ADR-029). *)
+(* static methods have no this; static cannot combine with open/override (ADR-029).
+   Omitted member_access defaults to module (CER-058). *)
 
 method_extension_modifier = "open"
                           | "override" , [ "closed" ]
@@ -239,18 +241,20 @@ method_extension_modifier = "open"
    open -> subclass may override; override -> plugs into open/abstract/root;
    override closed -> plugs in and seals the chain. *)
 
-abstract_method_decl = member_access , [ "open" ] , "abstract" , return_type , identifier ,
+abstract_method_decl = [ member_access ] , [ "open" ] , "abstract" , return_type , identifier ,
                        "(" , [ parameter_list ] , ")" ;
 (* No block. Only legal inside an abstract class. Implicitly an open socket;
    redundant open is allowed; closed/override on abstract is an error.
-   Abstract methods share the method section (after constructors). *)
+   Abstract methods share the method section (after constructors).
+   Omitted member_access defaults to module (CER-058). *)
 
 constructor_decl = { decorator } , [ member_access ] , "constructor" ,
                    "(" , [ parameter_list ] , ")" , block ;
 (* Omitted member_access defaults to module (same-file teaching boundary). *)
 
-(* Class methods MUST use member_access; "function" / "func" inside a class is illegal.
-   Constructors use the explicit `constructor` keyword (ADR-027), not the type name. *)
+(* Class/entity members may omit member_access (⇒ module). "function" / "func"
+   inside a class is illegal. Constructors use the explicit `constructor`
+   keyword (ADR-027), not the type name. *)
 
 (* ------------------------- Structs ------------------------- *)
 
@@ -302,7 +306,8 @@ entity_body       = "{" ,
    they must lead. Other fix fields, then mutable, then constructors, then
    methods. Visibility is unordered within a section. *)
 
-identity_field_decl = member_access , "fix" , type_name , identifier ;
+identity_field_decl = [ member_access ] , "fix" , type_name , identifier ;
+(* Omitted member_access defaults to module (CER-058). *)
 
 (* ------------------------- Enums ------------------------- *)
 

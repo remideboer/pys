@@ -28,7 +28,8 @@ anti-examples, production cases, and bibliographic references live in
 1. **`data`**: fields only; implicitly `fix` + public; implicit positional /
    named ctor; copy on assign/call/return; generated `==` / hash / string form
    over **all** fields; no `inherits` / `uses` / `implements` / hand equals.
-2. **`entity`**: explicit ctor; `member_access` on fields; root requires
+2. **`entity`**: explicit ctor; optional `member_access` on fields/methods
+   (omit ⇒ `module`); root requires
    `identity(...)`; identity fields must be `fix`; generated equality over
    identity keys only (parent keys then local); `inherits` entity-only;
    optional local `identity` appends to parent keys; no `uses` / `implements`;

@@ -8,7 +8,8 @@
 | `uses Trait` | (no direct twin — mixins rare; prefer interfaces + defaults) | (no direct twin) |
 | `abstract class` | `abstract class` | `abstract class` |
 | `interface` | `interface` | `interface` |
-| `public` / `private` / `protected` | same idea | same idea |
+| `public` / `private` / `protected` / `module` | same idea (`internal` ≈ `module`) | same idea (package-private ≈ `module`) |
+| Omitted member access | defaults to `module` (same-file) | package-private when omitted (Java) / explicit preferred (C#) |
 | `package` (type export) | `internal` (assembly) | package-private (default) |
 | Constructor declaration `Foo(...)` | `Foo(...)` — same idea | `Foo(...)` — same idea |
 | Create instance | `Foo(...)` (**no** `new`) | `new Foo(...)` | `new Foo(...)` |

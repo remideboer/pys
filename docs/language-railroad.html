@@ -495,9 +495,9 @@
     {
       id: 'abstract_method_decl',
       title: 'abstract_method_decl',
-      ebnf: 'member_access [ "open" ] "abstract" return_type identifier "(" [ parameter_list ] ")" ;',
+      ebnf: '[ member_access ] [ "open" ] "abstract" return_type identifier "(" [ parameter_list ] ")" ;',
       node: Seq(
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('open')),
         T('abstract'),
         N('return_type'),
@@ -608,9 +608,9 @@
     {
       id: 'entity_field_decl',
       title: 'entity_field_decl',
-      ebnf: 'member_access [ "fix" ] type_name identifier [ "=" expression ] ;',
+      ebnf: '[ member_access ] [ "fix" ] type_name identifier [ "=" expression ] ;',
       node: Seq(
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('fix')),
         N('type_name'),
         N('identifier'),
@@ -741,9 +741,9 @@
     {
       id: 'const_field_decl',
       title: 'const_field_decl',
-      ebnf: 'member_access [ "static" ] "const" primitive_type identifier "=" expression ;',
+      ebnf: '[ member_access ] [ "static" ] "const" primitive_type identifier "=" expression ;',
       node: Seq(
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('static')),
         T('const'),
         N('primitive_type'),
@@ -755,9 +755,9 @@
     {
       id: 'fix_field_decl',
       title: 'fix_field_decl',
-      ebnf: 'member_access [ "static" ] "fix" type_name identifier [ "=" expression ] ;',
+      ebnf: '[ member_access ] [ "static" ] "fix" type_name identifier [ "=" expression ] ;',
       node: Seq(
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('static')),
         T('fix'),
         N('type_name'),
@@ -768,9 +768,9 @@
     {
       id: 'field_decl',
       title: 'field_decl',
-      ebnf: 'member_access [ "static" ] type_name identifier [ "=" expression ] ;',
+      ebnf: '[ member_access ] [ "static" ] type_name identifier [ "=" expression ] ;',
       node: Seq(
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('static')),
         N('type_name'),
         N('identifier'),
@@ -780,10 +780,10 @@
     {
       id: 'method_decl',
       title: 'method_decl',
-      ebnf: '{ decorator } member_access [ "static" ] [ method_extension_modifier ] [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
+      ebnf: '{ decorator } [ member_access ] [ "static" ] [ method_extension_modifier ] [ return_type ] identifier "(" [ parameter_list ] ")" block ;',
       node: Seq(
         Star(N('decorator')),
-        N('member_access'),
+        Opt(N('member_access')),
         Opt(T('static')),
         Opt(N('method_extension_modifier')),
         Opt(N('return_type')),

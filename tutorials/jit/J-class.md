@@ -26,7 +26,7 @@ package class BigCart inherits Cart {
 
 ## Rules
 
-1. Class members need an access modifier (`public` / `private` / `protected` / `module`)  
+1. Class members may omit access: omitted ⇒ `module` (same-file); or write `public` / `private` / `protected` / `module`  
 2. Interface method signatures have **no** access modifier (always public/abstract)  
 3. No `function` keyword on methods — `public name(args) { … }` on classes  
 4. `inherits` one class; `implements` one or more interfaces  

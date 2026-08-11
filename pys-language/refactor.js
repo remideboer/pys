@@ -420,7 +420,6 @@ function registerRefactoring(context, deps = {}) {
         add('Inline Function…', 'pys.refactor.inlineFunction', vscode.CodeActionKind.RefactorInline, 'inline-function');
         add('Safe Delete…', 'pys.refactor.safeDelete', vscode.CodeActionKind.Refactor, 'safe-delete');
         add('Introduce Parameter…', 'pys.refactor.introduceParameter', vscode.CodeActionKind.RefactorRewrite, 'introduce-parameter');
-        add('Create Class…', 'pys.generate.createClass', vscode.CodeActionKind.QuickFix, 'create-class');
         add('Rename Symbol…', 'pys.refactor.rename', vscode.CodeActionKind.Refactor, 'rename');
         return actions;
       },
@@ -430,7 +429,6 @@ function registerRefactoring(context, deps = {}) {
         vscode.CodeActionKind.RefactorExtract,
         vscode.CodeActionKind.RefactorInline,
         vscode.CodeActionKind.RefactorRewrite,
-        vscode.CodeActionKind.QuickFix,
       ],
     }),
   );

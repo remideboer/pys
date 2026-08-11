@@ -987,6 +987,7 @@ def _reject_unknown_type_name(
     line: int = 1,
     column: int = 1,
     code_line: str = "",
+    offer_create_class: bool = False,
 ) -> None:
     """Fail closed when a type annotation names something that does not exist."""
     if not type_name or type_name in {"var", "const", "fix"}:
@@ -1007,6 +1008,7 @@ def _reject_unknown_type_name(
             column,
             code_line or type_name,
             code="pys.unknown-type",
+            suggested_fix="create-class" if offer_create_class else None,
         )
 
 
@@ -1036,6 +1038,7 @@ def _check_library_types(
         line: int = 1,
         column: int = 1,
         code_line: str = "",
+        offer_create_class: bool = False,
     ) -> None:
         _reject_unknown_type_name(
             type_name,
@@ -1046,6 +1049,7 @@ def _check_library_types(
             line=line,
             column=column,
             code_line=code_line,
+            offer_create_class=offer_create_class,
         )
 
     def walk_expr(expr: Expr | None, *, type_params: set[str] | None = None) -> None:
@@ -1060,6 +1064,7 @@ def _check_library_types(
                     line=callee.span.line if callee.span else (expr.span.line if expr.span else 1),
                     column=callee.span.column if callee.span else (expr.span.column if expr.span else 1),
                     code_line=callee.name,
+                    offer_create_class=True,
                 )
             walk_expr(expr.callee, type_params=type_params)
             for arg in expr.args or []:
@@ -1124,6 +1129,7 @@ def _check_library_types(
                     line=expr.span.line if expr.span else 1,
                     column=expr.span.column if expr.span else 1,
                     code_line=pt,
+                    offer_create_class=True,
                 )
             # Lambda body may be Expr or Block depending on parse shape.
             body = getattr(expr, "body", None)
@@ -1165,6 +1171,7 @@ def _check_library_types(
                 line=line,
                 column=col,
                 code_line=method.return_type,
+                offer_create_class=True,
             )
         for pt in method.param_types or []:
             reject(
@@ -1173,6 +1180,7 @@ def _check_library_types(
                 line=line,
                 column=col,
                 code_line=pt,
+                offer_create_class=True,
             )
         if method.body:
             walk_stmts(method.body.statements, type_params=type_params)
@@ -1193,6 +1201,7 @@ def _check_library_types(
                         line=line,
                         column=col,
                         code_line=f"{stmt.declare_type} {stmt.name}",
+                        offer_create_class=True,
                     )
                 walk_expr(stmt.value, type_params=type_params)
             elif isinstance(stmt, ArrayDecl):
@@ -1204,6 +1213,7 @@ def _check_library_types(
                     line=line,
                     column=col,
                     code_line=f"{stmt.elem_type} {stmt.name}",
+                    offer_create_class=True,
                 )
                 walk_expr(stmt.value, type_params=type_params)
             elif isinstance(stmt, (SharedDecl, AtomicDecl)):
@@ -1216,6 +1226,7 @@ def _check_library_types(
                         line=line,
                         column=col,
                         code_line=f"{stmt.declare_type} {stmt.name}",
+                        offer_create_class=True,
                     )
                 walk_expr(stmt.value, type_params=type_params)
             elif isinstance(stmt, AugAssignStmt):
@@ -1250,6 +1261,7 @@ def _check_library_types(
                         line=line,
                         column=col,
                         code_line=stmt.var_type,
+                        offer_create_class=True,
                     )
                 walk_expr(stmt.iterable, type_params=type_params)
                 if stmt.body:
@@ -1278,6 +1290,7 @@ def _check_library_types(
                         line=line,
                         column=col,
                         code_line=stmt.return_type,
+                        offer_create_class=True,
                     )
                 for pt in stmt.param_types or []:
                     reject(
@@ -1286,6 +1299,7 @@ def _check_library_types(
                         line=line,
                         column=col,
                         code_line=pt,
+                        offer_create_class=True,
                     )
                 if stmt.body:
                     walk_stmts(stmt.body.statements, type_params=type_params)
@@ -1314,6 +1328,7 @@ def _check_library_types(
                         line=field.span.line if field.span else 1,
                         column=field.span.column if field.span else 1,
                         code_line=f"{field.type_name} {field.name}",
+                        offer_create_class=True,
                     )
                     walk_expr(field.default, type_params=open_params)
                 for method in stmt.methods or []:
@@ -1332,6 +1347,7 @@ def _check_library_types(
                         line=field.span.line if field.span else 1,
                         column=field.span.column if field.span else 1,
                         code_line=f"{field.type_name} {field.name}",
+                        offer_create_class=True,
                     )
                     walk_expr(field.default)
                 for method in stmt.methods or []:
@@ -1345,6 +1361,7 @@ def _check_library_types(
                         line=field.span.line if field.span else 1,
                         column=field.span.column if field.span else 1,
                         code_line=f"{field.type_name} {field.name}",
+                        offer_create_class=True,
                     )
                     walk_expr(field.default, type_params=open_params)
             elif isinstance(stmt, TraitDef):
@@ -4130,6 +4147,7 @@ def _check_abstract_classes(body: list[Any]) -> None:
                     m.span.column if m.span else 1,
                     m.name,
                     code="pys.abstract-method",
+                    suggested_fix=f"abstract class {cls.name}",
                     tips=[f"Change to `abstract class {cls.name}` or give '{m.name}' a body."],
                 )
 
@@ -7870,30 +7888,6 @@ def _check_arrays(body: list[Any]) -> None:
 
 
 def _check_class_member_modifiers(body: list[Any]) -> None:
-    for stmt in body:
-        if not isinstance(stmt, ClassDef):
-            continue
-        for f in stmt.fields:
-            if f.access:
-                continue
-            line = f.span.line if f.span else (stmt.span.line if stmt.span else 1)
-            _transpile_error(
-                "Class member declarations require an access modifier. Use public/private/protected/module.",
-                line,
-                1,
-                f"{f.type_name} {f.name}".strip(),
-            )
-        for m in stmt.methods:
-            if m.access:
-                continue
-            # Constructors default to module in the parser; other methods still
-            # require an explicit modifier.
-            if m.is_constructor:
-                continue
-            line = m.span.line if m.span else (stmt.span.line if stmt.span else 1)
-            _transpile_error(
-                "Class member declarations require an access modifier. Use public/private/protected/module.",
-                line,
-                1,
-                m.name,
-            )
+    """Historically rejected empty access; parse now defaults omitted ⇒ module (CER-058)."""
+    return
+

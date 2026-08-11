@@ -41,7 +41,7 @@ entity OrderLine inherits Order identity(lineNumber) {
 
 1. Root entity: `identity(...)` is **mandatory**  
 2. Every identity field must be declared `fix` in that entity’s body  
-3. Explicit constructor required; fields need `member_access`  
+3. Explicit constructor required; omitted field/method access ⇒ `module` (same-file)  
 4. `==` / hash / string form use **identity fields only** (not overridable)  
 5. May `inherits` another **entity** only; no `uses` / `implements`  
 6. Non-key fields may change; key fields stay `fix`  

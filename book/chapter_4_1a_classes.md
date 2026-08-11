@@ -138,10 +138,11 @@ The **constructor** is a special part whose job is not the day-to-day
 purpose (counting), but **building** a ready-to-use machine.
 
 - It is written with the **`constructor` keyword**:
-  `public constructor(...)` (not the class name). If you omit the access
-  word, it defaults to **`module`** (usable in this file only) — same idea
-  as a top-level `class` without `global` / `package`. Prefer
-  `public constructor` when other files should create instances.
+  `public constructor(...)` (not the class name). **Any** class member may omit
+  the access word (`public` / `private` / …); omitted ⇒ **`module`** (usable in
+  this file only) — same idea as a top-level `class` without `global` /
+  `package`. Prefer `public constructor` (and other `public` members) when
+  other files should create instances or call them.
 - Creating an object looks like a call: `Counter("demo")`. That call
   **runs the constructor once**. The parameter (`label`) is material the
   assembly needs — a name plate for this counter.
