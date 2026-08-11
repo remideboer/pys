@@ -79,6 +79,41 @@ test('method declaration keeps override + return type', () => {
   assert.ok(bare, 'bare greet() should match method pattern (omitted access)');
   assert.equal(bare[1], undefined);
   assert.equal(bare[7], 'greet');
+  assert.equal(bare[6], undefined, 'must not split greet into type gree + method t');
+
+  // Call-site substring `greet()` may still match as a bare method name; the
+  // Type.method() call pattern (earlier/longer) owns coloring in the grammar.
+  const callSite = 'Character.greet()'.match(re);
+  assert.ok(callSite);
+  assert.equal(callSite[7], 'greet');
+  assert.equal(callSite[6], undefined);
+});
+
+test('static Type.method() call uses class + function scopes', () => {
+  const patterns = grammar.repository.declarations.patterns;
+  const call = patterns.find((p) => p.name === 'meta.method-call.static.pys');
+  assert.ok(call);
+  const re = toRegExp(call.match);
+  const m = 'Character.greet()'.match(re);
+  assert.ok(m);
+  assert.equal(m[1], 'Character');
+  assert.equal(m[2], '.');
+  assert.equal(m[3], 'greet');
+  assert.equal(call.captures['1'].name, 'entity.name.type.class.pys');
+  assert.equal(call.captures['3'].name, 'entity.name.function.pys');
+});
+
+test('instance receiver.method() call uses variable + function scopes', () => {
+  const patterns = grammar.repository.declarations.patterns;
+  const call = patterns.find((p) => p.name === 'meta.method-call.instance.pys');
+  assert.ok(call);
+  const re = toRegExp(call.match);
+  const m = 'hero.greeting("x")'.match(re);
+  assert.ok(m);
+  assert.equal(m[1], 'hero');
+  assert.equal(m[3], 'greeting');
+  assert.equal(call.captures['1'].name, 'variable.other.pys');
+  assert.equal(call.captures['3'].name, 'entity.name.function.pys');
 });
 
 test('package.json defaults share one color for primitive and class types', () => {

@@ -1,12 +1,11 @@
-# PYS Language Support 0.0.103
+# PYS Language Support 0.0.104
 
-## Fix: extension activation (diagnostics were dead)
+## Fix: `Type.method()` highlighting
 
-- Packaged VSIX excludes `scripts/`, but syntax-color UI required
-  `./scripts/apply-syntax-colors.js` → **activate crashed** on every open of a
-  `.pys` file. Language mode/highlighting still worked; Run/diagnostics did not.
-- Role maps now live in packaged `syntax-color-roles.js`. Syntax-color setup is
-  isolated so a UI failure cannot kill diagnostics.
+- Method declarations required a return type to be followed by whitespace, so
+  `greet()` is no longer split into type `gree` + method `t`.
+- Call sites `Character.greet()` use class color on the type and function color
+  on the method (`meta.method-call.static.pys`).
 
 ## Install
 

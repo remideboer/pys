@@ -32,11 +32,14 @@ user types used `entity.name.type.pys`.
   (Cyan for types; Pink for modifiers/keywords)
 - Modifiers remain `storage.modifier.pys` (Pink — distinct from Cyan types)
 - End-user color overrides: Settings pickers — [CER-061](CER-061-syntax-color-settings-ui.md)
+- **Method decls:** return type requires whitespace before the name
+  (`void greet` not `greet`→`gree`+`t`). Call sites `Type.method(` /
+  `receiver.method(` use class/variable + `entity.name.function.pys`.
 
 ### Evidence
 
 - `pys-language/test/grammar-fields.test.js`
-- Manual: `requirements/area51.pys` field block
+- Manual: `requirements/area51.pys` field block + `Character.greet()`
 
 ## Trade-offs
 
