@@ -51,6 +51,10 @@ const {
   DEFAULT_MAX_SKIPS,
   PysStepFilter,
 } = require('./debug-step-filter');
+const {
+  pickRunTerminal,
+  runTerminalName,
+} = require('./run-terminal');
 
 /**
  * @type {Map<string, {
@@ -1936,11 +1940,19 @@ function activate(context) {
       vscode.window.showErrorMessage('PYS file left the workspace before execution.');
       return;
     }
-    const term = vscode.window.createTerminal({
-      name: emitTarget === 'javascript' ? 'Run PYS (Node)' : 'Run PYS',
-      cwd: workDir,
-      env: buildRunEnv(bundled, workspace.uri.fsPath),
-    });
+    const termName = runTerminalName(emitTarget);
+    let term = pickRunTerminal(
+      vscode.window.terminals,
+      vscode.window.activeTerminal,
+      termName,
+    );
+    if (!term) {
+      term = vscode.window.createTerminal({
+        name: termName,
+        cwd: workDir,
+        env: buildRunEnv(bundled, workspace.uri.fsPath),
+      });
+    }
     term.show();
     term.sendText(
       `${pythonExecutable} -m transpiler run ${shellQuote(filePath)} --target ${emitTarget}`,

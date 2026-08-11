@@ -1,10 +1,10 @@
-# PYS Language Support 0.0.106
+# PYS Language Support 0.0.107
 
-## Formatter: Java-sparse blank lines
+## Run: reuse one terminal
 
-- Do not echo source blank lines inside classes/methods.
-- Blank only between field blocks and methods, between methods, and between
-  top-level types/functions — fields stay packed (Java baseline).
+- Run File / Run Project / Run Main reuse the existing **Run PYS** (or
+  **Run PYS (Node)**) integrated terminal when one is open, instead of creating a
+  new panel every time.
 
 ## Install
 
