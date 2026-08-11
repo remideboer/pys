@@ -20,6 +20,7 @@ mark it done here.
 | [F-010](#f-010-javascript-dap-and-os-thread-tasks) | Emit / IDE | **Partial** | Node DAP **Done**; OS-thread JS tasks still deferred |
 | [F-011](#f-011-host-runtime-ensure) | IDE | **Done** | Create Project target + PATH probe / install prompt |
 | [F-012](#f-012-express-rest-shop) | Examples / REST shop | **Done** | Express JS shop under `by-target/javascript/rest-api/express` |
+| [F-013](#f-013-generate-menu-bodies) | IDE / generate | Deferred | Constructor / toString / override / getters / test (menu placeholders) |
 
 ---
 
@@ -239,4 +240,18 @@ workspace target is JavaScript).
 Node Express twin of the Python socket shop: memory (8190) → mysql2 (8191) →
 JWT writes (8192). Emit maps `express` (default import), `crypto`/`buffer`,
 and `json`/`time` shims. CI: memory suites + mysql transpile + jwt crypto.
+
+---
+
+## F-013: Generate menu bodies
+
+| | |
+| --- | --- |
+| Status | Deferred |
+| Source | [CER-018](evolution/CER-018-ide-refactoring.md) context-menu order |
+
+Editor **Generate** submenu already lists Constructor, toString, Override
+Methods, Getters/Setters, and Test (disabled placeholders) plus Create Class
+(enabled). Implement real insert/edit plans for the disabled entries; enable
+when each is ready.
 

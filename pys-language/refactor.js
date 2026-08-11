@@ -177,6 +177,29 @@ function registerRefactoring(context, deps = {}) {
     return editor;
   }
 
+  async function extractFunctionOrMethod(dialogTitle) {
+    const editor = requirePysEditor();
+    if (!editor) return;
+    const snap = captureEditor(editor);
+    const name = await showModalInput(
+      context,
+      {
+        title: dialogTitle,
+        prompt: 'Name for the new function or method',
+        value: 'extracted',
+      },
+      snap,
+    );
+    if (name === null || !String(name).trim()) {
+      return;
+    }
+    await runOp('extract-function', editor.document, editor.selection, snap, async (_doc, sel) => [
+      '--start-line', String(sel.start.line + 1),
+      '--end-line', String(sel.end.line + 1),
+      '--new-name', String(name).trim(),
+    ]);
+  }
+
   const commands = [
     ['pys.refactor.rename', async () => {
       const editor = requirePysEditor();
@@ -192,7 +215,7 @@ function registerRefactoring(context, deps = {}) {
       const name = await showModalInput(
         context,
         {
-          title: 'Rename Symbol',
+          title: 'Rename',
           prompt: `New name for '${oldName}'`,
           value: oldName,
         },
@@ -236,26 +259,11 @@ function registerRefactoring(context, deps = {}) {
       ]);
     }],
     ['pys.refactor.extractFunction', async () => {
-      const editor = requirePysEditor();
-      if (!editor) return;
-      const snap = captureEditor(editor);
-      const name = await showModalInput(
-        context,
-        {
-          title: 'Extract Function',
-          prompt: 'Name for the new function or method',
-          value: 'extracted',
-        },
-        snap,
-      );
-      if (name === null || !String(name).trim()) {
-        return;
-      }
-      await runOp('extract-function', editor.document, editor.selection, snap, async (_doc, sel) => [
-        '--start-line', String(sel.start.line + 1),
-        '--end-line', String(sel.end.line + 1),
-        '--new-name', String(name).trim(),
-      ]);
+      await extractFunctionOrMethod('Extract Function');
+    }],
+    // Same plan as extract-function; menu title is "Extract Method" inside class bodies.
+    ['pys.refactor.extractMethod', async () => {
+      await extractFunctionOrMethod('Extract Method');
     }],
     ['pys.refactor.inlineVariable', async () => {
       const editor = requirePysEditor();

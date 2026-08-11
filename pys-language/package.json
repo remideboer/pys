@@ -567,7 +567,7 @@
       },
       {
         "command": "pys.refactor.rename",
-        "title": "Rename Symbol",
+        "title": "Rename",
         "category": "PYS Refactor"
       },
       {
@@ -578,6 +578,11 @@
       {
         "command": "pys.refactor.extractFunction",
         "title": "Extract Function",
+        "category": "PYS Refactor"
+      },
+      {
+        "command": "pys.refactor.extractMethod",
+        "title": "Extract Method",
         "category": "PYS Refactor"
       },
       {
@@ -615,12 +620,46 @@
         "command": "pys.generate.createClass",
         "title": "Create Class",
         "category": "PYS Generate"
+      },
+      {
+        "command": "pys.generate.constructor",
+        "title": "Constructor…",
+        "category": "PYS Generate",
+        "enablement": "false"
+      },
+      {
+        "command": "pys.generate.toString",
+        "title": "toString…",
+        "category": "PYS Generate",
+        "enablement": "false"
+      },
+      {
+        "command": "pys.generate.overrideMethods",
+        "title": "Override Methods…",
+        "category": "PYS Generate",
+        "enablement": "false"
+      },
+      {
+        "command": "pys.generate.gettersSetters",
+        "title": "Getters/Setters…",
+        "category": "PYS Generate",
+        "enablement": "false"
+      },
+      {
+        "command": "pys.generate.test",
+        "title": "Test…",
+        "category": "PYS Generate",
+        "enablement": "false"
       }
     ],
     "submenus": [
       {
         "id": "pys.refactor.more",
-        "label": "More Refactorings"
+        "label": "Refactor"
+      },
+      {
+        "id": "pys.generate",
+        "label": "Generate"
       }
     ],
     "menus": {
@@ -731,67 +770,107 @@
           "group": "0_run@2"
         },
         {
-          "command": "pys.findUsages",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@2"
-        },
-        {
           "command": "pys.refactor.rename",
           "when": "resourceExtname == .pys",
-          "group": "navigation@3"
-        },
-        {
-          "command": "pys.refactor.extractVariable",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@4"
+          "group": "1_pys_refactor@1"
         },
         {
           "command": "pys.refactor.extractFunction",
-          "when": "resourceExtname == .pys",
-          "group": "navigation@5"
+          "when": "resourceExtname == .pys && !pys.inClassBody",
+          "group": "1_pys_refactor@2"
+        },
+        {
+          "command": "pys.refactor.extractMethod",
+          "when": "resourceExtname == .pys && pys.inClassBody",
+          "group": "1_pys_refactor@2"
         },
         {
           "submenu": "pys.refactor.more",
           "when": "resourceExtname == .pys",
-          "group": "navigation@6"
+          "group": "1_pys_refactor@3"
+        },
+        {
+          "command": "pys.findUsages",
+          "when": "resourceExtname == .pys",
+          "group": "navigation@50"
+        },
+        {
+          "submenu": "pys.generate",
+          "when": "resourceExtname == .pys",
+          "group": "z_pys_generate@1"
+        },
+        {
+          "command": "revealFileInOS",
+          "when": "resourceExtname == .pys && resourceScheme == file",
+          "group": "z_pys_reveal@1"
         },
         {
           "command": "pys.debugTranspiledFile",
           "when": "resourceExtname == .pys",
-          "group": "1_run@1"
+          "group": "z_pys_extra@1"
         },
         {
           "command": "pys.addLogpoint",
           "when": "resourceExtname == .pys",
-          "group": "1_run@2"
+          "group": "z_pys_extra@2"
         },
         {
           "command": "pys.clearAllBreakpoints",
           "when": "resourceExtname == .pys",
-          "group": "1_run@3"
+          "group": "z_pys_extra@3"
         },
         {
           "command": "pys.setAsEntrypoint",
           "when": "resourceExtname == .pys",
-          "group": "1_run@4"
+          "group": "z_pys_extra@4"
         }
       ],
       "pys.refactor.more": [
         {
-          "command": "pys.refactor.inlineVariable",
+          "command": "pys.refactor.extractVariable",
           "group": "1_modify@1"
         },
         {
-          "command": "pys.refactor.inlineFunction",
+          "command": "pys.refactor.inlineVariable",
           "group": "1_modify@2"
         },
         {
-          "command": "pys.refactor.safeDelete",
+          "command": "pys.refactor.inlineFunction",
           "group": "1_modify@3"
         },
         {
-          "command": "pys.refactor.introduceParameter",
+          "command": "pys.refactor.safeDelete",
           "group": "1_modify@4"
+        },
+        {
+          "command": "pys.refactor.introduceParameter",
+          "group": "1_modify@5"
+        }
+      ],
+      "pys.generate": [
+        {
+          "command": "pys.generate.constructor",
+          "group": "1_gen@1"
+        },
+        {
+          "command": "pys.generate.toString",
+          "group": "1_gen@2"
+        },
+        {
+          "command": "pys.generate.overrideMethods",
+          "group": "1_gen@3"
+        },
+        {
+          "command": "pys.generate.gettersSetters",
+          "group": "1_gen@4"
+        },
+        {
+          "command": "pys.generate.test",
+          "group": "1_gen@5"
+        },
+        {
+          "command": "pys.generate.createClass",
+          "group": "1_gen@6"
         }
       ],
       "editor/lineNumber/context": [

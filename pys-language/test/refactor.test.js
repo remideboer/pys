@@ -48,7 +48,7 @@ test('refactor name prompts stay modal; apply preview is live in editor', () => 
   assert.doesNotMatch(live, /createWebviewPanel/);
 });
 
-test('refactor menu items sit in navigation under Go to Definition peers', () => {
+test('refactor menu items: run first, rename/extract before Go to Definition peers', () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'),
   );
@@ -65,15 +65,18 @@ test('refactor menu items sit in navigation under Go to Definition peers', () =>
   assert.ok(debug);
   assert.equal(run.group, '0_run@1');
   assert.equal(debug.group, '0_run@2');
-  assert.match(rename.group, /^navigation@/);
-  assert.match(more.group, /^navigation@/);
+  assert.match(rename.group, /^1_pys_refactor@/);
+  assert.match(more.group, /^1_pys_refactor@/);
   assert.match(find.group, /^navigation@/);
+  const refactorSub = manifest.contributes.submenus.find((s) => s.id === 'pys.refactor.more');
+  assert.equal(refactorSub.label, 'Refactor');
   // Catalog CodeAction must not re-add Rename Symbol (duplicate of context entry).
   const refactorSrc = fs.readFileSync(path.join(__dirname, '..', 'refactor.js'), 'utf8');
   assert.doesNotMatch(
     refactorSrc,
     /add\('Rename Symbol…',\s*'pys\.refactor\.rename'/,
   );
+  assert.match(refactorSrc, /pys\.refactor\.extractMethod/);
   const f2 = (manifest.contributes.keybindings || []).find(
     (k) => k.command === 'pys.refactor.rename' && String(k.key).toLowerCase() === 'f2',
   );

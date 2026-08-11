@@ -58,6 +58,13 @@ true declaration identity (shadowing, imports) plus previewable edit plans.
 - Extension ≥ 0.0.101: Rename uses the at-cursor rename widget (`editor.action.rename` /
   F2). Live preview Accept/Reject are CodeLens on the changed line plus a sticky
   `ignoreFocusOut` input bar — no toast.
+- Extension ≥ 0.0.101 (menu order): editor context is
+  Run → Debug → Rename → Extract Function|Method (`pys.inClassBody`) →
+  **Refactor** submenu (Extract Variable + inline/safe-delete/introduce) →
+  (built-in Go to Definition / Declaration) → Find Usages → **Generate**
+  submenu (Constructor/toString/override/getters/test placeholders disabled;
+  Create Class enabled) → Reveal in OS (`revealFileInOS`) → remaining PYS
+  extras. See `test/context-menu-order.test.js`.
 - CLI: `--refactor-plan <op> …`; `--usages` accepts `--line` / `--column`.
 
 ### Evidence
