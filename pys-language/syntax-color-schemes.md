@@ -23,9 +23,11 @@ Edit this file, then run `npm run prepare-bundle` (or `npm run apply-syntax-colo
 **After install (end users):**
 
 1. Command Palette → **PYS: Customize Syntax Colors** — color square + hex +
-   **Use color** (live preview in the editor while you adjust).
-2. Or Settings → Extensions → **PYS** → Syntax colors — click the color square
-   next to the hex value.
+   **Use color** (live preview). This is the supported picker UI.
+2. Settings → Extensions → **PYS** → Syntax colors — hex fields only (VS Code /
+   Cursor Settings UI does not show color swatches for `format: "color"`).
+   Descriptions link to the command above. Swatches also appear if you edit the
+   same keys in `settings.json` with color decorators enabled.
 
 Roles applied to highlighting: `comments`, `numbers`, `strings`, `functions`, `types`,
 `language-constants`, `keywords`.  

@@ -21,12 +21,18 @@ color picker (same UX as other IDE color fields).
 
 ### Post-behavior
 
-- Settings → Extensions → **PYS** exposes `format: "color"` fields for roles:
+- Settings → Extensions → **PYS** exposes `format: "color"` hex fields for roles:
   comments, numbers, strings, functions, types, language constants, keywords
-  (color square next to hex; click square → native color picker)
-- Command **PYS: Customize Syntax Colors** opens a panel: swatch + hex per role,
-  live preview while adjusting, **Use color** writes the Settings field and
-  updates `editor.tokenColorCustomizations` immediately
+- **Important (host limitation):** the graphical Settings UI shows **hex text only** —
+  VS Code/Cursor do not render color swatches there for `format: "color"`
+  ([vscode#245848](https://github.com/microsoft/vscode/issues/245848) /
+  [#106041](https://github.com/microsoft/vscode/issues/106041)). Swatches *do*
+  appear when editing those keys in `settings.json` (color decorators), and in
+  our dedicated picker UI.
+- Command **PYS: Customize Syntax Colors** is the supported swatch UX: color
+  square + hex per role, live preview while adjusting, **Use color** writes the
+  Settings field and updates `editor.tokenColorCustomizations` immediately.
+  Setting descriptions link to this command.
 - Defaults shown in Settings come from the **dark** palette in
   `syntax-color-schemes.md` (synced by `apply-syntax-colors.js`)
 - An explicit user/workspace value writes matching TextMate rules into
@@ -40,8 +46,7 @@ color picker (same UX as other IDE color fields).
 ### Evidence
 
 - `pys-language/test/syntax-colors.test.js` (merge + package settings)
-- Manual: Command Palette → **PYS: Customize Syntax Colors**, or Settings →
-  PYS → Types color square
+- Manual: Command Palette → **PYS: Customize Syntax Colors**
 
 ## Trade-offs
 
@@ -50,3 +55,5 @@ color picker (same UX as other IDE color fields).
   for TextMate foreground overrides (no separate runtime theme API)
 - Preview while dragging writes Global token customizations; closing the panel
   re-syncs from saved `pys.syntaxColors.*` values
+- Cannot put native swatches in the Settings form until the editor host adds
+  that widget — do not treat missing Settings swatches as a stale VSIX

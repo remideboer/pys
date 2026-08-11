@@ -84,49 +84,49 @@
           "format": "color",
           "default": "#6272A4",
           "order": 20,
-          "markdownDescription": "Color for comments. Change to override built-in theme colors for all themes; use **Reset Setting** to restore per-theme extension defaults."
+          "markdownDescription": "Color for comments (hex). Settings UI is text-only — open **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for a color square, picker, and **Use color** (live update). **Reset Setting** restores per-theme defaults."
         },
         "pys.syntaxColors.strings": {
           "type": "string",
           "format": "color",
           "default": "#007328",
           "order": 22,
-          "markdownDescription": "Color for string literals. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for string literals (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         },
         "pys.syntaxColors.numbers": {
           "type": "string",
           "format": "color",
           "default": "#FFB86C",
           "order": 21,
-          "markdownDescription": "Color for numbers, booleans, and escapes. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for numbers, booleans, and escapes (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         },
         "pys.syntaxColors.functions": {
           "type": "string",
           "format": "color",
           "default": "#20AAE0",
           "order": 23,
-          "markdownDescription": "Color for functions and methods. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for functions and methods (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         },
         "pys.syntaxColors.types": {
           "type": "string",
           "format": "color",
           "default": "#20E0CA",
           "order": 24,
-          "markdownDescription": "Color for types (classes, primitives, structs, …). In Settings, click the color square next to the hex to open the picker. Or run **PYS: Customize Syntax Colors** for swatch + hex + **Use color** (live editor update). **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for types (classes, primitives, structs, …) (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         },
         "pys.syntaxColors.languageConstants": {
           "type": "string",
           "format": "color",
           "default": "#BD93F9",
           "order": 25,
-          "markdownDescription": "Color for `this` / `super` and named constants. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for `this` / `super` and named constants (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         },
         "pys.syntaxColors.keywords": {
           "type": "string",
           "format": "color",
           "default": "#FF79C6",
           "order": 26,
-          "markdownDescription": "Color for keywords, storage modifiers, and decorators. Change to override built-in theme colors; **Reset Setting** restores extension defaults."
+          "markdownDescription": "Color for keywords, storage modifiers, and decorators (hex). Use **[PYS: Customize Syntax Colors](command:pys.customizeSyntaxColors)** for swatch + picker. **Reset Setting** restores defaults."
         }
       }
     },
